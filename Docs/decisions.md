@@ -18,7 +18,7 @@ judgments were supplied, so this records the overall acceptance only.
 The [private comparison player](https://acustra-sound-ab.voho-evangelist.chatgpt.site)
 serves the unchanged audio together with repaired loading, seeking and A/B
 switching. See the [research report](research/sound-refinements-2026-10-15.md) and
-[player repair evidence](validation/sound-refinements-2026-10-15/player-fix/README.md).
+[player repair evidence](validation/sound-refinements-2026-10-15/player-fix/readme.md).
 
 ## 2026-10-15 — ten sound screens, two bounded refinements for A/B
 

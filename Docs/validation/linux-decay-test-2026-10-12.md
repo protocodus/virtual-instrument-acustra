@@ -68,7 +68,7 @@ estimator test remains in place.
 
 ## Provenance
 
-Compact probe results are retained in [linux-decay-2026-10-11](linux-decay-2026-10-11/README.md).
+Compact probe results are retained in [linux-decay-2026-10-11](linux-decay-2026-10-11/readme.md).
 Native probes reused the already validated `build-audit/libAcustraDSP.a` and
 current production headers; Linux probes reused one GCC-built engine object
 across baseline and candidate measurements. The rendered engine is unchanged

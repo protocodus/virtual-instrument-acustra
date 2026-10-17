@@ -38,7 +38,7 @@ either polarity.
 ## Why the two notes cancel
 
 At each note's fundamental, the microphones' level and phase against the
-piezo (transfer files in `transfer/`, [`string_phase.txt`](piezo-blend-2026-10-12/string_phase.txt)):
+piezo (transfer files in `transfer/`, [`string-phase.txt`](piezo-blend-2026-10-12/string-phase.txt)):
 
 - **Parlor Spruce F#5, top string.** The microphones are only 0.8 dB above
   0.2 times the piezo and 179° from it, so the blend takes 21 dB off the
@@ -58,7 +58,7 @@ piezo (transfer files in `transfer/`, [`string_phase.txt`](piezo-blend-2026-10-1
 
 Mean RMS deviation over the 12 constructions, in dB, and how many
 constructions each variant makes better or worse than the shipped blend by
-more than 0.05 dB ([`summary_table.txt`](piezo-blend-2026-10-12/summary_table.txt),
+more than 0.05 dB ([`summary-table.txt`](piezo-blend-2026-10-12/summary-table.txt),
 [`strings.txt`](piezo-blend-2026-10-12/strings.txt)):
 
 | Variant | E2-C6 sweep | Per string | Pick | Parlor Spruce F#5 | Jumbo Spruce C5 |

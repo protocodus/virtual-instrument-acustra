@@ -23,7 +23,7 @@
   "datasets": {
     "eastman": {
       "source_commit": "810318c92e33e31b36638b0ffa7ffc834a2ae6a2",
-      "source_notice": "eastman-SOURCE.md",
+      "source_notice": "eastman-source.md",
       "published_sha256": {
         "picked.opus": "35e9e45b42a70f2fada2c9d93bf809d9046562fa3fa40cbac415ef75b92d926d",
         "plucked.opus": "16f5a8c7cde555441143243f264a03eff142cb8aafb6924236a82755a0396ce0"
@@ -34,7 +34,7 @@
     },
     "martin": {
       "source_commit": "7a9c478fe331f94f246d33332f0adedb25bbbe27",
-      "source_notice": "martin-SOURCE.md",
+      "source_notice": "martin-source.md",
       "source_integrity": "Published Git blob SHA-1 and pinned SHA-256 for all 17 files; per-file hashes in source notice, verified by preparation tool.",
       "prepared_rows_sha256": "e178baf6acb821dd21df33cef784ee160595e5c1d9bfeec7e972039be8258fda",
       "used_rows": 11

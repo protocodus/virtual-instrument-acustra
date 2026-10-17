@@ -8,7 +8,7 @@
     "linux/repaired-full-engine.log": "26ba10575612f1afb275eb3ec41145478c6c6f29860a72bde1cb74f6c294473e",
     "linux/window.log": "fadf809f89a32b6fce2c34da6ef83915eda7c99c66b85b1b63e87562393c76f6",
     "../../../Tools/research/linux-decay-2026-10-11/native/decay_probe.cpp": "56cca97859cc063e3a9b50dc00d1e40e15169b0e31c3b771ab2f86c9b055b2f4",
-    "native/early_tests.log": "638fdca988170796a1bfd35aaa04bf71b34223eda1d1a323bedff53ccf073e4a",
+    "native/early-tests.log": "638fdca988170796a1bfd35aaa04bf71b34223eda1d1a323bedff53ccf073e4a",
     "native/measurements.jsonl": "189ad496cdea1c4d147bd95863487f4fca897969f4326bd15c61a046db36d1a8",
     "native/repaired-build.log": "cc070a1dad7c0a1edbb96f67fd71a1d4e2dc653cff60730dc4a6de32bb8bd221",
     "native/repaired-suite.log": "6a4247c5973b26b889d96e127bea9e428160fbb996da7fa1e17a037bca8e9253",

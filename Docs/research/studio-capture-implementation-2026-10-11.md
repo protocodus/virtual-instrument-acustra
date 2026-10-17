@@ -74,7 +74,7 @@ nonfinite output. No new listener preference is inferred from these metrics.
 
 ![Fine pitch comparison](../validation/studio-capture-implementation-2026-10-11/ab/comparison/fine-pitch-ab.png)
 
-The [complete A/B report](../validation/studio-capture-implementation-2026-10-11/ab/comparison/REPORT.md)
+The [complete A/B report](../validation/studio-capture-implementation-2026-10-11/ab/comparison/report.md)
 retains individual curves, windows, partial extrema, source/binary hashes and
 audition segment manifests. Audio remains in the local ignored
 `build-audit/capture-implementation-20261011/ab/comparison/audition/` directory.
@@ -140,7 +140,7 @@ limitations. The focused Parlor H3 worst loss is 1.94 dB (−63.19 to
 Final auditions use one shared scalar per route over the whole primary sweep:
 +1.371 dB Stereo and +0.912 dB Mono after; no note-specific matching. Short
 centre comparisons play before at 0–4 s and after at 4.35–8.35 s. See the
-[final A/B report](../validation/studio-capture-implementation-2026-10-11/ab/comparison-final/REPORT.md),
+[final A/B report](../validation/studio-capture-implementation-2026-10-11/ab/comparison-final/report.md),
 [exact measurements](../validation/studio-capture-implementation-2026-10-11/ab/comparison-final/comparison.json)
 and [audition manifest](../validation/studio-capture-implementation-2026-10-11/ab/comparison-final/audition/centres/manifest.json).
 
@@ -152,7 +152,7 @@ peak is −2.10003 dBFS, with no limiter activation. The original extra
 0.001-LU diagnostic flags are retained: five Mono cells cross a BS.1770 gate
 boundary after scaling. A native-versus-ideal-scalar witness agrees to
 −148.86 dB relative RMS and identifies the gate change; no gain was refitted
-to conceal it. See the [level-match report](../validation/studio-capture-implementation-2026-10-11/level-match/REPORT.md).
+to conceal it. See the [level-match report](../validation/studio-capture-implementation-2026-10-11/level-match/report.md).
 
 The final [physics receipt](../validation/studio-capture-implementation-2026-10-11/physics-final/provenance.json)
 and [production isolation](../validation/capture-combinations-2026-10-11/production-isolation/normalized-phase2/summary.json)

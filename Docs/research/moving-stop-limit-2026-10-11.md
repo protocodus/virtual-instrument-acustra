@@ -109,6 +109,6 @@ into the manifest's frozen-source directory, then run the two recorded
 compile commands and the resulting witness to reproduce
 [the twelve raw cases](../validation/project-completion-2026-10-11/moving-stop/current-loop-causality.jsonl).
 Running the archived Python script reproduces
-[the independent pulse results](../validation/project-completion-2026-10-11/moving-stop/MovingStopOracle.json).
+[the independent pulse results](../validation/project-completion-2026-10-11/moving-stop/moving-stop-oracle.json).
 Only small source, JSON and provenance files are archived; no alternate
 engine or binary is added to the project.

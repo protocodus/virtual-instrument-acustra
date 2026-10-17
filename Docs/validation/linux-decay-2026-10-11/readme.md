@@ -20,7 +20,7 @@ remain outside Git.
   is relative to the first window for that rate and observer.
 - `native/singleplane.jsonl`: the same diagnostic after clearing the parallel
   polarization, with the production normal-plane loop unchanged.
-- `native/early_tests.log`: candidate-window pass over MIDI 76–84, H1/H8 and
+- `native/early-tests.log`: candidate-window pass over MIDI 76–84, H1/H8 and
   44.1/48/96 kHz. This scratch probe used earlier windows for both partials;
   the production repair deliberately retains the original H1 windows.
 - `native/synthetic.jsonl`: independently specified exponential decay rates

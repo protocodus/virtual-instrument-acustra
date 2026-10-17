@@ -111,7 +111,7 @@ make a candidate win.
 - [Attack measurements](../validation/sound-refinements-2026-10-15/attack/measurements.json)
   and [baseline bypass parity](../validation/sound-refinements-2026-10-15/attack/bypass-parity.json).
 - [Attack experiment tool](../../Tools/ExperimentAttackRefinements.py).
-- [Capture screen and reference tradeoffs](../validation/capture-refinements-2026-10-15/README.md)
+- [Capture screen and reference tradeoffs](../validation/capture-refinements-2026-10-15/readme.md)
   and [native capture probes](../../Tools/CaptureRefinementAudit/README.md).
 - [Room study](room-smoothness-2026-10-15.md),
   [room measurements](../validation/sound-refinements-2026-10-15/room/measurements.json)
@@ -166,7 +166,7 @@ Room 1, median time changes 168.895→171.879 µs and p95 284.991→294.164 µs.
 Every finite-output/contact-state/drop check passes. Cloud scheduling produces
 large isolated timing outliers in both versions, so this is a local overhead
 measurement, not a callback-deadline guarantee.
-[CPU evidence](../validation/sound-refinements-2026-10-15/cpu/README.md) and
+[CPU evidence](../validation/sound-refinements-2026-10-15/cpu/readme.md) and
 [reproduction harness](../../Tools/SoundRefinementCpu/README.md).
 
 ## Listen
@@ -192,4 +192,4 @@ not serve its adjacent audio directory. The repaired controls load clips on dema
 and preserve seek position even on servers without byte-range support. All 26
 targeted browser checks pass, including playback of all ten scenes. Audio bytes,
 blind identities and scores are unchanged; the original pack is preserved.
-[Player repair evidence](../validation/sound-refinements-2026-10-15/player-fix/README.md).
+[Player repair evidence](../validation/sound-refinements-2026-10-15/player-fix/readme.md).

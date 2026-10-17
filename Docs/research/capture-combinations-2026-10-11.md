@@ -162,11 +162,11 @@ Evidence: [native summary](../validation/capture-combinations-2026-10-11/native-
 [screen summary](../validation/capture-combinations-2026-10-11/screen-summary.json),
 [independent metric review](../validation/capture-combinations-2026-10-11/independent-metric-review.json),
 [native prediction check](../validation/capture-combinations-2026-10-11/native-prediction.json),
-[balanced isolation](../validation/capture-combinations-2026-10-11/balanced_all/observation.invariants.json),
-[conservative isolation](../validation/capture-combinations-2026-10-11/measured_continuity/observation.invariants.json).
+[balanced isolation](../validation/capture-combinations-2026-10-11/balanced-all/observation.invariants.json),
+[conservative isolation](../validation/capture-combinations-2026-10-11/measured-continuity/observation.invariants.json).
 
-The archived [balanced coefficients](../validation/capture-combinations-2026-10-11/balanced_all/observation.csv)
-and [manifest](../validation/capture-combinations-2026-10-11/balanced_all/manifest.json)
+The archived [balanced coefficients](../validation/capture-combinations-2026-10-11/balanced-all/observation.csv)
+and [manifest](../validation/capture-combinations-2026-10-11/balanced-all/manifest.json)
 are a concrete research candidate for the frozen 48 kHz harness, not a portable
 production parameter table. Full audio and frozen reproduction inputs remain
 in local `build-audit/studio-mic-combinations-20261011`. No Rack rebuild or

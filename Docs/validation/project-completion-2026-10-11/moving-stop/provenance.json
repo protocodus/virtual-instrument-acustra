@@ -17,7 +17,7 @@
     "CurrentLoopCausality.cpp": "56b885601f523bd354865969df820ceb4cae93ff40137e1349aba272f832e509",
     "current-loop-causality.jsonl": "792442958a0734e4a10e33dadd349ac7e4a9d2984a0ee67df94dce91e082f77c",
     "MovingStopOracle.py": "508edd9a79803a345dea0fcf13069be537a0c86c238234e662bb00b1b6ae3c40",
-    "MovingStopOracle.json": "ac41755015e4ad2f1bbb70545d9683255e48c035e9034d6b7cb0c8eedee58a82"
+    "moving-stop-oracle.json": "ac41755015e4ad2f1bbb70545d9683255e48c035e9034d6b7cb0c8eedee58a82"
   },
   "engine_compile_command": [
     "c++",
