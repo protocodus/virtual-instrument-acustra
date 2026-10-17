@@ -2455,7 +2455,7 @@ void testEditorShowsTheBuildIdentity()
                                       { return label.getText().startsWith ("PHYSICALLY MODELLED"); });
     expect (subtitle != nullptr
                 && subtitle->getText().contains (
-                    juce::String (JucePlugin_VersionString) + " (BUILD "),
+                    juce::String (JucePlugin_VersionString) + "-build."),
             "the editor does not show the version and build from the identity record");
 }
 } // namespace

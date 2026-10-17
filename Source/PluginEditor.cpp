@@ -67,12 +67,11 @@ int heightFor (int width)
     return juce::roundToInt (static_cast<double> (width) * designHeight / designWidth);
 }
 
-// The packages' display version, "1.3.2 (build 1)", in the header's capitals.
+// The build identity the packages carry, "1.7.0-build.12".
 juce::String displayVersion()
 {
     const auto identity = juce::JSON::parse (juce::String::fromUTF8 (AcustraBuildIdentity));
-    return identity["version"].toString() + " (BUILD "
-        + identity["build_number"].toString() + ")";
+    return identity["version"].toString() + "-build." + identity["build_number"].toString();
 }
 
 juce::Font displayFont (float height, int style = juce::Font::plain)
