@@ -105,14 +105,7 @@ long per-version notes are in the
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-Latest main build: **1.6.0-build.39010457874.1** from commit [`e9d11a3`](https://github.com/protocodus/virtual-instrument-acustra/commit/e9d11a35797997ee391b7a208f27d75bd4dffdbd), [run 2](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39010457874). Download [acustra-main-build-2](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39010457874/artifacts/12093341998) (signed in to GitHub; kept for 30 days); it holds these packages, the demo WAVs, `BUILD.txt` and `SHA256SUMS`.
-
-| Package |
-| --- |
-| `Acustra-1.6.0-build.39010457874.1-Linux-x64.tar.gz` |
-| `Acustra-1.6.0-build.39010457874.1-Windows-x64.zip` |
-| `Acustra-1.6.0-build.39010457874.1-macOS-universal.pkg` |
-| `Acustra-1.6.0-build.39010457874.1-macOS-universal.zip` |
+**[Download main build 11](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39065933601/artifacts/12118565634)**, built from [`5f8d0e092692`](https://github.com/protocodus/virtual-instrument-acustra/commit/5f8d0e092692eb1e474a595ec4c9db2ad1586c0d). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
