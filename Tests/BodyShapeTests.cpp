@@ -129,8 +129,8 @@ constexpr double pi = std::numbers::pi;
 // MIDI 60-68), went from 0.50 s at 99.1 Hz, where the saddle's spring to
 // ground had moved it, to 0.55 s at 94.3 Hz, among the 0.51-0.65 s medians
 // of the Eastman and Martin air transients
-// (Docs/realism-consolidation-2026-10-02.md,
-// Docs/saddle-termination-2026-10-10.md).
+// (Docs/research/realism-consolidation-2026-10-02.md,
+// Docs/research/saddle-termination-2026-10-10.md).
 void testOriginalAirDecayIsLocalized()
 {
     namespace d = acustra::detail;
@@ -316,7 +316,7 @@ std::array<int, 2> measuredA0AndT1()
 // nothing; until 2026-10-10 it was a spring T/L from the saddle to ground,
 // which resonated with the body's mass above each body mode, so the strings'
 // conductance peaked at 6 to 34 times the bridge's own 2-5 semitones above
-// A0 and T1 (Docs/saddle-termination-2026-10-10.md). The port the strings
+// A0 and T1 (Docs/research/saddle-termination-2026-10-10.md). The port the strings
 // are tuned against must stay within 3 times the bridge's own conductance -
 // the bound Docs/decisions.md set for any termination on 2026-09-02 - read
 // from the configured digital sections at the string's lever arm (mobility

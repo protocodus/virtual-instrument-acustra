@@ -1,6 +1,0 @@
-# From repository root; substitute the explicit frozen binary paths as needed.
-# This reproduces the measurements and comparisons; it builds no model.
-python3 -B Docs/validation-microphone-boom-20261011/MeasureMicrophoneBoom.py --before-renderer build-audit/mic-boom-20261011/baseline/AcustraPerformanceRenderer --after-renderer build-audit/mic-boom-20261011/candidate/AcustraPerformanceRenderer --output /tmp/acustra-mic-boom-repeat
-python3 -B Docs/validation-microphone-boom-20261011/CompareMicrophoneBoom.py --before /tmp/acustra-mic-boom-repeat/before --after /tmp/acustra-mic-boom-repeat/after --output /tmp/acustra-mic-boom-repeat/comparison
-# Numerical results: comparison.json/.csv. Auditions: comparison/audition/.
-# Environments used: numpy1.26.4, scipy1.14.1, Python3.11; source values in JSON.

@@ -41,7 +41,7 @@ struct PhysicalCalibration
     // (plateConductanceMode in AcustraEngine.cpp).
     float bridgeConductanceFloor { 0.0f };
     float bridgeConductanceCornerHz { 1000.0f };
-    // Retired on 2026-10-10 (Docs/saddle-termination-2026-10-10.md): the
+    // Retired on 2026-10-10 (Docs/research/saddle-termination-2026-10-10.md): the
     // engine reads nothing from it. It was the length of string between the
     // saddle and its anchor, whose stiffness T/L each string presented to
     // ground at the saddle (DAFx-26's fixed-end tail, shipped at its 3.25 mm
@@ -219,7 +219,7 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // bridge's training rows.
     0.1162109375e-3f,
     // The wound strings' winding friction, 2026-10-10
-    // (Docs/string-hf-loss-2026-10-10.md). Until then the wound strings lost
+    // (Docs/research/string-hf-loss-2026-10-10.md). Until then the wound strings lost
     // their grime and friction through the bending law alone, at a by-ear
     // 0.035 (Set 14). Winding friction acts on the tension instead, and its
     // loss angle is constant. The fitted splits are flat within 0.1% from
@@ -248,7 +248,7 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // on 2026-10-10. Restored at half Set 14's value beside half the blend's
     // friction, it gives the picked wound strings' highest partials main's
     // fast decay again: their 4-16 kHz over 0.05-0.4 s reads within 0.1 dB
-    // of main's (Docs/string-hf-loss-2026-10-10.md, section 12).
+    // of main's (Docs/research/string-hf-loss-2026-10-10.md, section 12).
     0.0175f
 };
 

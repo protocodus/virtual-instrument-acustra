@@ -4,7 +4,7 @@
 Requires NumPy. Inputs are the repository's CC-BY-4.0 Mores pressure residues;
 no prepared runtime coefficient dump or sample rate enters this generation.
 Geometry is the declared research prior, not an identified studio sound field.
-See Docs/capture-combinations-2026-10-11.md for the listening decision/limits.
+See Docs/research/capture-combinations-2026-10-11.md for the listening decision/limits.
 """
 from pathlib import Path
 import argparse

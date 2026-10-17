@@ -38,7 +38,7 @@ microphone, which the engine's Width law (each output is mid +/- Width x
 side, Width 0.62 here) gives back exactly when Room is 0. ``mid`` scores the
 L/R average, as every report before 2026-10-10 did; the pair is two
 near-field omnis 20 cm apart whose average cancels (-8.5 dB at 1.25 kHz on a
-strummed chord; Docs/capture-observation-2026-10-10.md). The paired audition
+strummed chord; Docs/research/capture-observation-2026-10-10.md). The paired audition
 WAVs carry the scored signal.
 
 Score at 48 kHz after one whole-clip RMS match. Reuse the dry-note scorer's six

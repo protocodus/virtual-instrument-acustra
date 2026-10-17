@@ -1110,7 +1110,7 @@ void testPiezoHeadroom()
 // through 0.45 fs and require an overall improvement there as well. The
 // released crown load narrowed the isolated interval to near-threshold
 // clipping: the former full-band 1.5 dB gate failed while the passband
-// improved 4.03 dB. Docs/piezo-release-load-2026-10-11.md records that result.
+// improved 4.03 dB. Docs/research/piezo-release-load-2026-10-11.md records that result.
 //
 // Keep all historical multipliers as combined-circuit stress. Report their
 // error against the free-clipped reference, never label it alias-only, and
@@ -1614,7 +1614,7 @@ void testRoomBlocksWidthAndReturn()
 // loss moved the room's end 0.24 s later, and the loudness tables regenerated
 // for it lowered the default construction's piezo trim 0.9 dB, which moves
 // the dry end 0.23 s earlier and the room's not at all: 2.67 s
-// (Docs/string-hf-loss-2026-10-10.md). Until then the bound was 2.5 s. 3 s is
+// (Docs/research/string-hf-loss-2026-10-10.md). Until then the bound was 2.5 s. 3 s is
 // what the room's slowest designed decay (0.45 s) takes to fall the 400 dB
 // from full scale to its 1e-20 flush.
 void testRoomRingsOutToSilence()

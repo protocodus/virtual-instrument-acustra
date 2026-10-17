@@ -3606,7 +3606,7 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         // 1.69 at 44.1 and 48 kHz with their loudest frame where the bend
         // crosses T1 (under 1.5 before); the saddle reads 1.048, 1.048
         // and 1.067 at 44.1, 48 and 96 kHz, before that change and after it
-        // (Docs/saddle-termination-2026-10-10.md).
+        // (Docs/research/saddle-termination-2026-10-10.md).
         // A transient shows in this band only where the string has nothing
         // of its own there. Since 2026-10-10 a wound string's upper partials
         // decay by its winding friction's constant loss angle rather than
@@ -8454,7 +8454,7 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     // second mode, at its measured 178.53 * (1 - 0.018 / sqrt(2)) = 176.26 Hz.
     // Until 2026-10-10 the wide box also lowered these, to 98/107 and 0.900
     // (84.68 and 158.63 Hz), while a spring to ground at the saddle kept the
-    // strings from feeling them (Docs/saddle-termination-2026-10-10.md).
+    // strings from feeling them (Docs/research/saddle-termination-2026-10-10.md).
     const auto steelDread0 = body(BodyShape::Dreadnought, 0);
     const auto steelDread1 = body(BodyShape::Dreadnought, 1);
     expect(std::abs(steelDread0.frequency - 90.8203125 * (109.0 / 107.0) * 1.018) < 0.01,

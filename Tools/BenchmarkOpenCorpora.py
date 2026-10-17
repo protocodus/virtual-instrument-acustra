@@ -62,7 +62,7 @@ capture, read as one microphone) against the Mono mic, recovered exactly
 from the dry Stereo mic render. ``mid`` is the L/R average of target and
 model that every score before 2026-10-10 read; it reproduces them. The
 model's microphones are a spaced pair whose average cancels (FitPhysicalModel
-and Docs/capture-observation-2026-10-10.md). --compare scores both runs with
+and Docs/research/capture-observation-2026-10-10.md). --compare scores both runs with
 this run's observation.
 
 Scoring: one FitPhysicalModel manifest per (corpus, split), named

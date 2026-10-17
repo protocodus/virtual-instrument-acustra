@@ -1,7 +1,7 @@
 // Authored refinements of the summed close-microphone observation.
 // Kept separate from the generated recording fit so regenerating that fit
 // cannot silently overwrite the listening-feedback decisions.
-// See Docs/microphone-resonance-2026-10-09.md for native comparisons.
+// See Docs/research/microphone-resonance-2026-10-09.md for native comparisons.
 #pragma once
 
 #include "CaptureVoicingData.h"
@@ -22,7 +22,7 @@ inline constexpr float originalAirPeakAdjustmentDb = -2.75f;
 // following each Shape's A0 as the fixed 125 Hz refinement above could not:
 // the note at A0 stood 4-6 dB over its neighbours on every Shape (F#2/G2 on
 // the Dreadnought, G#2/A2 on the Auditorium, whose A2 the user named as
-// boom on 2026-10-09; Docs/studio-smoothness-2026-10-11.md), with the loss
+// boom on 2026-10-09; Docs/research/studio-smoothness-2026-10-11.md), with the loss
 // shared by both microphones and still there over the balanced observation
 // blend (G2 +3.1, G#2 +5.5 on the Auditorium). The dip takes about 1 dB
 // off that excess (G2 +3.1 to +2.0 dB on the Dreadnought, G#2 +5.5 to +4.6

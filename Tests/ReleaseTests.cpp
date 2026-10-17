@@ -729,7 +729,7 @@ void testReleaseNoise()
 // 26-29 dB at 44.1 and 48 kHz. With the winding friction's loss angle the low
 // E passes them as the plain strings did, 31-39 dB (the D 28-37, the high E
 // 24-27), so the bound sits between that and the cut port.
-// (Docs/string-hf-loss-2026-10-10.md.)
+// (Docs/research/string-hf-loss-2026-10-10.md.)
 void lowpass20k(std::vector<float>& x, double rate)
 {
     for (const double q : { 0.5411961001461970, 1.3065629648763764 })

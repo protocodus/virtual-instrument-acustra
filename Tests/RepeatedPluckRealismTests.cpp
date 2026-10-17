@@ -851,11 +851,11 @@ void testAgeAutomationPreservesTheMergedString()
         // was 0.101-0.109. The strings now end on the bridge and this G2
         // sits 0.7 semitone over the Dreadnought's A0 (94.2 Hz), into which
         // it drains, so its peak here reads 0.078-0.080
-        // (Docs/saddle-termination-2026-10-10.md). With the wound strings'
+        // (Docs/research/saddle-termination-2026-10-10.md). With the wound strings'
         // winding friction (FittedPhysicalData.h) a jump of their loss
         // section to the new Age read 2.4-2.8e-5 of full scale, so an Age
         // change glides over a round trip instead, and the step reads about
-        // 8e-6 (Docs/string-hf-loss-2026-10-10.md, section 11).
+        // 8e-6 (Docs/research/string-hf-loss-2026-10-10.md, section 11).
         expect(peak > 1.0e-4 && stepDifference <= 2.7e-4 * peak,
                "a small Age step introduced a large adjacent-sample transient after a same-pitch merge");
         std::cout << "Merged Age delay=" << delay
@@ -1033,7 +1033,7 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
             // attack's). With the winding-friction law they ring on as the
             // flat-top recordings' do (3.3-5 kHz, MIDI 40-58: 38 dB/s against
             // the recordings' 31, the bending law's 61), so the train's own
-            // steps reach the attack's (Docs/string-hf-loss-2026-10-10.md).
+            // steps reach the attack's (Docs/research/string-hf-loss-2026-10-10.md).
             for (int stroke = 1; stroke < 32; ++stroke)
             {
                 expect(onsetSteps[stroke] < 3.0

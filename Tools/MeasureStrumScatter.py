@@ -26,7 +26,7 @@ as a cross-check:
   with every string moved by a uniform draw of --scatter-ms standard
   deviation plus a Gaussian detector error of --detector-ms (the same rule
   scatters 1.27 ms on the engine's own strokes, which have none:
-  Docs/validation-playing-physics-20261013/probes), 20 draws a stroke.
+  Docs/validation/playing-physics-2026-10-13/probes), 20 draws a stroke.
 
 Requires numpy and soundfile. Usage:
 

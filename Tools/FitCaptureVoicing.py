@@ -42,7 +42,7 @@ Protocol (deterministic; no audio is committed or downloaded):
    near-field omnis 20 cm apart whose average cancels where they are in
    antiphase (-8.5 dB at 1.25 kHz on a strummed chord), so version 1 asked
    the contour to fill a hole that neither output channel has
-   (Docs/capture-observation-2026-10-10.md).
+   (Docs/research/capture-observation-2026-10-10.md).
 3. Spectra. For a note manifest, each note's onset is found with
    FitPhysicalModel's rule (on the observed signal, per-channel energy for a
    pair); its 0.03-1.0 s spectrum (Hann window) is summed into third
@@ -95,7 +95,7 @@ sources with the new build, fit, rebuild, and repeat until every gain moves
 under 0.1 dB between passes. From the 2026-10-10 baseline that took four
 passes (the shelf moved 0.70, 0.21 and 0.06 dB), since the fit models the
 contour by its analog band means and note spectra weight a band by their
-partials. Docs/capture-observation-2026-10-10.md lists the full sequence.
+partials. Docs/research/capture-observation-2026-10-10.md lists the full sequence.
 """
 
 from __future__ import annotations
@@ -151,7 +151,7 @@ MONO_CHECK = 1.0e-10
 # A separate Mono contour is indicated when the structure fitted to the Mono
 # capture alone reads this much closer (weighted dB rms) to the consensus of
 # every source than the shared contour does (declared 2026-10-10, after the
-# baseline dry run: Docs/capture-observation-2026-10-10.md).
+# baseline dry run: Docs/research/capture-observation-2026-10-10.md).
 MONO_CONTOUR_GAIN_DB = 0.25
 OBSERVATIONS = scorer.OBSERVATIONS
 DEFAULT_OBSERVATION = scorer.DEFAULT_OBSERVATION

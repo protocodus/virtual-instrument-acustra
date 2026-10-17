@@ -44,7 +44,7 @@ Observation (which signal of each file the descriptors are read from):
   with Room, no Width or a limited peak. The model's microphones are two
   near-field omnis 20 cm apart whose L/R average cancels (-8.5 dB at 1.25
   kHz on a strummed chord), which no coincident pair or single microphone
-  does; see Docs/capture-observation-2026-10-10.md.
+  does; see Docs/research/capture-observation-2026-10-10.md.
 - ``mid`` (version 1): the L/R average of target and model alike, as every
   score before 2026-10-10 was read. Reproduce those with ``--observation
   mid`` (or ``"observation": "mid"`` in the manifest).

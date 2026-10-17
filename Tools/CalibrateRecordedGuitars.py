@@ -9,13 +9,13 @@ form training/development splits. The archive hash and selection precede audio
 analysis. The optional bounded search reads only training scores. Validation
 is evaluated once after its winner is selected; it never selects a replacement.
 This is exploratory because source capture, velocity and fingering are unknown.
-No recording or candidate audio is committed. See Docs/realism-work.md.
+No recording or candidate audio is committed. See Docs/plans/realism-work.md.
 
 The recordings are single mono files, so since 2026-10-10 (--observation
 matched, the default) the model is rendered and scored through its Mono mic;
 --observation mid renders the Stereo mics and scores their L/R average, as
 every earlier run did, which cancels where the two spaced microphones are in
-antiphase (Docs/capture-observation-2026-10-10.md).
+antiphase (Docs/research/capture-observation-2026-10-10.md).
 """
 from pathlib import Path
 import concurrent.futures as cf

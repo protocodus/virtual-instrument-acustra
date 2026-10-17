@@ -58,7 +58,7 @@ Russo, Ducceschi and Bilbao,
 *Nonlinear Dynamics* 114, article 857 (29 June 2026). This experiment therefore
 measures physical-force error and gauge sensitivity in addition to energy.
 The project-level source review is
-[physical-modelling-review-2026-09-08.md](../Docs/physical-modelling-review-2026-09-08.md).
+[physical-modelling-review-2026-09-08.md](../Docs/research/physical-modelling-review-2026-09-08.md).
 
 ## Coordinates, units and spatial discretization
 

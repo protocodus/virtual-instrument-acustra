@@ -46,5 +46,5 @@ limit: fixed MPE position can make high-velocity steel Finger/Pick very similar,
 because both contacts are narrow. The normal panel comparison must not be used
 to claim separation at every possible control setting.
 
-See [the change record](../../Docs/control-character-feedback-2026-09-08.md)
+See [the change record](../../Docs/research/control-character-feedback-2026-09-08.md)
 and its companion JSON for retained summaries, source hashes and validation.

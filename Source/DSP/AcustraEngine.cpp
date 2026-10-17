@@ -234,7 +234,7 @@ constexpr float twoPi = 2.0f * pi;
 // ear against, stays within 1.4 dB/s of what it was from E2 to B4 but A4
 // (3.5 dB/s faster); on the top string's E5 and B5 each plane's stays
 // within 2.8 dB/s, though the two planes' beat reads up to 4.7 dB/s slower
-// (Docs/string-hf-loss-2026-10-10.md). It is still an authored value.
+// (Docs/research/string-hf-loss-2026-10-10.md). It is still an authored value.
 constexpr float stringRoundTripGain = 0.99915f;
 constexpr float noteDetuneRangeCents = 20.0f;
 // The dislocation Q of an isolated plain steel string, constant over the
@@ -315,7 +315,7 @@ float anchorModeFactor(const AnchorTransform& anchor, float measuredFrequency,
 // rather than by that box: A0 at 94.2 Hz (airHz 109), where both recorded
 // dreadnoughts ring at 93-95 Hz (Docs/decisions.md, 2026-10-01), and T1's
 // group unscaled (t1Scale 1), at g21's measured 178.5 Hz less the
-// alternating detune, 176.3 Hz. Docs/saddle-termination-2026-10-10.md.
+// alternating detune, 176.3 Hz. Docs/research/saddle-termination-2026-10-10.md.
 constexpr AnchorTransform wideSteelAnchorTransform { 109.0f, 0.900f, 1.28f,
                                                      0.93f, 0.018f, 1.0f };
 
@@ -849,7 +849,7 @@ ModalPole radiationPole(const detail::MeasuredBodyMode& measured, int index,
     // Frequency, residues and the listener's spring-back share stay fixed.
     // The low-frequency joint-body component takes the same ratio so the
     // blend retains its own relative damping. Higher modes do not.
-    // See Docs/realism-consolidation-2026-10-02.md for the measured bracket.
+    // See Docs/research/realism-consolidation-2026-10-02.md for the measured bracket.
     constexpr float airQScale = 23.5f / 19.311932f;
     const float decayScale = measured.frequency > 85.0f
         && measured.frequency < 105.0f ? airQScale : 1.0f;
@@ -1406,7 +1406,7 @@ constexpr float saddleLeverArm(int stringIndex) noexcept
 // these coordinates. A diagonal residue matrix is positive semidefinite, so
 // every string's normal port, G (1 + u^2), and the parallel polarisation's,
 // (h/a)^2 G, stay positive real: without it that plane met no bridge loss
-// above the measured rocking modes' 2.2 kHz (Docs/string-hf-loss-2026-10-10.md).
+// above the measured rocking modes' 2.2 kHz (Docs/research/string-hf-loss-2026-10-10.md).
 constexpr float plateConductanceUpperHz = 16000.0f;
 
 struct PlateConductanceMode
@@ -1688,7 +1688,7 @@ BendingLossSection bendingLossSection(double factor, double inharmonicity,
 // a lightly weighted tail on to 20 kHz or 0.45 of the host rate, and the pair
 // that meets the law best at its worst partial is kept. Over two decades of
 // loss two relaxations stay within about 20% of the law, closer over less
-// (Docs/string-hf-loss-2026-10-10.md); below the band, where the law adds
+// (Docs/research/string-hf-loss-2026-10-10.md); below the band, where the law adds
 // under 3 dB/s, the section adds less and the difference stays under 1 dB/s.
 // Its pole-zero pairs sit in the low kilohertz and below, where a direct
 // form's unit gain at DC rests on float rounding of nearly equal
@@ -1801,7 +1801,7 @@ ConstantLossSection constantLossSection(double delta, double inharmonicity,
     // Corners as fractions of the band's extent in log u. Spread wider, the
     // set missed the law by up to 25% on bands of two decades, the wound
     // strings' at higher friction or String Age; this one keeps every Age
-    // within 20% at the shipped friction (Docs/string-hf-loss-2026-10-10.md).
+    // within 20% at the shipped friction (Docs/research/string-hf-loss-2026-10-10.md).
     constexpr double lowerCorners[] { -0.25, 0.10, 0.15, 0.20 };
     constexpr double upperCorners[] { 0.90, 0.95, 1.00, 1.05, 1.50 };
     double bestError = std::numeric_limits<double>::infinity();
@@ -5519,7 +5519,7 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
     // ground: that counted the geometry twice, and above each body resonance,
     // where the body is mass-like, it resonated with the body, so the
     // strings' conductance peaked 2-3 semitones above A0 and 3-5 above T1 at
-    // 6 to 34 times the bridge's own (Docs/saddle-termination-2026-10-10.md).
+    // 6 to 34 times the bridge's own (Docs/research/saddle-termination-2026-10-10.md).
     result.normal = mobilityHeave + 2.0f * arm * mobilityCross
                   + arm * arm * mobilityRock;
     // The parallel polarisation's port is (h/a) times the rocking
@@ -7159,7 +7159,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // and A4, Dreadnought, Finger at velocity 0.6, 4.8-5.1 dB for every
         // Picking. So the step is given back at 0.45 of the force, 0.8 x
         // 10^(-5.0/20), the thump that was heard (releaseStepShare;
-        // Docs/saddle-termination-2026-10-10.md). A
+        // Docs/research/saddle-termination-2026-10-10.md). A
         // re-pluck adds its step to what an earlier one has still to give
         // back rather than cutting it off: cut, the earlier step's net
         // impulse is no longer zero and the bridge keeps a low kick. Two

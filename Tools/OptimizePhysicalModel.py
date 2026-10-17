@@ -129,7 +129,7 @@ def _free(*names: str) -> np.ndarray:
 # Values the engine no longer reads keep their slot in the vector, so saved
 # calibrations keep their layout, but no stage searches them.
 # bridgeTailLengthMetres: the saddle-to-pin segment is no spring to ground
-# (Docs/saddle-termination-2026-10-10.md).
+# (Docs/research/saddle-termination-2026-10-10.md).
 RETIRED = ("bridgeTailLengthMetres",)
 GLOBAL = _free("bodyFrequencyScale", "bodyQScale", "bridgeMobilityScale",
                "residueTiltDbPerOctave", "apertureRegisterExponent",

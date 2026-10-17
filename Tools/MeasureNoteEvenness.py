@@ -26,7 +26,7 @@ in README Known gaps (the Eastman E1D takes: 1.8 dB RMS fingered, 2.2
 picked) count the note in that mean, over each note's first second, as
 Tests/BodyShapeTests.cpp does. That scales each dev by n/(n+1), n the
 neighbours counted, so this tool's RMS reads the same levels higher, by
-17-22 % on the sweeps of Docs/mid-band-dip-2026-10-12.md. Compare a sweep
+17-22 % on the sweeps of Docs/research/mid-band-dip-2026-10-12.md. Compare a sweep
 with the recordings on the note-counted figure, not on this one.
 
 Any renderer option may follow the output directory, including --calibration

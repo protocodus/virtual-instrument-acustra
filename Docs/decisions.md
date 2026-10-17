@@ -17,8 +17,8 @@ judgments were supplied, so this records the overall acceptance only.
 
 The [private comparison player](https://acustra-sound-ab.voho-evangelist.chatgpt.site)
 serves the unchanged audio together with repaired loading, seeking and A/B
-switching. See the [research report](sound-refinements-2026-10-15.md) and
-[player repair evidence](validation-sound-refinements-20261015/player-fix/README.md).
+switching. See the [research report](research/sound-refinements-2026-10-15.md) and
+[player repair evidence](validation/sound-refinements-2026-10-15/player-fix/README.md).
 
 ## 2026-10-15 — ten sound screens, two bounded refinements for A/B
 
@@ -37,7 +37,7 @@ rejected or deferred because of collateral changes or insufficient musical
 evidence. In particular, current reference notes do not justify the presence
 cuts suggested by an older capture report. The existing microphone voicing and
 all earlier accepted performance rules remain in place. See the
-[ten-experiment report](sound-refinements-2026-10-15.md) for measurements,
+[ten-experiment report](research/sound-refinements-2026-10-15.md) for measurements,
 sources, reproducibility, validation and the matched blind A/B protocol.
 
 ## 2026-10-14 — the 1.5.0 listening verdict: all seven ship
@@ -55,7 +55,7 @@ choices by ear; each keeps its `PerformanceRealism` switch. Each pair is
 one forced choice by one listener, and the seeded draw put the candidate on
 A in pairs 1 to 5 and on B in 6 to 10 while A was picked six times in nine,
 so a preference for A cannot be excluded. See
-[the report](playing-physics-2026-10-13.md).
+[the report](research/playing-physics-2026-10-13.md).
 
 ## 2026-10-14 — a stroke's edges are lighter; the upstroke tilt refit
 
@@ -78,7 +78,7 @@ tilt is 0.30 dB a string; the 1.2 dB offset between strokes stays
 keeps testing the 1.4.0 line with it off). This changes what the user heard
 and preferred in 1.4.0, as a measured correction; in the 1.5.0 blind pack the
 user picked the 1.4.0 tilt over it and then chose to ship it (the verdict
-entry above). See [the report](playing-physics-2026-10-13.md).
+entry above). See [the report](research/playing-physics-2026-10-13.md).
 
 ## 2026-10-14 — a small stroke crosses each string more slowly
 
@@ -99,7 +99,7 @@ its speed map (`AcustraEngine::strumDelaySamples`): at MIDI 96 the engine's
 strokes take 9.7, 7.6, 6.5, 5.9 and 5.4 ms a string over two to six
 strings, and picked pairs sound 9.6 ms apart on average, 8% within 2 ms
 (`PerformanceRealism::strokeSpanLaw`; `Acustra.StrokeSpan`). Not chosen by
-ear. See [the report](playing-physics-2026-10-13.md).
+ear. See [the report](research/playing-physics-2026-10-13.md).
 
 ## 2026-10-14 — a pick's two-note group is a stroke
 
@@ -116,7 +116,7 @@ Its direction is the one the picked-note rule already gave it. Fingers and
 the thumb still sound two notes together, though the corpus's finger-played
 pairs are not simultaneous either (8% within 2 ms, in no preferred order);
 that belongs to the fingers' own timing. Not chosen by ear. See
-[the report](playing-physics-2026-10-13.md).
+[the report](research/playing-physics-2026-10-13.md).
 
 ## 2026-10-14 — a strum's strings scatter about its sweep
 
@@ -138,7 +138,7 @@ the note-on and none past the next stroke's predicted start
 back by the same rule the engine's strokes scatter 4.79 ms and sound 60%,
 47% and 38% in string order (`PerformanceRealism::strumScatter`;
 `Acustra.StrumScatter`). Not chosen by ear. See
-[the report](playing-physics-2026-10-13.md).
+[the report](research/playing-physics-2026-10-13.md).
 
 ## 2026-10-13 — the release fall follows GuitarSet's measured curve
 
@@ -173,7 +173,7 @@ handing it back to the open string after that T60 and 80 ms. Held and
 pedalled strings are left alone. A local finger contact was tried and left
 out: its position is not measured and it made the engine fall faster than
 the corpus (`PerformanceRealism::mutedStrings`; `Acustra.MutedStrings`).
-Not chosen by ear. See [the report](playing-physics-2026-10-13.md).
+Not chosen by ear. See [the report](research/playing-physics-2026-10-13.md).
 
 ## 2026-10-13 — fingers pluck a chord of three or four strings together
 
@@ -192,7 +192,7 @@ residual's robust spread; the earliest string sounds at the note-on. It takes
 a single note's pluck and is not a stroke, so the strum alternation is left
 where it was. Five and six strings, Pick, Thumb and a latched C0/C#0 strum
 exactly as before (`PerformanceRealism::fingerChords`; `Acustra.FingerChords`).
-Not chosen by ear. See [the report](playing-physics-2026-10-13.md).
+Not chosen by ear. See [the report](research/playing-physics-2026-10-13.md).
 
 ## 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
 
@@ -202,7 +202,7 @@ with A/B tests and no new parameter or GUI change. Three behaviours were
 chosen because a real guitar has them, Acustra did not, and evidence sizes
 them; all act on a performance rather than a calibrated single note, so the
 recording benchmark and construction loudness calibration are untouched.
-Rejected candidates and why are in [the report](stroke-release-realism-2026-10-13.md).
+Rejected candidates and why are in [the report](research/stroke-release-realism-2026-10-13.md).
 
 - **Stroke depth.** Measured on GuitarSet's 180 comping takes, each string
   against its own downstrokes on its own hex channel
@@ -295,7 +295,7 @@ microphones' top-string response, where the bridge's rocking moment sets the
 phase string by string. Two independent agents reproduced the figures and
 refuted a blend change as a fix. Kept: polarity, timing and the 20 % default.
 Nothing was chosen by ear; whether these notes matter remains the owner's
-question. See [the report](piezo-blend-2026-10-12.md).
+question. See [the report](research/piezo-blend-2026-10-12.md).
 
 ## 2026-10-12 — an idle plug-in instance sleeps
 
@@ -456,7 +456,7 @@ has used these changes in a host yet.
 - **Rates outside 8-384 kHz** are silent, with UNSUPPORTED RATE on the
   status line, instead of off pitch. Building the plug-in on the extended
   768 kHz layout was not done: it is a separate engine ABI, measured at
-  14.2 MB per engine on 2026-10-11 (Docs/extended-sample-rates.md), and its
+  14.2 MB per engine on 2026-10-11 (Docs/guide/extended-sample-rates.md), and its
   CPU at those rates is unmeasured.
 - **HiDPI wood texture: not changed.** The only textures are
   `walnut-satin.png` (1254 px square) and `cedar-background.png`
@@ -494,7 +494,7 @@ default sound is the least even (3.90 dB RMS against 3.42 for its
 microphones alone). Recorded as an open question for the owner, by ear:
 whether this matters, and whether the piezo's polarity or default level
 should follow the Shape. Nothing in the sound changes with this entry; see
-[the report](mid-band-dip-2026-10-12.md#over-the-full-range-and-at-the-default-piezo-mix).
+[the report](research/mid-band-dip-2026-10-12.md#over-the-full-range-and-at-the-default-piezo-mix).
 
 ## 2026-10-12 — the mid-band peak takes a dip; the hole stays
 
@@ -538,7 +538,7 @@ notes are radiation nulls whose fundamental carries only -7 to -15 dB of
 the note's sustained power, so a boost at the fundamental reaches little
 of the note; they stay, as the entry below said they would. A fuller
 account, with the before/dip/boost table of every mid-band note on every
-body, is in [the report](mid-band-dip-2026-10-12.md).
+body, is in [the report](research/mid-band-dip-2026-10-12.md).
 
 Levelled: the dip took the default cell's calibration phrase from
 -27.7532 to -28.2795 LUFS, and since every other construction and capture
@@ -804,7 +804,7 @@ body/bridge coupling or piezo change is part of this decision. A flat
 microphone-only gain subsequently restores preceding phrase levels, preserving
 the existing independent loudness guard without changing the chosen balance.
 
-The [production implementation and native A/B](studio-capture-implementation-2026-10-11.md)
+The [production implementation and native A/B](research/studio-capture-implementation-2026-10-11.md)
 reduce fundamental prominence around Parlor B1, Auditorium A1 and Jumbo E1–F1.
 They preserve body/Piezo traces while retaining local resonant note peaks and
 some partial cancellation. The projected geometry is a declared approximation,
@@ -815,7 +815,7 @@ numerical validation are distinct from a new listening verdict on this build.
 
 The existing instrument's piezo now includes the released crown load already
 applied to its bridge and body, at the same per-string saddle sensitivity.
-The [force-unit and circuit evidence](piezo-release-load-2026-10-11.md) records
+The [force-unit and circuit evidence](research/piezo-release-load-2026-10-11.md) records
 the original overload-test failure, the established passband distinction,
 and a failing antialiasing-bypass negative control. Circuit gain, construction
 trims and the listener-chosen release share are retained. This supersedes the
@@ -825,8 +825,8 @@ that the release envelope has been measured on a physical pickup.
 Sparse repeated-contact events and setup-time body coefficient preparation
 remove redundant callback work. Exact parity covers the contact state and
 42 callback/continuation cases, including the accepted 48 kHz wet reference.
-Final combined-model evidence is in the [completion report](project-completion-2026-10-11.md).
-The [moving-stop timing limit](moving-stop-limit-2026-10-11.md) remains explicit;
+Final combined-model evidence is in the [completion report](release/project-completion-2026-10-11.md).
+The [moving-stop timing limit](research/moving-stop-limit-2026-10-11.md) remains explicit;
 a partial delayed-read patch would conflict with local contacts and captured
 tails. No unsupported playing techniques are added.
 
@@ -859,7 +859,7 @@ These are model, contract and numerical corrections with no new listening
 verdict. All 83 tests and the full construction calibration pass. The
 existing broad-Q transfer-convention approximation and the 96 kHz/32-frame
 six-string re-pick CPU limit remain explicit in the
-[audit and retained evidence](model-parameter-audit-2026-10-11.md).
+[audit and retained evidence](research/model-parameter-audit-2026-10-11.md).
 ## 2026-10-11 — the MIDI layer audited: two Gather Chords defects fixed
 
 A read-only review of the Performer, the plug-in's processBlock and state
@@ -898,7 +898,7 @@ Panic leaves the bridge hand (CC2) where it is.
 
 The user asked for a smooth studio sound without unwanted resonances or
 boominess. Nobody listened in this pass, so it measured
-([the report](studio-smoothness-2026-10-11.md), with the new
+([the report](research/studio-smoothness-2026-10-11.md), with the new
 `Tools/MeasureNoteEvenness.py`) and then applied one bounded, authored
 change in a direction the listener had already chosen, sized by the sweep
 rather than by ear. The sweep's deviations were the air mode's low peak
@@ -993,7 +993,7 @@ Handling-noise research supports the speed dependence but does not identify
 our string set's wrap pitch, absolute force, or a full longitudinal mode bank.
 The initial level was reduced a further 8 dB following the user's instruction
 not to overdo it. Parameters, defaults and layout are unchanged. See the
-[model, measurements and validation](fret-motion-2026-10-11.md). This local
+[model, measurements and validation](research/fret-motion-2026-10-11.md). This local
 candidate has no new listening approval, push, merge or install.
 
 ## 2026-10-11 — continuous hand geometry and material-driven Wood
@@ -1013,13 +1013,13 @@ including coupled air/top participation. Unmeasured species damping is not
 invented. The supplied Maple/Mahogany article's numerical claims could not
 be traced to a primary experiment; primary acoustic-guitar studies support
 treating mass, stiffness, instrument geometry and component role separately.
-The [Wood report](wood-materials-2026-10-11.md) records those sources and limits.
+The [Wood report](research/wood-materials-2026-10-11.md) records those sources and limits.
 
 These changes are physically motivated and independently checked, not a
 new listening verdict. Parameters and layout stay unchanged. Construction
 levels are recalibrated, and review audio includes native and matched Wood
 comparisons plus the stronger physical piezo-preamp saturation found at
-extreme bridge plucks. The [candidate report](material-gestures-realism-2026-10-11.md)
+extreme bridge plucks. The [candidate report](research/material-gestures-realism-2026-10-11.md)
 records validation, corrected test references and remaining limitations.
 Approval and merge instructions for the preceding candidate are not treated
 as listening approval of this new one.
@@ -1039,7 +1039,7 @@ deliberate accents. The fade is an authored performance policy, not a fitted
 motor-control law. No parameters or layout changed. The user subsequently
 approved the continuous candidate and explicitly requested that it be pushed
 and merged to main. This is user approval of the candidate, not an independent
-perceptual measurement. See the [implementation and continuity evidence](physical-hand-realism-2026-10-11.md#follow-up-continuous-dynamics).
+perceptual measurement. See the [implementation and continuity evidence](research/physical-hand-realism-2026-10-11.md#follow-up-continuous-dynamics).
 
 ## 2026-10-10 — quiet strokes and repeatable construction selections
 
@@ -1063,14 +1063,14 @@ bridge coefficients themselves did not accumulate changes. Silent round
 trips and cleared-wave tests are sample-exact; a guitar still ringing retains
 its physical waves and natural performance variation remains intentional.
 
-[The measurements and regression scope](dynamics-construction-2026-10-10.md)
+[The measurements and regression scope](research/dynamics-construction-2026-10-10.md)
 record the quieter layers, pitch/timbre limits, and the construction witness.
 No listening preference has been established for this new velocity response.
 
 ## 2026-10-10 — picked wound strings keep their top end short: heard and approved
 
 The user heard the blend (winding friction 4.5e-4) blind against main
-([the report](string-hf-loss-2026-10-10.md), section 12). They would take
+([the report](research/string-hf-loss-2026-10-10.md), section 12). They would take
 the blend except on picked notes: "B absolutely not" on the picked open
 strings, rated 3 against main's 6. The rest was close. They asked for
 something between the two that keeps main's picked notes.
@@ -1094,7 +1094,7 @@ rated 5 against 5.
 ## 2026-10-10 — string loss angles: heard, and a blend asked for
 
 Work package A gives the strings constant loss angles in place of the wound
-strings' by-ear cube-law bending factor ([the report](string-hf-loss-2026-10-10.md)).
+strings' by-ear cube-law bending factor ([the report](research/string-hf-loss-2026-10-10.md)).
 The user compared its candidate, winding friction 1.3e-4, with main, blind
 (section 11):
 - **Overall:** approved.
@@ -1136,7 +1136,7 @@ baseline and again on main `844cf2f`, where it was rebased. Renders without
 hand pressure stay byte-identical. This is a
 physical consistency correction, not a listening verdict or a new recording
 fit. Local before/after phrases and the Rack integration workflow are documented in
-[the evidence note](palm-mute-pitch-2026-10-06.md).
+[the evidence note](research/palm-mute-pitch-2026-10-06.md).
 
 ## 2026-10-10 — the strings end on the bridge: heard and approved
 
@@ -1147,7 +1147,7 @@ ground, DAFx-26's fixed-end saddle-to-pin tail at a 3.25 mm stub. Above each
 body mode it resonated with the body's mass and drained the strings at 6 to 34
 times the bridge's own conductance. On a pin bridge both ends of that segment
 are on the bridge, so it now presents nothing, and the strings drain into the
-measured bridge alone ([the report](saddle-termination-2026-10-10.md)).
+measured bridge alone ([the report](research/saddle-termination-2026-10-10.md)).
 
 Two by-ear choices had been heard through that spring, and both were carried
 forward to the level that was heard:
@@ -1185,7 +1185,7 @@ re-checked after the capture voicing's refit, which is predicted to take
 A room fed both microphones of the spaced pair was tried: a gap-free late
 field from 9 ms, side reflections placed by time, a spaced pair's
 diffuse-field coherence, and absorption designed at the room's own rate
-([the report](room-2026-10-10.md)). The listener heard it against the
+([the report](research/room-2026-10-10.md)). The listener heard it against the
 earlier room in a blind, level-matched A/B of the five realism songs at
 Room 0.5:
 - evening fingerpicking: the earlier room, naturalness 6 against 4;
@@ -1217,7 +1217,7 @@ These are numerical corrections. Only the bridge work above was heard.
 - **Calibration tools compare like with like.** Each recording is now scored
   against the capture it matches, not the L/R average of the spaced pair,
   which cancels a band neither microphone lacks
-  ([the record](capture-observation-2026-10-10.md)). No shipped voicing
+  ([the record](research/capture-observation-2026-10-10.md)). No shipped voicing
   changed. The refit is planned after the string-loss work and will be heard
   against the voicing approved on 2026-10-09.
 - **The listening builder matches across gating jumps.** It now finds a
@@ -1249,7 +1249,7 @@ as history; they no longer describe a shipping guitar.
 
 This is a removal: it adds no listening decision and no CPU claim. Matched
 native renders of every remaining construction and control case are
-byte-identical (see [the removal record](classic78-removal-2026-10-10.md)).
+byte-identical (see [the removal record](research/classic78-removal-2026-10-10.md)).
 
 ## 2026-10-09 — remove unavailable feature code and archived experiments
 
@@ -1264,7 +1264,7 @@ The accepted microphone, Classic attack and gentle-warming sustain choices
 remain. Matched native renders are byte-identical across 280 construction and
 control cases. This establishes sound preservation within that test coverage;
 it adds no listening or CPU-speed claim. See
-[the cleanup record](project-cleanup-2026-10-09.md) for scope and validation.
+[the cleanup record](research/project-cleanup-2026-10-09.md) for scope and validation.
 
 ## 2026-10-09 — reduce microphone boom and adopt the selected Classic attack and sustain
 
@@ -1288,7 +1288,7 @@ The accepted-attack checkpoint passes all 75 suites, strict default/extended C++
 216 phrase checks and the existing Pick level policy. Canonical source and
 renderers match that tested snapshot exactly; nine affected suites pass again.
 Incorrect-source negative controls demonstrate the new release checks. See
-[the investigation](microphone-resonance-2026-10-09.md) and its compact evidence
+[the investigation](research/microphone-resonance-2026-10-09.md) and its compact evidence
 for scope and tradeoffs. These checks verify implementation and the selected
 audition's transfer, rather than complete realism across every construction.
 
@@ -1308,7 +1308,7 @@ existing Pick headroom policy pass with the same guards. The final calibrated
 Pick/Thumb traces reproduce the selected experiment's physical waves and fade;
 output gain changes preserve its harmonic evolution. Finger's broader transfer
 is checked separately and has no inferred listening verdict. See
-[classic78-sustain-integration-2026-10-09.json](classic78-sustain-integration-2026-10-09.json).
+[research/classic78-sustain-integration-2026-10-09.json](research/classic78-sustain-integration-2026-10-09.json).
 
 The new final sustain construction player covers all 24 guitars, all three
 techniques and both affected microphones: 144 cells and 288 bass/upper phrases
@@ -1335,7 +1335,7 @@ it was removed. An exact per-process sample-rate ratio hoist also failed to
 improve its comparison and was removed. Keep the rejected snapshots and raw
 runs; do not repeat them as presumed wins. No capture, solver, coefficient,
 precision, timing or voice-scheduling changes are included. See the
-[CPU report](cpu-optimization-2026-10-08.md) for absolute timings, parity scope,
+[CPU report](benchmarks/cpu-optimization-2026-10-08.md) for absolute timings, parity scope,
 remaining limitations and validation evidence. This is a numeric optimization,
 not a listening-based sound change.
 
@@ -1396,7 +1396,7 @@ cut or a claimed listening win. The velocity and sample-rate tests now isolate
 their mechanisms from microphone coloration and different random attack
 waveforms, while retaining their original reference thresholds and adding a
 native brightness check. Evidence, tradeoffs, reproducible comparisons and
-validation are in the [body/capture report](body-capture-2026-10-08.md).
+validation are in the [body/capture report](research/body-capture-2026-10-08.md).
 
 ## 2026-10-07 — reduce repeated work while preserving the new model
 
@@ -1413,7 +1413,7 @@ matched toolchains. Timing is measured separately with inherited denormal
 handling and the FTZ/DAZ mode used by JUCE, because that setting changes Pick
 cost substantially. No sound-quality switch or reduced physical model is
 introduced. Results, deadline limits, libc diagnostic side effects and platform
-coverage are recorded in the [CPU report](cpu-optimization-2026-10-07.md).
+coverage are recorded in the [CPU report](benchmarks/cpu-optimization-2026-10-07.md).
 
 ## 2026-10-07 — connected performance gestures with ordinary MIDI playability
 
@@ -1437,7 +1437,7 @@ static deformation and late tick; the selected relaxing contact avoids it.
 Independent review also corrected continuous body-residue scaling and
 preserved queued gesture/direction snapshots. Validation, exact ablations,
 recording tradeoffs, listening material and CPU measurements belong to the
-[natural-performance report](natural-performance-2026-10-07.md). This records
+[natural-performance report](research/natural-performance-2026-10-07.md). This records
 an implementation decision with signal evidence, not a claimed listening win.
 
 ## 2026-10-07 — Classical 78's close microphone capture
@@ -1464,7 +1464,7 @@ descriptor scores on Eastman Finger/Pick and Martin, and on each pitch
 register; G4's harmonic balance improves while its total descriptor score
 still worsens 0.90%. No listener preference is inferred. Matched native
 listening, calibration, tests, CPU evidence and the limits of two-way room
-coupling are recorded in the [capture report](classical78-capture-2026-10-07.md).
+coupling are recorded in the [capture report](research/classical78-capture-2026-10-07.md).
 
 ## 2026-10-07 — Finger release compared with real recordings
 
@@ -1490,7 +1490,7 @@ audio limits, including reset and interrupted-retune cases. They add small
 inactive checks, whose runtime cost is included in the final benchmark.
 
 The selected change is a Finger contact-spectrum improvement; no universal
-realism verdict follows. The [recording report](recording-realism-2026-10-07.md)
+realism verdict follows. The [recording report](research/recording-realism-2026-10-07.md)
 records paired real/before/after audio, source integrity, exact assumptions,
 individual results, CPU measurements and regression verification.
 
@@ -1509,7 +1509,7 @@ cache. Existing filter histories remain intact. Ordinary unbent tone is
 byte-identical over 162 final comparisons. Matched musical renders show
 substantial changed strum/slide audio; common native levels are preserved.
 Implementation, listening provenance, CPU protocol and validation are
-recorded in [the gesture report](audible-realism-2026-10-07.md).
+recorded in [the gesture report](research/audible-realism-2026-10-07.md).
 
 ## 2026-10-05 — lower CPU with exact audio preservation
 
@@ -1526,7 +1526,7 @@ Across 18 cloud callback configurations, median processing-time reduction is
 14.3% with GCC and 4.8% with Clang; the 48 kHz/128-frame GCC tremolo case
 improves 17.0%. Twenty targeted suites and the native host-tempo suite pass.
 These measurements preserve the existing sound; they establish no new
-listening preference. See [the protocol, results and provenance](cpu-optimization-2026-10-05.md).
+listening preference. See [the protocol, results and provenance](benchmarks/cpu-optimization-2026-10-05.md).
 
 ## 2026-10-05 — a global 1/32-note release window
 
@@ -1545,7 +1545,7 @@ All Notes Off/All Sound Off keep their direct controller semantics. The
 window is an authorized performance rule, not a measured finger-contact
 duration. This supersedes the immediate ordinary key-up contract recorded
 below; the continuing-string work and Recuerdos holds remain. See
-[the implementation and comparison protocol](release-join-2026-10-05.md).
+[the implementation and comparison protocol](research/release-join-2026-10-05.md).
 
 ## 2026-10-05 — one continuing tremolo string and Recuerdos articulation
 
@@ -1568,7 +1568,7 @@ gesture. Its melody now remains held through the thumb slots until the next
 melody attack, with pitches, onsets, velocities and accompaniment unchanged.
 The MIDI contract stays explicit: Note-off begins damping unless sustain
 holds the note. No timing jitter or widened random force spread was added.
-See [the implementation and comparison protocol](recuerdos-tremolo-2026-10-05.md).
+See [the implementation and comparison protocol](research/recuerdos-tremolo-2026-10-05.md).
 The comparisons do not establish a listening preference; no new user verdict
 has been recorded yet.
 
@@ -1586,7 +1586,7 @@ or a listening verdict; the separate-tail transition remains provisional.
 Delayed releases also now record their actual sample rather than the block's
 starting timestamp. A negative-first equal-velocity regression reproduces the
 old audible difference between scheduled and immediate releases at the same
-sample. See [the implementation and listening protocol](repeated-pluck-contact-2026-10-05.md).
+sample. See [the implementation and listening protocol](research/repeated-pluck-contact-2026-10-05.md).
 Fresh before/after audio uses identical scores and common gain; no user verdict
 on naturalness has yet been recorded for this change.
 
@@ -1704,7 +1704,7 @@ the hand's stretch. The existing 12 occupied-string takes in 88 synthetic
 rolls remain disclosed. Fewer extra attacks therefore do not establish
 uniformly more physical chords. Timing annotations, collapsed MIDI channels,
 fixed velocity and omitted fractional bends limit the comparison. See the
-[playing verification](realism-playing-verification-2026-10-02.md).
+[playing verification](research/realism-playing-verification-2026-10-02.md).
 
 ## 2026-10-02 — seed uncertainty and source geometry do not select a sound change
 
@@ -1722,7 +1722,7 @@ on both presets, but three individual corpus comparisons fail the declared
 their static normal release force changes with the geometry, so body-term
 changes cannot identify comb alignment alone. Both source candidates remain
 excluded. Full outcomes and frozen methods are in the
-[seed and geometry report](realism-seed-and-geometry-2026-10-02.md).
+[seed and geometry report](research/realism-seed-and-geometry-2026-10-02.md).
 
 The primary IDMT-SMT-Guitar archive was also inspected for stronger Finger
 references. Its acoustic pieces have chord/pattern labels; note/string/Finger
@@ -1759,7 +1759,7 @@ it is not recorded as a preregistered threshold.
 
 None of these sound changes enters production or overrides a listener
 choice. All candidates, source hooks, methods and evidence are retained in
-[the bounded-screen report](realism-screens-2026-10-02.md).
+[the bounded-screen report](research/realism-screens-2026-10-02.md).
 
 ## 2026-10-02 — recording baselines cover both current presets
 
@@ -1784,7 +1784,7 @@ screen, with unchanged velocity-relative slip and the prior listener choices
 fixed. Martin and recorded velocity contrast remain hard guards. Radiation
 residue and reciprocal-pole experiments likewise remain offline until they
 pass discovery, other-note and cross-corpus checks. Measurements and limitations
-are in [the current-model baseline](cross-model-recording-baseline-2026-10-02.md).
+are in [the current-model baseline](research/cross-model-recording-baseline-2026-10-02.md).
 
 ## 2026-10-02 — live chords keep their attacks; low ringing gets a coupled probe
 
@@ -1802,7 +1802,7 @@ under the normal six-string allocator. Same-sample and Gather plans retain
 every note in those shapes. The listener can review both the ordinary roll
 and this dense-roll limitation; the patch is not recorded as a choice made
 by ear. The report is
-[realism-attribution-2026-10-02.md](realism-attribution-2026-10-02.md).
+[research/realism-attribution-2026-10-02.md](research/realism-attribution-2026-10-02.md).
 
 The ringing probe retains all six reciprocal ports and traces individual
 body contributions and string motion. Its perturbations use public
@@ -1823,7 +1823,7 @@ branches only where they add realism, without new visible controls. Most
 useful branches are already integrated. Rejected pick-click, high-loss,
 anechoic-body and full joint-body experiments are not restored; removed
 legato stays removed. The complete branch disposition and measurements are
-in [the consolidation report](realism-consolidation-2026-10-02.md).
+in [the consolidation report](research/realism-consolidation-2026-10-02.md).
 
 Two playing corrections are implemented. The Performer now plans a fretted
 shape before scheduling its strum, so the stroke follows physical string
@@ -5466,7 +5466,7 @@ partial/band T60, body spectrum and velocity dynamics. Two short staged bounded
 least-squares passes reduced the training score from 9.599960 to 8.218244
 (14.39%) and the held-out score from 8.954658 to 7.808713 (12.80%). Every held-
 out term family improved. The complete compact result is recorded in
-`Docs/physical-fit-report.json`.
+`Docs/research/physical-fit-report.json`.
 
 An ablation froze the other 18 fitted values and tested the optimizer's proposed
 bridge-local direct gain. It improved training by only 0.000533 and made held-
@@ -8642,7 +8642,7 @@ What was decided. The pull-off pressure bias was removed outright rather than pa
 
 What was measured. An earlier report concluded a rigid fret-collision barrier would never fire, reasoning from the pluck's static released shape. That is the wrong quantity: d'Alembert's solution for a triangle released from rest puts the string's full excursion at the mirror of the pluck point during the free run, not at the static shape, and an in-engine two-tap read reproduces that closed form to 14.3% over frets 1-8. A rigid barrier at the published action line plus published neck relief (Martin's and Taylor's own set-up specifications) was built and measured: it does fire — an open low E at full velocity crosses frets 2 and 3 by up to 0.04 mm, and a fretted note starts buzzing at about half velocity — and it is passive (zero energy added, any gesture, three sample rates).
 
-What was decided. Not shipped, because the pluck gives every string at every fret the same released peak while the clearance one fret above a stopped note is only 0.13-0.24 mm, so a fretted note buzzes well before the recordings would suggest it should; the fitted corpus moves against it on both fitted splits (+2.4%) even though the reported-only flat-top rows improve (-4.2%), and three measured engine gates break (a lossless-read rate-uniformity bound, GuitarSet's measured strum level spread, and the hammer-on energy-with-velocity law). This is a correction to Docs/physical-fit-report.json's own record, not an engine change: the superseded conclusion is kept beside the corrected one so the ledger shows what was wrong and why. What would settle it is a displacement measurement on the instrument — the displacement scale the barrier reads against is fitted to the attack-pitch glide, not measured as a physical displacement.
+What was decided. Not shipped, because the pluck gives every string at every fret the same released peak while the clearance one fret above a stopped note is only 0.13-0.24 mm, so a fretted note buzzes well before the recordings would suggest it should; the fitted corpus moves against it on both fitted splits (+2.4%) even though the reported-only flat-top rows improve (-4.2%), and three measured engine gates break (a lossless-read rate-uniformity bound, GuitarSet's measured strum level spread, and the hammer-on energy-with-velocity law). This is a correction to Docs/research/physical-fit-report.json's own record, not an engine change: the superseded conclusion is kept beside the corrected one so the ledger shows what was wrong and why. What would settle it is a displacement measurement on the instrument — the displacement scale the barrier reads against is fitted to the attack-pitch glide, not measured as a physical displacement.
 
 ## 2026-09-04 — the body's high-frequency residual is a filter within 0.62 dB of unity
 

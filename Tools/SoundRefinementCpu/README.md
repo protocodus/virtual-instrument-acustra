@@ -4,7 +4,7 @@ This standalone C++17 tool compares two frozen DSP trees with identical compiler
 flags and separate namespaces. It permits intended audio differences while
 checking finite, nonzero output, actual contact state and event delivery. The
 measured harness and builder are exact copies of the 2026-10-15 evidence inputs.
-See [the result and provenance](../../Docs/validation-sound-refinements-20261015/cpu/README.md)
+See [the result and provenance](../../Docs/validation/sound-refinements-2026-10-15/cpu/README.md)
 and [the complete protocol](PROTOCOL.txt).
 
 Both source roots must contain `Source/DSP/AcustraEngine.*`,

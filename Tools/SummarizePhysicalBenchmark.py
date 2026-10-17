@@ -145,7 +145,7 @@ def main() -> int:
         "report",
         type=Path,
         nargs="?",
-        default=Path(__file__).parents[1] / "Docs" / "physical-fit-report.json",
+        default=Path(__file__).parents[1] / "Docs" / "research" / "physical-fit-report.json",
     )
     arguments = parser.parse_args()
     with arguments.report.open(encoding="utf-8") as stream:
