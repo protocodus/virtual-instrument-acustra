@@ -62,7 +62,6 @@ jobs:
         env:
           BUILD_UNIVERSAL: "ON"
           PYTHON: "${{ steps.python.outputs.python-path }}"
-          ACUSTRA_EDITOR_SNAPSHOT: "${{ runner.temp }}/acustra-standalone.png"
         run: ./scripts/build-macos.sh
 
       # The main build commits this render as the README screenshot.
@@ -70,7 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshot-acustra
-          path: ${{ runner.temp }}/acustra-standalone.png
+          path: build-macos/screenshots/acustra.png
           if-no-files-found: error
           retention-days: ${{ inputs.retention-days || 7 }}
 

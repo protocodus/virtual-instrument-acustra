@@ -116,16 +116,12 @@ jobs:
           retention-days: 7
 
   plugin-macos:
-    name: Plug-in build (Acustra, macOS native arch)
+    name: Plug-in build (Acustra, macOS universal)
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      # Clear any committed screenshot before rendering to ensure this build produces it
-      - name: Clear screenshot before rendering
-        run: rm -f "Docs/screenshots/acustra-standalone.png"
 
       # The Python self-tests need numpy and scipy; configure fails rather
       # than silently registering fewer tests (ACUSTRA_REQUIRE_PYTHON_TESTS).
@@ -138,39 +134,27 @@ jobs:
       - name: Install numpy and scipy
         run: python -m pip install numpy scipy
 
-      # Native-arch only keeps per-push CI fast. The local Xcode-based build
-      # script defaults to universal arm64 + x86_64 output and runs the same tests.
+      # Universal arm64 + x86_64, as the main build and releases ship. Every
+      # tier runs; the render tier (Acustra.EditorScreenshot) writes and
+      # checks build-macos/screenshots/acustra.png.
       - name: Build plug-in and run tests
         env:
-          BUILD_UNIVERSAL: "OFF"
           PYTHON: "${{ steps.python.outputs.python-path }}"
-          ACUSTRA_EDITOR_SNAPSHOT: "${{ github.workspace }}/Docs/screenshots/acustra-standalone.png"
         run: ./scripts/build-macos.sh
 
-      - name: Check that the editor screenshot was rendered
-        run: |
-          set -euo pipefail
-          screenshot="Docs/screenshots/acustra-standalone.png"
-          if [[ ! -s "$screenshot" ]]; then
-            echo "error: Acustra's suite did not render $screenshot" >&2
-            echo "The suite must honour ACUSTRA_EDITOR_SNAPSHOT." >&2
-            exit 1
-          fi
-          if [[ "$(head -c 8 "$screenshot" | od -An -tx1 | tr -d ' \n')" != "89504e470d0a1a0a" ]]; then
-            echo "error: $screenshot does not carry the PNG signature" >&2
-            exit 1
-          fi
-          if [[ "$(tail -c 8 "$screenshot" | od -An -tx1 | tr -d ' \n')" != "49454e44ae426082" ]]; then
-            echo "error: $screenshot has no terminating IEND chunk, so the write did not finish" >&2
-            exit 1
-          fi
-          echo "Rendered $screenshot ($(wc -c < "$screenshot") bytes)."
+      - name: Upload the editor screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-screenshot-acustra-${{ github.run_number }}
+          path: build-macos/screenshots/acustra.png
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Package macOS formats
         id: macos-package
         run: |
           ./scripts/sign-and-package-macos.sh
-          directory="$(python3 scripts/distribution.py --build-dir build-macos --platform macOS --arch "$(uname -m)" --formats VST3 AU CLAP Standalone)"
+          directory="$(python3 scripts/distribution.py --build-dir build-macos --platform macOS --arch universal --formats VST3 AU CLAP Standalone)"
           echo "directory=$directory" >> "$GITHUB_OUTPUT"
           echo "distribution=$(sed -n 's/^ACUSTRA_DISTRIBUTION_VERSION:INTERNAL=//p' build-macos/CMakeCache.txt)" >> "$GITHUB_OUTPUT"
 

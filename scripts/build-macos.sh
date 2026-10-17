@@ -74,9 +74,8 @@ fi
 cmake "${cmake_args[@]}"
 cmake --build "${BUILD_DIR}" --config "${CONFIG}" --parallel "${BUILD_JOBS:-3}"
 
-snapshot="${ACUSTRA_EDITOR_SNAPSHOT:-${PROJECT_DIR}/Docs/screenshots/acustra-standalone.png}"
-ACUSTRA_EDITOR_SNAPSHOT="${snapshot}" \
-    ctest --test-dir "${BUILD_DIR}" -C "${CONFIG}" --output-on-failure
+# Every tier; the render tier writes ${BUILD_DIR}/screenshots/acustra.png.
+ctest --test-dir "${BUILD_DIR}" -C "${CONFIG}" --output-on-failure --no-tests=error
 
 ARTIFACT_DIR="${BUILD_DIR}/Acustra_artefacts/${CONFIG}"
 artifacts=(

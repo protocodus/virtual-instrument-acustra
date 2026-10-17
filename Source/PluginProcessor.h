@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "DSP/AcustraPerformer.h"
+#include "DSP/AcustraPresets.h"
 
 #include <array>
 #include <atomic>
@@ -67,10 +68,15 @@ public:
     bool supportsMPE() const override { return true; }
     double getTailLengthSeconds() const override { return maximumTailLengthSeconds; }
 
-    int getNumPrograms() override { return 1; }
-    int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int) override {}
-    const juce::String getProgramName (int) override { return {}; }
+    // The factory bank (DSP/AcustraPresets.h). A program sets the sound
+    // controls and leaves Gather Chords, which sets latency, as it is.
+    int getNumPrograms() override
+    {
+        return static_cast<int> (acustra::factoryPresets.size());
+    }
+    int getCurrentProgram() override { return currentProgram; }
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
     void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock& destinationData) override;
@@ -152,6 +158,7 @@ private:
     // The performer's Gather Chords window, for the latency the listener
     // reports from the message thread.
     std::atomic<int> gatherWindowSamples { 0 };
+    int currentProgram { 0 };
     std::atomic<bool> panicRequested { false };
     std::atomic<bool> engineReady { false };
     std::atomic<bool> sampleRateSupported { true };

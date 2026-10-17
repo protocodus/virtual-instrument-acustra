@@ -361,6 +361,54 @@ void testParameterContract()
     }
 }
 
+void testFactoryProgramsSetTheirSound()
+{
+    AcustraAudioProcessor processor;
+    expect (processor.getNumPrograms() == static_cast<int> (acustra::factoryPresets.size()),
+            "the program list is not the factory bank");
+    setValue (processor, acustra::parameters::gatherChords, 1.0f);
+    setValue (processor, acustra::parameters::sustain, 1.0f);
+    std::set<juce::String> names;
+    for (int index = 0; index < processor.getNumPrograms(); ++index)
+    {
+        const auto& preset = acustra::factoryPresets[static_cast<std::size_t> (index)];
+        processor.setCurrentProgram (index);
+        const auto name = processor.getProgramName (index);
+        names.insert (name);
+        expect (name == preset.name, "program " + std::to_string (index) + " is misnamed");
+        expect (processor.getCurrentProgram() == index,
+                "the current program does not follow setCurrentProgram");
+        // The controls hold percent and dB, so a float can differ from the
+        // preset's 0..1 value in its last bits.
+        const auto expected = acustra::engineParameters (preset);
+        const auto actual = processor.snapshotEngineParameters();
+        const auto near = [] (float a, float b) { return std::abs (a - b) <= 1.0e-6f; };
+        expect (actual.shape == expected.shape && actual.bodyMaterial == expected.bodyMaterial
+                    && actual.capture == expected.capture && actual.tuning == expected.tuning
+                    && actual.picking == expected.picking
+                    && near (actual.stringAge, expected.stringAge)
+                    && near (actual.pluckPosition, expected.pluckPosition)
+                    && near (actual.touch, expected.touch)
+                    && near (actual.bodyAmount, expected.bodyAmount)
+                    && near (actual.stereoWidth, expected.stereoWidth)
+                    && near (actual.outputGain, expected.outputGain)
+                    && near (actual.piezoMix, expected.piezoMix)
+                    && near (actual.releaseNoise, expected.releaseNoise)
+                    && near (actual.room, expected.room)
+                    && ! actual.piezoPolarityInverted,
+                std::string { preset.name } + " does not set its sound");
+        expect (valueOf (processor, acustra::parameters::sustain) < 0.5f,
+                std::string { preset.name } + " leaves Sustain on");
+        expect (valueOf (processor, acustra::parameters::gatherChords) >= 0.5f,
+                std::string { preset.name } + " changed Gather Chords and so the latency");
+    }
+    expect (names.size() == acustra::factoryPresets.size(), "two programs share a name");
+    processor.setCurrentProgram (-1);
+    processor.setCurrentProgram (processor.getNumPrograms());
+    expect (processor.getCurrentProgram() == processor.getNumPrograms() - 1,
+            "an out-of-range program changed the current one");
+}
+
 void testProcessorContractAndSampleAccurateMidi()
 {
     auto processorOwner = std::make_unique<AcustraAudioProcessor>();
@@ -3588,6 +3636,7 @@ int main()
     juce::ScopedJuceInitialiser_GUI gui;
 
     testParameterContract();
+    testFactoryProgramsSetTheirSound();
     testProcessorContractAndSampleAccurateMidi();
     testOptionalPiezoOutputBus();
     testSameSampleChordOrderIsCanonical();

@@ -6,7 +6,7 @@ string models, a passive measured bridge and a measurement-derived guitar
 body. The plug-in contains no sample player and no recorded note audio. The
 [user guide](Docs/guide/user-guide.md) covers installing and playing it.
 
-[![Acustra editor](Docs/screenshots/acustra-standalone.png)](Docs/screenshots/acustra-standalone.png)
+[![Acustra editor](Docs/screenshots/acustra.png)](Docs/screenshots/acustra.png)
 
 ## Audio demos
 
@@ -144,6 +144,14 @@ Each entry is a source version in this repository; none has been published
 as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
+
+### 1.7.0 — 2026-10-17 — eight factory presets
+
+- The plug-in's program list holds eight factory presets, the Rack
+  Extension's factory patches value for value
+  ([user guide](Docs/guide/user-guide.md#factory-presets)). Each has a demo
+  phrase written for it in `Docs/audio/midi/`. The sound engine is
+  unchanged.
 
 ### 1.6.0 — 2026-10-17 — playing and room realism, smoother pick, CLAP
 
@@ -2880,7 +2888,7 @@ folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
 `.app` names and host IDs stay stable.
 
 `ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
-locally, and defaults to `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT` in CI. CMake freezes
+locally, and defaults to the workflow's run number (`GITHUB_RUN_NUMBER`) in CI. CMake freezes
 it with the project version from `project(Acustra VERSION ...)` and the source revision. Changing that identity rebuilds
 the wrappers; each linked format receives its frozen identity record (the
 editor reads its version and build number from it), and macOS
@@ -2931,7 +2939,7 @@ still points at the commit it built. CLAP is built and packaged on every
 platform; pluginval v1.0.4 validates only the VST3.
 
 pluginval is release v1.0.4, downloaded and checked against pinned SHA-256
-sums, at strictness level 10. Build numbers are `GITHUB_RUN_ID.GITHUB_RUN_ATTEMPT`,
+sums, at strictness level 10. Build numbers are the workflow's run number,
 as in CI, and each platform's package set is kept as a workflow artifact for
 seven days (30 for a main build).
 

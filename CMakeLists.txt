@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.6.0 LANGUAGES C CXX)
+project(Acustra VERSION 1.7.0 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -71,7 +71,8 @@ add_library(AcustraDSP STATIC
     Source/DSP/MicrophoneBalanceData.h
     Source/DSP/PiezoBlampTable.h
     Source/DSP/AcustraPerformer.cpp
-    Source/DSP/AcustraPerformer.h)
+    Source/DSP/AcustraPerformer.h
+    Source/DSP/AcustraPresets.h)
 
 # The Reason Rack Extension compiles this engine and player itself, as C++17
 # (the Jukebox toolchain forces -std=c++17) with -Wall -Wextra -Werror. Build
@@ -902,6 +903,16 @@ if(BUILD_TESTING)
         # without them, which left 90 s too little room for slower runners.
         set_tests_properties(Acustra.PluginProcessor PROPERTIES TIMEOUT 180)
 
+        # The render tier: the README screenshot is the processor suite's own
+        # editor render, written here and checked as a finished PNG;
+        # main-build.yml commits it as Docs/screenshots/acustra.png.
+        add_test(NAME Acustra.EditorScreenshot
+                 COMMAND ${CMAKE_COMMAND}
+                         "-DACUSTRA_PROCESSOR_TESTS=$<TARGET_FILE:AcustraPluginProcessorTests>"
+                         "-DACUSTRA_SCREENSHOT=${CMAKE_CURRENT_BINARY_DIR}/screenshots/acustra.png"
+                         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/RenderEditorScreenshot.cmake")
+        set_tests_properties(Acustra.EditorScreenshot PROPERTIES LABELS render TIMEOUT 180)
+
         add_executable(AcustraPluginTempoReleaseTests
             Tests/PluginTempoReleaseTests.cpp)
         target_link_libraries(AcustraPluginTempoReleaseTests PRIVATE Acustra)
@@ -1104,8 +1115,9 @@ if(ACUSTRA_BUILD_TOOLS)
 endif()
 
 # Every test carries exactly one tier label so CI selects tiers with
-# `ctest -L`. The demo-render checks are the audio tier; everything else
-# registered above is a unit contract.
+# `ctest -L`. The demo-render checks are the audio tier, the editor
+# screenshot the render tier; everything else registered above is a unit
+# contract.
 if(BUILD_TESTING)
     foreach(test_name IN ITEMS Acustra.RenderDemos Acustra.DemoCount Acustra.MainBuildDemoCount)
         if(TEST ${test_name})

@@ -134,7 +134,7 @@ jobs:
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
         run: |
           set -euo pipefail
-          cp screenshot/acustra-standalone.png Docs/screenshots/acustra-standalone.png
+          cp screenshot/acustra.png Docs/screenshots/acustra.png
           python3 - <<'EOF'
           import os, pathlib, re
           env = os.environ
@@ -165,7 +165,7 @@ jobs:
             echo "::notice::main moved past ${GITHUB_SHA}; the next main build publishes instead."
             exit 0
           fi
-          git add README.md Docs/screenshots/acustra-standalone.png
+          git add README.md Docs/screenshots/acustra.png
           if git diff --cached --quiet; then
             echo "Nothing changed."
             exit 0

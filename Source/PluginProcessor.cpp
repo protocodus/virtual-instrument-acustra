@@ -468,6 +468,44 @@ AcustraAudioProcessor::createParameterLayout()
     return { result.begin(), result.end() };
 }
 
+void AcustraAudioProcessor::setCurrentProgram (int index)
+{
+    if (index < 0 || index >= getNumPrograms())
+        return;
+    currentProgram = index;
+    const auto& preset = acustra::factoryPresets[static_cast<std::size_t> (index)];
+    const auto set = [this] (const char* id, float value)
+    {
+        auto* parameter = parameters.getParameter (id);
+        parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
+    };
+    const auto captureIndex = preset.capture == acustra::CaptureType::MonoMic ? 1
+                            : preset.capture == acustra::CaptureType::Piezo ? 2 : 0;
+    set (ids::shape, static_cast<float> (preset.shape));
+    set (ids::bodyMaterial, static_cast<float> (preset.bodyMaterial));
+    set (ids::tuning, static_cast<float> (preset.tuning));
+    set (ids::picking, static_cast<float> (preset.picking));
+    set (ids::captureMode, static_cast<float> (captureIndex));
+    set (ids::stringAge, 100.0f * preset.stringAge);
+    set (ids::pluckPosition, 100.0f * preset.pluckPosition);
+    set (ids::touch, 100.0f * preset.touch);
+    set (ids::bodyAmount, 100.0f * preset.bodyAmount);
+    set (ids::stereoWidth, 100.0f * preset.stereoWidth);
+    set (ids::piezoMix, 100.0f * preset.piezoMix);
+    set (ids::releaseNoise, 100.0f * preset.releaseNoise);
+    set (ids::room, 100.0f * preset.room);
+    set (ids::output, preset.outputDecibels);
+    set (ids::sustain, 0.0f);
+    set (ids::piezoPolarityInverted, 0.0f);
+}
+
+const juce::String AcustraAudioProcessor::getProgramName (int index)
+{
+    if (index < 0 || index >= getNumPrograms())
+        return {};
+    return acustra::factoryPresets[static_cast<std::size_t> (index)].name;
+}
+
 acustra::EngineParameters
 AcustraAudioProcessor::snapshotEngineParameters() const noexcept
 {

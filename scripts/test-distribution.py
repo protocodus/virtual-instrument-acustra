@@ -76,7 +76,7 @@ class DesktopPackageTests:
         for name in self.documents:
             p=self.project/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(name)
         self.env=os.environ.copy()
-        for name in ('DIST_ROOT','BUILD_NUMBER','VERSION','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT'):self.env.pop(name,None)
+        for name in ('DIST_ROOT','BUILD_NUMBER','VERSION','GITHUB_RUN_NUMBER'):self.env.pop(name,None)
     def script(self):return self.scripts/('package-'+self.platform.lower()+'.py')
     def run_package(self):
         command=[sys.executable,str(self.script()),'--build-dir',str(self.build)]
@@ -110,7 +110,7 @@ class DesktopPackageTests:
         result=self.run_package();self.assertEqual(result.returncode,0,result.stderr);self.verify_set('34393416911.2')
         self.assertEqual(before,{p.name:p.read_bytes() for p in self.directory().iterdir()})
     def test_packaging_environment_cannot_relabel_the_build(self):
-        for name,value in [('BUILD_NUMBER','42'),('VERSION','9.9.9'),('GITHUB_RUN_ID','42')]:
+        for name,value in [('BUILD_NUMBER','42'),('VERSION','9.9.9'),('GITHUB_RUN_NUMBER','42')]:
             with self.subTest(name=name):
                 self.env[name]=value
                 result=self.run_package();self.assertNotEqual(result.returncode,0)

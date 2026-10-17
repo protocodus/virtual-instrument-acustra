@@ -1,8 +1,8 @@
 # One configured identity feeds the bundles, compiled provenance and packages.
 string(TOUPPER "${PROJECT_NAME}" distribution_prefix)
 set(distribution_default_build "1")
-if(DEFINED ENV{GITHUB_RUN_ID} AND NOT "$ENV{GITHUB_RUN_ID}" STREQUAL "")
-    set(distribution_default_build "$ENV{GITHUB_RUN_ID}.$ENV{GITHUB_RUN_ATTEMPT}")
+if(DEFINED ENV{GITHUB_RUN_NUMBER} AND NOT "$ENV{GITHUB_RUN_NUMBER}" STREQUAL "")
+    set(distribution_default_build "$ENV{GITHUB_RUN_NUMBER}")
 endif()
 set(${distribution_prefix}_BUILD_NUMBER "${distribution_default_build}" CACHE STRING
     "Build identifier: positive integer, optionally followed by .attempt")

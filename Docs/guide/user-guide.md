@@ -73,6 +73,30 @@ A new instance starts as a spruce Dreadnought in standard tuning, played
 with the fingers and heard through the stereo microphones, with a little
 of the under-saddle piezo beneath them and a small room around them.
 
+## Factory presets
+
+The host's program or preset menu lists eight factory presets, the same
+sounds as the Rack Extension's factory patches. A preset sets the guitar,
+player and capture controls; it turns Sustain off and leaves CHORDS as it
+is, since that changes the plug-in's latency. The standalone app has no
+preset menu.
+
+| Preset | Guitar | Tuning | Playing | Capture |
+| --- | --- | --- | --- | --- |
+| Dreadnought Steel | Dreadnought, spruce | Standard | Finger | Stereo mic, a little piezo |
+| Parlor Steel Fingerstyle | Parlor, mahogany | Standard | Finger | Stereo mic |
+| Mahogany Steel Thumb | Auditorium, mahogany | Standard | Thumb | Stereo mic |
+| Jumbo Steel Pick | Jumbo, spruce | Standard | Pick | Stereo mic |
+| Palm Muted Steel Pick | Dreadnought, mahogany | Standard | Pick | Stereo mic |
+| DADGAD Mono Mic | Dreadnought, mahogany | DADGAD | Finger | Mono mic |
+| Open G Slide-ready | Auditorium, mahogany | Open G | Finger | Stereo mic |
+| Piezo Stage Steel | Dreadnought, spruce | Standard | Pick | Piezo |
+
+Two of them name a gesture that MIDI plays rather than a control: palm
+muting is the bridge hand on CC2, and sliding needs a wide pitch-bend
+range, set with RPN 0 (12 semitones in the slide demo). In the Rack
+Extension these are its Bridge Hand and Bend Range knobs.
+
 ## The panel
 
 The host can automate every knob and switch except CHORDS and PANIC. The
