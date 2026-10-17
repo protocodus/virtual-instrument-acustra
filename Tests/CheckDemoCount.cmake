@@ -1,5 +1,5 @@
-# The demo-render steps in .github/workflows/ci.yml and main-build.yml
-# fail unless they find exactly as many WAVs as they expect. That number is
+# The demo-render step in .github/workflows/ci.yml
+# fails unless it finds exactly as many WAVs as it expects. That number is
 # written there by hand on purpose - a demo that silently stops writing must
 # fail CI - so this check keeps it equal to the renderer's own list.
 #

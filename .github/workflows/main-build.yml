@@ -1,10 +1,11 @@
 name: Main build
 
 # Every push to main, nightly and on demand: the release workflow's validated
-# packages for all three platforms, the demo renders and the editor
+# packages for all three platforms, one demo per factory preset and the editor
 # screenshot, collected into one acustra-main-build-<run> artifact. The README
-# download block and screenshot are then committed, but only while main still
-# points at the commit that was built.
+# demo and download blocks, the demo MP3s and the screenshot are then
+# committed, but only while main still points at the commit that was built.
+# The renders are deterministic, so an unchanged engine commits nothing.
 on:
   push:
     branches: [main]
@@ -30,37 +31,34 @@ jobs:
       contents: write
 
   demos:
-    name: Demo audio (Linux)
+    name: Preset demos (Linux)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install Ninja
+      - name: Install Ninja and ffmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ninja-build
+          sudo apt-get install -y --no-install-recommends ninja-build ffmpeg
 
-      - name: Render the demos
+      - name: Render one demo per factory preset
+        # The shared renderer fails unless Docs/audio/midi holds one phrase
+        # per preset and every demo is finite, audible, under 0 dBFS and
+        # 10-20 s long (G3, G6).
         run: |
           set -euo pipefail
           cmake -S . -B build-dsp -G Ninja -DCMAKE_BUILD_TYPE=Release \
             -DACUSTRA_BUILD_PLUGIN=OFF -DBUILD_TESTING=ON
-          cmake --build build-dsp --target AcustraRenderDemos --parallel
-          ./build-dsp/AcustraRenderDemos demos
-          # Kept equal to AcustraRenderDemos --list by Acustra.MainBuildDemoCount.
-          rendered=$(find demos -maxdepth 1 -name '*.wav' | wc -l)
-          if (( rendered != 10 )); then
-            echo "error: rendered $rendered demo WAVs, expected 10" >&2
-            exit 1
-          fi
+          cmake --build build-dsp --target RenderAcustraPresetDemos --parallel
+          ./build-dsp/RenderAcustraPresetDemos --jobs 4 Docs/audio/midi demos
 
       - name: Upload the demos
         uses: actions/upload-artifact@v4
         with:
           name: demos-acustra
-          path: demos/*.wav
+          path: demos/
           if-no-files-found: error
           retention-days: 30
 
@@ -128,34 +126,17 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Rewrite the README download block and screenshot
+      - name: Rewrite the README blocks, demos and screenshot
         env:
-          DISTRIBUTION: ${{ steps.build.outputs.distribution }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
         run: |
           set -euo pipefail
           cp screenshot/acustra.png Docs/screenshots/acustra.png
-          python3 - <<'EOF'
-          import os, pathlib, re
-          env = os.environ
-          run = f"{env['GITHUB_SERVER_URL']}/{env['GITHUB_REPOSITORY']}/actions/runs/{env['GITHUB_RUN_ID']}"
-          commit = f"{env['GITHUB_SERVER_URL']}/{env['GITHUB_REPOSITORY']}/commit/{env['GITHUB_SHA']}"
-          d = env["DISTRIBUTION"]
-          packages = sorted(p.name for p in pathlib.Path("main-build/packages").iterdir()
-                            if p.suffix in (".pkg", ".zip") or p.name.endswith(".tar.gz"))
-          rows = "\n".join(f"| `{name}` |" for name in packages)
-          block = (f"Latest main build: **{d}** from commit [`{env['GITHUB_SHA'][:7]}`]({commit}), "
-                   f"[run {env['GITHUB_RUN_NUMBER']}]({run}). Download "
-                   f"[acustra-main-build-{env['GITHUB_RUN_NUMBER']}]({env['ARTIFACT_URL']}) "
-                   "(signed in to GitHub; kept for 30 days); it holds these packages, the demo WAVs, "
-                   "`BUILD.txt` and `SHA256SUMS`.\n\n| Package |\n| --- |\n" + rows)
-          readme = pathlib.Path("README.md")
-          text = readme.read_text(encoding="utf-8")
-          pattern = re.compile(r"(<!-- build-download-begin[^>]*-->\n).*?(\n<!-- build-download-end -->)", re.S)
-          if not pattern.search(text):
-              raise SystemExit("error: README.md has no build-download marker block")
-          readme.write_text(pattern.sub(lambda m: m.group(1) + block + m.group(2), text), encoding="utf-8")
-          EOF
+          python3 Tools/update_readme_blocks.py demos --readme README.md \
+            --manifest main-build/demos/demos.json
+          python3 Tools/update_readme_blocks.py download --readme README.md \
+            --url "$ARTIFACT_URL" --build "$GITHUB_RUN_NUMBER" --commit "$GITHUB_SHA"
+          cp main-build/demos/[0-9][0-9]*-*.mp3 Docs/audio/
 
       - name: Commit if main still points at the built commit
         run: |
@@ -165,7 +146,7 @@ jobs:
             echo "::notice::main moved past ${GITHUB_SHA}; the next main build publishes instead."
             exit 0
           fi
-          git add README.md Docs/screenshots/acustra.png
+          git add README.md Docs/screenshots/acustra.png Docs/audio/*.mp3
           if git diff --cached --quiet; then
             echo "Nothing changed."
             exit 0

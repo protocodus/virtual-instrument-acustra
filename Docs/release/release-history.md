@@ -391,7 +391,7 @@ git history rather than here.
   timings, make the performance human-like, not machine" and "use 80% of
   velocity range when playing and change tempo 50% up or down"). Fifteen
   pieces at 96 kHz / 24-bit, four of them for two to four differently built
-  guitars; see [Expressive repertoire demos](../../README.md#more-demos).
+  guitars; see [Expressive repertoire demos](../../README.md#expressive-repertoire).
   New tools only (`Tools/PerformRepertoire.py`, `AcustraRenderRepertoire`);
   the engine is unchanged.
 

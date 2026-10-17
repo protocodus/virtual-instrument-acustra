@@ -263,6 +263,14 @@ if(ACUSTRA_BUILD_TOOLS)
     target_link_libraries(AcustraRenderDemos PRIVATE AcustraDSP)
     target_compile_features(AcustraRenderDemos PRIVATE cxx_std_20)
 
+    # One demo per factory preset from Docs/audio/midi (README G3), through the
+    # shared Tools/PresetDemoRenderer.h.
+    find_package(Threads REQUIRED)
+    add_executable(RenderAcustraPresetDemos Tools/RenderPresetDemos.cpp)
+    target_include_directories(RenderAcustraPresetDemos PRIVATE Tools)
+    target_link_libraries(RenderAcustraPresetDemos PRIVATE AcustraDSP Threads::Threads)
+    target_compile_features(RenderAcustraPresetDemos PRIVATE cxx_std_20)
+
     add_executable(AcustraRenderRealismSongs Tools/RenderRealismSongs.cpp)
     target_link_libraries(AcustraRenderRealismSongs PRIVATE AcustraDSP)
     target_compile_features(AcustraRenderRealismSongs PRIVATE cxx_std_20)
@@ -632,6 +640,10 @@ if(BUILD_TESTING)
         acustra_add_suite(Acustra.RecuerdosArticulation AcustraRecuerdosArticulationTests)
         set_tests_properties(Acustra.RecuerdosArticulation PROPERTIES TIMEOUT 60)
 
+        add_test(NAME Acustra.AudioDemos
+                 COMMAND RenderAcustraPresetDemos --jobs 4 --check
+                         "${CMAKE_CURRENT_SOURCE_DIR}/Docs/audio/midi")
+        set_tests_properties(Acustra.AudioDemos PROPERTIES TIMEOUT 600)
         add_test(NAME Acustra.RenderDemos
                  COMMAND AcustraRenderDemos --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/demo-smoke")
@@ -645,12 +657,6 @@ if(BUILD_TESTING)
                          "-DWORKFLOW=${CMAKE_CURRENT_SOURCE_DIR}/.github/workflows/ci.yml"
                          -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckDemoCount.cmake")
         set_tests_properties(Acustra.DemoCount PROPERTIES TIMEOUT 30)
-        add_test(NAME Acustra.MainBuildDemoCount
-                 COMMAND "${CMAKE_COMMAND}"
-                         "-DRENDERER=$<TARGET_FILE:AcustraRenderDemos>"
-                         "-DWORKFLOW=${CMAKE_CURRENT_SOURCE_DIR}/.github/workflows/main-build.yml"
-                         -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckDemoCount.cmake")
-        set_tests_properties(Acustra.MainBuildDemoCount PROPERTIES TIMEOUT 30)
 
         add_test(NAME Acustra.PhysicalFitRenderer
                  COMMAND AcustraPhysicalFitRenderer --smoke
@@ -1119,7 +1125,7 @@ endif()
 # screenshot the render tier; everything else registered above is a unit
 # contract.
 if(BUILD_TESTING)
-    foreach(test_name IN ITEMS Acustra.RenderDemos Acustra.DemoCount Acustra.MainBuildDemoCount)
+    foreach(test_name IN ITEMS Acustra.AudioDemos Acustra.RenderDemos Acustra.DemoCount)
         if(TEST ${test_name})
             set_tests_properties(${test_name} PROPERTIES LABELS audio)
         endif()
