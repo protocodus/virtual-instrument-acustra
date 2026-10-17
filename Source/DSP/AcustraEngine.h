@@ -86,8 +86,7 @@ enum class Tuning
     Standard,
     DropD,
     Dadgad,
-    OpenG,
-    HalfStepDown
+    OpenG
 };
 
 enum class PickingTechnique

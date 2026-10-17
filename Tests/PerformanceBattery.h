@@ -395,7 +395,7 @@ inline std::vector<Scenario> makeBattery()
     }
     {
         // Every construction control switched under a ringing chord, with
-        // a note after each, and the two tunings nothing else plays.
+        // a note after each, Open G (which nothing else plays) and back.
         Builder b("construction", 3.0);
         b.chord(0.0, 1, std::array<int, 3> { 45, 52, 57 });
         b.control(0.2, Kind::Shape, 0.0f).on(0.25, 1, 64)
@@ -408,8 +408,8 @@ inline std::vector<Scenario> makeBattery()
             .control(1.9, Kind::Tuning, 3.0f)
             .chord(1.95, 1, std::array<int, 3> { 38, 43, 50 })
             .control(2.3, Kind::Shape, 3.0f)
-            .control(2.4, Kind::Tuning, 4.0f)
-            .chord(2.45, 1, std::array<int, 3> { 39, 44, 49 })
+            .control(2.4, Kind::Tuning, 0.0f)
+            .chord(2.45, 1, std::array<int, 3> { 40, 45, 50 })
             .control(2.7, Kind::Wood, 1.0f).on(2.75, 1, 63);
         result.push_back(std::move(b.scenario));
     }

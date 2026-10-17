@@ -150,7 +150,7 @@ std::vector<Scenario> scenarios()
             b.cc(t, 1, 2, i % 8 == 0 ? 0 : 80).bend(t, 1, 8192 + i % 3);
         }
         b.control(0.6, Kind::Shape, 3).control(0.6, Kind::Wood, 2)
-            .control(0.63, Kind::Tuning, 4).control(0.661, Kind::Tuning, 0);
+            .control(0.63, Kind::Tuning, 3).control(0.661, Kind::Tuning, 0);
         result.push_back(std::move(b.scenario));
     }
     {

@@ -127,7 +127,7 @@ CAPTURES = ("stereo_mic", "mono_mic", "piezo")
 DEFAULT = ("dreadnought", "spruce", "finger")
 CELLS = len(SHAPES) * len(WOODS) * len(PICKINGS)
 STRUM_SCHEMA = "AcustraConstructionStrumLevelsV2"  # ConstructionStrumLevels.cpp
-TUNINGS = ("standard", "drop_d", "dadgad", "open_g", "half_step_down")
+TUNINGS = ("standard", "drop_d", "dadgad", "open_g")
 STRUM_TOLERANCE_DB = 9.0       # ConstructionMatrixTests' existing guard
 FIT_MARGIN_DB = 0.02          # leave room for float32 table rounding
 

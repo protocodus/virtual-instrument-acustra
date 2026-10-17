@@ -2947,7 +2947,7 @@ EngineParameters AcustraEngine::sanitise(const EngineParameters& source) noexcep
             break;
     }
     result.tuning = static_cast<Tuning>(enumOr(
-        static_cast<int>(source.tuning), 4,
+        static_cast<int>(source.tuning), 3,
         static_cast<int>(EngineParameters {}.tuning)));
     result.picking = static_cast<PickingTechnique>(enumOr(
         static_cast<int>(source.picking), 2,
@@ -3043,7 +3043,6 @@ AcustraEngine::openNotes(Tuning tuning) noexcept
         case Tuning::DropD:        return { 38, 45, 50, 55, 59, 64 };
         case Tuning::Dadgad:       return { 38, 45, 50, 55, 57, 62 };
         case Tuning::OpenG:        return { 38, 43, 50, 55, 59, 62 };
-        case Tuning::HalfStepDown: return { 39, 44, 49, 54, 58, 63 };
         case Tuning::Standard:     return { 40, 45, 50, 55, 59, 64 };
     }
     return { 40, 45, 50, 55, 59, 64 };

@@ -358,8 +358,7 @@ int main()
     for (double rate : { 44100.0, 48000.0, 96000.0 })
     for (float age : { 0.0f, 0.5f, 1.0f })
     for (auto tuning : { acustra::Tuning::Standard, acustra::Tuning::DropD,
-                         acustra::Tuning::Dadgad, acustra::Tuning::OpenG,
-                         acustra::Tuning::HalfStepDown })
+                         acustra::Tuning::Dadgad, acustra::Tuning::OpenG })
     {
         auto reference = std::make_unique<Engine>();
         acustra::EngineParameters parameters;

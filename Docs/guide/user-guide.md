@@ -122,8 +122,8 @@ window can be resized from its corner and keeps its proportions.
 - **Body Shape** (Dreadnought): Parlor, Auditorium, Dreadnought or Jumbo,
   compact to large; changes the body's resonances and sustain.
 - **Body Material** (Spruce): Spruce, Mahogany or Maple soundboard.
-- **Tuning** (Standard): Standard, Drop D, DADGAD, Open G or Half-step
-  down; each retunes the six strings themselves.
+- **Tuning** (Standard): Standard, Drop D, DADGAD or Open G; each retunes
+  the six strings themselves.
 
 **Player**
 
@@ -162,9 +162,8 @@ and the wheels' roles.
 ## Playing
 
 **Range.** Each string reaches its twentieth fret, so each tuning has its
-own range: E2-C6 (Standard; MIDI 40-84), D2-C6 (Drop D; 38-84), D2-A#5
-(DADGAD and Open G; 38-82), D#2-B5 (Half-step down; 39-83). Anything
-outside it is ignored. The on-screen keyboard spans D2-C6 (MIDI 38-84);
+own range: E2-C6 (Standard; MIDI 40-84), D2-C6 (Drop D; 38-84) and D2-A#5
+(DADGAD and Open G; 38-82). Anything outside it is ignored. The on-screen keyboard spans D2-C6 (MIDI 38-84);
 its labels count middle C as C3, so its top key reads C5.
 
 **Velocity** is how hard the string is plucked. **Release velocity** sets

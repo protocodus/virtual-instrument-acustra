@@ -209,8 +209,9 @@ void testParameterContract()
     expect (processor.parameters.getParameter ("stringMaterial") == nullptr
                 && processor.parameters.getParameter ("bridgeModel") == nullptr,
             "the retired String Material or Bridge Model parameter is still public");
-    expect (tuning != nullptr && tuning->choices.size() == 5,
-            "Tuning does not expose the five supported tunings");
+    expect (tuning != nullptr && tuning->choices
+                == juce::StringArray { "Standard", "Drop D", "DADGAD", "Open G" },
+            "Tuning does not expose the four supported tunings");
 
     expect (capture != nullptr && capture->choices == juce::StringArray {
                 "Stereo mics", "Treble mic", "Bass mic", "Saddle piezo",
@@ -1516,7 +1517,7 @@ void testStateRoundTripAndMigration()
     auto& source = *sourceOwner;
     setValue (source, ids::shape, 0.0f);
     setValue (source, ids::bodyMaterial, 2.0f);
-    setValue (source, ids::tuning, 4.0f);
+    setValue (source, ids::tuning, 3.0f);
     setValue (source, ids::stringAge, 87.0f);
     setValue (source, ids::pluckPosition, 64.0f);
     setValue (source, ids::output, -2.4f);

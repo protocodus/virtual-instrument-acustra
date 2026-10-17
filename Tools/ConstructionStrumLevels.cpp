@@ -24,7 +24,7 @@ constexpr std::array<CaptureType, 3> captures {
 constexpr std::array<const char*, 3> captureNames { "stereo_mic", "mono_mic", "piezo" };
 constexpr std::array<const char*, 4> shapeNames { "parlor", "auditorium", "dreadnought", "jumbo" };
 constexpr std::array<const char*, 3> woodNames { "spruce", "mahogany", "maple" };
-constexpr std::array<const char*, 5> tuningNames { "standard", "drop_d", "dadgad", "open_g", "half_step_down" };
+constexpr std::array<const char*, 4> tuningNames { "standard", "drop_d", "dadgad", "open_g" };
 
 // Direct form I and the BS.1770 48 kHz coefficients used by the guard.
 struct Biquad {

@@ -2360,20 +2360,17 @@ void testPrepareRestartsThePerformanceExactly()
 }
 
 constexpr acustra::Tuning allTunings[] { acustra::Tuning::Standard,
-    acustra::Tuning::DropD, acustra::Tuning::Dadgad, acustra::Tuning::OpenG,
-    acustra::Tuning::HalfStepDown };
+    acustra::Tuning::DropD, acustra::Tuning::Dadgad, acustra::Tuning::OpenG };
 
 std::string tuningName(acustra::Tuning tuning)
 {
-    constexpr const char* names[] { "Standard", "Drop D", "DADGAD", "Open G",
-                                    "Half-step down" };
+    constexpr const char* names[] { "Standard", "Drop D", "DADGAD", "Open G" };
     return names[static_cast<int>(tuning)];
 }
 
 // Every tuning: each open note is taken by its own string (open, so the
 // chord of open strings lands one per string), and the note under the lowest
-// string is refused. Open G and Half-step down were played by no test before
-// (audit F28).
+// string is refused. Open G was played by no test before (audit F28).
 void testPlayableRangeFollowsTuning()
 {
     for (const auto tuning : allTunings)
@@ -2438,9 +2435,9 @@ void testSteelRetuningPreservesStringMass()
                    name + ": steel stiffness retained standard-tuning tension");
         }
     }
-    // Drop D moves one string, DADGAD three, Open G three, Half-step six.
-    expect(retuned == 13, "the tunings retune " + std::to_string(retuned)
-                              + " strings, not 13");
+    // Drop D moves one string, DADGAD three, Open G three.
+    expect(retuned == 7, "the tunings retune " + std::to_string(retuned)
+                             + " strings, not 7");
 }
 
 void testAudiblePhysicalDecay()
@@ -6438,10 +6435,9 @@ void testTheTuningBoundsThePlayableRange()
     };
     // (tuning, lowest open, highest fretted): one semitone outside either
     // end is silent, the ends themselves sound.
-    const std::array<std::tuple<acustra::Tuning, int, int>, 5> ranges {{
+    const std::array<std::tuple<acustra::Tuning, int, int>, 4> ranges {{
         { acustra::Tuning::Standard, 40, 84 }, { acustra::Tuning::DropD, 38, 84 },
-        { acustra::Tuning::Dadgad, 38, 82 }, { acustra::Tuning::OpenG, 38, 82 },
-        { acustra::Tuning::HalfStepDown, 39, 83 } }};
+        { acustra::Tuning::Dadgad, 38, 82 }, { acustra::Tuning::OpenG, 38, 82 } }};
     for (const auto& [tuning, lowest, highest] : ranges)
     {
         for (const int inside : { lowest, highest })

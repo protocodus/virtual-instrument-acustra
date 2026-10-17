@@ -373,7 +373,7 @@ AcustraAudioProcessor::createParameterLayout()
     result.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ids::tuning, 1 }, "Tuning",
         juce::StringArray {
-            "Standard", "Drop D", "DADGAD", "Open G", "Half-step down"
+            "Standard", "Drop D", "DADGAD", "Open G"
         }, 0));
 
     result.push_back (makePercentParameter (ids::stringAge, "String Age", 15.0f));
@@ -519,7 +519,7 @@ AcustraAudioProcessor::snapshotEngineParameters() const noexcept
     result.shape = choiceValue<acustra::BodyShape> (value (slotShape), 3);
     result.bodyMaterial = choiceValue<acustra::BodyMaterial> (
         value (slotBodyMaterial), 2);
-    result.tuning = choiceValue<acustra::Tuning> (value (slotTuning), 4);
+    result.tuning = choiceValue<acustra::Tuning> (value (slotTuning), 3);
     result.stringAge = 0.01f * value (slotStringAge);
     result.pluckPosition = 0.01f * value (slotPluckPosition);
     result.touch = 0.01f * value (slotTouch);
@@ -730,7 +730,7 @@ AcustraAudioProcessor::getStringActivityForDisplay() const noexcept
 {
     std::array<StringActivity, acustra::AcustraEngine::stringCount> silent {};
     const auto tuning = choiceValue<acustra::Tuning> (
-        parameterPointers[slotTuning]->load (std::memory_order_relaxed), 4);
+        parameterPointers[slotTuning]->load (std::memory_order_relaxed), 3);
     const auto open = acustra::AcustraEngine::openNotes (tuning);
     for (std::size_t string = 0; string < silent.size(); ++string)
         silent[string].openMidi = silent[string].midiNote = open[string];

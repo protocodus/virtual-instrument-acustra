@@ -5,6 +5,15 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-17 — Half-step down removed
+
+The user asked for the Half-step down tuning to be removed everywhere, after
+the product page was found listing four tunings while the Rack Extension
+offered five. From 1.8.0 the engine, the plug-in and the Rack Extension offer
+Standard, Drop D, DADGAD and Open G. No build with it was released, so a
+stored Half-step down is not migrated and plays Open G, the last choice. This
+was the owner's product decision, not a listening verdict.
+
 ## 2026-10-15 — sound-refinement candidate accepted
 
 After receiving the repaired A/B comparison page, the user chose “go with

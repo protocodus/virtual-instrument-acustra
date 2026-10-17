@@ -11,8 +11,8 @@
 // 44.1, 88.2 and 192 kHz.
 //
 // Before this, the construction's own controls were tested one or two at a
-// time from the default (audit F28): Open G and Half-step down were played
-// by no test, and no test crossed Tuning and Capture with Shape and Wood.
+// time from the default (audit F28): Open G was played by no test, and no
+// test crossed Tuning and Capture with Shape and Wood.
 #include "DSP/AcustraEngine.h"
 
 #include <algorithm>
@@ -52,8 +52,7 @@ std::string name(const EngineParameters& p)
 {
     constexpr const char* shapes[] { "Parlor", "Auditorium", "Dreadnought", "Jumbo" };
     constexpr const char* woods[] { "Spruce", "Mahogany", "Maple" };
-    constexpr const char* tunings[] { "Standard", "Drop D", "DADGAD", "Open G",
-                                      "Half-step down" };
+    constexpr const char* tunings[] { "Standard", "Drop D", "DADGAD", "Open G" };
     const char* capture = p.capture == CaptureType::StereoMic ? "stereo mic"
         : p.capture == CaptureType::MonoMic ? "mono mic" : "piezo";
     return std::string(shapes[static_cast<int>(p.shape)]) + " "
@@ -180,9 +179,9 @@ Played play(const EngineParameters& parameters, double rate, bool wantPiezo)
 // loudness match. Tools/CalibrateConstructionLoudness.py levels every
 // construction within 1 LU on its phrase set in Standard tuning, and
 // ConstructionLoudnessTests holds its own phrase within 3 LU. One open strum
-// of 0.35 s in five tunings meets the body's resonances note by note: on
-// 2026-09-29 it spread from -5.6 dB to +5.5 dB (the Original, Jumbo Spruce,
-// Half-step down, whose low E-flat sits on the Jumbo's air mode).
+// of 0.35 s in each tuning meets the body's resonances note by note: on
+// 2026-09-29 it spread from -5.6 dB to +5.5 dB, the top end from a Half-step
+// down tuning since removed, whose low E-flat sat on the Jumbo's air mode.
 constexpr double levelTolerance = 9.0;
 
 // What every played cell must be on its own; the level is checked when a
@@ -221,8 +220,8 @@ double referenceLevel(CaptureType capture, Tuning tuning, double rate)
 void testEveryConstruction()
 {
     constexpr double rate = 48000.0;
-    std::array<std::array<double, 3>, 5> reference {};
-    for (int tuning = 0; tuning < 5; ++tuning)
+    std::array<std::array<double, 3>, 4> reference {};
+    for (int tuning = 0; tuning < 4; ++tuning)
         for (std::size_t c = 0; c < captures.size(); ++c)
             reference[std::size_t(tuning)][c]
                 = referenceLevel(captures[c], static_cast<Tuning>(tuning), rate);
@@ -231,7 +230,7 @@ void testEveryConstruction()
     int cells = 0;
     for (int shape = 0; shape < 4; ++shape)
     for (int wood = 0; wood < 3; ++wood)
-    for (int tuning = 0; tuning < 5; ++tuning)
+    for (int tuning = 0; tuning < 4; ++tuning)
     {
         EngineParameters p;
         p.shape = static_cast<BodyShape>(shape);
@@ -255,7 +254,7 @@ void testEveryConstruction()
             expect(played[c].piezo == played[0].piezo,
                    label + ": the Piezo output depends on what Capture selects");
         // Main without the Piezo output, once per construction.
-        if ((shape + wood) % 5 == tuning)
+        if ((shape + wood) % 4 == tuning)
             expect(play(p, rate, false).main == played[0].main,
                    label + ": requesting the Piezo output changed Main");
     }
@@ -275,7 +274,7 @@ void testOtherRates()
             EngineParameters p;
             p.shape = static_cast<BodyShape>(index % 4);
             p.bodyMaterial = static_cast<BodyMaterial>((index / 4 + index) % 3);
-            p.tuning = static_cast<Tuning>(index % 5);
+            p.tuning = static_cast<Tuning>(index % 4);
             const std::size_t c = static_cast<std::size_t>(index % 3);
             p.capture = captures[c];
             checkCell(p, play(p, rate, true), rate,

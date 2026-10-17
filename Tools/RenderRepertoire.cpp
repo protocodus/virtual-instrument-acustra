@@ -163,8 +163,7 @@ Part readPart(std::istringstream& line)
         { "maple", BodyMaterial::Maple } };
     static const std::map<std::string, Tuning> tunings {
         { "standard", Tuning::Standard }, { "drop_d", Tuning::DropD },
-        { "dadgad", Tuning::Dadgad }, { "open_g", Tuning::OpenG },
-        { "half_step_down", Tuning::HalfStepDown } };
+        { "dadgad", Tuning::Dadgad }, { "open_g", Tuning::OpenG } };
     static const std::map<std::string, PickingTechnique> pickings {
         { "finger", PickingTechnique::Finger }, { "pick", PickingTechnique::Pick },
         { "thumb", PickingTechnique::Thumb } };

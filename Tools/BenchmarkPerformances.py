@@ -435,8 +435,7 @@ def self_test(renderer: Path | None) -> None:
             # Every tuning the plug-in offers: each string's open note plays
             # on it, and the note below it does not.
             open_strings = {"standard": (40, 45, 50, 55, 59, 64), "drop_d": (38, 45, 50, 55, 59, 64),
-                            "dadgad": (38, 45, 50, 55, 57, 62), "open_g": (38, 43, 50, 55, 59, 62),
-                            "half_step_down": (39, 44, 49, 54, 58, 63)}
+                            "dadgad": (38, 45, 50, 55, 57, 62), "open_g": (38, 43, 50, 55, 59, 62)}
             for tuning, notes in open_strings.items():
                 write_events(event_path, [(0, channel, note, 91, 0.0)
                                           for channel, note in enumerate(notes, start=1)], RATE)

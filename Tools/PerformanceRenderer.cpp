@@ -77,7 +77,7 @@ int main(int argc, char** argv)
         std::cerr << "usage: AcustraPerformanceRenderer EVENTS OUTPUT.f32 "
                      "[stereo_mic|mono_mic|piezo "
                      "finger|pick|thumb] "
-                     "[--tuning standard|drop_d|dadgad|open_g|half_step_down] "
+                     "[--tuning standard|drop_d|dadgad|open_g] "
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|mahogany|maple] "
                      "[--touch 0..1] [--pluck-position 0..1] [--room 0..1] "
@@ -129,8 +129,7 @@ int main(int argc, char** argv)
             if (option == "--tuning" && !tuningSeen)
             {
                 // The plug-in's Tuning choices, in their order.
-                const std::array choices { "standard", "drop_d", "dadgad",
-                                           "open_g", "half_step_down" };
+                const std::array choices { "standard", "drop_d", "dadgad", "open_g" };
                 const auto found = std::find(choices.begin(), choices.end(), value);
                 if (found == choices.end())
                     throw std::runtime_error("unknown tuning");

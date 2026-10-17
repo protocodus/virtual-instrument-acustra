@@ -39,6 +39,14 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.8.0 — 2026-10-17 — four tunings
+
+- The Half-step down tuning is gone from the Tuning control, the engine and
+  the Rack Extension, which now offer Standard, Drop D, DADGAD and Open G.
+  No build with it was released, so saved values are not migrated: a stored
+  Half-step down plays Open G, and Tuning automation written for five
+  choices lands on different tunings.
+
 ### 1.7.0 — 2026-10-17 — eight factory presets
 
 - The plug-in's program list holds eight factory presets, the Rack
@@ -137,7 +145,7 @@ gives every mechanism, measurement and citation in full, and
 them: a hand in position covers four frets and stretches to a fifth, held and
 recently released notes place it, and among equal costs an open string, a
 lower fret and a silent string win; a repeated note re-plucks the string still
-sounding it. Five tunings (Standard, Drop D, DADGAD, Open G, half-step down)
+sounding it. Four tunings (Standard, Drop D, DADGAD, Open G)
 change the strings' tension at fixed gauge, and only the tuning's range
 sounds (E2 to C6 in Standard). Notes on one sample and channel are fretted as
 one chord shape and, with a pick, swept as a strum whose string timing,
@@ -243,7 +251,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | --- | --- |
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box, with the plate modes scaled with the top; all three captures hear it. |
 | **Body Material** | Spruce, Mahogany or Maple plate material at fixed geometry; a session saved with Cedar loads as Mahogany. |
-| **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down; a retuned string keeps its gauge, so its tension follows its pitch. |
+| **Tuning** | Standard, Drop D, DADGAD or Open G; a retuned string keeps its gauge, so its tension follows its pitch. |
 | **Picking** | Finger, Pick (sharper, nearer the bridge, darker when soft) or Thumb (rounder, nearer the neck). |
 | **Capture** | Stereo mic, a single measured mono mic, or the under-saddle piezo through its preamp. |
 | **Piezo Mix** | The piezo beneath the microphones on Main; 20% for a new instance, 0% for an older session. |
