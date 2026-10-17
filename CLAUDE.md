@@ -24,10 +24,43 @@ refer to the historical Git revision rather than the current tool inventory.
   `Tools/`: offline rendering, fitting, scoring and listening-pack generation.
 - The Reason Rack adapter consumes this canonical DSP. Keep Reason-specific
   mappings in its wrapper; update its submodule/pin only within requested scope.
+  It mounts this repository as the pinned submodule `Examples/Acustra/Instrument`
+  in the private `protocodus/reason-rack-extensions` and compiles
+  `Source/DSP/*.cpp` directly; DSP changes land here first, then the pin advances.
+- The DSP version is the product version: `project(Acustra VERSION X.Y.Z)`.
+  Any DSP or behaviour change bumps it, and the Rack device's `version_number`
+  takes the same `X.Y.Z` plus its own stage suffix. Versions only go up.
 
 Keep DSP/Performer JUCE-free and C++17-compatible for the Rack toolchain, even
 though the main project uses C++20. Avoid audio-thread allocation, file I/O,
 blocking locks and exceptions. Large engine/test fixtures belong on the heap.
+
+## Documentation layout
+
+Repository layout, naming, CI, versions and the `Docs/` taxonomy follow the
+Protocodus portfolio standard kept in the project, not in this repository.
+`README.md` opens with the title and intro, the editor screenshot,
+**Audio demos**, a concise **Version history** and **Downloads** (the block
+between the `build-download` markers is rewritten by `main-build.yml`); after
+a `---` come **How it works**, **Known gaps**, **Build** and **Licensing**.
+Nothing sits loose in `Docs/` except `decisions.md`:
+
+| Folder | Holds |
+| --- | --- |
+| `audio/` | rendered demos and committed listening tests |
+| `screenshots/` | editor images |
+| `guide/` | user guide and parameter meaning |
+| `research/` | modelling research, experiments and ablations (md + same-stem json) |
+| `validation/` | evidence that a version or change works |
+| `benchmarks/` | CPU and performance measurements |
+| `plans/` | improvement plans and open work |
+| `release/` | release notes, the detailed release history, readiness |
+
+Name documents in lowercase kebab-case, `<topic>-YYYY-MM-DD.md` for dated
+work; an evidence folder takes its report's stem. Moving a document is a
+rename only: keep its content and date, and update every link in the same
+commit. Long per-version notes go to `Docs/release/release-history.md`, not
+the README.
 
 ## Build once, verify the affected behavior first
 
@@ -40,6 +73,9 @@ cmake --build build-dsp --config Release --parallel 2 --target AcustraEngineTest
 ctest --test-dir build-dsp -C Release -R "^Acustra[.](Engine|StringPitchRealism)$" --output-on-failure
 ```
 
+Every CTest test carries one tier label: `unit`, or `audio` for the demo
+render checks; CI selects tiers with `ctest -L`. `-DACUSTRA_ENABLE_SANITIZERS=ON`
+(Clang or GCC) builds everything under ASan + UBSan, as the `sanitizers` job does.
 Select targets and an anchored test expression for the affected behavior.
 Choose parallelism for available memory; `ctest -N` lists registered tests.
 On non-MSVC builds, also build `AcustraDSPCxx17` for DSP/Performer changes.
@@ -84,7 +120,7 @@ ctest --test-dir build-plugin -C Release -R "^Acustra[.](PluginProcessor|PluginT
 ```
 
 Build the actual plug-in formats for changes affecting their deliverables;
-wrapper tests alone do not establish a VST3/AU/Standalone build. After a late
+wrapper tests alone do not establish a VST3/AU/CLAP/Standalone build. After a late
 fix, rerun affected checks and refresh final validation against the new source.
 Coordinate one final broad run rather than duplicating full runs across agents.
 
@@ -105,7 +141,7 @@ Coordinate one final broad run rather than duplicating full runs across agents.
   Conventional/manager slides and MPE member tension bends have distinct roles.
 - Check same-sample event ordering, control-period boundaries, block partition
   invariance, sustain/panic and rates relevant to the change. Ordinary key-up
-  includes the global 1/32-note join window; see [release rules](Docs/release-join-2026-10-05.md).
+  includes the global 1/32-note join window; see [release rules](Docs/research/release-join-2026-10-05.md).
 - Keep meaningful signal guards and independent math. Diagnose a failed test
   against the baseline before changing a fixture; document stale assumptions
   and demonstrate the correction without loosening a valid numeric tolerance.
@@ -130,8 +166,8 @@ Inspect individual pitches, registers, score terms and transfer tradeoffs, not
 just a pooled improvement. Do not quietly retune nuisance controls per reference.
 After source changes, re-render or prove relevant same-toolchain byte parity
 before reusing measurements. Cross-platform waveform hashes need not match.
-See [recording evidence](Docs/recording-realism-2026-10-07.md) and
-[gesture evidence](Docs/audible-realism-2026-10-07.md) for detailed protocols.
+See [recording evidence](Docs/research/recording-realism-2026-10-07.md) and
+[gesture evidence](Docs/research/audible-realism-2026-10-07.md) for detailed protocols.
 
 ## Measure CPU after the source is frozen
 
@@ -147,7 +183,7 @@ details. A local speedup is not a guarantee on another processor or host.
 Run final timings serially with builds, tests and other renders idle; coordinate
 this quiet period with collaborators. Any further source edit invalidates the
 freeze and requires refreshed binaries/provenance. Use the existing paired
-protocol in [CPU optimization](Docs/cpu-optimization-2026-10-05.md), preserving
+protocol in [CPU optimization](Docs/benchmarks/cpu-optimization-2026-10-05.md), preserving
 audio/state checks for optimizations intended to leave sound unchanged.
 
 ## Work safely in a shared tree
