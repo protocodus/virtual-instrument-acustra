@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.5.0 LANGUAGES C CXX)
+project(Acustra VERSION 1.6.0 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -38,12 +38,26 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(ACUSTRA_BUILD_PLUGIN "Build the JUCE plug-in and standalone app" ON)
 option(ACUSTRA_BUILD_TOOLS "Build offline Acustra tools" ON)
+option(ACUSTRA_BUILD_CLAP "Build the CLAP plug-in alongside the JUCE formats" ON)
+option(ACUSTRA_ENABLE_SANITIZERS
+    "Instrument the DSP, tests and tools with address/undefined-behaviour sanitizers" OFF)
 option(ACUSTRA_BUILD_PLUGIN_REFERENCE_HOST
     "Build the optional JUCE VST3 reference renderer/editor" OFF)
 option(ACUSTRA_REQUIRE_PYTHON_TESTS
     "Fail to configure unless every Python self-test can be registered (CI sets it)" OFF)
 set(ACUSTRA_JUCE_PATH "" CACHE PATH
     "Optional path to a local JUCE 8.0.14 checkout (avoids downloading JUCE)")
+set(ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH "" CACHE PATH
+    "Optional local clap-juce-extensions checkout with initialized submodules")
+
+if(ACUSTRA_ENABLE_SANITIZERS)
+    if(MSVC)
+        message(FATAL_ERROR "ACUSTRA_ENABLE_SANITIZERS needs Clang or GCC")
+    endif()
+    add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all
+                        -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
 
 include(CTest)
 
@@ -126,6 +140,33 @@ if(ACUSTRA_BUILD_PLUGIN)
         FetchContent_MakeAvailable(JUCE)
     endif()
 
+    if(ACUSTRA_BUILD_CLAP)
+        if(ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH)
+            foreach(required_file CMakeLists.txt
+                    clap-libs/clap/CMakeLists.txt
+                    clap-libs/clap-helpers/CMakeLists.txt)
+                if(NOT EXISTS "${ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH}/${required_file}")
+                    message(FATAL_ERROR
+                        "ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH needs a complete checkout with submodules: missing ${required_file}")
+                endif()
+            endforeach()
+            add_subdirectory("${ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH}"
+                             "${CMAKE_CURRENT_BINARY_DIR}/clap-juce-extensions"
+                             EXCLUDE_FROM_ALL)
+        else()
+            include(FetchContent)
+            FetchContent_Declare(
+                clap_juce_extensions
+                GIT_REPOSITORY https://github.com/free-audio/clap-juce-extensions.git
+                # The portfolio-wide pin: supports JUCE 8 and records immutable
+                # gitlinks for CLAP 29ffcc27 and clap-helpers a61bcdf0.
+                GIT_TAG c1a5ad025f95d01e03267857fa8276ebeed16500
+                GIT_SUBMODULES clap-libs/clap clap-libs/clap-helpers
+                GIT_SUBMODULES_RECURSE TRUE)
+            FetchContent_MakeAvailable(clap_juce_extensions)
+        endif()
+    endif()
+
     if(APPLE)
         set(ACUSTRA_PLUGIN_FORMATS VST3 AU Standalone)
     else()
@@ -138,7 +179,7 @@ if(ACUSTRA_BUILD_PLUGIN)
         COMPANY_NAME "Protocodus"
         COMPANY_WEBSITE "https://protocodus.cz"
         COMPANY_EMAIL "protocodus@proton.me"
-        COMPANY_COPYRIGHT "Copyright (c) 2026 Acustra contributors"
+        COMPANY_COPYRIGHT "Copyright (c) 2026 Protocodus"
         BUNDLE_ID "cz.protocodus.acustra"
         PLUGIN_MANUFACTURER_CODE Acst
         PLUGIN_CODE Acu1
@@ -154,8 +195,6 @@ if(ACUSTRA_BUILD_PLUGIN)
         EDITOR_WANTS_KEYBOARD_FOCUS TRUE
         AU_SANDBOX_SAFE TRUE
         COPY_PLUGIN_AFTER_BUILD FALSE)
-
-    instrument_distribution_identity(Acustra ${ACUSTRA_PLUGIN_FORMATS})
 
     juce_add_binary_data(AcustraUIAssets
         NAMESPACE AcustraUIAssets
@@ -185,6 +224,15 @@ if(ACUSTRA_BUILD_PLUGIN)
             JUCE_WEB_BROWSER=0
             JUCE_USE_CURL=0
             JUCE_VST3_CAN_REPLACE_VST2=0)
+
+    if(ACUSTRA_BUILD_CLAP)
+        clap_juce_extensions_plugin(TARGET Acustra
+            CLAP_ID "cz.protocodus.acustra"
+            CLAP_FEATURES instrument stereo)
+        instrument_distribution_identity(Acustra ${ACUSTRA_PLUGIN_FORMATS} CLAP)
+    else()
+        instrument_distribution_identity(Acustra ${ACUSTRA_PLUGIN_FORMATS})
+    endif()
 
     if(ACUSTRA_BUILD_PLUGIN_REFERENCE_HOST)
         juce_add_console_app(AcustraPluginReferenceHost
@@ -596,6 +644,12 @@ if(BUILD_TESTING)
                          "-DWORKFLOW=${CMAKE_CURRENT_SOURCE_DIR}/.github/workflows/ci.yml"
                          -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckDemoCount.cmake")
         set_tests_properties(Acustra.DemoCount PROPERTIES TIMEOUT 30)
+        add_test(NAME Acustra.MainBuildDemoCount
+                 COMMAND "${CMAKE_COMMAND}"
+                         "-DRENDERER=$<TARGET_FILE:AcustraRenderDemos>"
+                         "-DWORKFLOW=${CMAKE_CURRENT_SOURCE_DIR}/.github/workflows/main-build.yml"
+                         -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckDemoCount.cmake")
+        set_tests_properties(Acustra.MainBuildDemoCount PROPERTIES TIMEOUT 30)
 
         add_test(NAME Acustra.PhysicalFitRenderer
                  COMMAND AcustraPhysicalFitRenderer --smoke
@@ -1047,4 +1101,22 @@ if(ACUSTRA_BUILD_TOOLS)
     add_executable(AcustraRenderStrokeReleaseReview Tools/RenderStrokeReleaseReview.cpp)
     target_link_libraries(AcustraRenderStrokeReleaseReview PRIVATE AcustraDSP)
     target_compile_definitions(AcustraRenderStrokeReleaseReview PRIVATE ACUSTRA_REVIEW_SWITCHES=1)
+endif()
+
+# Every test carries exactly one tier label so CI selects tiers with
+# `ctest -L`. The demo-render checks are the audio tier; everything else
+# registered above is a unit contract.
+if(BUILD_TESTING)
+    foreach(test_name IN ITEMS Acustra.RenderDemos Acustra.DemoCount Acustra.MainBuildDemoCount)
+        if(TEST ${test_name})
+            set_tests_properties(${test_name} PROPERTIES LABELS audio)
+        endif()
+    endforeach()
+    get_property(acustra_tests DIRECTORY PROPERTY TESTS)
+    foreach(test_name IN LISTS acustra_tests)
+        get_test_property(${test_name} LABELS test_labels)
+        if(NOT test_labels)
+            set_tests_properties(${test_name} PROPERTIES LABELS unit)
+        endif()
+    endforeach()
 endif()

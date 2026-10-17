@@ -61,28 +61,25 @@ class DesktopPackageTests:
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.project=Path(self.temp.name);self.build=self.project/'build';self.scripts=self.project/'scripts';self.scripts.mkdir()
-        for name in ('distribution.py','package-desktop.py','package-windows.py'):
-            if (SCRIPTS/name).exists(): shutil.copyfile(SCRIPTS/name,self.scripts/name)
-        self.formats=['VST3','Standalone']+(['CLAP'] if PRODUCT=='YouKnow' else [])
+        for name in ('distribution.py','package-linux.py','package-windows.py'):
+            shutil.copyfile(SCRIPTS/name,self.scripts/name)
+        self.formats=['VST3','CLAP','Standalone']
         frozen_identity(self.build,self.formats)
         machine='x86_64-linux' if self.platform=='Linux' else 'x86_64-win'
         self.payload={f'VST3/{PRODUCT}.vst3/Contents/{machine}/{PRODUCT}'+('.so' if self.platform=='Linux' else '.vst3'):b'vst3 binary',
           'Standalone/'+PRODUCT+('.exe' if self.platform=='Windows' else ''):b'standalone binary'}
-        if 'CLAP' in self.formats:self.payload['CLAP/'+PRODUCT+'.clap']=b'clap binary'
+        self.payload['CLAP/'+PRODUCT+'.clap']=b'clap binary'
         self.artifacts=self.build/(PRODUCT+'_artefacts')/'Release'
         for name,value in self.payload.items():
             p=self.artifacts/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(value);p.chmod(0o755)
-        self.documents=['LICENSE','THIRD_PARTY_NOTICES.md','ThirdParty/JUCE-LICENSE.md']
-        if PRODUCT=='YouKnow': self.documents+=['PRIVACY.md','ThirdParty/CLAP-LICENSE.md','USER_GUIDE.md','INSTALL_MACOS.md','INSTALL_WINDOWS.md','INSTALL_LINUX.md']
-        else:self.documents+=['Docs/USER_GUIDE.md','ThirdParty/JUCE-DEPENDENCY-LICENSES.txt','ThirdParty/CC0-1.0.txt','ThirdParty/Eastman-E1D-README.md','ThirdParty/Shinyguitar-README.txt','Assets/SampleBank/manifest.json']
+        self.documents=['LICENSE','THIRD_PARTY_NOTICES.md','ThirdParty/JUCE-LICENSE.md','ThirdParty/CLAP-LICENSE.md','Docs/guide/user-guide.md','ThirdParty/JUCE-DEPENDENCY-LICENSES.txt','ThirdParty/CC0-1.0.txt','ThirdParty/Eastman-E1D-README.md','ThirdParty/Shinyguitar-README.txt','Assets/SampleBank/manifest.json']
         for name in self.documents:
             p=self.project/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(name)
         self.env=os.environ.copy()
         for name in ('DIST_ROOT','BUILD_NUMBER','VERSION','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT'):self.env.pop(name,None)
+    def script(self):return self.scripts/('package-'+self.platform.lower()+'.py')
     def run_package(self):
-        if self.platform=='Windows' and PRODUCT=='YouKnow':
-            command=[sys.executable,str(self.scripts/'package-windows.py'),'--build-dir',str(self.build)]
-        else: command=[sys.executable,str(self.scripts/'package-desktop.py'),'--build-dir',str(self.build),'--platform',self.platform]
+        command=[sys.executable,str(self.script()),'--build-dir',str(self.build)]
         return subprocess.run(command,cwd=self.project,env=self.env,text=True,capture_output=True)
     def directory(self,number=BUILD):return self.project/'dist'/VERSION/('build.'+number)/(self.platform+'-x64')
     def verify_set(self,number=BUILD):
@@ -151,9 +148,7 @@ class DesktopPackageTests:
     def test_archive_write_failure_preserves_previous_distribution(self):
         self.assertEqual(self.run_package().returncode,0)
         before={p.name:p.read_bytes() for p in self.directory().iterdir()}
-        script=self.scripts/('package-windows.py' if self.platform=='Windows' and PRODUCT=='YouKnow' else 'package-desktop.py')
-        arguments=[str(script),'--build-dir',str(self.build)]
-        if script.name=='package-desktop.py':arguments+=['--platform',self.platform]
+        arguments=[str(self.script()),'--build-dir',str(self.build)]
         fault='zipfile.ZipFile.write' if self.platform=='Windows' else 'tarfile.TarFile.add'
         code="import runpy,sys,zipfile,tarfile; from unittest.mock import patch; sys.path.insert(0,sys.argv[1]); sys.argv=sys.argv[2:];\nwith patch('"+fault+"',side_effect=OSError('simulated archive failure')): runpy.run_path(sys.argv[0],run_name='__main__')"
         for number in ('34393416911.2',):

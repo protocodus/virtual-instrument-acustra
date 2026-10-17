@@ -3,11 +3,18 @@ name: Release
 # A v* tag builds, validates and packages every format and drafts a GitHub
 # release from them. A manual run or a pull request that changes the release
 # path builds and validates the same packages without drafting a release, and
-# a pull request never signs. README.md (Release workflow) lists the secrets.
+# a pull request never signs. main-build.yml calls it for every main build.
+# README.md (Release workflow) lists the secrets.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      retention-days:
+        description: Days to keep each platform's package artifact
+        type: number
+        default: 7
   pull_request:
     paths:
       - ".github/workflows/release.yml"
@@ -31,7 +38,7 @@ env:
 
 jobs:
   macos:
-    name: Release macOS universal (VST3, AU, Standalone)
+    name: Release macOS universal (VST3, AU, CLAP, Standalone)
     runs-on: macos-15
     outputs:
       signing: ${{ steps.signing.outputs.state || 'ad-hoc signed, pkg unsigned, not notarized' }}
@@ -57,6 +64,15 @@ jobs:
           PYTHON: "${{ steps.python.outputs.python-path }}"
           ACUSTRA_EDITOR_SNAPSHOT: "${{ runner.temp }}/acustra-standalone.png"
         run: ./scripts/build-macos.sh
+
+      # The main build commits this render as the README screenshot.
+      - name: Upload the editor screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-acustra
+          path: ${{ runner.temp }}/acustra-standalone.png
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days || 7 }}
 
       - name: Validate the AU with auval
         run: |
@@ -131,7 +147,7 @@ jobs:
         run: |
           set -euo pipefail
           ./scripts/sign-and-package-macos.sh
-          directory="$(python3 scripts/distribution.py --build-dir build-macos --platform macOS --arch universal --formats VST3 AU Standalone)"
+          directory="$(python3 scripts/distribution.py --build-dir build-macos --platform macOS --arch universal --formats VST3 AU CLAP Standalone)"
           if [[ -n "${NOTARY_PROFILE:-}" ]]; then
             spctl --assess -vvv --type install "$directory"/*.pkg
           fi
@@ -144,10 +160,10 @@ jobs:
           name: release-macos-acustra-${{ steps.package.outputs.distribution }}
           path: ${{ steps.package.outputs.directory }}/*
           if-no-files-found: error
-          retention-days: 7
+          retention-days: ${{ inputs.retention-days || 7 }}
 
   windows:
-    name: Release Windows x64 (VST3, Standalone)
+    name: Release Windows x64 (VST3, CLAP, Standalone)
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
@@ -162,11 +178,11 @@ jobs:
       # /STACK as in the CI job: the test suites expect more than Windows' 1 MB.
       - name: Configure
         run: |
-          cmake -S "." -B "build-win" -A x64 "-DACUSTRA_BUILD_PLUGIN=ON" "-DACUSTRA_BUILD_TOOLS=OFF" -DBUILD_TESTING=ON "-DCMAKE_EXE_LINKER_FLAGS=/STACK:33554432"
+          cmake -S "." -B "build-win" -A x64 "-DACUSTRA_BUILD_PLUGIN=ON" "-DACUSTRA_BUILD_CLAP=ON" "-DACUSTRA_BUILD_TOOLS=OFF" -DBUILD_TESTING=ON "-DCMAKE_EXE_LINKER_FLAGS=/STACK:33554432"
 
-      - name: Build VST3, standalone and plug-in tests
+      - name: Build VST3, CLAP, standalone and plug-in tests
         run: |
-          cmake --build "build-win" --config Release --parallel --target "Acustra_VST3" "Acustra_Standalone" "AcustraPluginProcessorTests" "AcustraPluginTempoReleaseTests"
+          cmake --build "build-win" --config Release --parallel --target "Acustra_VST3" "Acustra_CLAP" "Acustra_Standalone" "AcustraPluginProcessorTests" "AcustraPluginTempoReleaseTests"
 
       - name: Run plug-in wrapper tests
         run: |
@@ -177,7 +193,7 @@ jobs:
         run: |
           $dumpbin = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1
           if (-not $dumpbin) { throw "dumpbin.exe was not found" }
-          foreach ($binary in 'build-win\Acustra_artefacts\Release\Standalone\Acustra.exe', 'build-win\Acustra_artefacts\Release\VST3\Acustra.vst3\Contents\x86_64-win\Acustra.vst3') {
+          foreach ($binary in 'build-win\Acustra_artefacts\Release\Standalone\Acustra.exe', 'build-win\Acustra_artefacts\Release\VST3\Acustra.vst3\Contents\x86_64-win\Acustra.vst3', 'build-win\Acustra_artefacts\Release\CLAP\Acustra.clap') {
             $dependents = & $dumpbin /nologo /dependents $binary
             if ($LASTEXITCODE -ne 0) { throw "dumpbin failed on $binary" }
             $dependents
@@ -195,13 +211,13 @@ jobs:
           ./pluginval.exe --strictness-level 10 --verbose \
             --validate "Acustra_artefacts/Release/VST3/Acustra.vst3"
 
-      - name: Package Windows VST3 and standalone
+      - name: Package Windows VST3, CLAP and standalone
         id: package
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/package-desktop.py --build-dir build-win --platform Windows
-          directory="$(python scripts/distribution.py --build-dir build-win --platform Windows --arch x64)"
+          python scripts/package-windows.py --build-dir build-win
+          directory="$(python scripts/distribution.py --build-dir build-win --platform Windows --arch x64 --formats VST3 CLAP Standalone)"
           echo "directory=$directory" >> "$GITHUB_OUTPUT"
           echo "distribution=$(sed -n 's/^ACUSTRA_DISTRIBUTION_VERSION:INTERNAL=//p' build-win/CMakeCache.txt)" >> "$GITHUB_OUTPUT"
 
@@ -211,10 +227,10 @@ jobs:
           name: release-windows-acustra-${{ steps.package.outputs.distribution }}
           path: ${{ steps.package.outputs.directory }}/*
           if-no-files-found: error
-          retention-days: 7
+          retention-days: ${{ inputs.retention-days || 7 }}
 
   linux:
-    name: Release Linux x64 (VST3, Standalone)
+    name: Release Linux x64 (VST3, CLAP, Standalone)
     # Ubuntu 22.04's glibc 2.35 is the floor the binaries may ask for (checked below).
     runs-on: ubuntu-22.04
     steps:
@@ -244,15 +260,16 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             "-DACUSTRA_BUILD_PLUGIN=ON" \
+            "-DACUSTRA_BUILD_CLAP=ON" \
             -DACUSTRA_BUILD_TOOLS=OFF \
             -DBUILD_TESTING=ON \
             "-DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++ -static-libgcc" \
             "-DCMAKE_MODULE_LINKER_FLAGS=-static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL"
 
-      - name: Build VST3, standalone and plug-in tests
+      - name: Build VST3, CLAP, standalone and plug-in tests
         run: |
           cmake --build "build-linux" --parallel \
-            --target "Acustra_VST3" "Acustra_Standalone" \
+            --target "Acustra_VST3" "Acustra_CLAP" "Acustra_Standalone" \
               "AcustraPluginProcessorTests" "AcustraPluginTempoReleaseTests"
 
       - name: Run plug-in wrapper tests
@@ -265,7 +282,8 @@ jobs:
           floor=2.35
           for binary in \
               "build-linux/Acustra_artefacts/Release/VST3/Acustra.vst3/Contents/x86_64-linux/Acustra.so" \
-              "build-linux/Acustra_artefacts/Release/Standalone/Acustra"; do
+              "build-linux/Acustra_artefacts/Release/Standalone/Acustra" \
+              "build-linux/Acustra_artefacts/Release/CLAP/Acustra.clap"; do
             symbols="$(objdump -T "$binary")"
             if grep -q 'GLIBCXX_\|CXXABI_' <<<"$symbols"; then
               echo "error: $binary links the shared libstdc++" >&2
@@ -289,12 +307,12 @@ jobs:
           xvfb-run -a ./pluginval --strictness-level 10 --verbose \
             --validate "Acustra_artefacts/Release/VST3/Acustra.vst3"
 
-      - name: Package Linux VST3 and standalone
+      - name: Package Linux VST3, CLAP and standalone
         id: package
         run: |
           set -euo pipefail
-          python3 scripts/package-desktop.py --build-dir build-linux --platform Linux
-          directory="$(python3 scripts/distribution.py --build-dir build-linux --platform Linux --arch x64)"
+          python3 scripts/package-linux.py --build-dir build-linux
+          directory="$(python3 scripts/distribution.py --build-dir build-linux --platform Linux --arch x64 --formats VST3 CLAP Standalone)"
           echo "directory=$directory" >> "$GITHUB_OUTPUT"
           echo "distribution=$(sed -n 's/^ACUSTRA_DISTRIBUTION_VERSION:INTERNAL=//p' build-linux/CMakeCache.txt)" >> "$GITHUB_OUTPUT"
 
@@ -304,7 +322,7 @@ jobs:
           name: release-linux-acustra-${{ steps.package.outputs.distribution }}
           path: ${{ steps.package.outputs.directory }}/*
           if-no-files-found: error
-          retention-days: 7
+          retention-days: ${{ inputs.retention-days || 7 }}
 
   draft-release:
     name: Draft the GitHub release
@@ -358,7 +376,7 @@ jobs:
             echo "- Windows x64: not Authenticode-signed."
             echo "- Linux x64: not signed; built for glibc 2.35 or newer."
             echo
-            echo "On every platform the plug-in wrapper tests passed and the VST3 passed pluginval at strictness level 10; the macOS AU passed auval -strict. The Standalone is built and packaged but checked by neither tool, and this workflow loads the plug-ins in no DAW."
+            echo "On every platform the plug-in wrapper tests passed and the VST3 passed pluginval at strictness level 10; the macOS AU passed auval -strict. The CLAP and the Standalone are built and packaged but checked by neither tool, and this workflow loads the plug-ins in no DAW."
           } > "$RUNNER_TEMP/notes.md"
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
             --title "Acustra ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" -- *

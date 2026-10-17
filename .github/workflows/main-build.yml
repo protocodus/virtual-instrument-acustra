@@ -1,0 +1,176 @@
+name: Main build
+
+# Every push to main, nightly and on demand: the release workflow's validated
+# packages for all three platforms, the demo renders and the editor
+# screenshot, collected into one acustra-main-build-<run> artifact. The README
+# download block and screenshot are then committed, but only while main still
+# points at the commit that was built.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-build
+  cancel-in-progress: false
+
+jobs:
+  packages:
+    name: Packages
+    uses: ./.github/workflows/release.yml
+    with:
+      retention-days: 30
+    secrets: inherit
+    permissions:
+      contents: write
+
+  demos:
+    name: Demo audio (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build
+
+      - name: Render the demos
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-dsp -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DACUSTRA_BUILD_PLUGIN=OFF -DBUILD_TESTING=ON
+          cmake --build build-dsp --target AcustraRenderDemos --parallel
+          ./build-dsp/AcustraRenderDemos demos
+          # Kept equal to AcustraRenderDemos --list by Acustra.MainBuildDemoCount.
+          rendered=$(find demos -maxdepth 1 -name '*.wav' | wc -l)
+          if (( rendered != 10 )); then
+            echo "error: rendered $rendered demo WAVs, expected 10" >&2
+            exit 1
+          fi
+
+      - name: Upload the demos
+        uses: actions/upload-artifact@v4
+        with:
+          name: demos-acustra
+          path: demos/*.wav
+          if-no-files-found: error
+          retention-days: 30
+
+  collect:
+    name: Collect and publish the main build
+    needs: [packages, demos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: main-build/packages
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: demos-acustra
+          path: main-build/demos
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: screenshot-acustra
+          path: screenshot
+
+      - name: Check the packages and write BUILD.txt and SHA256SUMS
+        id: build
+        working-directory: main-build
+        run: |
+          set -euo pipefail
+          (cd packages && for sums in *-SHA256SUMS.txt; do sha256sum -c "$sums"; done)
+          distribution="$(python3 - "$GITHUB_SHA" <<'EOF'
+          import json, pathlib, sys
+          records = [json.loads(p.read_text()) for p in sorted(pathlib.Path("packages").glob("*.manifest.json"))]
+          platforms = sorted(r["platform"] for r in records)
+          if platforms != ["Linux", "Windows", "macOS"]:
+              sys.exit(f"error: expected one package set per platform, found {platforms}")
+          versions = {r["distribution_version"] for r in records}
+          if len(versions) != 1:
+              sys.exit(f"error: the platforms built different identities: {versions}")
+          for r in records:
+              if r["source_revision"] != sys.argv[1]:
+                  sys.exit(f"error: the {r['platform']} package was not built from {sys.argv[1]}")
+          print(versions.pop())
+          EOF
+          )"
+          {
+            echo "Acustra ${distribution}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > BUILD.txt
+          find . -type f ! -name SHA256SUMS -printf '%P\n' | sort | xargs sha256sum > SHA256SUMS
+          echo "distribution=${distribution}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the main build
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: acustra-main-build-${{ github.run_number }}
+          path: main-build/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Rewrite the README download block and screenshot
+        env:
+          DISTRIBUTION: ${{ steps.build.outputs.distribution }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: |
+          set -euo pipefail
+          cp screenshot/acustra-standalone.png Docs/screenshots/acustra-standalone.png
+          python3 - <<'EOF'
+          import os, pathlib, re
+          env = os.environ
+          run = f"{env['GITHUB_SERVER_URL']}/{env['GITHUB_REPOSITORY']}/actions/runs/{env['GITHUB_RUN_ID']}"
+          commit = f"{env['GITHUB_SERVER_URL']}/{env['GITHUB_REPOSITORY']}/commit/{env['GITHUB_SHA']}"
+          d = env["DISTRIBUTION"]
+          packages = sorted(p.name for p in pathlib.Path("main-build/packages").iterdir()
+                            if p.suffix in (".pkg", ".zip") or p.name.endswith(".tar.gz"))
+          rows = "\n".join(f"| `{name}` |" for name in packages)
+          block = (f"Latest main build: **{d}** from commit [`{env['GITHUB_SHA'][:7]}`]({commit}), "
+                   f"[run {env['GITHUB_RUN_NUMBER']}]({run}). Download "
+                   f"[acustra-main-build-{env['GITHUB_RUN_NUMBER']}]({env['ARTIFACT_URL']}) "
+                   "(signed in to GitHub; kept for 30 days); it holds these packages, the demo WAVs, "
+                   "`BUILD.txt` and `SHA256SUMS`.\n\n| Package |\n| --- |\n" + rows)
+          readme = pathlib.Path("README.md")
+          text = readme.read_text(encoding="utf-8")
+          pattern = re.compile(r"(<!-- build-download-begin[^>]*-->\n).*?(\n<!-- build-download-end -->)", re.S)
+          if not pattern.search(text):
+              raise SystemExit("error: README.md has no build-download marker block")
+          readme.write_text(pattern.sub(lambda m: m.group(1) + block + m.group(2), text), encoding="utf-8")
+          EOF
+
+      - name: Commit if main still points at the built commit
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+            echo "::notice::main moved past ${GITHUB_SHA}; the next main build publishes instead."
+            exit 0
+          fi
+          git add README.md Docs/screenshots/acustra-standalone.png
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: publish main build ${{ steps.build.outputs.distribution }}"
+          git push origin HEAD:main

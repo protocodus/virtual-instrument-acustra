@@ -45,6 +45,7 @@ cmake_args=(
     "-DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}"
     "-DACUSTRA_BUILD_UNIVERSAL=${BUILD_UNIVERSAL}"
     -DACUSTRA_BUILD_PLUGIN=ON
+    -DACUSTRA_BUILD_CLAP=ON
     -DACUSTRA_BUILD_TOOLS=ON
     -DBUILD_TESTING=ON
 )
@@ -56,6 +57,9 @@ else
 fi
 if [[ -n "${JUCE_PATH:-}" ]]; then
     cmake_args+=("-DACUSTRA_JUCE_PATH=${JUCE_PATH}")
+fi
+if [[ -n "${CLAP_JUCE_EXTENSIONS_PATH:-}" ]]; then
+    cmake_args+=("-DACUSTRA_CLAP_JUCE_EXTENSIONS_PATH=${CLAP_JUCE_EXTENSIONS_PATH}")
 fi
 # A Python with numpy and scipy runs every Python self-test; naming one
 # makes a missing library a configure error rather than fewer tests.
@@ -78,6 +82,7 @@ ARTIFACT_DIR="${BUILD_DIR}/Acustra_artefacts/${CONFIG}"
 artifacts=(
     "${ARTIFACT_DIR}/VST3/Acustra.vst3"
     "${ARTIFACT_DIR}/AU/Acustra.component"
+    "${ARTIFACT_DIR}/CLAP/Acustra.clap"
     "${ARTIFACT_DIR}/Standalone/Acustra.app"
 )
 for artifact in "${artifacts[@]}"; do

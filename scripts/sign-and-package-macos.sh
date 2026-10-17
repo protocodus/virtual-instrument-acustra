@@ -28,8 +28,9 @@ done
 
 VST3="${ARTIFACT_DIR}/VST3/Acustra.vst3"
 AU="${ARTIFACT_DIR}/AU/Acustra.component"
+CLAP="${ARTIFACT_DIR}/CLAP/Acustra.clap"
 APP="${ARTIFACT_DIR}/Standalone/Acustra.app"
-for artifact in "${VST3}" "${AU}" "${APP}"; do
+for artifact in "${VST3}" "${AU}" "${CLAP}" "${APP}"; do
     if [[ ! -d "${artifact}" ]]; then
         echo "error: missing build artifact: ${artifact}" >&2
         echo "Run scripts/build-macos.sh first." >&2
@@ -49,12 +50,15 @@ bundle_version() {
 
 VST3_VERSION="$(bundle_version "${VST3}")"
 AU_VERSION="$(bundle_version "${AU}")"
+CLAP_VERSION="$(bundle_version "${CLAP}")"
 APP_VERSION="$(bundle_version "${APP}")"
 if [[ -z "${VST3_VERSION}" || "${VST3_VERSION}" != "${AU_VERSION}" \
+      || "${VST3_VERSION}" != "${CLAP_VERSION}" \
       || "${VST3_VERSION}" != "${APP_VERSION}" ]]; then
     echo "error: build artifact versions disagree" >&2
     echo "  VST3: ${VST3_VERSION:-missing}" >&2
     echo "  AU: ${AU_VERSION:-missing}" >&2
+    echo "  CLAP: ${CLAP_VERSION:-missing}" >&2
     echo "  App: ${APP_VERSION:-missing}" >&2
     exit 1
 fi
@@ -66,8 +70,10 @@ fi
 
 VST3_ARCHS="$(lipo -archs "${VST3}/Contents/MacOS/Acustra")"
 AU_ARCHS="$(lipo -archs "${AU}/Contents/MacOS/Acustra")"
+CLAP_ARCHS="$(lipo -archs "${CLAP}/Contents/MacOS/Acustra")"
 APP_ARCHS="$(lipo -archs "${APP}/Contents/MacOS/Acustra")"
-if [[ "${VST3_ARCHS}" != "${AU_ARCHS}" || "${VST3_ARCHS}" != "${APP_ARCHS}" ]]; then
+if [[ "${VST3_ARCHS}" != "${AU_ARCHS}" || "${VST3_ARCHS}" != "${CLAP_ARCHS}" \
+      || "${VST3_ARCHS}" != "${APP_ARCHS}" ]]; then
     echo "error: build artifact architectures disagree" >&2
     exit 1
 fi
@@ -78,7 +84,7 @@ else
 fi
 
 identity_args=(--build-dir "${BUILD_DIR}" --config "${CONFIG}" --platform macOS
-    --arch "${ARTIFACT_ARCH}" --formats VST3 AU Standalone)
+    --arch "${ARTIFACT_ARCH}" --formats VST3 AU CLAP Standalone)
 DIST_DIR="$(python3 "${SCRIPT_DIR}/distribution.py" "${identity_args[@]}" --require-new)"
 BUILD_NUMBER="$(sed -n 's/^ACUSTRA_BUILD_NUMBER:STRING=//p' "${BUILD_DIR}/CMakeCache.txt")"
 if [[ "${BUILD_NUMBER_OVERRIDE_SET}" == x && "${BUILD_NUMBER_OVERRIDE}" != "${BUILD_NUMBER}" ]]; then
@@ -88,6 +94,8 @@ CONFIGURED_VERSION="$(sed -n 's/^CMAKE_PROJECT_VERSION:STATIC=//p' "${BUILD_DIR}
 if [[ "${VERSION}" != "${CONFIGURED_VERSION}" ]]; then
     echo "error: built version does not match configured version; rebuild" >&2; exit 1
 fi
+# clap-juce-extensions writes the plug-in version, not the build number, as the
+# CLAP bundle's CFBundleVersion; its compiled identity is checked above instead.
 for bundle in "${VST3}" "${AU}" "${APP}"; do
     if [[ "$("${PLIST_BUDDY}" -c 'Print :CFBundleVersion' "${bundle}/Contents/Info.plist")" != "${BUILD_NUMBER}" ]]; then
         echo "error: bundle build number does not match compiled identity; rebuild" >&2; exit 1
@@ -104,22 +112,25 @@ rm -rf "${PACKAGE_ROOT}"
 mkdir -p \
     "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/VST3" \
     "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/Components" \
+    "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/CLAP" \
     "${PACKAGE_ROOT}/Applications" \
     "${DIST_DIR}"
 ditto "${VST3}" "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/VST3/Acustra.vst3"
 ditto "${AU}" "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/Components/Acustra.component"
+ditto "${CLAP}" "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/CLAP/Acustra.clap"
 ditto "${APP}" "${PACKAGE_ROOT}/Applications/Acustra.app"
 
 NOTICE_ROOT="${PACKAGE_ROOT}/Library/Application Support/Acustra/Documentation"
 JUCE_NOTICE="${PROJECT_DIR}/ThirdParty/JUCE-LICENSE.md"
+CLAP_NOTICE="${PROJECT_DIR}/ThirdParty/CLAP-LICENSE.md"
 JUCE_DEPENDENCY_NOTICE="${PROJECT_DIR}/ThirdParty/JUCE-DEPENDENCY-LICENSES.txt"
 CC0_NOTICE="${PROJECT_DIR}/ThirdParty/CC0-1.0.txt"
 EASTMAN_NOTICE="${PROJECT_DIR}/ThirdParty/Eastman-E1D-README.md"
 SHINY_NOTICE="${PROJECT_DIR}/ThirdParty/Shinyguitar-README.txt"
 BANK_MANIFEST="${PROJECT_DIR}/Assets/SampleBank/manifest.json"
-USER_GUIDE="${PROJECT_DIR}/Docs/USER_GUIDE.md"
+USER_GUIDE="${PROJECT_DIR}/Docs/guide/user-guide.md"
 for notice in "${PROJECT_DIR}/LICENSE" "${PROJECT_DIR}/THIRD_PARTY_NOTICES.md" \
-              "${JUCE_NOTICE}" "${JUCE_DEPENDENCY_NOTICE}" "${CC0_NOTICE}" \
+              "${JUCE_NOTICE}" "${CLAP_NOTICE}" "${JUCE_DEPENDENCY_NOTICE}" "${CC0_NOTICE}" \
               "${EASTMAN_NOTICE}" "${SHINY_NOTICE}" "${BANK_MANIFEST}" \
               "${USER_GUIDE}"; do
     if [[ ! -f "${notice}" ]]; then
@@ -136,6 +147,7 @@ copy_documentation() {
     ditto "${PROJECT_DIR}/THIRD_PARTY_NOTICES.md" \
         "${destination}/THIRD_PARTY_NOTICES.md"
     ditto "${JUCE_NOTICE}" "${destination}/ThirdParty/JUCE-LICENSE.md"
+    ditto "${CLAP_NOTICE}" "${destination}/ThirdParty/CLAP-LICENSE.md"
     ditto "${JUCE_DEPENDENCY_NOTICE}" \
         "${destination}/ThirdParty/JUCE-DEPENDENCY-LICENSES.txt"
     ditto "${CC0_NOTICE}" "${destination}/ThirdParty/CC0-1.0.txt"
@@ -153,6 +165,7 @@ copy_documentation "${NOTICE_ROOT}"
 for bundle in \
     "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/VST3/Acustra.vst3" \
     "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/Components/Acustra.component" \
+    "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/CLAP/Acustra.clap" \
     "${PACKAGE_ROOT}/Applications/Acustra.app"; do
     bundle_notices="${bundle}/Contents/Resources/Documentation"
     copy_documentation "${bundle_notices}"
@@ -170,6 +183,7 @@ sign_bundle() {
 }
 sign_bundle "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/VST3/Acustra.vst3"
 sign_bundle "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/Components/Acustra.component"
+sign_bundle "${PACKAGE_ROOT}/Library/Audio/Plug-Ins/CLAP/Acustra.clap"
 sign_bundle "${PACKAGE_ROOT}/Applications/Acustra.app"
 
 ZIP_PATH="${DIST_DIR}/Acustra-${DISTRIBUTION_VERSION}-macOS-${ARTIFACT_ARCH}.zip"
@@ -179,7 +193,7 @@ PKG_FINAL="${DIST_DIR}/Acustra-${DISTRIBUTION_VERSION}-macOS-${ARTIFACT_ARCH}.pk
 rm -f "${ZIP_PATH}" "${PKG_FINAL}" "${PKG_UNSIGNED}"
 
 # By default Installer moves a bundle to wherever it finds an installed copy
-# with the same identifier, which all three formats share, and skips it when
+# with the same identifier, which all four formats share, and skips it when
 # that copy is newer. Install each bundle at its own path, replacing any version.
 COMPONENT_PLIST="${BUILD_DIR}/package-components.plist"
 pkgbuild --analyze --root "${PACKAGE_ROOT}" "${COMPONENT_PLIST}"
@@ -198,8 +212,8 @@ while "${PLIST_BUDDY}" -c "Print :${bundle_count}:RootRelativeBundlePath" \
     set_bundle_key "${bundle_count}" BundleOverwriteAction string upgrade
     bundle_count=$((bundle_count + 1))
 done
-if [[ "${bundle_count}" -ne 3 ]]; then
-    echo "error: pkgbuild found ${bundle_count} bundles, expected the VST3, AU and app" >&2
+if [[ "${bundle_count}" -ne 4 ]]; then
+    echo "error: pkgbuild found ${bundle_count} bundles, expected the VST3, AU, CLAP and app" >&2
     exit 1
 fi
 

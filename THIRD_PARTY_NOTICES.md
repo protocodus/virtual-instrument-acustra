@@ -501,6 +501,19 @@ recording families described above. The distributed plug-in and standalone
 binaries include none of their recorded audio, and include no convolution
 impulse response, neural model or added room/reverb capture.
 
+## CLAP support
+
+The CLAP plug-in uses the MIT-licensed
+[clap-juce-extensions](https://github.com/free-audio/clap-juce-extensions/tree/c1a5ad025f95d01e03267857fa8276ebeed16500)
+wrapper, pinned to commit `c1a5ad025f95d01e03267857fa8276ebeed16500`.
+It includes the pinned submodules
+[CLAP](https://github.com/free-audio/clap/tree/29ffcc273be7c7c651f6c9953b99e69700e2387a)
+(`29ffcc273be7c7c651f6c9953b99e69700e2387a`) and
+[clap-helpers](https://github.com/free-audio/clap-helpers/tree/a61bcdf0ecc2c8db1e80bfe8bf9cb7e8d9fd2bbc)
+(`a61bcdf0ecc2c8db1e80bfe8bf9cb7e8d9fd2bbc`), both MIT-licensed.
+Their copyright and permission notices are reproduced in
+`ThirdParty/CLAP-LICENSE.md` and included with binary distributions.
+
 ## Trademarks
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.

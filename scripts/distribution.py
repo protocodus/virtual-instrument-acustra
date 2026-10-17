@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tarfile
+import tempfile
+import zipfile
 
 PRODUCT = "Acustra"
 PROJECT = Path(__file__).resolve().parent.parent
@@ -89,6 +92,56 @@ def manifest(record, directory, platform, arch, files):
     sums = directory / (stem+"-SHA256SUMS.txt")
     sums.write_text("".join(digest(path)+"  "+path.name+"\n" for path in files))
     return target, sums
+
+
+def package_desktop(build, platform, config="Release"):
+    formats=["VST3", "CLAP", "Standalone"]
+    artifacts=build/(PRODUCT+"_artefacts")/config
+    machine="x86_64-linux" if platform=="Linux" else "x86_64-win"
+    binary=PRODUCT+".so" if platform=="Linux" else PRODUCT+".vst3"
+    required=[f"VST3/{PRODUCT}.vst3/Contents/{machine}/{binary}",
+              "Standalone/"+PRODUCT+(".exe" if platform=="Windows" else ""),
+              "CLAP/"+PRODUCT+".clap"]
+    for relative in required:
+        f=artifacts/relative
+        if not f.is_file() or not f.stat().st_size:
+            raise ValueError("missing or empty "+platform+" x64 binary: "+str(f))
+    if platform=="Linux" and not os.access(artifacts/required[1],os.X_OK):
+        raise ValueError("standalone binary is not executable")
+    record=identity(build,config,formats)
+    files={f.relative_to(artifacts).as_posix(): f for f in (artifacts/"VST3"/(PRODUCT+".vst3")).rglob("*") if f.is_file()}
+    for relative in required[1:]: files[relative]=artifacts/relative
+    docs=["LICENSE","THIRD_PARTY_NOTICES.md","ThirdParty/JUCE-LICENSE.md","ThirdParty/CLAP-LICENSE.md",
+          "ThirdParty/JUCE-DEPENDENCY-LICENSES.txt","ThirdParty/CC0-1.0.txt","ThirdParty/Eastman-E1D-README.md","ThirdParty/Shinyguitar-README.txt","Assets/SampleBank/manifest.json"]
+    files["USER_GUIDE.md"]=PROJECT/"Docs/guide/user-guide.md"
+    for doc in docs: files[doc]=PROJECT/doc
+    for f in files.values():
+        if not f.is_file() or not f.stat().st_size: raise ValueError("missing or empty distribution document: "+str(f))
+    dist=output_dir(record,platform,"x64");require_new_destination(dist);dist.mkdir(parents=True,exist_ok=True)
+    stem=PRODUCT+"-"+record["distribution_version"]+"-"+platform+"-x64"
+    archive=dist/(stem+(".tar.gz" if platform=="Linux" else ".zip"))
+    with tempfile.TemporaryDirectory(prefix=".package-",dir=dist) as work:
+        staging=Path(work); staged=staging/archive.name
+        if platform=="Linux":
+            with tarfile.open(staged,"w:gz") as output:
+                for relative,f in sorted(files.items()): output.add(f,arcname=relative,recursive=False)
+            with tarfile.open(staged) as output: output.getmembers()
+        else:
+            with zipfile.ZipFile(staged,"w",compression=zipfile.ZIP_DEFLATED) as output:
+                for relative,f in sorted(files.items()): output.write(f,relative)
+            with zipfile.ZipFile(staged) as output:
+                if output.testzip() is not None: raise ValueError("corrupt archive")
+        manifest(record,staging,platform,"x64",[staged])
+        for f in staging.iterdir(): f.replace(dist/f.name)
+    return archive
+
+
+def package_main(platform):
+    """Command line for scripts/package-<platform>.py."""
+    parser=argparse.ArgumentParser(description="Package the "+platform+" x64 VST3, CLAP and standalone without changing their host identities.")
+    parser.add_argument("--build-dir",type=Path,required=True)
+    parser.add_argument("--config",default="Release")
+    args=parser.parse_args();print(package_desktop(args.build_dir.resolve(),platform,args.config))
 
 
 def main():
