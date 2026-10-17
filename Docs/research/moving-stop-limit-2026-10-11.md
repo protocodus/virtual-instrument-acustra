@@ -27,7 +27,7 @@ motion began. For a constant stop speed `v`, the exact returned waveform's
 time-coordinate derivative is `(c − v)/(c + v)`; the instantaneous-length
 reader gives `1 − 2v/c`. These agree only to first order in `v/c`.
 
-The [independent oracle](../validation/project-completion-2026-10-11/moving-stop/MovingStopOracle.py)
+The [independent oracle](../../Tools/research/project-completion-2026-10-11/moving-stop/MovingStopOracle.py)
 solves those characteristics by bisection. A separate constant-speed closed
 form checks the solver to a maximum absolute error of `3.47e−18 s`. Its
 examples use the existing 6 ms exponential time scale and legal fret
@@ -38,7 +38,7 @@ dispersive string/contact solver or a measured guitar dataset.
 
 [`StringLoop::advance`](../../Source/DSP/AcustraEngine.cpp) glides `currentDelay`
 then reads that delay immediately. The
-[C++ witness](../validation/project-completion-2026-10-11/moving-stop/CurrentLoopCausality.cpp)
+[C++ witness](../../Tools/research/project-completion-2026-10-11/moving-stop/CurrentLoopCausality.cpp)
 calls that production method from the frozen `70eeafc` engine object with
 matching headers. Its DSP code is preprocessor-identical to the completion
 starting source `56d4678`. The witness was then relinked against the frozen

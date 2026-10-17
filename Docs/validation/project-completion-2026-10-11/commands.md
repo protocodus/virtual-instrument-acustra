@@ -59,7 +59,7 @@ archived `BuildFinalCallbackHarness.py` and `FinalizationCallbackBenchmark.cpp`
 can recreate the harness from Git without changing the working source:
 
 ```sh
-python3 Docs/validation/project-completion-2026-10-11/BuildFinalCallbackHarness.py \
+python3 Tools/research/project-completion-2026-10-11/BuildFinalCallbackHarness.py \
   --output /tmp/acustra-final-callbacks \
   --baseline-revision 56d4678 --candidate-revision 2decfdf --build
 # Only after builds, tests, downloads and renders are idle:

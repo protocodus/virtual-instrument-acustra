@@ -178,7 +178,7 @@ changed. Together the original 88 passes
 and the focused Engine rerun cover **89/89 distinct tests**. The original
 failed log is retained, and no all-green single full-run result is claimed.
 See the [repair review](../validation/studio-capture-implementation-2026-10-11/physics-final/engine-transition-review.json)
-and [test-only patch](../validation/studio-capture-implementation-2026-10-11/native-validation/engine-transition-oracle.patch).
+and [test-only patch](../../Tools/research/studio-capture-implementation-2026-10-11/native-validation/engine-transition-oracle.patch).
 
 The independent construction-loudness guard passes at its original ±3 LU
 threshold. The separate level-meter diagnostic and its five gate-boundary flags

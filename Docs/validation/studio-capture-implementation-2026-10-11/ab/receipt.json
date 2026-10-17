@@ -177,13 +177,13 @@
     },
     {
       "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/prototype_observer.py",
-      "path": "references/prototype_observer.py",
+      "path": "../../../../Tools/research/studio-capture-implementation-2026-10-11/ab/references/prototype_observer.py",
       "sha256": "6d74c2747f2072ebb855f55ab83550868dc1258375fde18d82de1dda0dda0b2d",
       "bytes": 15437
     },
     {
       "source": "/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/studio-mic-research/export_candidates.py",
-      "path": "references/export_candidates.py",
+      "path": "../../../../Tools/research/studio-capture-implementation-2026-10-11/ab/references/export_candidates.py",
       "sha256": "ea1715372b1bfc36b53013061296614d97d216651a34c4cf829f6a47c301a3db",
       "bytes": 8889
     },
