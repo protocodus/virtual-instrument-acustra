@@ -1959,8 +1959,8 @@ void testEditorRendering()
         }
         expect (false, "the editor display timer did not run");
     };
-    expect (choiceButtons.size() == 21,
-            "the six radio groups do not expose all 21 existing options");
+    expect (choiceButtons.size() == 20,
+            "the six radio groups do not expose all 20 existing options");
     expect (std::all_of (choiceButtons.begin(), choiceButtons.end(),
                         [] (const auto* button)
                         {

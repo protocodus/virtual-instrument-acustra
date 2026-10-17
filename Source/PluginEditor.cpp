@@ -1284,7 +1284,7 @@ void AcustraAudioProcessorEditor::resized()
     setupControls[0]->setBounds (leftSwitches (166, 2));
 
     const std::array<int, 3> choiceY { 262, 386, 510 };
-    const std::array<int, 3> choiceRows { 2, 2, 3 };
+    const std::array<int, 3> choiceRows { 2, 2, 2 };
     for (std::size_t index = 0; index < choiceControls.size(); ++index)
     {
         choiceLabels[index].setBounds (box (40, choiceY[index], 312, 22));
