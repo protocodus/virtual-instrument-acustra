@@ -34,7 +34,7 @@ model variation, not another measured real instrument.
 Sources, exact input hashes, fit conditions and rejected models are in
 [the measurement review](rau-source-methods-2026-09-08.md),
 the Rau fit report (generated locally, not published) and
-[Bellido refinement report](nylon-bridge-refinement-report.json).
+[Bellido refinement report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/nylon-bridge-refinement-report.json).
 The Bellido source is Robert Mores' CC BY 4.0 archive. Rau's separate raw ZIP
 has no explicit redistribution license; raw data stays outside the repository
 and this work has not published a release.
@@ -84,7 +84,7 @@ as its radiation reference; this legacy offset is preserved to avoid retuning
 the default instrument. The high-band conductance floor has no measured shape
 mapping and remains unchanged. See [the coupling qualification](body-shape-coupling-2026-09-09.md).
 
-[The earlier radiation-only comparison](body-control-comparison-2026-09-08.json) uses
+[The earlier radiation-only comparison](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/body-control-comparison-2026-09-08.json) uses
 identical notes and removes each note's overall spectral energy before
 comparing frequency bands. All six shape pairs separate more strongly in
 both materials. Mean pairwise band distances rise from 3.45–5.57 to

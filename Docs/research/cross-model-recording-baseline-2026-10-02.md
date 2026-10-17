@@ -87,7 +87,7 @@ tests pass (3/3). Manual native checks show:
   renderers for both model presets. Their reported controls match the
   intended shape, wood and model.
 
-The accompanying [JSON](cross-model-recording-baseline-2026-10-02.json)
+The accompanying [JSON](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/cross-model-recording-baseline-2026-10-02.json)
 records all twelve score summaries, full weighted residuals, source/binary
 hashes, controls, commands, target/manifest hashes and option-check results.
 Raw audio remains in ignored local folders.

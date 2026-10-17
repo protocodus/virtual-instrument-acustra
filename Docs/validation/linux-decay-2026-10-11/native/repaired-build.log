@@ -1,4 +1,0 @@
-[ 50%] Built target AcustraDSP
-[100%] Building CXX object CMakeFiles/AcustraEngineTests.dir/Tests/AcustraEngineTests.cpp.o
-[100%] Linking CXX executable AcustraEngineTests
-[100%] Built target AcustraEngineTests

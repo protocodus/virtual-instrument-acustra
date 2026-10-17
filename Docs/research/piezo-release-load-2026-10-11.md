@@ -37,7 +37,7 @@ consistent with the force the existing instrument already applies.
 
 An isolated copy of the current source was frozen before the piezo edit;
 source hashes, commands and results are in
-[the evidence directory](../validation/piezo-release-load-2026-10-11/manifest.json).
+[the evidence directory](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/piezo-release-load-2026-10-11/manifest.json).
 One acceptance run retained the original headroom and overload gates:
 
 - Twelve injected loads, ±0.25 N at each of six strings, followed the
@@ -66,7 +66,7 @@ FAIL: isolated piezo clip aliasing is not 1.5 dB under a bare clip in the upper 
 At 44.1 kHz and Touch 0.58, the upper-half full-band error mean was
 −66.1405 dB, versus −65.0238 dB for a bare clip: improvement 1.1167 dB,
 below the old 1.5 dB requirement. This result is retained in
-[acceptance.log](../validation/piezo-release-load-2026-10-11/acceptance.log), not
+[acceptance.log](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/piezo-release-load-2026-10-11/acceptance.log), not
 reported as an original-gate pass.
 
 ## Why the relative comparison uses the established passband
@@ -105,8 +105,8 @@ upper-half comparison:
 The independent continuous-circuit harmonic, aliasing, overload and recovery
 tests retain their existing gates. The corrected focused fixture and its
 bypass-BLAMP negative control are recorded alongside the original failed
-run. The [focused positive check](../validation/piezo-release-load-2026-10-11/clip-guard-positive.log)
+run. The [focused positive check](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/piezo-release-load-2026-10-11/clip-guard-positive.log)
 passes with 4.0312 dB passband and 1.1167 dB full-band mean improvement.
-The [bypass check](../validation/piezo-release-load-2026-10-11/clip-guard-negative.log)
+The [bypass check](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/piezo-release-load-2026-10-11/clip-guard-negative.log)
 fails both relative guards: its error equals the bare clip's in each band.
 The final combined instrument still requires its complete validation.

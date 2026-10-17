@@ -73,7 +73,7 @@ However, target attack note-to-neighbor contrast changes by only about
 the narrow resonant note peak**. Higher partials can also weaken: the original
 grid includes second/third-harmonic losses around 8–9 dB in some upper notes.
 
-![Combination comparison](../validation/capture-combinations-2026-10-11/combination-resonances.png)
+![Combination comparison](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/combination-resonances.png)
 
 ## Check with different excitation
 
@@ -95,7 +95,7 @@ worst held low-note fundamental loss is 4.81 dB, on a quiet open-E component
 whose baseline level is −75.36 dBFS. These figures describe different effects
 and should not be collapsed into a single quality score.
 
-See the [holdout report](../validation/capture-combinations-2026-10-11/holdout-report.md)
+See the [holdout report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/holdout-report.md)
 for absolute levels, time windows, stereo fold-down and full limits. This
 tests additional playing conditions on the same model; it is not independent
 studio measurement validation.
@@ -117,7 +117,7 @@ hole can still affect a sustained harmonic or be crossed by tuning/bending.
 Integrated harmonic-band measurements cannot dismiss it.
 
 The conservative blend also has deep narrow holes; it is not a proven remedy
-for that issue. The [refined notch measurements](../validation/capture-combinations-2026-10-11/notch-widths.json)
+for that issue. The [refined notch measurements](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/notch-widths.json)
 retain exact intervals, source hashes and baseline/candidate local shape.
 
 ## Listening
@@ -137,7 +137,7 @@ Full four-way comparisons: [Parlor](../build-audit/studio-mic-combinations-20261
 [Jumbo](../build-audit/studio-mic-combinations-20261011/presentation/jumbo-spruce-mono_mic-all-combinations.wav).
 Order: current at 0 s, balanced at 5.72 s, conservative at 11.44 s, equal five
 at 17.16 s. Both woods and both microphone routes are available in the
-[audition manifest](../validation/capture-combinations-2026-10-11/audition-manifest.json).
+[audition manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/audition-manifest.json).
 No human listening preference or acceptance is assumed.
 
 ## Reproduction and isolation
@@ -158,15 +158,15 @@ selected blend is byte-identical to baseline. Prepared construction memory
 outside microphone coefficient fields, cached poles, mechanical/piezo traces
 and the full bridge/body modal-state witness are unchanged.
 
-Evidence: [native summary](../validation/capture-combinations-2026-10-11/native-summary.json),
-[screen summary](../validation/capture-combinations-2026-10-11/screen-summary.json),
-[independent metric review](../validation/capture-combinations-2026-10-11/independent-metric-review.json),
-[native prediction check](../validation/capture-combinations-2026-10-11/native-prediction.json),
-[balanced isolation](../validation/capture-combinations-2026-10-11/balanced-all/observation.invariants.json),
-[conservative isolation](../validation/capture-combinations-2026-10-11/measured-continuity/observation.invariants.json).
+Evidence: [native summary](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/native-summary.json),
+[screen summary](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/screen-summary.json),
+[independent metric review](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/independent-metric-review.json),
+[native prediction check](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/native-prediction.json),
+[balanced isolation](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/balanced-all/observation.invariants.json),
+[conservative isolation](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/measured-continuity/observation.invariants.json).
 
-The archived [balanced coefficients](../validation/capture-combinations-2026-10-11/balanced-all/observation.csv)
-and [manifest](../validation/capture-combinations-2026-10-11/balanced-all/manifest.json)
+The archived [balanced coefficients](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/balanced-all/observation.csv)
+and [manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/balanced-all/manifest.json)
 are a concrete research candidate for the frozen 48 kHz harness, not a portable
 production parameter table. Full audio and frozen reproduction inputs remain
 in local `build-audit/studio-mic-combinations-20261011`. No Rack rebuild or

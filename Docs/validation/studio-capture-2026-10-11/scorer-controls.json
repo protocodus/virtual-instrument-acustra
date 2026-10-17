@@ -1,9 +1,0 @@
-{
-  "rational_vs_complex_response_maximum_relative_error": 2.3997829615200163e-11,
-  "identity_frf_cases": 108,
-  "identity_frf_maximum_absolute_delta_db": 8.881784197001252e-15,
-  "native_hash_verified": "parlor-spruce-stereo_mic-m47-s1",
-  "inphase_sum_loss_db": 0.0,
-  "antiphase_sum_loss_db": -300.0,
-  "scorer_sha256": "79c861945cb95a1a383ddcd9860829667b57b7c4e4ade4e2aba5af1550af0819"
-}

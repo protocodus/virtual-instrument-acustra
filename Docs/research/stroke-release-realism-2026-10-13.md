@@ -39,7 +39,7 @@ are untouched by construction.
 
 `Tools/MeasureStrumDirection.py` reads GuitarSet's 180 comping takes (Xi et
 al., ISMIR 2018, Zenodo 3371780, CC BY 4.0; hashes of every input in
-[`../validation/stroke-release-2026-10-13/guitarset-inputs.sha256`](../validation/stroke-release-2026-10-13/guitarset-inputs.sha256)).
+[`../validation/stroke-release-2026-10-13/guitarset-inputs.sha256`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/stroke-release-2026-10-13/guitarset-inputs.sha256)).
 Strokes are `Tools/MeasureStrums.py`'s onset clusters (three or more strings
 inside 75 ms, the shortest sixteenth note of the takes): 5,501 downstrokes and
 3,162 upstrokes. The hex pickup's per-coil gain is uncalibrated, so a string
@@ -282,7 +282,7 @@ recorded. All three changes ship on, pair 2's upstroke level included.
 
 Paired callback timing on one build, the switches on against off (the
 probes and raw numbers are in
-[`../validation/stroke-release-2026-10-13/probes`](../validation/stroke-release-2026-10-13/probes/results.txt);
+[`../validation/stroke-release-2026-10-13/probes`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/stroke-release-2026-10-13/probes/results.txt);
 4-CPU Intel Xeon at 2.1 GHz, cloud VM, nothing else running, not a quiet
 benchmark machine):
 

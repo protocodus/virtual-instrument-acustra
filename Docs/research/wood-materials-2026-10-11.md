@@ -153,8 +153,8 @@ These are descriptive spectral differences, not audibility thresholds or
 preference scores. The coherent Rack microphone/piezo blend also retains
 material contrast; its final medians are 2.173 dB for Mahogany and 2.267 dB
 for Maple. Its small change under recalibration reflects the altered balance
-of the two capture paths. The [source and descriptor evidence](../validation/material-gestures-2026-10-11/wood-descriptors.json)
-and [before/after comparison](../validation/material-gestures-2026-10-11/wood-comparison.json)
+of the two capture paths. The [source and descriptor evidence](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/material-gestures-2026-10-11/wood-descriptors.json)
+and [before/after comparison](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/material-gestures-2026-10-11/wood-comparison.json)
 record the full protocol.
 
 The [Wood listening page](http://127.0.0.1:8771/wood/) compares the same

@@ -108,13 +108,13 @@ Identical MIDI, controls and deterministic draws are used for each pair; no
 time alignment, per-band processing or dynamic normalization is applied to
 make a candidate win.
 
-- [Attack measurements](../validation/sound-refinements-2026-10-15/attack/measurements.json)
-  and [baseline bypass parity](../validation/sound-refinements-2026-10-15/attack/bypass-parity.json).
+- [Attack measurements](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/attack/measurements.json)
+  and [baseline bypass parity](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/attack/bypass-parity.json).
 - [Attack experiment tool](../../Tools/ExperimentAttackRefinements.py).
-- [Capture screen and reference tradeoffs](../validation/capture-refinements-2026-10-15/readme.md)
-  and [native capture probes](../../Tools/CaptureRefinementAudit/README.md).
+- [Capture screen and reference tradeoffs](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-refinements-2026-10-15/readme.md)
+  and [native capture probes](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Tools/CaptureRefinementAudit/README.md).
 - [Room study](room-smoothness-2026-10-15.md),
-  [room measurements](../validation/sound-refinements-2026-10-15/room/measurements.json)
+  [room measurements](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/measurements.json)
   and [reproduction tool](../../Tools/MeasureRoomRefinements.py).
 - [Listening-pack builder](../../Tools/BuildSoundRefinementReview.py) and
   [public Performer scores](../../Tools/RenderSoundRefinementReview.cpp).
@@ -132,7 +132,7 @@ The Release build completed for every JUCE-free target, including the C++17
 DSP/Performer compatibility and extended-layout targets. All **104 registered
 DSP/tool checks pass** on the final DSP: 102 suites from the broad run and the
 final Capture and Engine reruns after two test-only expectation updates.
-[Validation receipt](../validation/sound-refinements-2026-10-15/validation.json).
+[Validation receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/validation.json).
 
 The original Engine test assumed identical Pick/Finger burst amplitudes.
 It still tests that legacy law, at its unchanged tolerance, with the refinement
@@ -166,8 +166,8 @@ Room 1, median time changes 168.895→171.879 µs and p95 284.991→294.164 µs.
 Every finite-output/contact-state/drop check passes. Cloud scheduling produces
 large isolated timing outliers in both versions, so this is a local overhead
 measurement, not a callback-deadline guarantee.
-[CPU evidence](../validation/sound-refinements-2026-10-15/cpu/readme.md) and
-[reproduction harness](../../Tools/SoundRefinementCpu/README.md).
+[CPU evidence](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/cpu/readme.md) and
+[reproduction harness](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Tools/SoundRefinementCpu/README.md).
 
 ## Listen
 
@@ -192,4 +192,4 @@ not serve its adjacent audio directory. The repaired controls load clips on dema
 and preserve seek position even on servers without byte-range support. All 26
 targeted browser checks pass, including playback of all ten scenes. Audio bytes,
 blind identities and scores are unchanged; the original pack is preserved.
-[Player repair evidence](../validation/sound-refinements-2026-10-15/player-fix/readme.md).
+[Player repair evidence](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/player-fix/readme.md).

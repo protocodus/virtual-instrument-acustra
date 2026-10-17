@@ -170,7 +170,7 @@ NODE_PATH=/workspace/shared/acustra-browser/node_modules \
 ```
 
 `BuildRealismEvidence.py --help` documents the paired-report and optional
-completion-check inputs. The committed [evidence JSON](realism-ten-improvements-2026-10-04.json)
+completion-check inputs. The committed [evidence JSON](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/realism-ten-improvements-2026-10-04.json)
 records exact outcomes, reference/model hashes, exclusions and term coverage.
 The final CTest sidecar/JUnit and browser report remain in ignored
 `build-realism`. Browser automation decisions explicitly say they are test

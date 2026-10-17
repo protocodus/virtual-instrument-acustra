@@ -132,5 +132,5 @@ Matched-volume clips are available locally under `Docs/audio/control-character/`
 (not committed): `picking-steel.wav`, `picking-nylon.wav`, `shape-steel.wav`, and
 `shape-nylon.wav`. Picking order is Finger, Pick, Thumb; shape order is Parlor,
 Auditorium, Dreadnought, Jumbo. Each option plays MIDI 40, 55, 64 and 74 with the
-same velocity and per-note stereo RMS. The [audit tools](../../Tools/ControlCharacterAudit/README.md)
+same velocity and per-note stereo RMS. The [audit tools](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Tools/ControlCharacterAudit/README.md)
 reproduce the isolated comparisons.

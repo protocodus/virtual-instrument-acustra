@@ -179,7 +179,7 @@ The frozen final source passes the complete Release build, the C++17 DSP
 smoke target and **80/80 CTest suites** (174.74 seconds). This includes seven
 new physical contract suites and the existing construction, continuity,
 allocation, sample-rate, capture-circuit and performance contracts. The
-[receipt](../validation/material-gestures-2026-10-11/receipt.json) links the source
+[receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/material-gestures-2026-10-11/receipt.json) links the source
 hashes, complete build/test logs, negative controls and listening manifests.
 
 Independent checks include the steel section and attack-tension laws;
@@ -196,7 +196,7 @@ Fresh calibration with rebuilt renderers passes all 108 Shape/Wood/playing
 technique/capture phrase cells within ±1 LU and all 180 native strum cases
 within the existing ±9 dB range (observed -4.654 to +3.230 dB). The default
 Dreadnought/Spruce/Finger microphone gain remains exact; the corresponding
-Piezo trim increases 0.320 dB. The [calibration summary](../validation/material-gestures-2026-10-11/calibration-summary.json)
+Piezo trim increases 0.320 dB. The [calibration summary](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/material-gestures-2026-10-11/calibration-summary.json)
 records both the valid checks and remaining output-headroom limits: all
 microphone stress cases retain at least 1 dB below the safety knee, while
 12/12 hardest Piezo Finger and 5/12 hardest Piezo Pick constructions cross

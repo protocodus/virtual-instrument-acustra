@@ -27,7 +27,7 @@ judgments were supplied, so this records the overall acceptance only.
 The [private comparison player](https://acustra-sound-ab.voho-evangelist.chatgpt.site)
 serves the unchanged audio together with repaired loading, seeking and A/B
 switching. See the [research report](research/sound-refinements-2026-10-15.md) and
-[player repair evidence](validation/sound-refinements-2026-10-15/player-fix/readme.md).
+[player repair evidence](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/player-fix/readme.md).
 
 ## 2026-10-15 — ten sound screens, two bounded refinements for A/B
 
@@ -1317,7 +1317,7 @@ existing Pick headroom policy pass with the same guards. The final calibrated
 Pick/Thumb traces reproduce the selected experiment's physical waves and fade;
 output gain changes preserve its harmonic evolution. Finger's broader transfer
 is checked separately and has no inferred listening verdict. See
-[research/classic78-sustain-integration-2026-10-09.json](research/classic78-sustain-integration-2026-10-09.json).
+[research/classic78-sustain-integration-2026-10-09.json](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/classic78-sustain-integration-2026-10-09.json).
 
 The new final sustain construction player covers all 24 guitars, all three
 techniques and both affected microphones: 144 cells and 288 bass/upper phrases

@@ -13,13 +13,13 @@ signal measurement.
 
 Source `8ea51f9` (clean). `AcustraPerformanceRenderer` built from it, Release
 `-O3`, GCC 13.3, SHA-256 `d31f7bb1…` (full hashes of the renderer, engine and
-scorers in [`provenance.txt`](piezo-blend-2026-10-12/provenance.txt)). The
+scorers in [`provenance.txt`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12/provenance.txt)). The
 scorer is `Tools/MeasureNoteEvenness.py`'s own functions (per-note sustained
 level, deviation against neighbours, RMS deviation). Strums come from
 `Tools/MeasureMaterialLoudness.py` (`strums()`, BS.1770 loudness). Unless
 stated: stereo microphones, Finger, velocity 96, Room 0.5, 48 kHz, all 12
 constructions (four Shapes by three Woods), E2-C6. Scripts and text results
-are in [`piezo-blend-2026-10-12/`](piezo-blend-2026-10-12); the raw renders
+are in [`piezo-blend-2026-10-12/`](https://github.com/protocodus/virtual-instrument-acustra/tree/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12); the raw renders
 are not kept.
 
 ## Method: superposition
@@ -38,7 +38,7 @@ either polarity.
 ## Why the two notes cancel
 
 At each note's fundamental, the microphones' level and phase against the
-piezo (transfer files in `transfer/`, [`string-phase.txt`](piezo-blend-2026-10-12/string-phase.txt)):
+piezo (transfer files in `transfer/`, [`string-phase.txt`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12/string-phase.txt)):
 
 - **Parlor Spruce F#5, top string.** The microphones are only 0.8 dB above
   0.2 times the piezo and 179° from it, so the blend takes 21 dB off the
@@ -58,8 +58,8 @@ piezo (transfer files in `transfer/`, [`string-phase.txt`](piezo-blend-2026-10-1
 
 Mean RMS deviation over the 12 constructions, in dB, and how many
 constructions each variant makes better or worse than the shipped blend by
-more than 0.05 dB ([`summary-table.txt`](piezo-blend-2026-10-12/summary-table.txt),
-[`strings.txt`](piezo-blend-2026-10-12/strings.txt)):
+more than 0.05 dB ([`summary-table.txt`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12/summary-table.txt),
+[`strings.txt`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12/strings.txt)):
 
 | Variant | E2-C6 sweep | Per string | Pick | Parlor Spruce F#5 | Jumbo Spruce C5 |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -84,19 +84,19 @@ more than 0.05 dB ([`summary-table.txt`](piezo-blend-2026-10-12/summary-table.tx
   shipped blend is already the most even (V3d worse on 6 of 12 at Room 0.5,
   9 at Room 1), and at Room 1 or with Capture Mono its single-note advantage
   shrinks to 6/3 and 8/2. It works only within 0.5-0.625 ms of its chosen
-  shift ([`verification/`](piezo-blend-2026-10-12/verification)).
+  shift ([`verification/`](https://github.com/protocodus/virtual-instrument-acustra/tree/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12/verification)).
 - **Any change reshapes the tone of every Piezo Mix setting.** Against the
   shipped blend, V2 and V3d lift the Parlor's 80 Hz third-octave by about
   11 dB and take 3-5 dB off 100-125 Hz on the larger bodies. V3d raises the
   default's loudness by up to 1.2 LU on the Jumbo, spreading the
   constructions, which are levelled at Piezo Mix 0, from 0.41 to 0.91 LU
-  ([`phrases.txt`](piezo-blend-2026-10-12/phrases.txt)). Every saved session with
+  ([`phrases.txt`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12/phrases.txt)). Every saved session with
   a piezo would change, and so would the Rack's default patch.
 - **Neither a lower default nor a filter fixes it.** Piezo Mix 0.1 halves
   both the cancellation and the fill (mean 3.38; Parlor F#5 -11.1). A
   1-2 kHz high-pass on the piezo removes the fill too and is less even
   than the microphones alone (3.50). A 90° rotation is a coin flip by note
-  set ([`rotation.txt`](piezo-blend-2026-10-12/rotation.txt)).
+  set ([`rotation.txt`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/piezo-blend-2026-10-12/rotation.txt)).
 - **The mono-sum metric exaggerates the holes.** Scored per stereo channel,
   Parlor F#5 with the shipped blend is -10.4 dB on the left and -8.5 on the
   right (-9.5 as their power mean), against -14.3 for the mono sum the sweep

@@ -83,7 +83,7 @@ That experiment demonstrates an observation-only tonal change, not a
 root-cause repair or listening acceptance. The source change and provisional
 tests were archived and removed from the working engine. Measurements and
 reproduction scripts remain in
-[the diagnostic evidence](../validation/microphone-boom-2026-10-11/comparison-summary.json).
+[the diagnostic evidence](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/microphone-boom-2026-10-11/comparison-summary.json).
 
 ## Direction for the next correction
 

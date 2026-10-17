@@ -7,7 +7,7 @@ interpolation order, delay range, coefficients and active physical tails stay
 the same. The extra history costs about 992 bytes per SDK instance.
 
 The DSP change is `06cd050`, against release-preparation revision `52c7ef0`.
-This report's [machine-readable record](cpu-reduction-2026-10-02.json) records
+This report's [machine-readable record](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/benchmarks/cpu-reduction-2026-10-02.json) records
 module hashes, compiled DSP source hashes and every final-module result. UI
 changes after that revision do not modify the DSP.
 

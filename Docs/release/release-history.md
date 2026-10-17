@@ -1200,7 +1200,7 @@ sustain warming. The intrinsic sustain profile covers all Classic strings and
 techniques; Original keeps its preceding sustain profile. Measured body/bridge
 data, parameter IDs and the wooden interface are retained. See the
 [resonance investigation](../research/microphone-resonance-2026-10-09.md) and
-[selected sustain integration](../research/classic78-sustain-integration-2026-10-09.json)
+[selected sustain integration](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/classic78-sustain-integration-2026-10-09.json)
 for the listener choices, engineering checks and scope of those judgments.
 
 Version 1.1.2 reduces delay-ring indexing work while preserving rendered audio,

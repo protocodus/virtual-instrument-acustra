@@ -53,7 +53,7 @@ All 48 final Piezo shape pairs differ. This is not a blanket increase across
 every pair and window: Parlor–Jumbo sustain contrast changes from 3.748 to
 3.703 dB for steel and from 3.154 to 2.274 dB for nylon, while its attack
 contrast increases. All pairs and windows are retained in
-[the qualification JSON](body-shape-coupling-2026-09-09.json).
+[the qualification JSON](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/body-shape-coupling-2026-09-09.json).
 
 The comparison also verifies exact baseline/final audio for **16/16
 Original/Dreadnought Finger cases** and **32/32 named native cases**, covering

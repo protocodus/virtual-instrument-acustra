@@ -24,7 +24,7 @@ signed low-partial errors are insufficient to justify a change that also
 lengthens other partials and lower notes. No development-selected replacement
 was tried. The unchanged loop-gain clamp also limits the realized change.
 
-The [full report](steel-loss-rate-experiment-2026-09-08.json) records the
+The [full report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/steel-loss-rate-experiment-2026-09-08.json) records the
 predeclared protocol, source/binary hashes, all term scores and independent
 baseline verification: **79 dry model renders and nine Walden training renders
 are byte-identical** between current frozen executables and the retained

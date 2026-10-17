@@ -72,9 +72,9 @@ remain possible; short-window harmonic integration cannot rule them out.
 Peaks were −12.36 dBFS before and −13.64 dBFS after, with no clipping or
 nonfinite output. No new listener preference is inferred from these metrics.
 
-![Fine pitch comparison](../validation/studio-capture-implementation-2026-10-11/ab/comparison/fine-pitch-ab.png)
+![Fine pitch comparison](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/ab/comparison/fine-pitch-ab.png)
 
-The [complete A/B report](../validation/studio-capture-implementation-2026-10-11/ab/comparison/report.md)
+The [complete A/B report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/ab/comparison/report.md)
 retains individual curves, windows, partial extrema, source/binary hashes and
 audition segment manifests. Audio remains in the local ignored
 `build-audit/capture-implementation-20261011/ab/comparison/audition/` directory.
@@ -97,7 +97,7 @@ A separate production trace, with no coefficient injection, compares all
 mechanical/Piezo/modal-state traces and Piezo bus audio byte for byte. Microphone
 audio changes in every case. This covers the short sounding/release/repluck/chord
 fixture and a 512-frame full modal-state witness; waveguide delay buffers are not
-dumped, and very late inaudible idle-reset timing is not asserted. See the [isolation receipt](../validation/capture-combinations-2026-10-11/production-isolation/normalized-phase2/summary.json).
+dumped, and very late inaudible idle-reset timing is not asserted. See the [isolation receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/production-isolation/normalized-phase2/summary.json).
 
 ## Flat microphone level correction
 
@@ -140,9 +140,9 @@ limitations. The focused Parlor H3 worst loss is 1.94 dB (−63.19 to
 Final auditions use one shared scalar per route over the whole primary sweep:
 +1.371 dB Stereo and +0.912 dB Mono after; no note-specific matching. Short
 centre comparisons play before at 0–4 s and after at 4.35–8.35 s. See the
-[final A/B report](../validation/studio-capture-implementation-2026-10-11/ab/comparison-final/report.md),
-[exact measurements](../validation/studio-capture-implementation-2026-10-11/ab/comparison-final/comparison.json)
-and [audition manifest](../validation/studio-capture-implementation-2026-10-11/ab/comparison-final/audition/centres/manifest.json).
+[final A/B report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/ab/comparison-final/report.md),
+[exact measurements](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/ab/comparison-final/comparison.json)
+and [audition manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/ab/comparison-final/audition/centres/manifest.json).
 
 The level generator measured 72 paired construction/style/microphone cells.
 Its gains span −0.145 to +2.777 dB. A separate 144-render final verification
@@ -152,10 +152,10 @@ peak is −2.10003 dBFS, with no limiter activation. The original extra
 0.001-LU diagnostic flags are retained: five Mono cells cross a BS.1770 gate
 boundary after scaling. A native-versus-ideal-scalar witness agrees to
 −148.86 dB relative RMS and identifies the gate change; no gain was refitted
-to conceal it. See the [level-match report](../validation/studio-capture-implementation-2026-10-11/level-match/report.md).
+to conceal it. See the [level-match report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/level-match/report.md).
 
-The final [physics receipt](../validation/studio-capture-implementation-2026-10-11/physics-final/provenance.json)
-and [production isolation](../validation/capture-combinations-2026-10-11/production-isolation/normalized-phase2/summary.json)
+The final [physics receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/physics-final/provenance.json)
+and [production isolation](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/capture-combinations-2026-10-11/production-isolation/normalized-phase2/summary.json)
 use the normalized final library. All observation coefficients remain
 byte-identical to the raw-blend implementation, and mechanics/Piezo remain
 byte-identical to the original baseline within the trace scope stated above.
@@ -163,7 +163,7 @@ byte-identical to the original baseline within the trace scope stated above.
 ## Final native build and regression
 
 The final arm64 Release build completed for DSP, tools, Standalone, AU and
-VST3. The [native validation receipt](../validation/studio-capture-implementation-2026-10-11/native-validation/receipt.json)
+VST3. The [native validation receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/native-validation/receipt.json)
 retains compact unmodified build/test logs, relevant CMake settings, architecture
 inspection and the final test-source hashes. This native build is not a new
 universal JUCE plugin validation.
@@ -177,8 +177,8 @@ passed. This test-only repair is commit `5402854`; no production DSP or library
 changed. Together the original 88 passes
 and the focused Engine rerun cover **89/89 distinct tests**. The original
 failed log is retained, and no all-green single full-run result is claimed.
-See the [repair review](../validation/studio-capture-implementation-2026-10-11/physics-final/engine-transition-review.json)
-and [test-only patch](../../Tools/research/studio-capture-implementation-2026-10-11/native-validation/engine-transition-oracle.patch).
+See the [repair review](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-implementation-2026-10-11/physics-final/engine-transition-review.json)
+and [test-only patch](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Tools/research/studio-capture-implementation-2026-10-11/native-validation/engine-transition-oracle.patch).
 
 The independent construction-loudness guard passes at its original ±3 LU
 threshold. The separate level-meter diagnostic and its five gate-boundary flags

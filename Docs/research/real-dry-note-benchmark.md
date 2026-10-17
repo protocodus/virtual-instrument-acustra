@@ -116,7 +116,7 @@ whose tops barely ring where a flat-top's air mode does.
 Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from
 the committed
-[`physical-fit-report.json`](physical-fit-report.json). The full renderer
+[`physical-fit-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/physical-fit-report.json). The full renderer
 and scoring protocol remain in [`PhysicalFitRenderer.cpp`](../../Tools/PhysicalFitRenderer.cpp)
 and [`FitPhysicalModel.py`](../../Tools/FitPhysicalModel.py).
 

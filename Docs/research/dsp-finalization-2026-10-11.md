@@ -182,12 +182,12 @@ Spruce, Parlor/Spruce and Jumbo/Mahogany through each of the three captures.
 `listening/manifest.json` records the frozen renderers, files, peaks, RMS and
 signal differences. Its `listened: false` is explicit: the files are review
 artifacts, not evidence of a listening preference or acoustic improvement.
-The [validation receipt](../validation/dsp-finalization-2026-10-11/receipt.json)
+The [validation receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/dsp-finalization-2026-10-11/receipt.json)
 retains the source hashes, build settings, recovery from the stale test object,
 calibration, negative controls, audio manifests and timing. All 194 frozen
 computational files matched after the final runs. A later same-line-count
 header comment clarifies that Release Noise is sampled at damping onset;
-[preprocessor parity](../validation/dsp-finalization-2026-10-11/comment-only-parity.json)
+[preprocessor parity](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/dsp-finalization-2026-10-11/comment-only-parity.json)
 proves unchanged Engine/Performer translation units in C++17/C++20 and both
 storage layouts. Both validated and final source manifests are retained.
 The 72 Finger/Thumb gain cells are unchanged; only the 36 Pick cells were
@@ -202,7 +202,7 @@ and output verification outside the timer. Builds, tests and other task
 renders were idle; ordinary desktop applications remained open. The harness
 includes direct engine attacks and Performer control callbacks, excluding
 JUCE/Reason host overhead. Full observations are in
-[callbacks-final.json](../validation/dsp-finalization-2026-10-11/callbacks-final.json).
+[callbacks-final.json](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/dsp-finalization-2026-10-11/callbacks-final.json).
 
 The median of the per-case paired median ratios is 1.0054. That aggregate
 does not erase deadline failures. Every row with a miss in either build is

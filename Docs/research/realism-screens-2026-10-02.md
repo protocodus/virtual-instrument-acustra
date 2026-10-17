@@ -158,7 +158,7 @@ matrices do not constitute a complete changing-contact energy proof.
 
 ## Evidence and next implication
 
-The [machine-readable record](realism-screens-2026-10-02.json) preserves all
+The [machine-readable record](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/realism-screens-2026-10-02.json) preserves all
 36 radiation outcomes, all 12 pole outcomes, nuisance sensitivities,
 both-model full-corpus comparisons, all three width variants and the source
 diagnostic. It includes protocols, input/tool/source hashes, recorded

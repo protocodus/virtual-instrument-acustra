@@ -31,13 +31,13 @@ production changes. No additional noise gain was applied to make it pass.
 
 ## Research
 
-- [Performer audit](research-realism-2026-10-16/performer.md): code locations,
+- [Performer audit](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/research-realism-2026-10-16/performer.md): code locations,
   quiet-string baseline measurements and explicit MIDI triggers.
-- [Wound-string audit](research-realism-2026-10-16/strings.md): distinct winding
+- [Wound-string audit](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/research-realism-2026-10-16/strings.md): distinct winding
   and axial mechanisms, boundaries, aliasing, lifetime and audibility limits.
-- [Body/capture audit](research-realism-2026-10-16/body-capture.md): reflection
+- [Body/capture audit](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/research-realism-2026-10-16/body-capture.md): reflection
   geometry, numerical conversion error, and deferred fret-end coupling.
-- [Held-shape mute audit](research-realism-2026-10-16/held-shape-mute.md): continued
+- [Held-shape mute audit](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/research-realism-2026-10-16/held-shape-mute.md): continued
   damping, physical-string ownership and the audible sympathetic-ring witness.
 
 The main physical references are [Bilbao et al., DAFx 2024](https://www.dafx.de/paper-archive/2024/papers/DAFx24_paper_50.pdf)

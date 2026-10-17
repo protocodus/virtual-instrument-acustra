@@ -81,7 +81,7 @@ says how much of a note a dip or boost at its fundamental can reach. The E2-E5 R
 falls from 4.20 to 3.52 dB on the Dreadnought, 3.51 to 3.20 on the
 Auditorium, 3.81 to 3.22 on the Jumbo and 3.35 to 2.71 on the Parlor; the
 holes move 1-3 dB nearer their neighbours because the neighbours fell.
-The logs are in [`mid-band-dip-2026-10-12/`](mid-band-dip-2026-10-12)
+The logs are in [`mid-band-dip-2026-10-12/`](https://github.com/protocodus/virtual-instrument-acustra/tree/1023937601cc7973785dd912addec3f5481273d9/Docs/research/mid-band-dip-2026-10-12)
 (`before-*.log`, `dip-*.log`, `dip-and-boost-*.log`); `dip-*.log` is the
 shipped engine with the level restore below, `dip-and-boost-*.log` the
 boost candidate before it, so their `rms` columns are offset by about
@@ -185,7 +185,7 @@ in four variants: main before the dip (c4596b4) at Room 0.5, this engine
 at Room 0.5, this engine dry (Room 0), and the plug-in's default sound,
 Room 0.5 with Piezo Mix 0.2 (`AcustraPerformanceRenderer --piezo-mix`,
 added for this). The logs are in
-[`mid-band-dip-2026-10-12/e2-c6/`](mid-band-dip-2026-10-12/e2-c6).
+[`mid-band-dip-2026-10-12/e2-c6/`](https://github.com/protocodus/virtual-instrument-acustra/tree/1023937601cc7973785dd912addec3f5481273d9/Docs/research/mid-band-dip-2026-10-12/e2-c6).
 
 | Shape | Before, Room 0.5 | Dip, Room 0.5 | Dip, dry | Default (Room 0.5, Piezo Mix 0.2) |
 | --- | ---: | ---: | ---: | ---: |

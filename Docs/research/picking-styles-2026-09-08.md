@@ -1,6 +1,6 @@
 # Picking style separation — 8 September 2026
 
-The [machine-readable record](picking-styles-2026-09-08.json) retains frozen
+The [machine-readable record](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/picking-styles-2026-09-08.json) retains frozen
 source/binary hashes, all 144 before/after Finger audio hashes, fixed controls
 and native qualification results.
 

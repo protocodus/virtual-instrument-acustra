@@ -175,7 +175,7 @@ JUCE and host overhead and do not establish a zero-miss audio guarantee.
 
 ## Reproduction and retained evidence
 
-The accompanying [JSON report](realism-attribution-2026-10-02.json) retains
+The accompanying [JSON report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/realism-attribution-2026-10-02.json) retains
 the complete ringing analysis, summary definitions, capture manifest,
 source/binary hashes, all callback samples, test outcomes and listening hashes.
 The original analyzer measurement hash is distinguished from the later

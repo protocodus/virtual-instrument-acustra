@@ -68,7 +68,7 @@ estimator test remains in place.
 
 ## Provenance
 
-Compact probe results are retained in [linux-decay-2026-10-11](linux-decay-2026-10-11/readme.md).
+Compact probe results are retained in [linux-decay-2026-10-11](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/linux-decay-2026-10-11/readme.md).
 Native probes reused the already validated `build-audit/libAcustraDSP.a` and
 current production headers; Linux probes reused one GCC-built engine object
 across baseline and candidate measurements. The rendered engine is unchanged
@@ -86,6 +86,6 @@ The complete repaired `Acustra.Engine` suite passes on macOS arm64 (72.79 s)
 and Ubuntu 24.04 amd64 with GCC 13.3. The latter reuses the exact engine object
 that reproduced the original CI failure. The new synthetic cases pass in both
 complete suites; existing bounds remain unchanged. See the
-[validation receipt](linux-decay-2026-10-11/final-local-validation.json).
+[validation receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/linux-decay-2026-10-11/final-local-validation.json).
 The configured hosted CI will run on the committed repair before public main
 is advanced; local Linux emulation is not a performance qualification.

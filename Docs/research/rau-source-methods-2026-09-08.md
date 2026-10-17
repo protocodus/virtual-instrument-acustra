@@ -83,7 +83,7 @@ uses the existing phase-preserving force-pair method and reports the unused
 center impact as a spatial interpolation diagnostic. This supplies real
 microphone diversity without inventing channels from Rau's numbered captures.
 
-The [nylon pressure report](nylon-body-candidate-report.json) retains passing
+The [nylon pressure report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/nylon-body-candidate-report.json) retains passing
 134-mode g35 and 138-mode g36 phase-preserving banks. Both use 24,000-sample
 causal windows selected by the existing low-mode Q convergence check. Every
 endpoint, heave/rock and microphone-balance fit gate passes. A compiled float
@@ -92,7 +92,7 @@ difference from the analytic model is 0.0000114. These are three measured
 microphone positions, not a measured binaural listener or arbitrary sound field.
 
 The initial fixed-pole passive bridge fits fail. The separate
-[bounded refinement report](nylon-bridge-refinement-report.json) preserves those
+[bounded refinement report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/nylon-bridge-refinement-report.json) preserves those
 limits while optimizing measured peak frequencies/Q and positive-semidefinite
 residues. The 92-pole g35 result passes dense float32 checks: complex error
 0.14037 and worst-string median magnitude error 0.82950 dB. Native float

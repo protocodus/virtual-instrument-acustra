@@ -67,7 +67,7 @@ The steel training winner improves 9.133216 → 8.952589 but worsens its
 development score 8.360820 → 8.382826. It is not selected for the instrument.
 Scores are engineering descriptor losses, not listener realism ratings.
 Exact values, parameter changes and hashes are in
-[the calibration report](../research/realism-calibration-2026-09-08.json).
+[the calibration report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/realism-calibration-2026-09-08.json).
 
 Reproduce the experiment with a fresh output directory:
 
@@ -144,7 +144,7 @@ from 0.91994 to 0.91573, and chroma distance from 0.31774 to 0.30546. Lower is
 better for all three. This corpus uses known string/onset annotations but
 unknown gesture and velocity; it does not independently test automatic
 strumming. Frozen binaries and complete per-performance results are in
-[the performance comparison](../research/realism-performance-comparison-2026-09-08.json).
+[the performance comparison](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/realism-performance-comparison-2026-09-08.json).
 
 ## Solver choice and remaining limits
 

@@ -1,8 +1,0 @@
-approved observer: 480 complex residues, max relative error 0
-observer rate 8000: 312 complex residues, 18 inactive modes, max relative error 3.00134e-07
-observer rate 24000: 372 complex residues, 3 inactive modes, max relative error 2.30557e-07
-observer rate 44100: 384 complex residues, 0 inactive modes, max relative error 2.57233e-07
-observer rate 96000: 384 complex residues, 0 inactive modes, max relative error 2.86681e-07
-observer rate 192000: 384 complex residues, 0 inactive modes, max relative error 2.36055e-07
-observer rate 384000: 384 complex residues, 0 inactive modes, max relative error 2.64246e-07
-observer rate 48000: 384 complex residues, 0 inactive modes, max relative error 0

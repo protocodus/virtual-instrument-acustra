@@ -4,7 +4,7 @@ No sound change is selected. The seed ensemble is an attribution measurement;
 the Finger burst-direction and common-center candidates both fail their
 declared corpus guards. These screens make no production DSP, visible-control
 or listener-selected calibration changes. The companion
-[machine record](realism-seed-and-geometry-2026-10-02.json) preserves protocols,
+[machine record](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/realism-seed-and-geometry-2026-10-02.json) preserves protocols,
 every compact statistical outcome, native observations, candidate score
 residuals, source hooks, executed methods and provenance.
 

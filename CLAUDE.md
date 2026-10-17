@@ -153,8 +153,9 @@ governs here too. An evidence folder takes its report's stem. The detailed
 release history is `Docs/release/release-history.md`; the full block
 descriptions and dated gap measurements are in `Docs/research/`
 (`how-it-works-1.7.0.md`, `known-gaps-ledger-2026-10-17.md`). Scripts, probes
-and patches live in `Tools/` (evidence scripts in
-`Tools/research/<report-stem>/`), never in `Docs/`. The technique and
+and patches live in `Tools/`, never in `Docs/`. Evidence older than the
+current engine was removed on 2026-10-17; reports link to it in Git history.
+The technique and
 repertoire WAV renders under README **Build** are local and not committed.
 
 ## Build and verify

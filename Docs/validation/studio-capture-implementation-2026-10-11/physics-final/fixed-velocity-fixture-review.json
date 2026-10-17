@@ -1,9 +1,0 @@
-{
-  "fixture_sha256": "b6b76d684767488aeae92cccf17cedaee9490a936d1ff8a95ed74523dbadbea5",
-  "baseline_sha256": "6e9c3fcce4b9ec94ee1000f4df75e7d0bd4233b796916acead3b3ce79722d5cb",
-  "rows": 160,
-  "fields_per_row": 10,
-  "all1600_values_exact": true,
-  "geometry": "Dreadnought/Spruce default calibration at48000Hz",
-  "scope": "Test-only fixed historical reference observer; poles are checked but never replaced."
-}

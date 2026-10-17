@@ -27,7 +27,7 @@ motion began. For a constant stop speed `v`, the exact returned waveform's
 time-coordinate derivative is `(c − v)/(c + v)`; the instantaneous-length
 reader gives `1 − 2v/c`. These agree only to first order in `v/c`.
 
-The [independent oracle](../../Tools/research/project-completion-2026-10-11/moving-stop/MovingStopOracle.py)
+The [independent oracle](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Tools/research/project-completion-2026-10-11/moving-stop/MovingStopOracle.py)
 solves those characteristics by bisection. A separate constant-speed closed
 form checks the solver to a maximum absolute error of `3.47e−18 s`. Its
 examples use the existing 6 ms exponential time scale and legal fret
@@ -38,7 +38,7 @@ dispersive string/contact solver or a measured guitar dataset.
 
 [`StringLoop::advance`](../../Source/DSP/AcustraEngine.cpp) glides `currentDelay`
 then reads that delay immediately. The
-[C++ witness](../../Tools/research/project-completion-2026-10-11/moving-stop/CurrentLoopCausality.cpp)
+[C++ witness](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Tools/research/project-completion-2026-10-11/moving-stop/CurrentLoopCausality.cpp)
 calls that production method from the frozen `70eeafc` engine object with
 matching headers. Its DSP code is preprocessor-identical to the completion
 starting source `56d4678`. The witness was then relinked against the frozen
@@ -85,7 +85,7 @@ A complete replacement needs coherent two-way transport, local observation,
 contact and retained-wave rules, followed by independent pulse/Doppler,
 stationary-parity, reset/copy/repluck, coupled stability and final audio/CPU
 evidence. The earlier
-[moving-endpoint experiment](../../Tools/MovingEndpointPowerPortCorrections/README.md)
+[moving-endpoint experiment](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Tools/MovingEndpointPowerPortCorrections/README.md)
 addresses a transverse compliant **bridge** coordinate in a small modal
 fixture; it does not qualify a longitudinal moving fret. Published
 [slide-guitar work](https://liu.diva-portal.org/smash/get/diva2%3A535809/FULLTEXT01.pdf)
@@ -100,15 +100,15 @@ implied by this evidence note.
 
 ## Reproduction and provenance
 
-The [manifest](../validation/project-completion-2026-10-11/moving-stop/provenance.json)
+The [manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/moving-stop/provenance.json)
 records compiler and original commands, source/object hashes, and archived
 witness/output hashes. The engine compile command is also retained in the
-preceding [build receipt](../validation/dsp-finalization-2026-10-11/benchmark-build-commands.json).
+preceding [build receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/dsp-finalization-2026-10-11/benchmark-build-commands.json).
 Recover `Source/` from commit `70eeafcf7a36a34c208f3244322b92ab0c81767d`
 into the manifest's frozen-source directory, then run the two recorded
 compile commands and the resulting witness to reproduce
-[the twelve raw cases](../validation/project-completion-2026-10-11/moving-stop/current-loop-causality.jsonl).
+[the twelve raw cases](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/moving-stop/current-loop-causality.jsonl).
 Running the archived Python script reproduces
-[the independent pulse results](../validation/project-completion-2026-10-11/moving-stop/moving-stop-oracle.json).
+[the independent pulse results](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/moving-stop/moving-stop-oracle.json).
 Only small source, JSON and provenance files are archived; no alternate
 engine or binary is added to the project.

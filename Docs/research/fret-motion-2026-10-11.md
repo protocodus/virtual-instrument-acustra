@@ -75,14 +75,14 @@ rate-normalized force, amount continuity, priming, stored-packet retention,
 reset/scoped panic, Gather, duplicate controllers and host block partitioning.
 At constant 0.1 m/s its force RMS is 1.248/1.235/1.226e-5 at 44.1/48/96 kHz,
 against the authored expected 1.28e-5. The strict C++17 build passes without
-warnings. The [evidence directory](../validation/fret-motion-2026-10-11) retains
+warnings. The [evidence directory](https://github.com/protocodus/virtual-instrument-acustra/tree/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/fret-motion-2026-10-11) retains
 source hashes, render measurements and validation logs.
 
 The complete Release build, C++17 DSP target and **81/81 CTest suites** pass
 (523.25 seconds serially, including all required Python checks). SDK5 analysis,
 Rack wrapper/output contracts, 15 rate/quality combinations and eight factory
 patches at five rates pass against the same frozen DSP. The
-[receipt](../validation/fret-motion-2026-10-11/receipt.json) records the final build
+[receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/fret-motion-2026-10-11/receipt.json) records the final build
 and test evidence; the [Rack report](../../Docs/FRET_MOTION_2026-10-11.md)
 records target-module provenance and the paired default-quality CPU results.
 These are local development checks; no new host install or listening approval

@@ -102,9 +102,9 @@ The focused test passed against the rebuilt production library; maximum
 independent magnitude error was 8.95e-8 dB. The production impulse probe
 reproduced the table above; external L/R summation differed by at most
 1.86e-9 from the raw impulse's sum. Saved
-[measurements](../validation/sound-refinements-2026-10-15/room/measurements.json),
-[alias trials](../validation/sound-refinements-2026-10-15/room/alias-comparison.csv)
-and [source/library manifest](../validation/sound-refinements-2026-10-15/room/manifest.json)
+[measurements](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/measurements.json),
+[alias trials](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/alias-comparison.csv)
+and [source/library manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/manifest.json)
 record that run. Native float responses and the generated binary/source are
 in `/tmp/acustra-room-review-evidence` in the working environment and can be
 regenerated with the command above.
@@ -133,10 +133,10 @@ stability. This explicitly tests the intended change without broadening
 the historical calibration limit or restoring the removed bass width.
 `Acustra.Capture` passed in 56.66 seconds after that fixture distinction;
 no production DSP or rendered A/B audio changed. The saved
-[baseline capture log](../validation/sound-refinements-2026-10-15/room/capture-frozen-baseline.log),
-[current room log](../validation/sound-refinements-2026-10-15/room/capture-current-room.log),
-[refinement-off control](../validation/sound-refinements-2026-10-15/room/capture-current-refinement-off.log)
-and [hash manifest](../validation/sound-refinements-2026-10-15/room/capture-calibration-manifest.json)
+[baseline capture log](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/capture-frozen-baseline.log),
+[current room log](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/capture-current-room.log),
+[refinement-off control](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/capture-current-refinement-off.log)
+and [hash manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/sound-refinements-2026-10-15/room/capture-calibration-manifest.json)
 record the comparison.
 
 The main sound-refinement report records the final integrated build, broader

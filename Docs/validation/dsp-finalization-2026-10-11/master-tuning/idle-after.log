@@ -1,6 +1,0 @@
-idle clock=0 L=418.729 target=418.729 appliedZ=1 targetZ=1
-idle clock=64 L=418.729 target=418.729 appliedZ=1 targetZ=1
-tune=0 maxDiff=0 relativeRms=0
-idle clock=0 L=406.997 target=406.997 appliedZ=1 targetZ=1
-idle clock=64 L=406.997 target=406.997 appliedZ=1 targetZ=1
-tune=50 maxDiff=0 relativeRms=0

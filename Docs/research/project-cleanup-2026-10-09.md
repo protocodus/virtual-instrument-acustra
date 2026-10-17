@@ -72,7 +72,7 @@ Rack renderer comparison reproduces all 104 generated files exactly,
 including 101 PNG pixel comparisons. Runtime panels, patches, properties and
 released artifacts remain unchanged. Further build/test results and source
 hashes are recorded in
-[the cleanup validation receipt](project-cleanup-validation-2026-10-09.json).
+[the cleanup validation receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/project-cleanup-validation-2026-10-09.json).
 
 Local detailed evidence is retained under
 `build-cleanup-20261009/evidence/` in the canonical checkout and

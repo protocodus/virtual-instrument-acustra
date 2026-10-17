@@ -1,8 +1,0 @@
-{
-  "CompareMicrophoneBoom.py": "da4617b476d4ce8e62087aea1fbc6c6375302c0c46b3e612ba708484d21686e0",
-  "MeasureMicrophoneBoom.py": "1e40e053bcce6617ffa9215fe6eead15c71968e09ecc61af175b9920026b3053",
-  "commands.txt": "67edb4dbea1e348974380788a96463212b714df6ad88afa9fdb847a24ac7d01d",
-  "comparison-summary.json": "114e8fa5996940b46918bd634e2dbf0747431d58293ff4c8dd9ddff9e0d81434",
-  "evaluated-candidate-source.patch": "c7c55f329b19d6379e3c4cf48b759629eeb3a1318483d2d63b3840444fbe902f",
-  "post-render-header-comment.patch": "6da53da61820fdd3e542806f954abba350c30889c514987c9ec6b62741776b03"
-}

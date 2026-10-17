@@ -23,7 +23,7 @@ Scheduler outliers remain, so this isolated experiment supports the local
 cost reduction and does not certify a deadline. Full combined guitar-bank
 qualification is recorded separately in the final callback report.
 
-The [raw timing and provenance report](gaussian-initialization-cost-2026-09-08.json)
+The [raw timing and provenance report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/benchmarks/gaussian-initialization-cost-2026-09-08.json)
 retains all observations and frozen source hashes. The optimization is in
 [AcustraEngine.cpp](../../Source/DSP/AcustraEngine.cpp); the reusable probe is
 [CallbackBenchmark.cpp](../../Tools/CallbackBenchmark.cpp). No contact width,

@@ -120,7 +120,7 @@ exact broadband group-delay or acoustic onset measurement.
 The final native Engine, Release, Capture, GuitarModels and ContactTravel
 tests all pass. JUCE processor contract tests pass, and the standalone app
 builds successfully. Exact scores, source hashes, artifact hashes, lifecycle
-checks and callback results are retained in the [machine-readable report](contact-travel-2026-09-08.json).
+checks and callback results are retained in the [machine-readable report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/contact-travel-2026-09-08.json).
 
 The historical [first-candidate patch](../Tools/ContactTravelExperiment.patch)
 is retained for reconstructing the scored held-note experiment. It predates

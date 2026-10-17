@@ -1,3 +1,0 @@
-/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/Standalone/Acustra.app/Contents/MacOS/Acustra: Mach-O 64-bit executable arm64
-/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/AU/Acustra.component/Contents/MacOS/Acustra:   Mach-O 64-bit bundle arm64
-/Users/vojta/Dev/virtual-instrument-acustra-model-audit-20261011/build-audit/Acustra_artefacts/Release/VST3/Acustra.vst3/Contents/MacOS/Acustra:      Mach-O 64-bit bundle arm64

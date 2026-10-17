@@ -17,8 +17,8 @@ The selected DSP snapshot passed all 76 suites and 12 affected canonical
 checks. Its 221 reviewed non-Docs files and renderer matched the isolated
 validated source. The final construction pack covers 144 combinations and
 288 phrases; all 144 Original phrases match the preceding accepted-attack
-checkpoint. See [the integration evidence](../research/classic78-sustain-integration-2026-10-09.json)
-and [construction evidence](../research/classic78-final-sustain-construction-review-2026-10-09.json).
+checkpoint. See [the integration evidence](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/classic78-sustain-integration-2026-10-09.json)
+and [construction evidence](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/classic78-final-sustain-construction-review-2026-10-09.json).
 The user's Pick/Thumb listening choice covers the focused Auditorium/Mahogany
 clips; broader engineering coverage does not imply an additional ear verdict.
 

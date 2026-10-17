@@ -1,6 +1,0 @@
-2026-10-11T21:42:32.1824358Z Isolated string H1 decay: maximum rate spread 0.0180071%, round-trip loss range 1.27506:1
-2026-10-11T21:42:32.1824864Z FAIL: steel MIDI 84 H8 decayed at rates that differ by 6.257539%
-2026-10-11T21:42:32.1825350Z Isolated string H8 decay: maximum rate spread 6.25754%, round-trip loss range 1.29449:1
-2026-10-11T21:51:44.0984756Z 99% tests passed, 1 tests failed out of 87
-2026-10-11T21:51:44.0985315Z Total Test time (real) = 685.99 sec
-2026-10-11T21:51:44.0989585Z 	  2 - Acustra.Engine (Failed)

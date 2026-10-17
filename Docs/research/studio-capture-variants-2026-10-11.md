@@ -86,10 +86,10 @@ ratio increase mostly reflects cancelled higher harmonics, rather than an
 equally large increase in bass. This is why a single target-band score is
 insufficient for acceptance.
 
-![Attack and held spectral balance across neighboring notes](../validation/studio-capture-2026-10-11/resonance-comparison.png)
+![Attack and held spectral balance across neighboring notes](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/resonance-comparison.png)
 
-See the [complete comparison](../validation/studio-capture-2026-10-11/comparison-summary.md)
-and [machine-readable results](../validation/studio-capture-2026-10-11/comparison-summary.json)
+See the [complete comparison](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/comparison-summary.md)
+and [machine-readable results](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/comparison-summary.json)
 for all five variants, windows, adverse cases and transfer-function checks.
 
 ## Measurement basis and remaining uncertainty
@@ -149,7 +149,7 @@ normalized. These are listening materials, not evidence of listening approval.
 - [Jumbo: E1, F1, D#2, F2](../build-audit/studio-mic-variants/presentation/jumbo-current-vs-measured-phase-neck.wav)
 
 Full six-way comparisons are available for both woods and both microphone
-captures in the [audition manifest](../validation/studio-capture-2026-10-11/audition-manifest.json).
+captures in the [audition manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/audition-manifest.json).
 Direct Spruce / Mono comparisons: [Parlor](../build-audit/studio-mic-variants/presentation/parlor-spruce-mono_mic-comparison.wav),
 [Auditorium](../build-audit/studio-mic-variants/presentation/auditorium-spruce-mono_mic-comparison.wav),
 and [Jumbo](../build-audit/studio-mic-variants/presentation/jumbo-spruce-mono_mic-comparison.wav).
@@ -167,10 +167,10 @@ eight microphone coefficient fields and all cached pole bits are unchanged
 across all 12 constructions. All rendered output is finite, with no added
 full-scale clipping.
 
-The [isolation receipts](../validation/studio-capture-2026-10-11/observation-isolation.json),
-[scorer controls](../validation/studio-capture-2026-10-11/scorer-controls.json),
-[final scoring checks](../validation/studio-capture-2026-10-11/final-scoring-checks.json)
-and [commands](../validation/studio-capture-2026-10-11/commands.md) preserve the
+The [isolation receipts](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/observation-isolation.json),
+[scorer controls](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/scorer-controls.json),
+[final scoring checks](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/final-scoring-checks.json)
+and [commands](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/studio-capture-2026-10-11/commands.md) preserve the
 verification. The local scratch harness links the frozen current DSP library
 and injects only observation coefficients. Reproduction commands require those
 frozen local inputs; the archived Python scripts are evidence, not a new

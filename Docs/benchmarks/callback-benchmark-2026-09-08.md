@@ -32,7 +32,7 @@ Per-model detail for the most demanding block, 96 kHz / 32 frames (largest p95 a
 
 Across all cases, paired median current/baseline ratios range from 0.942 to 1.362. The [separate isolated Gaussian optimization](gaussian-initialization-cost-2026-09-08.md) compares identical model settings and shows 0.4%–13.2% lower callback medians with bit-identical audio. The complete-engine comparison also contains the new banks, delay handling and physical calibration.
 
-The [machine-readable report](callback-benchmark-2026-09-08.json) contains every timing sample, output hash, source hash, compiler version, build command and executable hash. Source matched the working DSP files at review. The frozen directory is `/var/folders/jl/cjv384t54g3bpst5xzs9zqnc0000gn/T/acustra-callback-final-20260908-2gh3rnex`. Combined contact tests pass with Fourier error 1.45e-8 and broad-contact error 5.14e-8, including 16 exact-uniform cases.
+The [machine-readable report](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/benchmarks/callback-benchmark-2026-09-08.json) contains every timing sample, output hash, source hash, compiler version, build command and executable hash. Source matched the working DSP files at review. The frozen directory is `/var/folders/jl/cjv384t54g3bpst5xzs9zqnc0000gn/T/acustra-callback-final-20260908-2gh3rnex`. Combined contact tests pass with Fourier error 1.45e-8 and broad-contact error 5.14e-8, including 16 exact-uniform cases.
 
 To rerun the frozen binary, choose a new output path:
 

@@ -8,7 +8,7 @@ implementation fault or justify another automatic contour fit.
 
 ## Measurement and provenance
 
-The [compact evidence](../validation/project-completion-2026-10-11/capture)
+The [compact evidence](https://github.com/protocodus/virtual-instrument-acustra/tree/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/capture)
 contains the complete fit report, source-weight sensitivity report, render
 manifests, source notices, commands and a hash receipt. All 202 source hashes
 in the original render-input receipt match the final commit and the inspected

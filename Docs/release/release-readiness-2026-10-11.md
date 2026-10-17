@@ -12,7 +12,7 @@ main remains `a534d774aa85f31acac6e74e6efebc18221ec748`, contained in this branc
 DSP source and native library hashes are identical to the previous studio
 capture validation. The focused native processor/state and tempo/release
 checks pass, and VST3, AU and Standalone build for arm64 and x86_64. See the
-[default receipt](../validation/release-readiness-2026-10-11/defaults/receipt.json).
+[default receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/release-readiness-2026-10-11/defaults/receipt.json).
 Rack 1.2.8f1 validation is recorded separately in the sibling Rack repository.
 No source has been merged or published as part of this task.
 
@@ -54,7 +54,7 @@ quiet string, so simply replacing attack peak with remaining note level would
 not by itself establish realism. Calibrate the balance and event diversity
 against isolated recorded releases before changing the shipping character.
 These are code-supported hypotheses, not a listening-confirmed root cause.
-See the [release-noise audit](../validation/release-readiness-2026-10-11/release-noise/findings.md).
+See the [release-noise audit](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/release-readiness-2026-10-11/release-noise/findings.md).
 
 ## Remaining model findings
 
@@ -75,8 +75,8 @@ release blockers.
 
 The prior paired broad-Q pole-convention mismatch is **resolved**, not another
 open issue. Paired bridge/radiation roots agree; unpaired modes deliberately
-remain independent. See the [complete findings](../validation/release-readiness-2026-10-11/physics/findings.md)
-and [current-source provenance](../validation/release-readiness-2026-10-11/physics/provenance.json).
+remain independent. See the [complete findings](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/release-readiness-2026-10-11/physics/findings.md)
+and [current-source provenance](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/release-readiness-2026-10-11/physics/provenance.json).
 The transfer tests are not exhaustive playing coverage, and no new listener
 preference is claimed.
 

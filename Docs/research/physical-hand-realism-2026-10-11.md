@@ -144,7 +144,7 @@ This is a local implementation and build validation, not an installed-host,
 universal package, portal release or listener-preference claim.
 
 Generated logs stay under `build-physical-hand-20261011`. The committed
-[listening manifest](physical-hand-listening-2026-10-11.json) records the exact
+[listening manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/physical-hand-listening-2026-10-11.json) records the exact
 source and audio hashes. The Rack repository records its own
 [SDK, wrapper and native CPU evidence](../../Docs/PHYSICAL_HAND_REALISM_2026-10-11.md).
 
@@ -201,7 +201,7 @@ the strict C++17 target builds.
 
 All ten new audio files remain finite and nonsilent, use unity common gain,
 and peak below 0.514. The browser decodes every file as eight seconds without
-media errors. The [new source/audio manifest](physical-hand-continuous-listening-2026-10-11.json)
+media errors. The [new source/audio manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/physical-hand-continuous-listening-2026-10-11.json)
 is separate from the original pack. This verifies continuity and render safety;
 it does not itself establish a listening preference. The user subsequently
 approved the final candidate and requested push and merge to main.

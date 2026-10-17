@@ -148,7 +148,7 @@ baseline median/p95 are 442.667/1043.125 µs. The other 23 cases have no deadlin
 misses in either build. This audit does not establish support for that most
 demanding buffer setting. Timing excludes Performer, JUCE and host overhead.
 
-The tracked [validation receipt](../validation/model-parameter-audit-2026-10-11/receipt.json)
+The tracked [validation receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/model-parameter-audit-2026-10-11/receipt.json)
 records source hashes, build settings and commands. That directory also
 retains the final build/test logs, calibration and strum measurements,
 before/after Q probe, and raw paired callback observations with provenance.

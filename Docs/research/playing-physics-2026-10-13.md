@@ -33,7 +33,7 @@ string and pluck them together.
 with the thumb and fingers; its rock, singer-songwriter and funk comping is
 strummed with a pick. Every chord member's attack is detected again on its
 own hex channel by one rule, so a detector lag common to the strings cannot
-move the comparison. Report: [`finger-chords-report.json`](../validation/playing-physics-2026-10-13/finger-chords-report.json).
+move the comparison. Report: [`finger-chords-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/finger-chords-report.json).
 
 | | Finger (bossa nova) | Pick (rock, singer-songwriter, funk) |
 | --- | ---: | ---: |
@@ -95,7 +95,7 @@ pick cannot. A guitarist keeps those strings quiet with the fretting hand,
 and the pick gives each one a dead stroke on its way across.
 
 `Tools/MeasureMutedStrokes.py` finds them on GuitarSet's hex channels.
-Report: [`muted-strokes-report.json`](../validation/playing-physics-2026-10-13/muted-strokes-report.json).
+Report: [`muted-strokes-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/muted-strokes-report.json).
 In the corpus's ordered strokes 683 strings are crossed but left out of the
 chord. At the moment the pick reaches one, interpolated between the attacks
 on either side of it, its channel rises a median 9.4 dB (quartiles 3.5 to
@@ -151,7 +151,7 @@ down. GuitarSet measures it. `Tools/MeasureReleaseFall.py` reads the
 corpus's per-string pitch tracks against each note's own middle and the hex
 channel's level against its sustain, over the last 200 ms of every note
 whose string is not played again within 300 ms
-([`release-fall-report.json`](../validation/playing-physics-2026-10-13/release-fall-report.json)):
+([`release-fall-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/release-fall-report.json)):
 
 | Level under the sustain | 0–3 dB | 3–6 | 6–10 | 10–15 | 15–20 | 20–25 | 25–30 | 30–40 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -191,7 +191,7 @@ meet the strings on a line. `Tools/MeasureStrumScatter.py` fits each
 GuitarSet stroke of four or more strings, its attacks re-detected by the
 finger-chords rule, by least squares against string number, which is the
 stroke's own sweep whatever its speed and direction, and reads each
-string's moment about it. Report: [`strum-scatter-report.json`](../validation/playing-physics-2026-10-13/strum-scatter-report.json).
+string's moment about it. Report: [`strum-scatter-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/strum-scatter-report.json).
 
 | | Pick (rock, singer-songwriter, funk) | Jazz |
 | --- | ---: | ---: |
@@ -207,7 +207,7 @@ scatters 0.86 times as much as the faster half (quartiles 0.68 to 1.19),
 where a place would scatter 1.43 times as much. Part of the 4.53 ms is the
 detector's. An off-tree probe of this snapshot reads every string's bridge
 reaction force, a stand-in for its hex channel, through 320 picked strokes
-of eight chords ([`probes`](../validation/playing-physics-2026-10-13/probes)):
+of eight chords ([`probes`](https://github.com/protocodus/virtual-instrument-acustra/tree/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/probes)):
 the same rule finds the unscattered strokes' attacks a robust 1.27 ms off
 their own sweeps, where their scheduled plucks sit 0.36 ms off (the arc's
 bend), which leaves 4.35 ms for the hand.
@@ -271,7 +271,7 @@ power chord or a double stop, sounded both strings on the same sample, and
 one plectrum cannot do that: it reaches one string before the other.
 `Tools/MeasureTwoStringStrokes.py` finds GuitarSet's two-string groups (two
 strings' onsets inside the chord window with no other onset within 120 ms
-either side) and detects both attacks again. Report: [`two-string-strokes-report.json`](../validation/playing-physics-2026-10-13/two-string-strokes-report.json).
+either side) and detects both attacks again. Report: [`two-string-strokes-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/two-string-strokes-report.json).
 
 | Two strings, adjacent | Pick (rock, singer-songwriter, funk) | Finger (bossa nova) | Jazz |
 | --- | ---: | ---: | ---: |
@@ -323,7 +323,7 @@ stroke two fifths. GuitarSet's strummers do not sweep a small stroke at a
 big one's speed. `Tools/MeasureStrokeSpan.py` takes every picked stroke of
 two to six strings (runs of onsets on distinct strings inside the chord
 window), detects each attack again, and fits its time a string by least
-squares against string number. Report: [`stroke-span-report.json`](../validation/playing-physics-2026-10-13/stroke-span-report.json).
+squares against string number. Report: [`stroke-span-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/stroke-span-report.json).
 
 | Strings in the stroke | 2 | 3 | 4 | 5 | 6 |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -395,7 +395,7 @@ the rest of its own stroke, so the stroke's force and any accent cancel; then
 by least squares as the entry and exit strings' differences from the
 strings inside, plus a tilt across string number for each direction. A
 stroke enters on its lowest string going down and its highest going up.
-Report: [`stroke-edges-report.json`](../validation/playing-physics-2026-10-13/stroke-edges-report.json).
+Report: [`stroke-edges-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/stroke-edges-report.json).
 
 | 2,344 picked strokes of four to six strings, 85 takes | Energy added | 40 ms peak | Transient |
 | --- | ---: | ---: | ---: |
@@ -478,9 +478,9 @@ the same way but unbalanced, put it on A in all four test pairs. The key
 and each pair's level and difference measurements stayed outside the
 repository until the listening verdict, since a pair's level change would
 tell its takes apart. They are now committed, the key as
-[`review-key.json`](../validation/playing-physics-2026-10-13/review-key.json)
+[`review-key.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/review-key.json)
 and the measurements in
-[`review-manifest.json`](../validation/playing-physics-2026-10-13/review-manifest.json)
+[`review-manifest.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/review-manifest.json)
 beside the frozen sources' and renders' hashes and the checks. A copy of
 the key went into the listening page's store, which the page never reads,
 at 01:33 UTC on 2026-10-14, nearly three hours before the first answer;
@@ -525,7 +525,7 @@ dead stroke's pluck, a captured edge gain, and the measured fall's curve
 read once a control period. Paired probes, compiled with g++ 13.3 -O3
 against the frozen source on a 4-CPU Xeon at 2.1 GHz (a cloud VM, nothing
 else running; not a quiet-machine benchmark,
-[`probes/results.txt`](../validation/playing-physics-2026-10-13/probes/results.txt)):
+[`probes/results.txt`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/playing-physics-2026-10-13/probes/results.txt)):
 
 - One build, the seven switches on against off, 14 s played passages: a
   picked song with full, open-voiced and three-string strums, power chords

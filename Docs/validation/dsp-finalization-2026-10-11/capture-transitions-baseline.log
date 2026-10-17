@@ -1,6 +1,0 @@
-rate=32000 raw_sensor_bound=2.50458 bound_energy=0.323394 mode_peak=2.19916 bridge_peak=0.0108359 observation_difference=0.0587091
-rate=48000 raw_sensor_bound=2.49363 bound_energy=0.317703 mode_peak=2.46966 bridge_peak=0.0117135 observation_difference=0.0584371
-rate=96000 raw_sensor_bound=2.45739 bound_energy=0.303034 mode_peak=4.83292 bridge_peak=0.0109453 observation_difference=0.0580445
-rate=192000 raw_sensor_bound=2.4027 bound_energy=0.294818 mode_peak=9.44474 bridge_peak=0.0131487 observation_difference=0.0578924
-rate=384000 raw_sensor_bound=2.48435 bound_energy=0.291243 mode_peak=18.6156 bridge_peak=0.0136407 observation_difference=0.0573206
-Capture transition failures=0

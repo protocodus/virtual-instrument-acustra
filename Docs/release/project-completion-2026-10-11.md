@@ -38,7 +38,7 @@ The optimization-only `ae0ba92` comparison against the immediately preceding
 completed model `56d4678` is sample-exact over 42 callback/continuation cases
 with Room zero and the separate 48 kHz Room-one construction/tail reference.
 That preservation claim does not cover the intentional later Room and
-piezo changes. [Parity and build receipts](../validation/project-completion-2026-10-11/optimization-parity.json)
+piezo changes. [Parity and build receipts](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/optimization-parity.json)
 retain the exact sources and hashes.
 
 ## Final native and acoustic checks
@@ -46,8 +46,8 @@ retain the exact sources and hashes.
 The universal Release build ran once with three build jobs and two CTest
 workers. All 88 tests pass in 220.65 seconds; both C++17 DSP targets also
 build. AU, VST3 and Standalone contain arm64 and x86_64 slices; runtime
-tests ran on arm64. [The full build/test log](../validation/project-completion-2026-10-11/native-final-build-tests.log)
-and [artifact receipt](../validation/project-completion-2026-10-11/receipt.json)
+tests ran on arm64. [The full build/test log](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/native-final-build-tests.log)
+and [artifact receipt](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/receipt.json)
 record commands, architecture/signature checks and executable hashes. This
 is not an Intel runtime or real-DAW save/reopen/automation test.
 
@@ -65,7 +65,7 @@ The existing loudness/headroom tradeoff passes; these Pick fixtures do not
 promise limiter-free output for every Finger stroke. All **180 native
 Finger strum rows** are finite, with maximum absolute relative level
 4.79437 dB against the existing 9 dB bound and maximum sample peak 0.376532.
-[Measurements and the unchanged-gain check](../validation/project-completion-2026-10-11/loudness-check.log)
+[Measurements and the unchanged-gain check](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/loudness-check.log)
 are retained alongside the strum rows. All 202 recorded source inputs and
 all four rendering binaries were verified; source hashes match the final
 commit and current files.
@@ -82,7 +82,7 @@ an end-to-end realism ranking.
 Four six-second before/after WAVs for Piezo and Room are available locally
 under `build-audit/project-finalization/listening/`. They use identical
 sample-indexed events and native output levels, with no normalization. The
-[manifest](../validation/project-completion-2026-10-11/listening-manifest.json)
+[manifest](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/listening-manifest.json)
 records the score, controls, hashes and measured differences. **They have
 not been listened to in this pass.** Numerical validation is not a claim
 of listener preference.
@@ -94,8 +94,8 @@ four warmup pairs and 32 measured alternating pairs per scenario (1,344
 measured callbacks per version). Preparation and output checking are outside
 timing. Wall time and thread CPU time are recorded together; all within-build
 determinism checks pass. Builds, renders and downloads were stopped; ordinary
-desktop applications remained open. [All trials](../validation/project-completion-2026-10-11/callbacks-final.json)
-and the [summary](../validation/project-completion-2026-10-11/callback-summary.json)
+desktop applications remained open. [All trials](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/callbacks-final.json)
+and the [summary](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/callback-summary.json)
 are retained without discarded outliers or reruns.
 
 | 96 kHz, 32-frame callback; 333.333 µs deadline | Baseline wall median / p95 | Final wall median / p95 | Baseline → final wall and CPU misses |
@@ -170,6 +170,6 @@ establish interactive Reason or portal-target behavior.
   real-time guarantee, installation, release package, publication or real
   DAW/Reason host qualification is claimed.
 
-The [receipt and reproduction commands](../validation/project-completion-2026-10-11/commands.md)
+The [receipt and reproduction commands](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/validation/project-completion-2026-10-11/commands.md)
 identify the exact final source, evidence and local artifacts. No gain
 regeneration or new playing technique was needed to complete this scope.

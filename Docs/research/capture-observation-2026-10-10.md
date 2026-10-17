@@ -488,5 +488,5 @@ The dry-run evidence lives outside the repository, under
 - `data/`: the prepared sources;
 - `scripts/`: the analysis scripts.
 
-[`capture-observation-2026-10-10.json`](capture-observation-2026-10-10.json)
+[`capture-observation-2026-10-10.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/capture-observation-2026-10-10.json)
 holds these tables in machine-readable form.

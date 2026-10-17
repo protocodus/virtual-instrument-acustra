@@ -176,7 +176,7 @@ capture: the stereo microphone within -0.00/+0.28 LU of the target on all
 the hardest Pick case 2.3 dB under the limiter's knee on the stereo
 microphones and 1.3 dB on the piezo. Its measurements, as rendered with
 the final gains and without them, are in
-[construction-loudness-2026-10-11.json](construction-loudness-2026-10-11.json).
+[construction-loudness-2026-10-11.json](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/construction-loudness-2026-10-11.json).
 
 ## The other techniques, and the third microphone
 

@@ -7,7 +7,7 @@ Separately, a native GuitarSet annotation replay verifies the earlier sounded
 attack commitment change. These observations support specific playing behavior;
 they do not establish a uniform physical or perceived realism gain.
 
-The [machine record](realism-playing-verification-2026-10-02.json) retains the
+The [machine record](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/realism-playing-verification-2026-10-02.json) retains the
 protocols, before/after observations, tests, initial failed checks, exact methods
 and source/binary hashes. The natural-harmonic change is measured against
 checkpoint `38b8395be854a156a8c1603b608aad84559ab875`; its modified source hash is
