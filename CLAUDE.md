@@ -37,33 +37,55 @@ blocking locks and exceptions. Large engine/test fixtures belong on the heap.
 
 ## Documentation layout
 
-Repository layout, naming, CI, versions and the `Docs/` taxonomy follow the
-Protocodus portfolio standard kept in the project, not in this repository.
-`README.md` opens with the title and intro, the editor screenshot,
-**Audio demos**, a concise **Version history** and **Downloads** (the block
-between the `build-download` markers is rewritten by `main-build.yml`); after
-a `---` come **How it works**, **Known gaps**, **Build** and **Licensing**.
-Nothing sits loose in `Docs/` except `decisions.md`:
+`README.md` is the single product document. It opens with the heading and a
+one-paragraph intro, the editor screenshot, **Audio demos**, a concise
+**Version history** ledger and **Downloads**; after a `---` separator come
+**How it works**, **Known gaps**, **Build** and **Licensing**. Long per-version
+narratives go to `Docs/release/` and are linked.
+
+Everything else in `Docs/` has one home, and nothing sits loose there except
+`decisions.md`, the by-ear decision log described below:
 
 | Folder | Holds |
 | --- | --- |
-| `audio/` | rendered demos and committed listening tests |
+| `audio/` | rendered demos, per-fix previews, committed listening tests |
 | `screenshots/` | editor images |
-| `guide/` | user guide and parameter meaning |
-| `research/` | modelling research, experiments and ablations (md + same-stem json) |
-| `validation/` | evidence that a version or change works |
+| `guide/` | user, install and preset guides, parameter meaning |
+| `research/` | modelling research, references, design notes, experiments |
+| `validation/` | audits, test results, host validation |
 | `benchmarks/` | CPU and performance measurements |
-| `plans/` | improvement plans and open work |
-| `release/` | release notes, the detailed release history, readiness |
+| `plans/` | improvement plans, requirements, open work |
+| `release/` | release checklists, readiness, release notes, asset provenance |
 
 Name documents in lowercase kebab-case, `<topic>-YYYY-MM-DD.md` for dated
-work; an evidence folder takes its report's stem. Moving a document is a
-rename only: keep its content and date, and update every link in the same
-commit. Long per-version notes go to `Docs/release/release-history.md`, and
-the full block descriptions and dated gap measurements to `Docs/research/`
-(`how-it-works-1.7.0.md`, `known-gaps-ledger-2026-10-17.md`), not the README.
-Scripts, probes and patches live in `Tools/` (evidence scripts in
-`Tools/research/<report-stem>/`), never in `Docs/`.
+work. Moving a document is a rename only: keep its content and date, and update
+every link to it in the same commit. Legal files (`LICENSE`,
+`THIRD_PARTY_NOTICES.md`, `PRIVACY.md`) stay at the root; upstream licence
+texts live in `ThirdParty/`.
+
+Research the code depends on — a specific value, a manual page, a measurement,
+a derivation — belongs in a comment **beside the code that uses it**, not only
+in a document that drifts away from it. A measurement protocol belongs at the
+head of the tool that enforces it.
+
+These README parts are written by the build, never by hand:
+
+- The demo table between `<!-- audio-demos-begin -->` and
+  `<!-- audio-demos-end -->`, rendered from one
+  `Docs/audio/midi/<NN>-<preset-slug>.mid` per factory preset (change a source
+  only on purpose, in its own commit) and committed by the main build as
+  `Docs/audio/<NN>-<preset-slug>.mp3`.
+- The block between `<!-- build-download-begin -->` and
+  `<!-- build-download-end -->`, rewritten by the main build, which also
+  commits the README screenshot under `Docs/screenshots/`.
+
+Version history is a ledger of what changed about the product — what it
+sounds like, what it exposes, what a session must know. Pure refactors,
+deduplications and test-coverage additions belong in git history, not in it.
+
+Per-fix audio previews are **one-time review evidence**: render them while the
+change is under review, then leave them frozen. Do not re-render them when
+later engine changes make them stale.
 
 ## A–Z listening tests
 
@@ -112,7 +134,7 @@ evidence. Render them to a working directory and send them to the user; do not
 commit them by default — a 26-file set per decision would bloat the repository.
 Commit a set only when the user asks, under
 `Docs/audio/listening-tests/<date>-<topic>/` with its `key.md`, and freeze it
-on merge: do not re-render it when later engine changes make it stale.
+on merge exactly like the per-fix previews above.
 
 **What gets committed is the verdict.** Record in `Docs/decisions.md` what was
 being decided, what each letter was, which letter the user chose, and what that
@@ -123,6 +145,17 @@ written up as though a measurement had settled it.
 defensible on their own physics. It does not license drawing a constant, fitting
 a curve, or keeping a formulation the measurements reject. If every candidate
 needs an invented number, the answer is still that none of them ships.
+
+## Where Acustra's documents live
+
+The portfolio's `Docs/` taxonomy (see `Tools/portfolio/` in the Rack repository)
+governs here too. An evidence folder takes its report's stem. The detailed
+release history is `Docs/release/release-history.md`; the full block
+descriptions and dated gap measurements are in `Docs/research/`
+(`how-it-works-1.7.0.md`, `known-gaps-ledger-2026-10-17.md`). Scripts, probes
+and patches live in `Tools/` (evidence scripts in
+`Tools/research/<report-stem>/`), never in `Docs/`. The technique and
+repertoire WAV renders under README **Build** are local and not committed.
 
 ## Build and verify
 
