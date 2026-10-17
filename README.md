@@ -230,1248 +230,169 @@ without MIDI, such as the Reason Rack Extension, spells its notes and
 controllers as the same MIDI messages at their sample offsets, so every front
 end plays one behaviour rather than a port of it.
 
+Each block below is summarised: what is modelled, how, and from which
+references. [How it works, in detail](Docs/research/how-it-works-1.7.0.md)
+gives every mechanism, measurement and citation in full, and
+[`Docs/decisions.md`](Docs/decisions.md) records the choices made by ear.
+
 ### Six-string performance model
 
-MIDI first selects one of six guitar strings. Each string covers its open note
-plus twenty frets. The allocator replucks a note on the string still sounding
-it once its key is up, as a guitarist does; before that rule a repeated E4
-hopped across five strings, one per repeat, and left every one of them
-ringing. It preserves duplicate-note ownership and never takes a string whose
-key is still down while another string can sound the note.
+**What.** A guitarist's two hands on six steel strings, played from MIDI.
 
-Beyond that it places notes with a fretting hand, the rule the listener set:
-"imagine a player's hand on the frets that are currently playing or were
-playing previously - try to fit a fret that a finger would reach. then,
-prefer empty strings, then prefer lower frets." Each string remembers the
-last fretted note it sounded. Held notes, key or pedal, place the hand with
-weight 1; released ones with exp(-age / 1 s), and not at all after 2 s. A
-hand in position covers four frets, the highest at most three above the
-lowest, and reaches a fifth by stretching: the small and large finger spans
-of [Heijink and Meulenbroek, J. Motor Behavior 34(4), 2002](https://www.socsci.ru.nl/meulenbroek/Publications/Heijink%20en%20Meulenbroek%202002.pdf),
-where the five-fret span was rated harder and six professional guitarists,
-fingering note sequences themselves, moved the hand in 2 of 31 fingerings and
-then by one fret. A candidate string and fret costs nothing when the hand
-reaches it where it is, half a fret for each fret held outside the four-fret
-position, and each remembered finger's weight per fret the hand would have to
-move; notes the hand must hold that no hand spans are impossible. The
-allocator takes the cheapest, then an open string, then the lower fret, then
-a silent string before a ringing one. With nothing fretted held or released
-in the last two seconds (a fresh engine, or the longest rest after which a
-strum still alternates) the hand is forgotten, and a note is
-placed exactly as before the hand existed: the free string with the lowest
-fret, else the string released longest ago, else the oldest. That keeps every
-single-note benchmark render bit-identical. String-per-channel controllers
-and MPE member channels keep their own strings and the handless allocator.
+**How.** Each note takes one string and fret. A fretting-hand cost chooses
+them: a hand in position covers four frets and stretches to a fifth, held and
+recently released notes place it, and among equal costs an open string, a
+lower fret and a silent string win; a repeated note re-plucks the string still
+sounding it. Five tunings (Standard, Drop D, DADGAD, Open G, half-step down)
+change the strings' tension at fixed gauge, and only the tuning's range
+sounds (E2 to C6 in Standard). Notes on one sample and channel are fretted as
+one chord shape and, with a pick, swept as a strum whose string timing,
+scatter, lighter entry and exit strings and upstroke balance are measured on
+GuitarSet; under Finger three or four strings are plucked together. Strums
+alternate within a dotted eighth; keyswitches C0, C#0 and D0 latch down, up or
+automatic. Gather Chords (CHORDS) groups keys within 30 ms into one shape at
+30 ms of reported latency. A key-up waits one 1/32 note, so a re-struck note
+joins its ringing string, then the hand damps it, adds its own touch (Release
+Noise) and lets a fretted note's pitch fall as GuitarSet's note ends do.
+CC64 and the SUSTAIN switch hold released notes. CC2 is the picking hand's
+heel by the saddle. CC1 is vibrato through string tension; channel pitch bend
+is a slide along the neck, and an MPE member's bend pushes the string across
+the fret through its tension. MPE (lower zone), CC74 pluck point,
+string-per-channel mode (CC126/127) and connected finger gestures
+(CC65 + CC84) are supported. A retaken string keeps its old wave as a damped
+tail; a re-plucked one continues its own vibration.
 
-Standard, Drop D, DADGAD, Open G and half-step-down tunings change those six
-physical constraints rather than transposing the final mix.
-
-Alternate steel tunings retain each string's standard linear mass and derive
-the new tension from its tuned open frequency. Drop D therefore loosens the
-same low-E string instead of silently substituting a heavier string at standard
-tension.
-
-The instrument answers only its tuning's range: from the lowest open string
-to the twentieth fret of the highest (E2 to C6 in Standard, D2 to C6 in
-Drop D, D2 to A#5 in DADGAD and Open G, D#2 to B5 a half step down). A pitch
-outside it, above or below, is ignored: no string takes it and nothing
-sounds. Until 2026-10-12 pitches above the fretboard reached the open
-strings' natural harmonics (the node-touch projection); the user asked for
-the range alone (Docs/decisions.md), and the on-screen keyboard shows that
-range. The stroke keyswitches live below it.
-
-Ordinary Note Ons pluck, and notes that arrive together are voiced and
-strummed as chords. Under Finger a chord of three or four strings is not
-strummed: the thumb and fingers pluck it together, a few milliseconds apart
-in no fixed order, as GuitarSet's finger-played comping does; five or six
-strings are brushed as a strum. A strum that crosses a string its chord
-leaves out (open E2, B3 and E4, say) gives that string a dead stroke under
-the fretting hand that keeps it quiet, as GuitarSet's strummers do. Three keyswitches below the guitar's range set the
-stroke direction, on any channel, latched until the next keyswitch or Panic:
-C0 (MIDI 24) makes every strum, and with a pick every picked note, a
-downstroke (and under Finger strums the chords it would pluck), C#0 (25) an upstroke and D0
-(26) returns to the automatic rule (keyswitch names count middle C as C3,
-as the editor's keyboard does; the ranges elsewhere in this README count
-it as C4, so E2 is MIDI 40 and C6 MIDI 84) (a stroke within a dotted eighth of the
-last alternates, a later one is a downstroke). A keyswitch never sounds,
-takes no string and is not gathered into a chord; under Gather Chords it
-applies to the chords sent after it. Retired CC68 remains ignored. Connected finger gestures
-are explicit: turn on CC65 on the note's channel, send CC84 with the held
-source pitch, then send one destination Note On. A valid request transfers
-that string's sounding wave to the new fret, with a short bounded finger
-contact and a faint filtered fret-friction sound rather than a new picking
-attack. The friction shares the contact's energy limit and grows with finger
-travel, with more roughness on wound strings. The source request is consumed
-once; ambiguous ownership, chords, out-of-range frets and intervals over an
-octave fall back to an ordinary pluck. CC65 off or Reset All Controllers
-clears the request. The JUCE-free API exposes the same operation as
-`transitionNote`. There is no new panel control or host latency. The current
-Rack wrapper cannot send these explicit gestures. The contact map is
-authored and accepted for adoption in the user's listening review; it is not
-a fitted hammer-on recording. See `Docs/decisions.md` for the review and
-publication instruction.
-
-CC2 is continuous bridge-hand pressure: the heel of the picking hand resting
-by the saddle, a soft lossy absorber whose loss rate adds to the string's own,
-darkening the note as it shortens it. It is a playing gesture rather than a
-construction setting, so it stays a controller and the panel keeps its ten
-controls; a pressure of zero is an exact no-op, proven by 71 bit-identical
-corpus renders.
-
-Ordinary Note-off ends MIDI ownership immediately and waits one 1/32 note
-before beginning hand damping. A same-pitch/channel stroke on that physical
-string within the window, including its endpoint, cancels the pending damping
-and merges with its continuing vibration. This applies to every ordinary
-key-up, so an unrepeated note also rings for that extra interval. The window
-follows host or score tempo: 62.5 ms at 120 BPM and about 101.35 ms at 74 BPM,
-with 120 BPM used when tempo is unavailable or invalid. Live tempo changes
-preserve the remaining musical duration. Note-on timing is unchanged.
-
-After the window, nominal hand damping has a T60 of 160 ms for a fretted note
-and 1.25 seconds for an open note. Explicit softer key-ups extend that damping
-time by up to about two times, and firmer key-ups shorten it to about half;
-missing velocity and MIDI 64 retain the nominal time exactly. This is a
-bounded playing map, not a contact-force calibration from the sustain corpus,
-and that loss is a gain per round trip: the loop slews the gain it applies
-toward the requested one across one round trip, in either direction, because
-applying the whole of it to the first sample after the key came up stepped the
-wave the junction reads by up to a third on a low fretted note, and the bridge
-and body rang on that step as a thump 4.6 to 8.6 dB above the note's own level
-at that moment. Paired held/released renders guard against a new attack at
-44.1, 48 and 96 kHz. The comparison includes the held note at the same time:
-its evolving envelope can exceed the preceding window's peak, and damping
-can also change the interference between modes. These peak checks are not
-a proof of physical energy conservation.
-
-CC64 sustain holds notes released under the pedal until pedal-up, which
-starts damping directly. Pressing the pedal after a key-up does not catch its
-pending release. The SUSTAIN switch beside CHORDS is the same hold on every
-channel at once (`Performer::setSustainHold`): on, every released note rings
-on, its string still fretted, until the string is taken for another note or
-the switch goes off, which damps the held notes as a pedal-up does. The
-switch and the pedal hold independently: a pedal lifted under the switch,
-or the switch turned off under a channel's pedal, keeps the note, and
-Reset All Controllers lifts only the pedal. Like the pedal, the switch does
-not catch a key-up already in its release window. It is host-automatable,
-so a track can alternate let-ring and damped passages, and it takes effect
-at the start of the block the host changes it in, before that block's MIDI.
-Off, the default, is an exact no-op; a session saved before it existed
-loads it off. All Notes Off uses its existing sustain-aware release directly, and
-All Sound Off/panic clears sound immediately. Queued strums still sound when
-the pick reaches each string; their ordinary release window starts there.
-For longer gaps, holding the note or using sustain keeps it ringing. The
-Recuerdos demo also holds its melody through thumb slots without changing
-the written pitches, attack times or velocities. See the
-[release-window contract and verification](Docs/research/release-join-2026-10-05.md).
-
-Once its window expires, Note-off damps the note at every release velocity,
-including 127, without adding a new pluck, so a fast keyboard key-up never
-sounds like another stroke. A fretted note's fingertip lifts the string off
-the fret as it relaxes and becomes the string's end, so the dying note falls
-as GuitarSet's hex-pickup pitch tracks measure it on 4,329 fretted note
-ends: nothing in the first 4 dB it loses, then about 2.3 cents a dB, 29 cents
-at 12.5 dB down and 80 at 35 dB, where it stops; it follows the hand's own
-damping, so a firmer key-up falls faster. Roland's guitar-to-MIDI patent
-describes the same drop (US 7470851 B2: "the pitch drops about a half tone"
-as the envelope nears zero). Open strings, held and pedalled notes do not fall, and a new
-stroke presses the string back onto its fret
-([the report](Docs/research/stroke-release-realism-2026-10-13.md)). At that damping
-start it adds the hand's own touch
-(Release Noise): a short soft-contact force where the hand lands - the
-fretting pad a finger's width behind the fret, the fingertip back at the
-pluck point for an open string, or the palm by the saddle under a pick -
-launched both ways along the string by the same travel paths the pluck's
-contact uses, so it rings through the string, the bridge and the body and is
-damped by the hand like everything else on the string. Its level follows what
-the string still carries and the key's release velocity (64 is nominal; 1 about
-9 dB under, 127 about 5 dB over), wound strings add a faint brush as the finger
-leaves the winding, and every level, corner, time and position is drawn afresh
-per damping gesture. A joined stroke cancels this deferred touch. At the
-50% nominal it sits about 35-47 dB under the note's attack;
-at 0 it is an exact no-op.
-
-Release Noise also controls a very faint roughness while a held finger slides
-along a wound string. Its level and broad spectral colour follow continuous
-physical speed, and contact withdraws smoothly near the nut. Stationary fingers,
-plain strings and fixed-fret MPE tension bends add no such roughness. This is
-an authored, reduced contact approximation; see the
-[fret-motion model and checks](Docs/research/fret-motion-2026-10-11.md).
-
-A chord that arrives on one sample, which is what a sequencer sends and no
-hand can play, is swept as a strum: newly assigned strings are fretted at
-that sample, and each is released when the pick reaches it. An already held
-note keeps its preceding vibration until its scheduled re-pluck. The k-th string
-sounds k string-spacings later at the pick's speed, low to high on a downstroke and
-back on the return, and then at a moment of its own about that sweep: a
-uniform draw of 4.35 ms standard deviation, the scatter of GuitarSet's
-picked strokes about their own sweeps less the attack detector's own
-(`Tools/MeasureStrumScatter.py`), which sounds a third to two thirds of the
-strokes out of string order as the corpus's are. It is a time, not a place on
-the sweep, since a take's slower strokes scatter no more than its faster ones;
-the earliest string sounds at the note-on. A strum within a dotted eighth of the last at the host
-tempo is that return and alternates; a later one, or any after a rest of
-more than two seconds, starts over with a downstroke, unless a keyswitch
-has latched a direction (see the MIDI section). A stroke of three or more
-strings strikes the strings it enters and leaves the chord on more lightly
-than those between them, in either direction: 1.8 dB under for the entry
-string and 2.0 dB for the exit string, what GuitarSet's picked strokes show
-when each string is compared with the rest of its own stroke
-(`Tools/MeasureStrokeEdges.py`). An upstroke enters from the treble side and
-is released at `-1.2 + 0.30 (k - 2.5)` dB of the force a downstroke gives
-each string, k 0 for the low E: the offset from comparing each string's
-upstroke attacks with its own downstroke attacks
-(`Tools/MeasureStrumDirection.py`), the tilt what is left inside one stroke
-once its edges are counted (0.9 dB a string in 1.4.0, which the whole
-takes' comparison gave). A lighter string is let go more slowly and darker,
-as any softer stroke. With a pick, a
-single note or two-note group is a stroke of the same hand: it alternates
-with the strums and the other picked notes by the same dotted-eighth rule,
-and one within 30 ms of the hand's last stroke continues it; fingers and the
-thumb pluck every single note toward the palm. A pick's two-note group is
-swept across its two strings as a strum is, since one plectrum cannot reach
-both at once: of GuitarSet's 1,526 picked two-string groups on adjacent
-strings only 5% sound within 2 ms of each other, a median 13.0 ms apart and
-mostly in the stroke's direction (`Tools/MeasureTwoStringStrokes.py`).
-Fingers and the thumb still sound two notes together. The shape is planned before this
-timing: string order can cross pitch order, and an unplayed string between
-two reached strings still takes one spacing to cross. The spacing is the set-up dimension
-at the saddle; the pick's speed is a player's map of velocity over the
-0.51–2.46 m/s range measured from GuitarSet strokes. The corpus does not
-establish that velocity-to-speed relationship. That speed is a six-string
-stroke's: a smaller stroke is not the same sweep cut short, but crosses
-each string more slowly, its span growing as the 0.64 power of the
-spacings it crosses, the profile of each of GuitarSet's picked takes
-(`Tools/MeasureStrokeSpan.py`), so at MIDI 96 two strings sound 9.7 ms
-apart and six span 27 ms. Chords whose notes arrive
-spread in time are played as sent, unless Gather Chords is on.
-
-Notes that land on one sample and one channel are fretted as one shape
-(AcustraEngine::planChord, which the plug-in calls before sounding them):
-every way of putting them one to a string is scored by the hand's rules, a
-shape that takes no held string, fits one hand and is reached from where the
-hand is with the fewest frets moved, re-strikes a still-ringing note where it
-rings, and has the most open strings and the lowest frets. E major, A minor,
-G, C and D land in their first-position open shapes; C4-E4-G4 on its own
-becomes G fret 5, B fret 8 and open E.
-
-A chord played live reaches the plug-in one key at a time, in whatever order
-the fingers land. When a new note arrives within 30 ms of the previous note
-on its channel, the hand can improve the forming shape by moving attacks
-that have not fired. A note already sounded keeps its string and vibration;
-a later key cannot pluck it again just to improve the final fingering.
-Without future pitches, some exposed rolls retain a wide shape: C4-E4-G4
-over 20 ms keeps C4 on B1 and E4 on the open high E, leaving G4 on G12.
-Denser rolls can also fill every string that reaches the incoming high
-note, so the normal allocator takes an earlier note's string.
-Gather Chords, the CHORDS switch beside PANIC, can instead plan G5, B8 and
-open E before any attack, at the cost of latency: it holds every MIDI event
-back by 30 ms.
-A Note On that comes due takes along the Note Ons its channel received in the
-30 ms after it, and the group reaches the allocator as one wrist event:
-fretted as one shape and strummed exactly as the same chord sent on one
-sample. Thirty
-milliseconds is where one chord ends and notes meant apart begin. A pianist's
-louder melody note strikes 20 to 30 ms before the rest of its chord, mostly
-because a faster key travels sooner, which a keyboard's key-bottom contact
-shares, while asynchronies played on purpose usually exceed 30 ms
-([Goebl, JASA 110(1), 2001](https://iwk.mdw.ac.at/goebl/papers/Goebl_JASA2001_melodyLead.pdf)).
-The cost is 30 ms of latency on every note, which the plug-in reports (on
-top of the engine's own seven samples, Outputs) so a host compensates it on
-playback; a player hears it live. The switch is off by
-default. A key repeated inside the window, a key whose key-up the channel
-sent inside it (a later Note On of a released key stays behind that key-up,
-which may be stray, its string already taken by another note), or a
-controller that changes how notes are allocated (sound or notes off, reset,
-the channel-mode messages, the RPNs that lay out an MPE zone), ends a
-chord. String-per-channel controllers and MPE member channels already say
-how each note is played, so their events are only delayed, never regrouped:
-a member's CC74, pressure and bend stay ahead of the note they belong to.
-The window's queue holds 1024 events, the window plus one block. When a
-stream fills it, the oldest queued continuous gesture (bend, pressure, an
-ordinary controller), whose later value supersedes it, is dropped and
-counted, so a wheel's last value is the one that survives; a message that
-starts or ends a note, the pedal, a reset or a mode message is never lost,
-the oldest queued continuous event making room for it. Messages the
-instrument ignores (program change, polyphonic pressure, system bytes) are
-never queued.
-
-And no two plucks land in the same place: each draws its own point within ±0.02
-of the string length, the take-to-take spread the reference recordings'
-round robins show, which is what makes a repeated stroke a new take rather
-than a copy.
-
-Re-plucking the same pitch now continues the existing string in both planes.
-The contact constrains its local displacement and motion, then adds the new
-release to that same travelling field, preserving its phase and filter memory.
-Already emitted string-borne contact packets reach the continuing string;
-the new stroke creates no second bridge port. A conservative per-stroke work
-bound prevents positive interference from adding more sampled slope energy
-than the nominal new release. This remains an idealised contact, not a resolved
-finger or plectrum trajectory. [Recuerdos and the merge audit](Docs/research/recuerdos-tremolo-2026-10-05.md)
-describe the checks and listening comparison.
-
-Taking a still-sounding string for a different pitch preserves its preceding
-waves, in both planes, in separately damped loops; the parallel plane holds
-most of a pluck and reaches the body through the rocking saddle, so dropping
-it at a repluck, as the build before this did, cut an E3's old wave (a
-nylon E3, measured when the instrument still had nylon strings) off 24 dB
-under the new note's first 30 ms instead of letting it die under the hand. This is a provisional transition model. [Laurson et al., CMJ 25(3), 2001](https://aaltodoc.aalto.fi/bitstreams/768dbe9c-526c-414a-b2ce-0742574b8064/download)
-reduce loop gain over about 10 ms **before** the next pluck;
-[Erkut et al., AES preprint 5114, §3.2](https://aaltodoc.aalto.fi/server/api/core/bitstreams/a290c5f2-9a62-4d17-ba32-160615a9c670/content)
-measure a 20–60 ms finger-contact interval. Neither establishes the current
-model's 10 ms post-release T60 or its two concurrent wave states. The retained
-loop's stored-state energy falls below 1% in the existing 60 ms regression,
-but the moving bridge keeps driving it: its active lifetime can last seconds.
-Each independently returned wave therefore contributes its own impedance to
-the junction - the parallel one at (h/a)^2 of it on the rocking - with the
-old wave retaining the impedance it had at capture. When that wave is
-let go - quiet for 80 ms, or its string handed back to the open string after a
-key-up - its port leaves the junction on the delay's 6 ms time constant rather
-than in one sample: cut at once, the impedance step moved the bridge under
-everything else sounding, a faint tick 240 ms after a fretted key-up (1.33 s
-after an open one) about 30 dB over the local high-frequency floor.
-Measured on a chord change 0.6 seconds after the first chord, the strings
-still hold 25% of their initial energy and an earlier build discarded all of
-it. A held note
-replucked goes through the same hand: projecting its stored shape onto the
-modes with a node at the pluck point in one sample, as the build before this
-did, clicked into the limiter and let the near-node modes pile up pluck after
-pluck, a held G2 replucked six times at 250 ms peaking 15 dB above its first
-pluck where it now peaks 3 dB above it with nothing on the first samples.
-The sustain pedal defers the hand's damping until pedal-up. A channel's pitch
-bend is a slide — the fretting hand moving along the neck, so the sounding
-length changes and the tension does not — and it changes the active string
-length without replaying the pluck. An MPE member channel's own bend is a
-different gesture: one finger pushing a single stopped string across the
-fret at the length the fret fixes, so it goes through the string's tension by
-Grimes' law (PLoS ONE 9(7):e102088, 2014, Eq. 6), which moves the
-inharmonicity (bending stiffness B goes as 1/T) and the bridge-junction
-impedance the string presents (Z = sqrt(T·mu)). The port is followed sample
-by sample, because the junction sums all six strings' impedances every
-sample; measured against Grimes over a 0-200-cent bend on four steel strings,
-pitch error is 0.0002 cents and the twelfth partial's stretch moves within
-0.15 cents of what the bent tension predicts. The MPE manager's zone-wide
-bend stays a slide.
-
-CC1, the modulation wheel, is the fretting hand's vibrato: an axial tension
-modulation at fixed length (Grimes Sec. 0.3; Erkut, Valimaki, Karjalainen and
-Laurson, AES 108th Convention, Paris, Feb 2000, preprint 5114, Sec. 3.3), so
-the same tension route that carries a member bend also carries the vibrato,
-moving the sounding pitch, the inharmonicity and the junction port together —
-an earlier build moved only the last two and left the fundamental fixed,
-which review caught. It is one-sided upward from the note's own pitch,
-converges over a 0.5 s onset, and runs from Erkut's measured 4.9 Hz
-fast-and-shallow to his 1.4 Hz slow-and-deep as the wheel opens; full-wheel
-depth is an authored 20 cents (no source gives guitar vibrato depth in
-cents), measured in the rendered pitch at 20.0 to 20.1 cents and never
-falling below the note's own pitch by more than 0.06 cents. An open string
-gets none, since no finger is stopping it. Like CC2 it is one gesture across
-the instrument, not per channel.
-
-Conventional MIDI is the default: all sixteen channels are independent and
-channel 1 is not implicitly global. A lower MPE zone is created only by RPN 6
-on channel 1. Channel 1 then manages the contiguous member channels above it;
-its bend and sustain are global to that zone, while bend and sustain remain
-scoped to each member channel. RPN 0 sets 0--96-semitone bend sensitivity, with
-MPE defaults of 2 semitones for the manager and 48 for members. A released MPE
-tail freezes its member bend so reuse of that member channel cannot retune the
-old string, while subsequent manager bend remains live. MPE Timbre (CC74) sets
-a member channel's own pluck point for the note it carries, after Traube and
-Smith's plucking-point estimation (Proc. COST G-6 DAFx-00, Verona, Dec 2000,
-153-158), and moves only that voice's own comb nulls; MPE channel pressure
-biases that channel's vibrato depth down toward half its unbiased value (never
-above the wheel's own ceiling) and does nothing else. An opt-in string-per-channel mode — MIDI
-1.0's own Mono Mode On (CC126, value = string count) / Poly Mode On (CC127)
-on the basic channel, the standard spelling of a one-string-per-channel
-layout such as a hexaphonic pickup or a guitar-to-MIDI converter might send —
-puts each of the six channels onto its own string, bypassing the allocator;
-no control-surface driver on hand is confirmed to transmit CC126 itself, so
-today the mode is reachable through a MIDI editor or a host's own CC tools.
-As MIDI 1.0 requires, the four channel-mode messages (CC124-127) also act
-as All Notes Off on their channel. Upper-zone MPE is not implemented.
+**References.** Hand spans from [Heijink and Meulenbroek, J. Motor Behavior 34(4), 2002](https://www.socsci.ru.nl/meulenbroek/Publications/Heijink%20en%20Meulenbroek%202002.pdf);
+strum and release statistics from GuitarSet (`Tools/MeasureStrum*.py`,
+`Tools/MeasureStroke*.py`); the chord window from
+[Goebl, JASA 110(1), 2001](https://iwk.mdw.ac.at/goebl/papers/Goebl_JASA2001_melodyLead.pdf);
+bends by Grimes, PLoS ONE 9(7):e102088, 2014; vibrato rates by Erkut et al.,
+AES preprint 5114, 2000; transition timing by
+[Laurson et al., CMJ 25(3), 2001](https://aaltodoc.aalto.fi/bitstreams/768dbe9c-526c-414a-b2ce-0742574b8064/download);
+the [release-window contract](Docs/research/release-join-2026-10-05.md).
 
 ### Pluck and strings
 
-Each audible string path is a full-round-trip stiff-string waveguide. A note
-begins with a triangular travelling-wave history. A continuous Gaussian
-contact profile rounds that shape at the existing aperture's RMS width. It
-removes the former five-point profile's repeated high-frequency unity lobes;
-the signed result preserves the linear smoothing without rectification adding
-extra harmonics. The profile is a numerical contact assumption, not a measured
-finger shape; [its qualification](Docs/research/contact-kernel-and-power-2026-09-08.md)
-records the small, mixed improvement against real guitar recordings. Its current phase origin and initially
-empty filter/body histories do not describe a complete release from rest.
-A short deterministic noise burst adds release detail through the measured
-body, which is the only microphone radiator. On steel the burst's level (2.21 of the
-authored law), the contact's width (0.49 of its reference) and the velocity
-brightness (1.106) were chosen by ear with the strings' bending loss below
-(Docs/decisions.md, 2026-09-28): 70% of the way from the joint refit's
-optimum (0.38, 0.81, 1.073) toward the pluck refitted around half the loss
-the recordings measure (3.0 on its ceiling, 0.35 on its floor, 1.120). Pluck Position moves the
-displacement point; Touch and MIDI velocity alter its aperture, level and
-brightness. The hand keeps its distance from the bridge, so on a short
-(high-fretted) string, or under the Thumb, that distance reaches toward the
-string's middle, where every even partial is nulled and no player plucks.
-Up to a quarter of the string the point is the hand's; past it the point
-bends smoothly toward 0.36 of the string and never reaches it
-(p' = 0.36 - 0.11^2/(p - 0.14)), so Pluck Position still moves the stroke at
-every fret for every technique. It replaced a hard stop at 0.46, which left
-the control dead for a Thumb from the 11th fret up and put high notes on a
-hollow near-midpoint pluck (Docs/decisions.md, 2026-09-30); MPE Timbre still
-names any point of its 0.05-0.46 band directly. The authored contact law
-widens the three lowest strings' contact and the upper register's; both
-terms are ramps (full on the low E and A, half on the D; from the 14th fret
-to full at the 19th), not the steps they were, which changed a note's
-contact by up to 70% between neighbouring strings or frets. The Finger's and
-Thumb's burst is its noise through the same corner twice with no white
-share (-12 dB per octave above the corner): a fingertip is not a plectrum,
-and the finger-plucked flat-tops carry 10-25 dB less 2-16 kHz in their first
-15 ms than the plectrum's one-pole-plus-white burst gave them. The Pick
-keeps that burst. The hand lets the string go at the force it can hold, not at a
-set displacement: a point force at distance a from the bridge deflects a
-string of tension T and speaking length L by F·a(L − a)/(T·L), so the same
-stroke displaces a stopped string less than the open one the velocity law is
-calibrated on, by (L − a)/L against (L0 − a)/L0 at the same hand position (up
-to 2.7 dB less at the 17th fret), and its attack-pitch glide shrinks with it;
-the contact noise stays on the force. A blind listener chose this on every
-up-the-neck pair (Docs/decisions.md); the benchmark is neutral on it
-(training +0.07%, development validation −0.07%, flat-top −0.24%) while its
-pitch-trajectory term improves on every split. A fitted register law broadens the effective low-note contact and
-narrows it in the upper register, correcting a repeatable corpus-wide spectral
-slope without applying note-dependent body EQ. The fitted exponent continues
-past the pitch-independent point, so low-note contact is broader and high-note
-contact narrower than in the earlier model.
+**What.** Six stiff steel strings, each vibrating in two polarisations, and
+the hand or plectrum that lets them go.
 
-A string does not leave a plectrum's tip from rest. Under Pick the released
-state carries, beside that displacement, a velocity over the same contact
-width — the string the tip was carrying when it slipped off — written as
-Smith's equal integrated waves and so unfolding to a hump of velocity with no
-displacement of its own. Its kinetic energy is a fitted share of the
-displacement's, `share(v) = pickReleaseVelocityShare · v^pickReleaseVelocityExponent`
-for MIDI velocity v in 0–1. The share and exponent are fitted on the picked
-archtop recordings across their four velocity layers and read by the Pick
-technique only; Finger and Thumb, and so the
-finger-plucked flat-top rows, are bit-identical. The first fit
-(share 1.0 at full velocity growing as v^2.93, transient 0.078 of the Finger
-burst) belonged to a Pick with the wider 0.5 contact and the five-point
-kernel; the merged Pick meets the string narrower (0.35 of the Finger width),
-more bridgeward (0.40 of its distance) and through the continuous Gaussian,
-and the same stage refitted from that vector wants 0.3125·v^0.93 and a 0.125
-transient (archtop training under Pick 6.623494 → 6.546029, development
-validation 6.271127 → 6.256259). Once a pluck released most of its energy
-parallel to the top (below), the same stage refitted again wants only a
-small, nearly flat share, 0.0625·v^0.47, and the transient gain on its zero
-bound, which is the Finger burst law (archtop training under Pick 6.334019 →
-6.284861, development validation 5.941904 → 5.904206). With the strings'
-bending loss the share returns: since 2026-09-28 it is 0.582·v^0.859, chosen
-by ear 70% of the way from the joint refit's 0.008·v^0.49 toward the
-0.83·v^1.02 the plectrum was refitted to around half the measured loss, whose
-pick the listener heard as too intense (Docs/decisions.md). The separate
-impact-burst experiment stayed at zero and its implementation is now removed;
-the standard excitation burst remains. The velocity hump is smoothed by that same
-Gaussian contact as the displacement, exactly: the rest wave gains the
-tabulated corner function at its two folded apex corners and the velocity box
-is the difference of two Gaussian edges. The velocity's
-partials fall 6 dB/octave slower than the displacement's, which is the tilt the
-recordings gain with dynamics: before the mechanism the model's loud layer
-(MIDI 112) carried 5–9 dB too much H1–H3 and 4–6 dB too little H7–H10 while its
-soft layer (MIDI 16) sat within a few dB, and its first 12 ms were 10–19 dB
-short above 4 kHz at the loud layer only. Two things are fixed by measurement
-rather than fitted. The written frame: the plucked shape every calibration was
-fitted with is the rest state advanced by half the apex phase and negated
-(partial magnitudes agree to 0.001 dB, phases differ by exactly −πpn), and a
-rest-frame pluck with the *same* magnitudes moved the archtop harmonics term
-from 8.61 to 12.77, because the idle strings, bridge and body at coinciding
-partials interfere with the string according to the phase it starts with — so
-both components are written in the fitted frame, where they stay in
-quadrature. And the energy: the fitted level law describes the displacement,
-and the velocity is energy on top of it; redistributing one fitted energy
-between the two read worse on both splits, since the hump's energy sits in
-partials that decay fast and the sustained level then rose too little with
-velocity. What the plectrum still lacks is any measurement of its own: the
-share and exponent are fitted, not a beam and friction solver, and the
-archtop's four layers are the only picked recordings in the bank.
+**How.** Each polarisation is a full-round-trip stiff-string waveguide whose
+fractional delay is a Thiran allpass and whose dispersion follows the
+stiff-string inharmonicity law through two allpass sections. Both planes carry
+the same intrinsic loss, with winding friction and bending loss on the wound
+strings; String Age lowers the cutoff and raises those losses. A pluck writes
+a triangular release rounded by a Gaussian contact, at a displacement set by
+the force the hand holds; Pluck Position, Touch and velocity move its point,
+width, level and brightness. The Pick adds a fitted release velocity, and every
+technique lets the string slide off a rounded edge, so softer strokes are
+released darker. A short noise burst carries release detail. Most of a steel
+pluck goes into the plane parallel to the top, which reaches the body through
+the saddle's measured rocking and gives partials their beating doublets. A
+bounded Kirchhoff-Carrier surrogate sharpens the attack pitch.
 
-Nor does the string leave the tip at an instant. It slides round the
-tip's rounded edge, and while it does the held force F0 falls away; the
-pluck point answers at once with a velocity dF/(2Z), so, linearising the
-edge's hold, the force unloads as e^(t/tau) with tau = r/u,
-u = (c/2) y0 (1/a + 1/(L - a)) the speed an instantly released pluck point
-starts with. Every partial is multiplied by 1/(1 - j omega tau), a
-first-order low-pass whose corner rises with the force the tip held: a soft
-stroke is let go slowly and dark, a hard one fast and bright. The radius r
-was first fitted at 0.15 mm on the picked archtop training rows (the
-pick-release stage, refitted around it, then wanted the release-velocity
-share and the pick burst at zero), moving Pick only: archtop training under
-Pick 5.9391 -> 5.5639, development validation 5.5588 -> 5.4839, the frozen
-test split 5.6678 -> 5.4272, the Eastman's picked rows 6.6596 -> 6.5254
-(Docs/decisions.md). It ships at 0.116 mm, chosen by ear with the bending
-loss on 2026-09-28: 70% of the way from the joint refit's 0.122 mm toward the
-0.114 mm refitted around half the measured loss.
-
-A fingertip or the thumb's pad lets go the same way, over an effective
-0.2 mm edge (a chosen length, not a measured fingertip). Finger applies the
-full slip, including at velocity 127; Thumb retains the ratio to its
-full-velocity reference. The line is rescaled to its original AC spread,
-preserving the displacement level law, although the emitted level changes
-with the spectrum. A softer stroke is released more slowly and darker.
-Finger's sustained H5-H12 over H1-H4 rises a median 6.67 dB from MIDI 16
-to 112 in the current fixture. The previously cited 9 dB recording target
-was picked material and does not establish a Finger velocity law. Thumb's
-existing contrast remains 8.2 dB. Touch is how fast the hand
-lets go, for every technique: it scales the release edge over two octaves,
-none at its default of 0.58, so a firm Touch releases faster and brighter
-(bounded to three times the full-velocity release speed for the fingers) and
-a soft one slower and darker, even at velocity 127, where the contact's own
-Touch law has saturated.
-
-Transverse motion still drives the existing tension and pitch model. A separate
-axial-resonator experiment was rejected because its narrow onset sounded like
-a pitched water drop, and it never contributed to the shipping sound. Its
-resonators and calibration controls are now removed. Historical measurements
-remain in the dated decision log.
-
-Each steel string takes its scale, diameter, tension or density, and Young's
-modulus from published construction data. The loop reads its fractional delay through a second-order
-Thiran allpass held inside a fixed fractional band (Laakso, Valimaki,
-Karjalainen and Laine, IEEE Signal Processing Magazine 13(1), 1996, 30-60,
-Eq. 86), not an interpolated read: an allpass has magnitude exactly one at
-every frequency, where the read it replaced lost up to 0.7 dB per round trip
-at a half-sample fraction, so a string's upper partials used to decay at a
-rate set by the accidental fraction of its loop length (a 47:1 range in loss
-per round trip across nine notes); it is now a smooth 1.8:1 rise with the
-partial's own frequency. On the 2026-10-11 isolated-string probe, H8 decay
-varies by 1.14–4.84% across MIDI 76–84 at 44.1, 48 and 96 kHz; this remains
-an approximation, not exact rate invariance. Frequency-dependent losses make upper partials
-decay faster, and two second-order allpass sections in cascade follow the
-stiff-string inharmonicity law, re-solved at the tap the delay currently
-occupies so a bend or vibrato's slewing fractional part does not stall the
-solve. On a flexible string (B N^2 up to 0.015 over its N fitted partials:
-every open string, and in the standard tuning the low E below its 3rd fret
-and the others below their 7th to 18th) the first is collocated at H1, H7
-and H11.5 and the second is bypassed. One collocated section dipped between
-its points on the stiff wound strings high on the neck (E2's H3-H5 16-18
-cents flat at the 20th fret), so as B N^2 rises to 0.05 the second section,
-placed from the stiffness, is switched in smoothly and the first is refitted
-with the delay by least squares over the integer partials H1-H12.
-
-Since 2026-10-10 both polarisations carry the same intrinsic string loss:
-the authored round-trip factor 0.99915, equal cutoff sections, a constant
-steel dislocation loss angle, and a bending-loss section. Their bridge
-terminations still differ. The four wound strings also carry winding
-friction as a constant loss angle on tension. For partial n, tension and
-bending contribute in the proportions 1/(1 + B n^2) and B n^2/(1 + B n^2),
-using the same inharmonicity B as the dispersion. The section design includes
-its phase in the tuning and its fundamental magnitude in the loop gain.
-This replaces the earlier unequal per-plane shelves and wound bending-only
-description; the dated comparisons in Known gaps retain those older results.
-
-String Age lowers the high-frequency cutoff and increases dislocation loss.
-It scales both wound friction and wound bending loss by
-max(0.2, 1 + 8 (age - 0.15)), pivoted on the default age; the plain-string
-cutoff falls as exp(-0.9 age). The shared fitted cutoff scale is 2.286.
-The accepted wound-string blend is friction 2.25e-4 plus bending loss 0.0175;
-plain bending loss is 0.0023. The listener preferred keeping some bending
-loss beside friction so a pick's highest partials do not ring too long.
-These are calibrated and authored losses, not an independently measured
-damping law for this exact string set. See the current
-[string-loss model and listening record](Docs/research/string-hf-loss-2026-10-10.md).
-
-A second,
-orthogonal polarisation loop can be detuned from the first by an end
-correction at the string terminations: Woodhouse (Acta Acustica 90 (2004)
-945-965, Sec. 4.3) measured the polarisation parallel to the soundboard as
-about 0.8 mm longer, in 650 mm, than the perpendicular one, on an open
-string, and calls the exact size tentative ("would require detailed
-computation"). Carried as a fixed length it splits a stopped string's planes
-further the higher it is fretted (4.8 cents at the 14th fret, 6.8 at the
-20th), and once the parallel plane radiated and held most of a steel pluck,
-high notes drifted flat as that member took over, where the recordings' do
-not. A blind listener preferred the steady pitch on every high-fret pair, so
-the correction ships at zero, chosen by ear, over the published length the
-benchmark mildly prefers (Docs/decisions.md); the mechanism stays
-calibratable up to one string diameter. On steel this second loop
-contributes slope energy to the attack-pitch surrogate below.
-
-The parallel loop reaches the body too. A string vibrating parallel to the
-soundboard pushes the saddle crown sideways at the crown's height over the
-top, and a sideways force there is a moment about the string's own axis - the
-rocking the archive's two bridge-end impacts measure. In the model's
-normalized rocking coordinate `r = a*theta` that moment is `h/a` times the
-horizontal force and the crown moves `h/a` times the rocking, so the parallel
-polarisation's port is `(h/a)^2` times the measured rocking mobility, and
-its load reaches the microphones through the measured moment-to-pressure paths. `h` is the
-published height of the strings over the top at the bridge, to their lower
-bound (R. Mores, *List of guitars measured*, 2021, HSaT): 8.1 mm on g21;
-`a` is the 23.2 mm impact half-spacing the saddle lever arms already assume. Nothing is fitted. Both polarisations are one string: the normal
-loop is tuned so that, loaded by the bridge, it sounds the requested pitch,
-and the parallel loop shares that bare length (plus any end correction, zero
-as shipped), so the pair's split - the doublet each partial beats with - is
-the bridge's own pull on the normal member and varies note to note (0 to
-about 18 cents here at the fundamental, widest on the low E near frets 14-16,
-where the bridge pulls hardest; 5 to 9 in Woodhouse's measurements). Where the saddle rocks, the two loops are
-coupled through it and ring as one pair of modes; its sustained,
-energy-weighted centre is found from the eigenvalues of the loops' round trip
-times the saddle's 2x2 reflection, and both loops are lengthened by what it
-sits above the request - the flamenca bridge's open B, whose parallel-led mode
-sustains while its bridge-led partner sheds 0.24 dB a period, would otherwise
-sound 6.6 cents sharp.
-
-How a pluck divides between the planes follows the hand. On steel, a
-finger's free stroke and a pick both cross the strings moving along the top
-and press in only partly, so most of a steel pluck's energy is released
-parallel to the top: the normal-plane share is 0.30 - 0.08 Touch (0.25 at the
-default Touch, a release about 60 degrees from the normal), bounded to
-0.17-0.35. That share was selected on the benchmark once both planes
-radiated: from the 0.86 that had kept the one radiating plane audible, every
-steel split improves - training -1.10%, development validation -2.78% and
-flat-top -5.13% on steel's own bridge - and a blind listener preferred it on
-both steel pairs. Each pluck draws its own +-0.025 about its share. Steel's
-output reference rises by the 5.41 dB its demos lost at the same controls,
-so a session keeps its loudness. The
-effect
-is audible as the slow beating a guitar partial has and a single radiating
-plane cannot: over 0.3-2.3 s, the median RMS envelope residual of H1-H6
-after a quadratic trend is 0.33-1.74 dB on the flat-top rows against the
-recordings' 0.58-2.97 (0.11-0.59 with one plane), 0.17-1.75 dB on the steel
-archtop rows against 0.26-1.69 (0.02-0.81). It also lengthens what
-sustains: the decay term falls on every steel split.
-
-Steel attack pitch uses a bounded Kirchhoff--Carrier energy surrogate. The
-released waveguide displacement supplies its slope energy; string axial
-rigidity converts that energy into extra tension, and the existing loss makes
-the resulting sharpened pitch fall monotonically toward the settled pitch. The
-single displacement calibration is 0.007736 m and the excursion is bounded to
-20 cents. The last mechanism-specific interaction sweep selected it on
-training total and improved early-pitch trajectory on both splits; at that fit
-stage, the development-validation aggregate was 0.0215 lower when it was
-disabled, and that tradeoff is retained explicitly in the fit report. A
-separate fitted steel fret-decay slope of -0.0598 lengthens T60 with fret
-number.
+**References.** Laakso, Valimaki, Karjalainen and Laine, IEEE Signal
+Processing Magazine 13(1), 1996; Woodhouse, Acta Acustica 90, 2004 (the
+polarisation end correction, shipped at zero by ear); crown heights from
+R. Mores, *List of guitars measured*, 2021; the
+[contact kernel](Docs/research/contact-kernel-and-power-2026-09-08.md) and
+[string loss](Docs/research/string-hf-loss-2026-10-10.md) reports.
 
 ### Bridge, sympathetic strings and body
 
-The original model's played strings drive a passive spatial bridge approximation,
-fitted through 10 kHz from both sides of the archive's bridge. Method.pdf places
-the hammer impacts between B3/E4 and E2/A2; its Figure 3 places the accelerometers
-behind the saddle on the tie block, with their exact spacing unreported. Treating
-these sensor responses as collocated bridge-end mobilities is a model assumption.
-Each string terminates at its own point along the saddle, at a lever arm
-`u = (i - 2.5)/2` for string `i`; each mode keeps one pole pair and a residue
-matrix `[[heave, cross], [cross, rock]]`, so a string at `u` sees
-`heave + 2u*cross + u^2*rock`, fitting the treble-side response at
-`u = +1` and the bass-side response at `u = -1`. Holding every
-residue matrix positive semidefinite keeps each string's own combination
-positive real, so the junction stays passive: it can redistribute or
-dissipate string energy but cannot create it. This is a property of the constrained
-model, not proof that the measured responses form a collocated passive matrix.
-The disagreement between the two cross-side records sets a heuristic corner —
-2245 Hz on g21, steel's guitar. Sensor offsets and setup differences
-can contribute to that disagreement; it does not uniquely identify loss of bridge
-rigidity. Above that corner every string reads the mean of the two side responses,
-and no mode carries a cross or rocking residue. g21's
-bank keeps 47 modes (30 of them rocking). A bank with
-no rocking mode at all falls back to the single-point port every string
-shared before; the engine suite asserts the shipped banks carry at least one.
+**What.** A passive measured bridge, the six strings coupled through it, and
+the measured body that radiates.
 
-An independent [center-impact audit](Tools/AuditBridgeSpatialMap.py) checks the
-unused third hammer position against the mean of the two end responses, without
-fitting gain or phase. Broad 120–500 Hz complex errors are 1.6–10.4%; at 2–4 kHz
-they reach 32–76%. Narrow-band microphone errors near 794 and 891 Hz reach
-74% and 73% on g21, so the smaller broadband error does not establish rigidity
-at every mode. Shorter common windows leave the high-frequency discrepancy.
-The full frequency and sensor results are retained in the fit report.
+**How.** Each string ends on the bridge at its own point along the saddle; a
+spatial modal bridge (47 modes, 30 rocking) with positive-semidefinite residue
+matrices keeps the junction passive, and a plate conductance floor restores
+the loss a real top keeps between its high modes. All six strings, played or
+idle, are members of one two-way junction, which bounds sympathetic ringing.
+The body's normal force and moment drive 132 measured radiation poles, shared
+with the bridge where both measurements see the same resonance, continued
+statistically above the fitted 10 kHz band. Steel plays a lighter blend
+measured to stand in for the listener's preferred mix
+([`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h)). The microphone
+observation is a fixed weighted mix of measured and spatial pressure paths;
+Mono mic uses its right observation.
 
-The Original model plays steel's own bridge, g21's, on its radiation's
-poles (the paragraph after this), as part of the steel blend described
-after that; it is the only bridge. Until 2026-09-29 a second, 44-mode passive bridge fitted
-to a custom Fylde Falstaff measured by [Carcagno et al.](https://doi.org/10.1121/1.5084735)
-(Sitka spruce top, Brazilian rosewood back and sides, normal bridge
-velocity/force with the strings damped, between strings 5 and 6) was
-selectable as a Bridge Model beside it. It was another guitar's bridge under
-the flamenca's radiation, its modes did not line up with the radiation's,
-and the choice made little audible difference, so it was removed with its
-bank. That measurement still sets derived constants: the steel-string
-mobility level below (for g21's bridge and for the jointly fitted body) and
-the piezo's bridge conductance, which
-[`FyldeBridgeReference.py`](Tools/FyldeBridgeReference.py) regenerates. A session saved
-with the old `bridgeModel` parameter loads on the Original bridge.
-
-On the Original bridge, steel's string is loaded by the guitar it is heard
-through. In a modal body one mode supplies both halves on one pole: the
-mobility residue phi_k(bridge)^2/m_k and the radiation residue
-phi_k(bridge)psi_k(mic)/m_k, so a partial landing on a radiation peak also
-meets a conductance peak and blooms, then fades faster than its neighbours.
-g21's bridge measurement comes from the same guitar and hammer impacts as its
-radiation bank, and [the generator](Tools/GenerateMeasuredBridge.py) records
-which of its 47 modes is the same resonance as a radiation mode: the nearest,
-inside that mode's as-fitted half-power band (`|f_b - f_k| < f_k/(2Q_k)`),
-with the bridge mode itself resolved (`f_b/Q_b` under the radiation bank's
-local spacing). 18 pair, at 90.8, 178.7, 208.7, 412.4, 484.1, 517.8, 591.1,
-656.3, 728.8, 766.1, 793.2, 867.9, 919.9, 1032.7, 1084.7, 1330.8, 1374.8 and
-2341.6 Hz, and each takes its twin's engine pole exactly - the wide steel
-anchor's 165-205 cent shift, Shape, Wood and the plate-Q rule included (a
-unit test pins it to the float for every Shape and Wood). The unpaired modes
-(82.8, 1269 and 1466 Hz and the broad fill modes, Q 5-14, at 371, 848 and 955
-Hz and 1.7-9.1 kHz) take the same maps by class, and the plate-Q rule's octave
-factor on their Q. The flamenca's top is about 3.6 times as compliant as a
-steel-string guitar's: the Fylde measures 0.274 of g21's |Y| (geometric mean
-over 80 Hz-4 kHz at the Fylde's measurement point, g21's bass side; 0.23-0.30
-over other bands and conductance), so the residues are scaled by that ratio
-under the unchanged fitted mobility scale, and every residue matrix and so
-passivity is kept; the plate conductance floor is not scaled. Without the
-ratio, measured while the strings still ended on a 3.25 mm anchor stub, a
-picked E2's fundamental fell 13 dB against its 2nd and 3rd harmonics. With it, the radiation/conductance prominence correlation is
-+0.41/+0.46/+0.41 at zero offset, and on picked notes the partials that stand
-out at onset fade 2.1 dB against their neighbours by the late window (the recordings 0.8-1.8). Wood now moves this bridge with the
-radiation, exchanging the load as Shape does.
-
-**The steel blend, lightened (a measured stand-in for a by-ear choice).**
-After Set 18 the listener asked for its model enhancements combined by
-weight. Blind Set 19 heard that blend (B 1, D 0.7, C 0.15, E 0.15) against
-B+D and chose B+D, with "something between B and C is the best"; Blind Set
-21 then preferred the midpoint (B 1, D 0.85, C 0.075, E 0.075) over B+D,
-"not a big difference". The midpoint cost about +40% (strums) / +55% (a held
-chord) CPU over B+D, and the listener asked for the cheaper option, as close
-to the preference as possible. Steel plays a lighter body
-measured to stand in for the midpoint, with the weights in
-[`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h). Steel's own bridge is the
-aligned g21 bridge above, whole (B at 1: a share of the Fylde bridge in
-parallel, tried while that bridge existed, passive as it was, moved the peaks of the port the strings drain into, which is not
-linear in the bridge's admittance, and at 30% left the 190 Hz radiation pole
-0.37 of B's drain, outside both parents; B's poles are never moved part of
-the way either, which would reopen the gap between a bridge mode and its
-radiation peak). T1 and the rocking modes are damped 0.85 of the way in log
-Q from their as-fitted Q to the 150 Hz plate-Q rule's (D, below). The
-decay-Q grid (C) is gone: its difference sat 24-26 dB below the music at
-twice this weight. Of a jointly fitted pole set for g21's bridge and
-microphones ([`MeasuredJointBodyData.h`](Source/DSP/MeasuredJointBodyData.h),
-E, verbatim, so D does not damp its own T1 and rocking modes) only the 9
-modes below 550 Hz play, radiation and bridge (8 of them carry a bridge
-residue) in parallel at 0.075. Below 550 Hz g21's radiation and B's bridge
-play at 0.925; above it B's bridge is whole and g21's radiation plays at
-0.985, the level at which the midpoint's balance of highs against 100-400 Hz
-is matched. Every part is passive and the sums are too. Each of E's bridge
-modes rings on its own radiation mode's pole, and Shape and Wood move the
-joint body by its own A0 and T1 as the rest of the construction moves, so
-its drains stay on its radiation everywhere (BodyShapeTests).
-On Set 21's pieces and a single-note sweep this body keeps 83% / 85% of the
-midpoint's measured move away from B+D (body under the treble notes, 63-80
-Hz, 159/200/317 Hz early, tilt), and costs +2-4% CPU per 64-frame block over
-B+D (Docs/decisions.md, 2026-09-29). It has not been heard against the
-midpoint. With B at 1, D at 1 and E at 0 the engine is the unblended B+D
-bit for bit. The benchmark readings quoted above are B+D's.
-
-The strings end on the bridge. The short segment from the saddle crown to the
-bridge pin has both its ends on the bridge, so it holds the bridge against
-nothing and presents no port of its own (`bridgePortMobility`): each string
-drains into the measured bridge admittance alone, at its own point on the
-saddle. Until 2026-10-10 the model stood each segment as a spring from the
-bridge to ground, DAFx-26's fixed-end tail at a 3.25 mm stub. Above each body
-mode that spring resonated with the body's mass and drained the strings at 6
-to 34 times the bridge's own conductance, 2-5 semitones above A0 and T1.
-[The saddle-termination report](Docs/research/saddle-termination-2026-10-10.md) has
-the measurements, and the decision log (2026-09-02, 2026-09-04) how the stub
-was chosen while it was live.
-
-The junction turns those displacement waves into bridge velocity and force
-with finite differences, so anything that moves a wave without the bridge
-moving must not be differenced. Filling the delay line with a pluck shape
-is an initialization operation, not measured bridge motion; the present
-initialization is still an approximation of physical release. Likewise, a hand
-damping a string does not itself displace the bridge. Both re-reference the
-differences across the sample they land on, which is what keeps a note started
-over a ringing chord peaking like the same note on a silent instrument.
-
-That modal fit reproduces the measured mobility magnitude but loses the
-conductance a real top plate keeps between its high modes, where modal overlap
-is dense; a plate's driving-point mobility tends to a real constant there. One
-over-damped positive-real section restores that floor, with real poles at a
-fitted lower corner and a fixed 16 kHz upper limit, so it adds conductance
-across the top of the band and vanishes below. It is passive like the measured
-modes, and a zero plateau reproduces the previous build exactly. This is what
-sets how much faster a string's upper partials decay than its fundamental: with
-the bridge disconnected the junction supplies 30.3 dB/s of extra decay over
-400--600 Hz but only 1.1 dB/s over 3000--4500 Hz, and that collapse is why the
-model's upper partials formerly rang about 7 dB/s too long against the
-reference recordings.
-
-Every string on the bridge is a member of that junction whether or not it is
-played: F_b = Σ Z_i (2a_i − x_b) and x_b = Y_b F_b, summed over all six. An
-idle string on a moving bridge carries a wave, and at its resonance it
-presents thousands of times its characteristic impedance, which pins the
-bridge there and bounds the sympathetic energy the way a real bridge does.
-Driving the idle strings from the bridge while leaving them out of the sum,
-as the engine did before, let their reaction grow without limit: ten
-hand-damped repeats of one note pumped the idle string 7 dB above the note,
-and open-string partials sat 15 dB under a played fundamental where the
-recordings sit 25 to 40 dB under. A released string is handed back to the
-allocator when its release damping has run its time, keeping whatever it
-still carries as an idle string's wave.
-
-The body's normal force and normalized moment excite measured radiation modes:
-132 shared poles on steel's g21 flamenca blanca, measured in a semi-reverberant
-music room. The archive
-contains normal hammer impacts at both sides of the bridge, observed by three
-microphones. Their raw complex responses retain a common time origin and
-relative phase. For bass and treble forces `Fb` and `Ft`, the inputs are
-`F = Fb + Ft` and `T = Ft - Fb = M/a`, where `a` is the assumed impact
-half-spacing. The corresponding pressure paths are half the sum and half the
-difference of the measured responses. Each mode has separate force and moment
-states, shared by all three microphone outputs. Mapping this pair to arbitrary
-string positions assumes a rigid saddle; it does not identify horizontal
-forcing or the saddle's rotation axis.
-
-Each bank stops where its fit stopped: 10 kHz before the anchor and Shape
-move it, so 8.1 kHz on the steel Jumbo and 11.7 kHz on the Parlor. Above its
-last mode the radiation used to fall 12-25 dB within one third of an octave,
-its 16 kHz band 23-39 dB under its 2-4 kHz level. A plate's modal density is
-constant in frequency and its high modes overlap, so the radiation above the
-fitted band is continued statistically (configureBody, since 2026-09-30):
-modes on a 1/16-octave grid at unit modal overlap (Q 22.6) from the bank's
-top to 18 kHz or 0.45 fs, each part's residues (both microphones, force and
-moment) carrying the power density the bank's own top octave has, with
-deterministic pseudo-random phases, since the fitted high modes' phases are
-uncorrelated, falling at the bridge's mass law, 6 dB per octave. They are
-passive and linear like the rest of the bank and are built as 48 kHz modes
-converted to the host rate as the measured ones are, so the band above 8 kHz
-keeps its level within 0.2 dB at 44.1 and 96 kHz. Every construction holds
-19 slots for them (9-19 of them sound), which keeps each one's state in its
-slot across Shape and Wood changes. The band below the top keeps its tone to
-within about half a dB near the edge (the continuation's first modes overlap
-the bank's last). Nothing measured is behind the continuation's level beyond
-the bank's own top octave; a microphone response measured past 10 kHz would
-replace it.
-
-Stereo mixes complex measured pressure responses and low-mode projections,
-with no added channel delay or reverb. The archive's treble and bass microphones were 10 cm above
-the top plate and 20 cm apart; its third microphone was 20 cm toward the
-upper bout from the treble microphone, also 10 cm above the top. The g21
-setup used a floor absorber, with first room reflections at least 12 ms away.
-It was measured nylon-strung and remains an adaptation for steel.
-
-The current microphone observation is a fixed weighted pressure mixture:
-40% of the preceding treble/upper capture, 20% unboosted measured treble,
-10% measured microphone averages, and 10% each of constrained neck at 30 cm,
-constrained off-hole at 45 cm, and measured-phase neck at 30 cm. Spatial
-terms receive common distance compensation before weighting. They project
-only the four identified air/top modes; the other modes retain the declared
-measured/continuation mixture. Geometry and radiation profiles are explicit
-model assumptions, not new measurements at these positions.
-
-**Mono mic** uses the blend's right observation and sends identical samples
-to both channels. It is not a sum of the final stereo outputs, but the
-observation mixture can itself cancel partials. The stereo pair remains the
-default. See [implementation and A/B limits](Docs/research/studio-capture-implementation-2026-10-11.md).
-
-The generator fits all six impact-to-microphone paths jointly, then checks
-both those paths and their force/moment combinations against the existing
-complex, magnitude and auditory-band limits. The measured input paths also
-pass the microphone-balance limits. It chooses the smallest passing prefix in
-the measured prominence ordering, not a globally
-optimal pole bank. The responses are kept for 12000 samples (250 ms)
-at 48 kHz, with the final tenth faded: the shortest window at which every mode
-below 700 Hz has its Q within 10% of the 1 s value. g21, steel's body, was
-once kept for 3000 samples (62.5 ms), a window whose own 16 Hz bandwidth set
-the Q of every mode below 300 Hz: its air mode read 95.5 Hz at Q 6 where the
-guitar's is 90.8 Hz at Q 19, its main top mode Q 10 where it is 17, the 209
-Hz mode Q 15 where it is 37. That is the low wooden ring a listener missed
-against the real recordings; resolved, it improves every benchmark split,
-with Finger and with Pick (the decision log, 2026-09-24, has the figures),
-with the body, attack and decay terms all better. These remain
-windowed measurements, not identified intrinsic body decays.
-No independent minimum-phase conversion or convolution remainder is added.
-
-g21 rang longer than the flamenca blancas the same archive measured
-anechoically (g37, g38, g39, g42 and g43, each fitted by this generator and
-its gates at its own converged window; g41 fails them), in every band from
-its top-plate mode up, and the music room does not explain it. Every g21 mode
-from 150 Hz to 10 kHz therefore has its Q scaled by the population's median Q
-over g21's own median in the octave round it, never raised
-(`--plate-q median`); frequencies and residues are kept, so a mode starts at
-the level it was measured at and rings for a shorter time. The air group below
-150 Hz, where the by-ear gain below acts, is left as measured. Up to
-2026-09-27 the band started at 300 Hz; since 2026-09-28 (chosen by ear,
-Docs/decisions.md) T1 and the rocking modes are under the same rule (in the
-steel blend 0.85 of the way in log Q: 14.3, 28.7, 12.8 and 2.5 for the four
-below): T1 at 178.5 Hz Q 17.5 -> 13.8 (the population's T1s 8.8-15.5), the
-208.7 Hz rocking mode Q 37.3 -> 27.4 (the population's rocking modes in
-200-280 Hz: Q 11-21), 229.0 Hz Q 17.8 -> 12.1, and 286.8 Hz Q 3.7 -> 2.3.
-The former Q >= 4 runtime floor was removed on 2026-10-11, so these broad
-fitted decays now survive. In the current Dreadnought anchor the first three
-are the 176, 190 and 204 Hz modes; the rocking
-path's 190 Hz ring falls from T60 0.43 to 0.32 s and its peak from 7.8 to
-6.6 dB over its third octave. On steel's own bridge the 178.7 and 208.7 Hz
-bridge modes are twins of T1 and the rocking mode and take these poles, so the
-damping reaches the string's load as well as the radiation; no unpaired bridge
-mode lies between 150 and 300 Hz, so the band's move changes none of the
-bridge's own Q ratios. Since the 2026-10-11 finalization pass, shared modes
-map the actual radiation pole back through the bilinear transform before
-constructing their passive mobility. This removes the damped-frequency versus
-natural-frequency discrepancy at broad Q. Unpaired bridge modes retain their
-original prototypes; the [current evidence register](Docs/research/dsp-finalization-2026-10-11.md)
-records both the mathematical checks and the retained measured-fit limits.
-
-The selected bank uses neutral body calibration factors: frequency and Q
-scales of 1 and residue tilt of 0 dB/octave. The original capture's authored
-fourfold treble-microphone air-mode gain remains inside its 40% contribution;
-unboosted measured and spatial contributions do not inherit it. Shape and
-wood apply their existing construction morphs and Q limits. The fixed blend
-changes observation only, with physical poles and coupling unchanged.
-The rejected bridge-local direct branch has been removed. The existing fixed
-radiation gain remains, with no runtime RMS matching or automatic level trim;
-absolute sound pressure is not calibrated. Body Amount scales measured
-radiation, Stereo Width moves its two channels toward mono, Output applies
-final gain, and a headroom-only limiter remains linear through -1 dBFS.
+**References.** Robert Mores' bridge and radiation archive (g21, CC BY 4.0);
+the steel-string mobility level from [Carcagno et al.](https://doi.org/10.1121/1.5084735)'s
+Fylde Falstaff measurement; the
+[measurement-informed guitar model, DAFx-26](https://dafx26.mit.edu/assets/papers/DAFx26_paper_40.pdf);
+the [saddle-termination report](Docs/research/saddle-termination-2026-10-10.md);
+the [DSP completion register](Docs/research/dsp-finalization-2026-10-11.md).
 
 ### Construction controls
 
-The construction controls are deliberately bounded directions around the
-measured reference guitar, not claims that one measurement identifies several
-distinct instruments.
+**What.** Bounded directions around the one measured guitar, not separate
+measured instruments.
 
-Shape is a box rather than a tone curve. The measured body's two lowest strong
-modes, the air resonance A0 and the top's first mode T1, are the two modes of
-Christensen and Vistisen's coupled top-plate/air-cavity model (J. Acoust. Soc.
-Am. 68(3), 1980, 758-766): a top piston on a cavity spring and the soundhole's
-air plug, whose coupled pair obeys f₋² + f₊² = f_p0² + f_a² + f_h² and
-f₋²f₊² = f_p0²f_h². A measured A0/T1 pair plus the box's own rigid-walled
-Helmholtz frequency therefore identify the top's two frequencies, and a
-different box re-couples the same top into a different pair. The boxes are
-published set-up dimensions: Martin's Size 0 for Parlor (the class the PS-220E
-belongs to), the Martin 000 "Auditorium", the D-28 for Dreadnought and Gibson's
-SJ-200 for Jumbo, each with the 4-inch soundhole a flat-top carries; the plate
-modes above T1 follow the equal-thickness plate law f ∝ 1/A_top, and their
-residues follow the top's mass, 1/A_top. So a plate mode keeps its peak
-mobility and radiation as it moves. At the bridge that is heave 1/A, cross
-A^-1.5 and rock A^-2, one congruence that keeps each residue matrix positive
-semidefinite. The A0/T1 radiation ratios come from the same model's
-eigenvectors. Their bridge residues also follow the plate participation,
-including the cavity-volume/top-area-squared force-coordinate factor; Wood
-composes with that Shape change. Both fitted banks use one frequency-based
-anchor-detune map, preserving the original g21 map without applying unrelated
-row parity to the joint bank. On steel that puts A0/T1 at 121/208 Hz for the
-Parlor, 106/191 for the Auditorium, 94/176 for the Dreadnought and 84/162 for the Jumbo. The
-measured body has an anchor the other shapes are placed relative to: the
-Dreadnought, under the wider box the local line authored (modes x0.900 above
-T1, bass x1.28), chosen by ear on 2026-09-24 on all four blind pairs over the
-fitted transform (101 Hz, x0.972, x1.08). Its air ratio was 98 then, and the
-listener heard the air transient at 99 Hz through the anchor spring the
-strings then ended on. With the strings ending on the bridge (2026-10-10) the
-ratio is 109. That puts A0 at 94.2 Hz, where both recorded dreadnoughts ring,
-and T1 at g21's measured 178.5 Hz under the same detune, 176.3 Hz; a blind
-listener approved the change. On 2026-09-24 the benchmark split on the anchor:
-steel training -0.5%, the never-fitted Eastman E1D flat-top rows (a real
-dreadnought) -5.2%, but development validation +3.2%. Published dreadnought
-measurements report roughly 100 and 190 Hz (Fletcher and Rossing, *The
-Physics of Musical Instruments*, ch. 9). The outline's fraction of its width-by-length
-rectangle (0.72, and 0.75 for the dreadnought's shoulders) is read off the
-plantillas, and the plate law assumes tops of one thickness; both are model
-assumptions, not measurements of those instruments.
+**How.** Shape re-couples the measured air (A0) and top (T1) modes for a
+published box's volume, soundhole and top area and scales the plate modes with
+the top, in the bridge and the radiation alike. Body Material substitutes
+spruce, mahogany or maple plate properties at fixed geometry. The Guitar
+switches set Shape and Material together. Every construction and Picking plays
+at the default's loudness, within 1 LU, from a measured gain table
+([`ConstructionLoudnessData.h`](Source/DSP/ConstructionLoudnessData.h)). The
+under-saddle piezo is a component-level chain: string forces on the element, a
+bone saddle on its stiffness, the element's charge source and cable, and a
+documented 9 V preamp solved stage by stage.
 
-The Guitar construction switches apply construction controls together, using the documented
-body families as starting points: Dreadnought / Martin style (spruce, as in the
-[D-28](https://www.martinguitar.com/guitars/standard-series/D-28.html)),
-Auditorium / Taylor style (spruce, the
-[Grand Auditorium family](https://blog.taylorguitars.com/buyers-resources/an-introduction-to-taylor-acoustic-guitar-body-shapes)),
-Parlor / Fender style (spruce, as in the
-[PS-220E](https://www.fender.com/products/ps-220e-parlor)), all three on the
-Original body and its own bridge. These reuse the bounded construction
-directions; they are not independently measured models of those
-manufacturers. Each switch changes Shape and Material with host automation
-gestures, leaving tuning and output where the player set them. Other
-combinations show Custom construction.
-
-The Original is the only guitar model. The Classical 78, a second measured
-guitar (Mores g35, a classical strung with steel), was removed on 2026-10-10
-at the user's request; three steel models fitted from Mark Rau's
-measurements, which carry no redistribution license, were retired before
-publication. The `guitarModel` host parameter keeps its ID, AU version hint 7,
-index and two-choice range as a non-automatable legacy slot, like the three
-retired capture slots, so a host that addresses parameters by index finds
-every later control where it was; nothing reads it, and a session that chose
-the Classical 78 reloads every other setting and plays the Original. Since
-2026-09-29 a saved state carries `stateVersion` 2; an older one loads with
-its `stringMaterial` and `bridgeModel` values dropped, so a nylon or Fylde
-session plays steel on the Original bridge, and with Cedar as Mahogany.
-`piezoMix` is appended after every earlier parameter and loads at 0 from an
-older state.
-
-Shape moves the bridge's modes by the same coupled-model factors as the
-radiation - its A0 group, its modes up to the body's T1 and the plate modes
-above - so it also changes the saddle-force Piezo capture and the body's
-interaction with the strings. Low-mode bridge residues follow the coupled
-plate participation and force coordinates; higher modes follow the top's
-mass and moment coordinates. Q is retained and the residue scaling preserves
-positive semidefiniteness. Body Material changes the radiation and the bridge
-that belongs to it. Steel's own bridge takes the radiation's poles (Bridge, sympathetic
-strings and body), which preserves ringing strings and overlapping re-pluck
-tails. Dreadnought has unity Shape factors relative to the authored anchor;
-the anchor transform and other documented calibration still modify the
-measured radiation.
-If a body crossfade is already sounding,
-the latest selection waits for its remaining duration (at most 40 ms), then
-uses the same 40 ms crossfade. Same-tick updates replace only the silent target.
-A construction changed under a ringing chord rebuilds the bridge the same
-way: its mobility crossfades over 20 ms from the modes that were sounding,
-and where Shape or Wood only retune the same measured bank its bridge and
-body modes keep ringing from where they were rather than restarting from
-rest; the bridge's motion is carried across the switch sample. Above 5 kHz a
-Shape or Wood switch now stays within about 2 dB of the
-steady sound where it used to tick 12-48 dB over it; a retune ticks 2-9 dB
-over (from 10-30).
-
-Every construction and every Picking plays at one loudness, the default
-construction's (Original, Dreadnought, Spruce, Finger), at the user's
-request: `Source/DSP/ConstructionLoudnessData.h` holds a gain for each of
-the 36 Shape x Wood x Picking cells, measured by [`CalibrateConstructionLoudness.py`](Tools/CalibrateConstructionLoudness.py)
-as BS.1770 integrated loudness over a fixed phrase set of strums, single
-notes and held chords from soft to hard, and multiplied into the output
-reference through the same 20 ms smoothing, so a change glides the level
-rather than stepping it. The mono microphone and the piezo have their own
-factor per cell and stay level with the stereo microphones. Every cell and
-capture is within 1 LU of the default, where the same playing spread over
-about 15 LU before. Only the level
-moves: each construction's samples are its old ones times its gain, and the
-default construction's microphones are unchanged to the bit. A Pick cell whose hardest playing would come within 1 dB of
-the safety limiter sits up to 0.9 LU under the default (Known gaps). The
-match is of loudness over that phrase set, in Standard tuning: one chord at
-one velocity, or one note, can sit several dB either side where the body's
-resonances meet it (Known gaps).
+**References.** Christensen and Vistisen, J. Acoust. Soc. Am. 68(3), 1980;
+Martin, Taylor, Gibson and Fender published dimensions; Fletcher and Rossing,
+*The Physics of Musical Instruments*, ch. 9; the
+[wood model](Docs/research/wood-materials-2026-10-11.md); for the piezo,
+Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
+[Project 202](https://sound-au.com/project202.htm) and TI SBOS058B.
 
 | Control | Audible behavior |
 | --- | --- |
-| **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box's published volume, soundhole and top area, with the plate modes above T1 scaled with the top, in the bridge and the radiation alike; all three captures hear the resulting instrument. |
-| **Body Material** | Spruce, Mahogany or Maple effective plate material: representative density and directional stiffness change coupled air/top resonances, radiation and reciprocal bridge loading at fixed geometry and thickness. Spruce retains the reference construction. Measured damping is retained; no species brightness EQ is imposed. This is a material substitution model, not identification of an exact guitar or board. See [wood model and research](Docs/research/wood-materials-2026-10-11.md). A session saved with Cedar loads as Mahogany. |
-| **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down: the six open strings and the notes each can reach. A retuned string keeps its gauge (its linear mass), so its tension, impedance and stiffness follow its new pitch, as on a real guitar. |
-| **Picking** | Finger retains the calibrated contact and applies its finite release slip in full, including at maximum velocity, with normalized displacement. Pick is sharper and farther bridgeward, and lets the string slide off its edge in a time that shortens as the stroke hardens, so soft strokes are released darker than hard ones (edge radius and release-velocity share chosen by ear between two fits on the picked archtop recordings, with the strings' bending loss; the pick burst stays at zero). Thumb is rounder and farther neckward with a soft contact contribution that remains at high velocity, retaining its slip ratio to the full-velocity release. Finger and Thumb have a soft double-corner contact burst with no white hiss. Explicit MPE position overrides hand position and can reduce the distinction. |
-| **Capture** | Stereo mic, a single measured mono mic, or an under-saddle piezo through a modelled preamp circuit. |
-| **Piezo Mix** | Mixes the under-saddle piezo, at the level Capture Piezo gives it, into Main beneath whichever microphone Capture selects, the same signal on both channels, on one time base: the microphones wait out the piezo chain's seven-sample pipeline (Outputs). At 0% the output is exactly as without it; a new instance starts at 20%, a bit of the piezo under the microphones (the default chosen on 2026-10-12, the Rack's new-instance default), and a session saved before Piezo Mix existed stays at 0%. With Capture on Piezo it does nothing, since the piezo is already the whole output. |
-| **Release Noise** | The damping hand's touch when release damping begins, after the ordinary key-up's 1/32-note window; a joined stroke cancels it. Also controls subtle speed-dependent friction during held wound-string slides. 0-100% (50% nominal, 10% default), scaled by release velocity and what the string still carries. Explicit saved values retain their levels. 0% adds no new noise; already emitted waves continue. A session saved before it existed loads at 0%. Available on the Player panel and host-automatable. |
-| **Room** | Small-studio reflections around the microphones, 0-100% with a 50% plug-in default. Zero becomes dry once the existing room tail fades. The piezo remains dry. Available on the Capture panel and host-automatable; a session saved before Room existed loads at 0%. |
-| **Sustain** | On, every released note rings on as under the sustain pedal, on every channel, until its string is taken or the switch goes off, which damps the held notes as a pedal-up does; CC64 keeps working beside it, and each holds independently of the other. Off (the default) damps every key-up as before and is an exact no-op. Host-automatable; the SUSTAIN switch beside CHORDS. |
-| **String Age** | Lowers the string cutoff and increases dislocation loss; on the wound strings it also scales winding friction and bending loss (0.2 of the default's on fresh strings, 7.8 times it at 1), so an old set's basses lose their upper partials first. |
-| **Pluck Position** | Moves the base hand position from bridgeward toward the neck; the selected picking style applies its distance ratio. Past a quarter of a (short, high-fretted) string the point bends smoothly toward 0.36 of it and never reaches it, so the control changes the stroke at every fret for every technique. Explicit MPE position overrides that ratio. |
-| **Touch** | Changes displacement aperture, transient colour and brightness with one shared velocity law; picking styles set the relative contact width. It also sets how fast every technique lets the string go: the release edge scales over two octaves across the control (none at its default), firmer faster and brighter, softer slower and darker, even at velocity 127. |
-| **Body Amount** | Scales microphone radiation; pickup observations have their own signal path. |
-| **Stereo Width** | Blends the measured stereo pair toward mono; Mono mic and Piezo ignore width and send identical samples to both channels. |
-| **Output** | Final gain, default 0 dB; exactly linear through −1 dBFS, then bounded by a headroom-only safety limiter. |
-
-Stereo mic uses the fixed measured/spatial observation blend. Mono mic uses
-its right observation, duplicated to both outputs. Phase cancellation remains
-a possible property of either microphone route. Piezo observes net saddle
-force before body radiation. These observations never feed back into the instrument.
-Capture changes crossfade on the existing parameter smoothing, preserving
-ringing notes.
-
-Piezo is a real, documented under-saddle pickup chain modelled at component
-level (`AcustraEngine::PiezoDesign`, Docs/decisions.md 2026-09-29 "Accurate
-piezo chain"); values marked chosen were picked from a documented range. In
-signal order:
-
-1. **The strings' forces on the element.** Each string's saddle force - its
-   incident force less its port moving with the saddle - weighted -0.8,
-   +0.4, +0.9, -0.3, +0.6 and -1.0 dB low E to high E (chosen, inside the
-   +-1-2 dB a good install gives), plus the axial force through the strings'
-   rear break angle (sin 25 degrees, chosen; zero while its gain ships at
-   0). In newtons: 0.00773577847 x 48000 = 371.3 N per engine force unit:
-   the strings' own fitted displacement unit (7.74 mm,
-   `steelDisplacementScaleMetres`) per 48 kHz sample, at every rate. The
-   engine reads it from the calibration at run time, so a calibration set
-   with `setPhysicalCalibration` moves the piezo with the strings
-   (Docs/decisions.md 2026-09-30; until then the chain used the struct
-   default's 6.1 mm, 292.8 N).
-2. **The saddle on its element.** A 3.8 g bone saddle (chosen within
-   2.7-5.1 g) on the element's stiffness, placing it at 6 kHz (chosen within
-   5-7 kHz), with the element's loss (Zollner's Q of 18 as a bound), the
-   strings' summed wave impedance loading the saddle and the bridge
-   conductance measured on the Fylde Falstaff (1.59e-3 s/kg over 5-7 kHz)
-   under the base:
-   F_p / F_r = Zk Q / (1 + Zk Q), Zk = k/s + c_m, Q = 1/(sM + SZ) + G. A
-   5.98 kHz pole pair of Q 3.26: +10.6 dB at 5.85 kHz, +0.24 dB at 1 kHz,
-   -4.8 dB at 10 kHz. Its poles map exactly; its zeros are a weighted
-   least-squares fit with the DC gain held at 1, within 0.23 dB and 1.1
-   degrees of the analog response to 12 kHz at 48 kHz (0.34 dB, 1.8 degrees
-   at 44.1 kHz; 0.009 dB at 192 kHz).
-3. **The element**: a charge source across its 1.45 nF at 0.2 V/N
-   open-circuit (Zollner, *Physics of the Electric Guitar*, ch.6: the Ovation
-   EA-68), into 3 m of Mogami 2524 (390 pF, chosen length).
-4. **The preamp**: ESP Project 202 Fig. 1 (R. Elliott,
-   [sound-au.com/project202](https://sound-au.com/project202.htm)) on one 9 V
-   battery with OPA2134 halves (TI SBOS058B). C1 (4.7 nF) into a follower
-   whose 1 MOhm bias network is bootstrapped through C2 and R4 (129 MOhm
-   seen), guarded by two 1N4148s solved as Shockley diodes; C3 into R5 || R6
-   (30.8 Hz, the chain's only audible low corner); a gain stage of
-   1 + R7/R8 = 1.62 (R7 6.2 kOhm, lowered from the figure's 10 kOhm the way
-   the article sets the gain, so the hardest strumming does not clip it at
-   the strings' fitted force unit) whose gain falls to one below 0.48 Hz
-   (C4); R9 and C5 into the volume pot at full and a Radial PZ-DI's 1 MOhm.
-   The op-amps stop where the datasheet says: U1A's input at its typical
-   common-mode range (2.5 V either side of the 4.5 V bias), U1B's output at
-   its swing for its 6.18 kOhm load (+3.25 / -3.89 V about the bias).
-   Mid-band gain from the element's open-circuit voltage to the DI: 1.256
-   (+1.98 dB); -1.5 dB at 20 Hz.
-
-The sections are solved in turn, each as deviations from the 4.5 V operating
-point (so silence maps to exact zero): the input network as a trapezoidal
-two-state system, U1A's range and the diodes by a Newton solve of the diode
-equation in the samples they conduct, C3, C4 and C5 as trapezoidal
-one-poles, and U1B's clip with its corners band-limited by a 12-tap BLAMP
-residual (a Kaiser-windowed sinc integrated twice,
-`Source/DSP/PiezoBlampTable.h`). The chain's output is seven samples behind
-its input at every rate; there is no oversampling. `Tools/PiezoReference.py`
-simulates the same circuit as a stiff ODE system (op-amp macro-models, stray
-capacitance, Shockley diodes) and `Tests/PiezoCircuitTests.cpp` holds the
-engine to its results.
-
-The reference headroom measurements are not a guarantee for every gesture.
-Maximum-velocity Pick strums at the bridge with softer Touch can briefly
-reach the modeled 9 V preamp's limits as their string forces sum. The
-circuit retains its physical overload and recovery; construction level
-matching happens after it and cannot remove internal saturation.
-`CaptureTests` separately checks playing extremes, isolated output-stage
-aliasing with an unclipped input stage, and combined-stage stress.
-`PiezoCircuitTests` compares overload, recovery and harmonic behavior with
-the independent continuous-circuit reference. See the
-[candidate validation](Docs/research/material-gestures-realism-2026-10-11.md).
-
-Its level is matched to the stereo microphones (the median BS.1770 loudness
-difference over the factory constructions, Finger and Pick and typical
-playing), and then per construction
-and Picking by the construction loudness table, which brings it to the
-same loudness as the microphones on every cell. The whole chain runs
-every sample whatever Capture selects, so a Capture change or a newly cabled
-Piezo output lands on warm state; a switch is exactly the 20 ms Capture
-crossfade between the two sensors. It rings down to exact zero within 3.5 s
-of the hardest strum's hardest moment (the input network's 1 Hz pair and
-C4's loop take that long in the circuit too); the strings' saddle force never
-quite does, and is read as none below 5 pN. It costs about 0.5 us per
-64-frame block at 48 kHz (C++17 -O2 -fno-builtin), up to 4 us when driven
-far past its clip. The string weights' real
-pattern, the saddle's own bending modes and friction in its slot are not
-modelled; no matched piezo recording benchmark is available yet.
-
-The public three-choice Capture parameter is appended as `captureMode`,
-retaining all previous parameter IDs and indices. On loading an older saved
-state, Stereo remains stereo, treble/bass/upper microphones migrate to Mono mic,
-and ideal/loaded/magnetic pickups migrate to Piezo. An existing upper-mic
-override takes precedence during that migration. An explicit saved
-`captureMode` always wins. Legacy slots remain for state compatibility and no
-longer advertise automation or drive sound; old capture automation lanes must
-be moved to the new Capture parameter. This deliberate migration removes the
-retired sensors rather than keeping hidden magnetic or unloaded-piezo paths.
+| **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box, with the plate modes scaled with the top; all three captures hear it. |
+| **Body Material** | Spruce, Mahogany or Maple plate material at fixed geometry; a session saved with Cedar loads as Mahogany. |
+| **Tuning** | Standard, Drop D, DADGAD, Open G or Half-step down; a retuned string keeps its gauge, so its tension follows its pitch. |
+| **Picking** | Finger, Pick (sharper, nearer the bridge, darker when soft) or Thumb (rounder, nearer the neck). |
+| **Capture** | Stereo mic, a single measured mono mic, or the under-saddle piezo through its preamp. |
+| **Piezo Mix** | The piezo beneath the microphones on Main; 20% for a new instance, 0% for an older session. |
+| **Release Noise** | The damping hand's touch as a note ends, and faint friction on held wound-string slides; 0% adds nothing. |
+| **Room** | Small-studio reflections around the microphones, 0-100% (50% for a new instance); the piezo stays dry. |
+| **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
+| **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |
+| **Pluck Position** | The hand from bridgeward toward the neck, bending smoothly toward 0.36 of a short string. |
+| **Touch** | Contact width, transient colour and brightness, and how fast every technique lets the string go. |
+| **Body Amount** | Scales microphone radiation. |
+| **Stereo Width** | The stereo pair toward mono. |
+| **Output** | Final gain; linear through −1 dBFS, then a headroom-only safety limiter. |
 
 ### The top's spring-back
 
-Before a pluck the hand holds the string aside, so the saddle carries the
-static force of the string's slope there, T y / a, and the top stands
-deflected under it; at the release that force goes and the top springs back,
-ringing the air mode and the lowest top modes on every note, however high.
-The wave a pluck writes carries what follows the release, not that the force
-was there before it, so until 2026-10-01 the top never sprang back: on
-notes above 200 Hz, the 60-180 Hz band over a note's first 100 ms stood
--30 to -38 dB under the note where the Eastman E1D and the Martin HD28 put
-it at -12 to -21, and their air mode, at 93-95 Hz, rang 23-32 dB over the
-model's. The
-engine now reads the force from the line it wrote - 2Z times its steep
-flank's rise per sample, the normal plane's share - and gives it back to
-the junction as an external force on the saddle at the string's point: a
-step high-passed at 16 Hz by a double pole at 10 ms, with no net impulse.
-Its size is the force's own, given back at 0.45 of it. A listener liked the
-thump and chose it at 80% of the full release (2026-10-01), by ear, through
-the anchor spring the strings then ended on, which took part of the step.
-With the strings ending on the bridge (2026-10-10) the step reaches the body
-4.8-5.1 dB louder, and 0.45 = 0.8 x 10^(-4.95/20) keeps it where it was heard,
-within +0.5 to +1.4 dB on every Picking. Before that change, in the first
-100 ms the low band read within 0.5 dB of the Eastman's picked take,
-1.3-2.1 dB under its finger take and 5.3-5.5 under the Martin; after it the
-model's air mode still rings shorter than theirs (Known gaps). It follows
-the playing as the force does: on E4 and A4 its 60-180 Hz power over the
-first 300 ms reads about -14 dB against the note for the Finger, -10 to -12
-for the Pick, whose hand holds the string nearer the bridge, and -15 for the
-Thumb, at every velocity, so it grows with the note (about 7 dB from
-velocity 0.3 to 0.9). A re-pluck adds its step to one still running out,
-a bend after the pluck leaves the force already let go alone, and a natural
-harmonic, held aside by the picking hand like any note, sheds its open
-string's force (Known gaps). The piezo now observes that same released
-crown load at the string's existing saddle sensitivity, as well as the
-saddle motion it causes. The [released-load correction](Docs/research/piezo-release-load-2026-10-11.md)
-records the force-unit and headroom evidence, including the revised
-passband error test; the circuit and its gain remain unchanged.
+**What.** Before a pluck the hand holds the string aside and the top stands
+deflected under the saddle force; at release the top springs back and rings
+the air and lowest top modes on every note.
+
+**How.** The engine reads that released force from the wave it wrote and
+returns it to the junction as a high-passed step at the string's saddle point,
+at 0.45 of the full force (the level a listener chose); the piezo observes the
+same released load.
+
+**References.** Comparison with the Eastman E1D and Martin HD28 recordings;
+the [released-load correction](Docs/research/piezo-release-load-2026-10-11.md).
 
 ### The microphones and the room
 
-**Capture voicing.** The retained contour was fitted before the studio blend,
-using g21's close bridge/upper-bout observations morphed to steel Shapes.
-Those source observations were compared against five sets of real
-flat-top recordings - the Eastman E1D's picked and finger-plucked takes, the
-Martin HD28, the bank's flat-top notes and GuitarSet's six performances -
-that earlier pair heard about 5 dB too little at 125 Hz, 4-6 dB too much at
-250-630 Hz and 2-7.5 dB too little at 0.8-1.6 kHz, every source agreeing,
-and the 1.26 kHz hole did not move with the pluck point, so it was the
-microphones' and not the strings'. [`Source/DSP/CaptureVoicingData.h`](Source/DSP/CaptureVoicingData.h)
-holds the difference as one smooth gain - a low shelf and five broad peaks,
-none past 6 dB: +1.1 to +1.5 dB at 80-125 Hz, -6 to -6.5 dB at 250-500 Hz,
-+5 to +7 dB at 1-1.6 kHz, nothing above 4 kHz where the recordings disagree;
-refitted after the top's spring-back, which supplied low end the first fit's
-+3.3 to +3.8 dB had stood in for. Since 2026-10-08, six causal filter
-sections apply this contour to the summed microphone pressure. The previous
-per-mode weighting could disrupt cancellation between modal tails and turn
-an intended low-mid cut into a boost. The correction preserves the physical
-bridge and radiation poles, never reaches the piezo, and keeps separate
-histories for each bank during construction fades. See the
-[body and capture audit](Docs/research/body-capture-2026-10-08.md).
-Its earlier level calibration kept constructions within +-1 LU. The studio
-blend retains those gains and adds flat microphone-only phrase-level
-compensation; its level and spectral changes are measured
-separately in the [implementation report](Docs/research/studio-capture-implementation-2026-10-11.md).
-[`Tools/FitCaptureVoicing.py`](Tools/FitCaptureVoicing.py) refits it from
-renders of the five sources (twice, the engine in the loop, after any change
-to the Original's radiation).
+**What.** How the close microphones colour the body, and the room around them.
 
-**Microphone brightness tilt.** The microphones also receive a small
-tilt, 0.4375 dB/octave brighter around 1 kHz, chosen on 2026-10-02 when the
-listener asked the two models then shipping to come about 25% closer to each
-other's brightness; the Original keeps it after the second model's removal.
-The tilt stops changing below 60 Hz and above 10 kHz.
-[`Source/DSP/MicrophoneBalanceData.h`](Source/DSP/MicrophoneBalanceData.h)
-holds it; it is applied once to the completed radiation bank, including its
-high-frequency continuation. It keeps the poles, mode count, complex residue
-phases and physical bridge/string behavior; the summed microphone phase may
-move. It adds no per-sample processing, and the piezo pickup response stays
-intact.
+**How.** A fitted capture voicing (a low shelf and five broad peaks, applied to
+the summed microphone pressure) and a small brightness tilt correct the
+measured close observation toward five sets of real flat-top recordings. Room
+puts a 5.2 x 4.1 x 2.7 m studio around the microphones: ten image-source early
+reflections, then an eight-line feedback delay network; it never reaches the
+piezo.
 
-**Room.** `EngineParameters::room`, the plug-in's Room, puts a small studio
-(5.2 x 4.1 x 2.7 m, the microphones 0.32 m from the guitar) around the
-microphones: its ten strongest early reflections from an image-source model
-within two bounces, panned by side, then an eight-line feedback delay network
-with a nominal 0.45 s low-frequency decay and shorter high-frequency decay.
-Its late output starts around 25 ms, after the last early tap at 17 ms;
-the 8 ms delay is the late network's input delay, not its audible onset.
-Room changes the send level, not microphone distance or reflection geometry.
-Every open recording is made in a room and the model is
-anechoic: between partials the recordings carried 15-25 dB more over a
-note's first 0.3 s, and the scorer's spectral body term, the largest on
-every split, was mostly that. At 50%, the plug-in's default for a new
-instance, the room sits about 12.5 dB under a held chord and 10 dB under a
-released phrase, and each halving of Room lowers it 10 dB; a session saved
-before Room existed loads it at 0. It feeds on the microphones' mid signal,
-is spread by Stereo Width like the pair (0 is mono), never reaches the
-piezo or the Piezo output, and is energy-normalised at prepare and run at
-the host rate divided to 64 kHz or under. Broadband level and decay are
-covered across rates. Each late line now preserves its accepted 48 kHz
-absorption decay at DC and 8 kHz (fs/4 below a 32 kHz internal rate); the
-48 kHz reference coefficients are unchanged. A one-pole mapping cannot
-match the complete continuous-frequency curve at every sample rate.
-The two-microphone, earlier-onset room experiment was rejected by the listener;
-the [room report](Docs/research/room-2026-10-10.md) records that retained tradeoff.
-It renders the same at any block
-size, costs about 4% of the engine's time while it sounds and 148 KB per
-instance, and at 0 is an exact no-op once it has rung out. The engine's own
-default is 0, so the benchmark, the demos and every test that does not ask
-for it are the dry instrument. Output scales the dry microphones and the
-existing room tail together; it does not change the room send or leave old
-room energy behind at the previous output level.
+**References.** [`CaptureVoicingData.h`](Source/DSP/CaptureVoicingData.h) and
+[`Tools/FitCaptureVoicing.py`](Tools/FitCaptureVoicing.py); the
+[body and capture audit](Docs/research/body-capture-2026-10-08.md), the
+[studio capture implementation](Docs/research/studio-capture-implementation-2026-10-11.md)
+and the [room report](Docs/research/room-2026-10-10.md).
 
 ### Outputs
 
@@ -1480,1133 +401,159 @@ room energy behind at the previous output level.
 | **Main** (`Output`) | stereo, always on | Whatever Capture selects, with the piezo beneath it at Piezo Mix. |
 | **Piezo** | mono, optional | The under-saddle piezo and its preamp, whatever Capture selects. |
 
-The piezo observes the same vibrating instrument in the same pass, so it can be
-recorded, processed or blended separately while Main keeps following Capture.
-Both outputs are seven samples later than the strings, at every rate and for
-every Capture: the piezo chain's output is seven samples behind its input
-(its preamp stages), and since 2026-09-30 the microphones are held back by
-the same seven samples, so a Capture crossfade and Piezo Mix sum the two
-sensors as the instrument moved them. Before, the blend summed them 146 us
-apart at 48 kHz and 73 us apart at 96 kHz, a comb whose notches moved with
-the rate; now the blend's spectrum at 48 and 96 kHz agrees within 0.2-0.4 dB
-on average (OutputBusTests). `AcustraEngine::outputLatencySamples()` is that
-fixed latency; `Performer::latencySamples()` adds the Gather Chords window
-when it is on, and the plug-in reports the sum to the host (7 samples, or
-1447 at 48 kHz while gathering).
-It plays at the level Main has when Capture selects Piezo (the same Output and
-construction reference) and has its own copy of the headroom-only safety
-limiter, so with Capture on Piezo it is either side of Main sample for sample.
-Enabling it never changes Main by a bit, and an idle instrument is exact
-silence on both.
-
-In the VST3 plug-in, Piezo is an optional auxiliary output bus, off by
-default, so hosts and saved sessions that know only the stereo output are
-unchanged; enable it in the host's output/bus configuration. Audio Units have
-no disabled buses, so an AU host sees both outputs; Main is still the first.
-A disabled bus is not rendered; an enabled one adds a limiter and a store a
-sample, since the piezo is computed for Main anyway.
-
-The plug-in plays at host rates from 8 kHz to 384 kHz
-(`AcustraEngine::maximumSupportedSampleRate`). At any other rate the engine
-would run at a rate other than the host's (it clamps a finite rate to the
-nearer bound and uses 48 kHz for a zero, negative or non-finite rate), so
-every note would play off pitch; both outputs stay silent instead and the
-editor's status line reads UNSUPPORTED RATE.
-
-In code, `AcustraEngine::process(left, right, buses, numSamples)` and
-`Performer::beginBlock(left, right, buses, numSamples)` take an
-`AcustraEngine::OutputBuses { piezo }` whose null pointer means "not wanted";
-the two-pointer forms render Main alone and are the same samples.
-
-**An idle instance sleeps.** With no string played (held, sustained,
-damping or still to come in a strum), Main and Piezo under -120 dBFS for
-half a second and a two-second strum rest since the last struck key (the
-Rack Extension's rule), and the engine's own residue cleared, the plug-in
-stops computing the strings. The engine clears what still rings under the
-threshold once everything has stayed under 1e-11 for 80 ms
-(`AcustraEngine::suspend`), so an instance never played sleeps after half
-a second and a played one, in the cases measured, 7 to 10 s after its
-output fell under -120 dBFS, 12 to 17 s after its last key. Its blocks
-are then exact zeros, at about 0.5 µs instead of about 62 µs per 64-frame
-block at 48 kHz (rough figures from an unquiet shared build machine; a
-playing instance is unchanged within measurement noise). The engine's
-clocks run on while it sleeps, so the next note meets the picking hand,
-vibrato and strum direction where it would have: whatever the block size,
-the output is bit for bit that of an instance that never slept, in every
-case tested. A struck key wakes it for its block; controllers, bend,
-keyswitches and RPNs reach it asleep, and a parameter change wakes it for
-the half second its glides need. A bypassed instance sleeps too. See
-[the decision](Docs/decisions.md).
+Both outputs are seven samples behind the strings at every rate, so the two
+sensors sum as the instrument moved them; the plug-in reports that latency,
+plus 30 ms while Gather Chords is on. In VST3 the Piezo bus is optional and
+off by default. The plug-in plays at host rates from 8 kHz to 384 kHz and stays
+silent, showing UNSUPPORTED RATE, at any other. An idle instance stops
+computing the strings and wakes with output bit for bit that of one that never
+slept.
 
 ### Why this architecture
 
-The 2026
-[measurement-informed nonlinear guitar model](https://dafx26.mit.edu/assets/papers/DAFx26_paper_40.pdf)
-motivates Acustra's measured bridge compliance and measured force-to-pressure
-body radiation (its EJ45 string data served the nylon strings, removed on
-2026-09-29); its one-way treatment of idle
-strings has been replaced by a two-way six-string junction. Acustra keeps a
-waveguide string solver for present realtime use; it
-does not yet implement that paper's full geometrically exact nonlinear string.
-
-The 2026
-[differentiable Karplus--Strong study](https://dafx26.mit.edu/assets/papers/DAFx26_paper_38.pdf)
-shows how delay, frequency-dependent loss and pluck geometry can be matched with
-multi-scale spectral objectives. Acustra applies that idea offline to bounded
-physical parameters while retaining its stiff-string and measured bridge/body
-solver at runtime.
-
-The 2010
-[passive admittance-matrix guitar model](https://www.dafx.de/paper-archive/2010/DAFx10/BankKarjalainen_DAFx10_P60.pdf)
-motivates a future measured 2-D bridge. Acustra does not invent the missing
-cross-axis measurement: a passive rotated scalar approximation improved a
-coarse aggregate score but worsened held-out two-stage decay, so it is not in
-the shipping topology.
-
-The 2024
-[real-time nonlinear guitar study](https://www.dafx.de/paper-archive/2024/papers/DAFx24_paper_50.pdf)
-demonstrates a stable geometrically nonlinear string with fretboard, fret and
-stopping-finger contact. Those mechanisms inform the roadmap, but Acustra does
-not mislabel its present bounded pitch glide as that solver. A 2025
-[comparison of acoustic, electro-acoustic and optical sensors](https://www.mdpi.com/1424-8220/25/21/6514)
-examines the different waveforms those sensors observe on a plucked and struck
-string. It does not identify a reciprocal 2-D guitar-bridge transfer matrix.
-The second axis Acustra radiates is the part of that matrix the archive does
-measure - the rocking a sideways crown force drives, through the published
-crown height - not the in-plane translation, which remains unmeasured.
-
-The 2025
-[robotic plucking-depth study, posted in 2026](https://arxiv.org/abs/2606.24356)
-separates small depth changes from pick speed: deeper strokes generally increase
-level and strengthen low harmonics within a mounting, while remounting changes
-the result substantially. It supplies no universal MIDI-velocity brightness
-law. Release depth, speed and contact geometry therefore remain separate
-physical questions in the excitation work.
-
-[`ModalPreloadProbe.cpp`](Tools/ModalPreloadProbe.cpp) and
-[`PrototypeModalPreload.py`](Tools/PrototypeModalPreload.py) provide a reproducible
-mechanical reference for a string held before release, using
+Acustra keeps a realtime waveguide string on a measured bridge and body, after
+the [measurement-informed nonlinear guitar model](https://dafx26.mit.edu/assets/papers/DAFx26_paper_40.pdf)
+(DAFx-26), with a two-way six-string junction in place of its one-way idle
+strings. Offline fitting follows the
+[differentiable Karplus-Strong study](https://dafx26.mit.edu/assets/papers/DAFx26_paper_38.pdf)
+on bounded physical parameters. A measured 2-D bridge
+([Bank and Karjalainen, DAFx-10](https://www.dafx.de/paper-archive/2010/DAFx10/BankKarjalainen_DAFx10_P60.pdf))
+and a geometrically exact string with fret contact
+([DAFx-24](https://www.dafx.de/paper-archive/2024/papers/DAFx24_paper_50.pdf))
+inform the roadmap but are not implemented.
+[`ModalPreloadProbe.cpp`](Tools/ModalPreloadProbe.cpp) is an offline
+reference for a string held before release, after
 [Woodhouse's constrained modal construction](https://euphonics.org/wp-content/uploads/2022/03/Guitar_I.pdf).
-It couples one low-E string to the Original bridge and all six fixed tail
-anchors, solves static equilibrium under a stated 1 N point force, then releases
-it with zero initial velocity. At 128 string modes, static displacement is
-within 0.20% of the infinite pinned stiff-string reference;
-free-release energy balance passes at 44.1, 48 and 96 kHz. The tool reports modal
-convergence and time-integration error separately. It also observes the force
-on the free body, including the fixed anchors, and checks separate string,
-body and anchor work balances. Its finite-mode release-force jump is quantified
-as a truncation effect, not a measured contact transient. It has no acoustic radiation,
-MIDI-force calibration or runtime role; it is a reference for future source
-changes, not a validated audible improvement. Compile/export/run instructions
-are in the two files.
 
 ### Recordings are calibration references only
 
-The separate `AcustraReferenceBank` contains 280 CC0 regions over MIDI 38--84:
-
-- 272 Shinyguitar acoustic-microphone regions for steel: 17 roots, four
-  velocity layers and four round robins;
-- 8 Eastman E1D finger-plucked anchors for reproducible evaluation.
-
-Its 41 classical-guitar regions, the nylon strings' references, were removed
-with the nylon strings on 2026-09-29.
-
-Only the offline physical-fit renderer and reference-bank tests link this
-target. The plug-in links `AcustraDSP` alone, so none of the recorded audio is
-present in or playable by the runtime instrument.
-
-Training uses 54 of those regions and development validation 14, and the eight
-Eastman E1D regions are a third split that is rendered, scored and reported but
-never fitted and never used to gate anything. They matter because of what they
-are: the only flat-top steel acoustic in the bank, while the whole steel
-calibration is fitted against a miked archtop. Their absolute score is not
-comparable with the other two splits — different rows, as always — but the same
-eight rows scored on two builds are comparable with each other, which is the
-use. Two caveats travel with them. Eight rows at one captured dynamic leave the
-dynamics term empty, and the guitar was tuned about four cents sharp of A440
-across them, from -0.5 to +10.3 cents by its own settled-H1 roots, so part of
-that split's tuning term is the recording's tuning rather than the model's.
-
-The fitter renders the physical engine deterministically and compares it with
-those references using seven weighted robust terms: attack spectra, harmonic
-envelopes, settled tuning and inharmonicity, early pitch trajectory,
-partial/band decay, body spectrum and velocity dynamics. The decay term
-compares decay rates in dB/s rather than log2(T60), because what a decay error
-does to a note is a level difference and after t seconds that difference is
-exactly the rate error times t; the relative form scored the same 1.4x error
-identically whether it meant 25 dB or 3 dB after one second. The trajectory
-term measures common H1--H8 pitch movement over 20--100, 80--200 and
-180--400 ms relative to settled partials. The calibration stores 25 bounded
+The separate `AcustraReferenceBank` holds 280 CC0 regions (272 Shinyguitar
+steel regions and 8 Eastman E1D finger-plucked anchors). Only the offline
+fit renderer and reference-bank tests link it; the plug-in contains no recorded
+audio. The fitter renders the engine deterministically and scores it against
+those references on seven robust terms (attack spectra, harmonic envelopes,
+tuning and inharmonicity, early pitch trajectory, decay, body spectrum and
+velocity dynamics), with training, development-validation, a reported-only
+flat-top split and a frozen test split. The calibration stores 25 bounded
 values, in the order of `NAMES` in
-[`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py). Only the supported
-shared-body, steel-string and shared-body-refine stages remain; `BY_EAR` records
-the fixed listener choices. The cleanup removes the 13 controls for rejected
-or disabled direct-radiation, axial, end-correction, impact and contact-noise
-experiments. Existing active values and their relative order are retained.
-Older 37-value and nylon-era 48-value vectors are refused rather than silently
-reinterpreted. The fitter does not copy audio or fit an arbitrary playback filter.
-
-That loss reduces each partial to one robust log2(T60), which is why
-[`Tools/AuditDampingCurve.py`](Tools/AuditDampingCurve.py) exists alongside it:
-it pools per-partial early decay rates by absolute frequency and reports dB/s,
-so a damping error can be located on the frequency axis rather than averaged
-into one number per partial.
-
-The following table is the frozen 2026-09-04 refit comparison; its Shipping
-column names the model released then, and its training and development rows
-include the classical recordings the benchmark held then. The current force/moment body retains
-that string/bridge calibration and replaces four body factors with the neutral
-values auditioned on 2026-09-05. These historical dry-note scores have not been
-recomputed for that integration. Lower is better in the robust descriptor score:
-
-| Split | Rows | Neutral baseline | Fitted | Shipping | Change |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Training | 83 | 8.299141 | 5.662377 | 6.111540 | −26.36% |
-| Development validation | 24 | 7.597316 | 5.893771 | 6.072344 | −20.07% |
-| Flat top (reported only) | 8 | 9.315695 | 6.913712 | 8.073304 | −13.34% |
-
-The one split that answers whether the refit generalises is the frozen test
-split, which no fit, screen or refit has ever rendered: 188 archtop regions on
-the sixteen roots the fit uses. It is scored once per release and never fitted.
-The refit moves it from 6.324463 to 5.728151, 9.4% better, and every one of its
-seven terms improves — attack 8.110 to 6.870, harmonics 8.205 to 8.122, tuning
-3.019 to 2.311, pitch trajectory 0.315 to 0.275, decay 4.421 to 3.929, body
-11.506 to 10.504, dynamics 0.0945 to 0.0188. That is the evidence against
-reading the flat top's 1.6% regression as overfitting: on the larger unseen
-split the refit is better everywhere, and the flat top is eight rows of one
-guitar tuned about four cents sharp.
-
-The shipping column is not the fitted one. The Fitted column is what the
-bounded pattern search of 2026-09-04 converged on by itself; the user heard it
-against the calibration that shipped before it, level-matched with the letters
-unread, and chose it by ear, which is what licensed the direction. It did not
-license the vector: the search had run two values onto bounds that contradict
-what this repository has measured, and both are pinned back in what ships —
-`bridgeMobilityScale` to the archive's own measured mobility, and the
-saddle-to-anchor length to DAFx-26's published 3.25 mm stub (retired on
-2026-10-10, when the strings came to end on the bridge). That pinning is
-what the two columns differ by, and it costs 7.9% on training, 3.0% on
-development validation and 16.8% on the eight flat-top rows. The five values
-an earlier listener moved off the fit's answer on 2026-08-31 — the body's
-low-mode gain and residue tilt, steel's fundamental T60 and frequency loss,
-and the plate conductance floor — were frozen at that verdict during the
-search, as was the axial resonators' gain switched off by ear on 2026-09-01,
-so the search never saw any of the six. `Docs/decisions.md` records these
-verdicts and the subsequent force/moment body selection.
-Read the whole table as a snapshot rather than a constant: every column moves
-on every engine change, and the comparison that means anything is paired,
-same-note and same-engine.
-
-The neutral column moves with the engine, not only with the calibration, so it
-is re-rendered rather than carried: the two-point bridge, nylon's measured
-classical body and the lossless fractional-delay read all landed while it
-stood at 8.768535, 8.145301 and 9.309315, which is what it read on the engine
-of 2026-09-02. On that engine the constant six-string anchor scored 8.768535
-and 8.145301 where the played-subset anchor scored 9.671509 and 9.277751 on
-the same rows; `Docs/decisions.md` records that trade, the gate clause it
-fails, and why the change ships regardless.
-
-Read those figures as a paired measurement, not as constants. Halving the decay
-descriptor's analysis window, which no result should depend on, moves the
-development-validation score by 0.9% and its decay term by 6.2%. The shift is
-common-mode, so differences between two builds scored the same way survive it —
-the plate conductance floor wins its ablation at both resolutions and from both
-starting points — but an absolute score is only comparable against another taken
-over identical rows with identical settings, which is why development validation
-stays at the same 24 rows even when the training corpus grows.
-
-The neutral baseline uses unity scales, direct branch off, velocity-brightness
-depths zero, aperture exponent one, low-body gain one, steel nonlinear
-displacement off, the legacy +0.018 steel fret-decay slope, a shared high-loss
-cutoff scale of one, a plate conductance floor of zero and a 20 mm
-saddle-to-anchor length. It is re-rendered on
-the current runtime and re-scored under the current descriptors, so it is
-comparable with the fitted column beside it rather than with the earlier
-26-mode-bridge figures. Every term improves against it on both splits. These
-measurements establish a repeatable movement toward the reference corpus, not
-perceptual equivalence to a guitar.
-The held-out split is
-a development validation set used to gate promotions; it is not an untouched
-final test. A new captured blind set and controlled listening remain necessary.
-
-The [real dry-note benchmark](Docs/research/real-dry-note-benchmark.md) compares the fit with
-real recordings, and [verification](Docs/validation/verification.md) records the
-measured checks behind these claims.
+[`OptimizePhysicalModel.py`](Tools/OptimizePhysicalModel.py); listener choices
+override the fit where recorded. Scores are paired measurements, not
+constants. The [real dry-note benchmark](Docs/research/real-dry-note-benchmark.md)
+compares the fit with real recordings, and [verification](Docs/validation/verification.md)
+records the measured checks.
 
 ## Known gaps
 
-The [current DSP completion checklist](Docs/research/dsp-finalization-2026-10-11.md)
-separates modeled behavior, verified inconsistencies, accepted approximations
-and missing evidence. The measurements below are a historical research ledger:
-many predate the 2026-10-10 saddle termination and string-loss changes or the
-2026-10-11 material, hand and broad-Q corrections. Their numbers are not a
-fresh benchmark of the current build. In particular, unequal intrinsic
-polarisation losses, an unscaled heave-only plate floor, absent slide roughness
-and an unadopted 94.2 Hz air retune no longer describe the current instrument.
-Dated evidence is retained so the earlier decisions remain traceable.
+What the current instrument does not model, or models only by an authored or
+fitted stand-in, and the evidence that would close each. The dated
+measurements behind these entries, and earlier gaps since closed, are in the
+[known-gaps ledger](Docs/research/known-gaps-ledger-2026-10-17.md); the
+[DSP completion register](Docs/research/dsp-finalization-2026-10-11.md)
+separates verified errors from accepted approximations.
 
-- The default Piezo Mix of 20 % deepens two holes: where the
-  microphones' antiresonance meets the piezo in opposite phase, the
-  Parlor's F#5 falls from -7.5 to -14.3 dB against its neighbours and the
-  Jumbo's C5 from -2.8 to -8.5 (Room 0.5, E2-C6 sweep); on the Dreadnought
-  and Auditorium the piezo fills the hole instead. Inverting the piezo or
-  shifting it in time moves the cancellation to other notes rather than
-  removing it, so the blend is unchanged; the holes start in the
-  microphones' top-string response. Not heard yet; see
-  [the report](Docs/research/mid-band-dip-2026-10-12.md#over-the-full-range-and-at-the-default-piezo-mix)
-  and [the blend study](Docs/research/piezo-blend-2026-10-12.md).
-- Strum direction follows an interval rule, not the beat grid: two
-  upstrokes a beat apart (the second and third strokes of a "down, down-up,
-  up-down-up" pattern) come out down and up unless the C#0 keyswitch asks
-  for upstrokes. A rule reading the host's beat position, down on the
-  eighth grid and up between, would follow the hand itself; it waits on a
-  listening pass of the interval rule (2026-10-12, Docs/decisions.md).
-  Picked notes under Pick follow the same rule since 1.4.0.
-- The upstroke's 1.2 dB offset comes from comparing whole takes' upstrokes
-  with their downstrokes; part of it may be the players' accents on the
-  beat, which the corpus cannot separate. Its tilt across the strings and
-  the stroke's lighter edges are measured inside single strokes since
-  2026-10-14; the edges are means over strokes of four to six strings
-  applied to every stroke of three or more. GuitarSet's upstrokes also
-  reach the bass strings half as often as its downstrokes and cross each
-  string 18% more slowly; neither is modelled, since a MIDI chord names the
-  strings it wants and the slower span may be onset detection on weak
-  attacks ([the measurement](Docs/research/stroke-release-realism-2026-10-13.md),
-  [the refit](Docs/research/playing-physics-2026-10-13.md)).
-- A single picked upstroke reverses only the sideways release, the
-  return-stroke model strums have had since 2026-10-07, so at the saddle its
-  moments add on the treble strings and cancel on the bass ones: in
-  isolation it radiates 2.1-3.8 dB more than a downstroke on the G, B and
-  high E (up to 5.7 on one note) and 0.6-1.0 dB less on the low E and A.
-  No measurement here says whether a real plectrum's upstroke differs that
-  much, though the user's blind A/B preference for the candidate included
-  it; `PerformanceRealism::alternatePicking` off restores downstrokes.
-- The release fall is GuitarSet's median curve against the level the
-  hand's damping has taken; real note ends spread widely about it (at 35 dB
-  down the quartiles are 6 and 288 cents of fall) with how fast a finger
-  lets go, which MIDI's key-up only partly carries. During the fall the
-  string keeps the fretted note's dispersion, bridge compensation and hand
-  loss, a period at most 5% shorter than the one sounding.
-- Left by the 2026-10-11 MIDI audit, each a limit rather than a stuck note:
-  - The MPE lower zone is not saved with a session: after a reload, a
-    member channel's events are conventional (a ±2 semitone bend range)
-    until the controller sends RPN 6 again, which MPE controllers do on
-    connection and most hosts repeat at transport start.
-  - RPN Data Increment and Decrement (CC96/97) are ignored; only Data
-    Entry (CC6/38) sets a bend range or the zone.
-  - The Sustain switch acts at the start of the block the host changes it
-    in, before that block's MIDI, so an automation point lands up to one
-    block early, and under Gather Chords a key-up sent within the 30 ms
-    before a switch-on is still held, since the switch is not delayed with
-    the notes.
-  - Panic and Reset All Controllers leave the bridge hand (CC2) where it
-    is, as MIDI's reset list does; a controller left at full pressure keeps
-    the strings muted until it moves.
-- The Parlor's air mode, at 121-128 Hz, still lifts B2 4.6 dB and A#2 3.4
-  over their neighbours on the microphones with the air-mode dip (5.7 and
-  4.0 without it, at Room 0.5): the dip is sized for the other bodies and
-  is not deepened for the Parlor
-  ([the report](Docs/research/studio-smoothness-2026-10-11.md), Docs/decisions.md
-  2026-10-12). The other three
-  Shapes' air-mode notes sit 2-4.6 dB over their neighbours after the dip,
-  as the real flat-top's A#2 does.
-- Left by the 2026-09-30 defect audit, each a trade in the shipped sound
-  rather than a fix:
-  - The parallel polarisation shares the normal loop's bridge compensation,
-    so the H1 doublet reaches about 18 cents and sustained pitch sits up to
-    9 cents off on the default Dreadnought (low E frets 14-17, A frets 9-11).
-    Tuning each plane against its own port puts sustained pitch within
-    about 2 cents at every rate but removes most of the doublet's beat; a
-    blind listener heard that as detuned and kept this (Docs/decisions.md,
-    2026-09-30).
-  - Where the pluck shape nearly nulls a partial, the random release burst
-    decides its level: MIDI 83's H8 differs by 27 dB between two burst
-    noise draws.
-  - Historically, unequal per-plane loss factors left a note's realised T60
-    up to about half its requested one. Since 2026-10-10 both planes use
-    identical intrinsic loss, including the authored 0.99915 round-trip
-    factor; the old T60 measurement has not been repeated here.
+**Playing and MIDI**
 
-- The radiation above each measured bank's fitted band (8-12 kHz up) is a
-  statistical continuation of its top octave, not a measurement: its level
-  follows the bank's own top-octave density and a 6 dB per octave mass law,
-  its phases are pseudo-random. It lifts the body's 16 kHz band by 10-27 dB
-  over the cliff it replaces, and with it a strong body peak at the
-  band's edge weighs more: on the default Dreadnought's 8.3 kHz peak the
-  open high E's 25th partial, 14 dB under E6's natural harmonic at the
-  saddle, reaches 0.2 dB over the harmonic's octave at the microphones (it
-  was 1.2 dB under), so the harmonic test reads the saddle. A microphone
-  response measured past 10 kHz would settle both.
-- The hardest playing - velocity 127 with the Pick at Touch 1 and Pluck
-  Position 0 - reaches the output's soft safety limiter on most
-  constructions. Since the top's spring-back (2026-10-01) its peak before
-  the limiter is up to +1.59 dBFS on the stereo microphones, past the knee on
-  20 of the 24 constructions then shipping (7 before), -0.13 on the mono (5,
-  from 2) and +2.02 on the piezo (all 24, as before); the 24 included the
-  Classical 78's 12, removed on 2026-10-10. The default construction's
-  reaches -1.20 dBFS on the stereo microphones, 0.2 dB under the knee, where
-  it kept 2.1 dB under it. A hand at the bridge holds the most force against
-  its note, and six strings released on one sample add their releases. That
-  one segment is the peak: a chord on one channel is strummed (Performer),
-  and the hardest case's strums - 9 ms and 4 ms a string - stay under the
-  knee on 22 of the 24 on the stereo microphones (at least 1 dB under on 20)
-  and at least 1 dB under on 23 on the mono; the two over the knee were the
-  Classical 78's Parlor in mahogany and spruce (-0.04 and -0.06 dBFS), so every
-  remaining construction's strums stay under it. Six on one
-  sample reaches the engine from a chord spread over channels (MPE,
-  string-per-channel). Keeping it under the knee there on every
-  construction at the same parity means lowering every construction, the
-  default with it, by 2.6 dB (3.6 for the calibration's 1 dB margin),
-  which is the user's to choose.
-- Loudness is matched over a phrase set, not note by note. Across
-  constructions and tunings one open strum sits -6.6 to +6.0 dB from the
-  default construction's on the same strings and capture
-  (ConstructionMatrixTests): the low extreme is the Parlor in Spruce in
-  Standard (mono mic), the high one the Jumbo in Spruce in Half-step down
-  (stereo mic), whose low E-flat lands on the Jumbo's air mode.
+- Strum direction follows an interval rule, not the host's beat grid. A
+  listening pass of the interval rule decides whether a beat-grid rule is
+  needed.
+- The upstroke's level offset and tilt, the stroke edges and the release
+  pitch fall are corpus means; players' accents, a finger's release speed and
+  upstrokes' thinner bass reach are not separated or modelled. A per-stroke
+  annotated corpus would separate them.
+- A single picked upstroke radiates 2.1-3.8 dB more than a downstroke on the
+  treble strings; no measurement here says whether a real plectrum does.
+- Live chords with Gather Chords off can keep a wider fingering than one hand
+  reaches. The hand's span and costs follow the listener's direction and a
+  finger-span study, not recorded fingerings.
+- MIDI limits: the MPE zone is not saved with a session; RPN Data
+  Increment/Decrement are ignored; the Sustain switch acts at block start;
+  Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond
+  the CC74/pressure bias are absent.
+- Tapping, slapping, fret buzz, artificial and pinch harmonics, body knocks
+  and a moving-fret boundary for hammer-ons are absent; slide roughness and the
+  hammer-on contact are authored. Fret collision fires when built but needs a
+  measured string displacement before it can ship. A close-miked solo
+  slide/bend capture would calibrate the slide texture.
 
-- Single notes' radiated level is still rougher from note to note than the
-  open recordings', though less than it was. Over E2-C6, 1 s RMS at the
-  Stereo mic, the RMS deviation from a seven-note neighbourhood (each note
-  against the mean of itself and up to three neighbours each side, as
-  `Tests/BodyShapeTests.cpp` scores it and as the recordings' figures were
-  scored, Docs/decisions.md 2026-10-01) is 2.2 dB
-  finger-played on the steel Dreadnought (2.6 before the mid-band dip of
-  2026-10-12, 3.3 before the capture voicing of 2026-10-01), against 1.8
-  on the Eastman E1D played with fingers and 2.2 with a pick; the deepest
-  one-note hole is 7.4 dB against the mean of its two neighbours (7.7 on
-  1.3.1; 5.3 just after the capture voicing of 2026-10-01, 9.1 before it),
-  against 4.4-9.3 in the recordings. `Tools/MeasureNoteEvenness.py` leaves
-  the note out of that mean, which reads the same levels 17-22 % rougher
-  (its E2-E5 sweeps in the mid-band dip report: 3.52, 3.20, 3.22 and 2.71
-  dB, against 2.95, 2.63, 2.75 and 2.26 with the note counted), so its
-  figures are not directly comparable with the recordings'. The holes are
-  the measured bodies' own: a close microphone
-  over the bridge hears same-sign modal pairs, such as g21's 515 and 589
-  Hz, as an antiresonance, and they move with Shape; the mid-band dip
-  takes the peak below each such hole down 9 dB
-  ([the report](Docs/research/mid-band-dip-2026-10-12.md)); a boost at the hole,
-  measured, raised the hole's note about 1 dB but the next note 4-5 dB,
-  leaving the hole deeper against its neighbours, so the hole stays. A fit of the bridge
-  microphone as a blend of the archive's measured positions, heard before it
-  ships, would be the way to close them. Against the Eastman rows the low
-  E2 still sits 6-8 dB under its neighbours, and the first voicing lifted
-  G2-G#2, near the air mode, 2-5 dB over theirs; its refit took 2.3 dB of
-  that lift back. BodyShapeTests keeps it from getting rougher than the
-  voicing left it.
-- The capture voicing (The microphones and the room) is a fitted
-  correction, not a measured far-field response: the consensus of five sets
-  of recordings made on other guitars, by other microphones, in rooms. Held
-  out of its own first fit, each source but two improved; the two that did
-  not were the finger-plucked ones (Eastman finger +1.0%, the bank's
-  flat-top +4.1%), and with the room they read -3.8% and +0.3%. It was
-  refitted, the same way, after the top's spring-back. A steel-string
-  guitar's own response measured where a recording is made would replace it.
-- The Finger's attack is brighter than the finger-plucked flat-top
-  recordings'. Over the first 15 ms the Eastman finger take puts -27.8 dB of
-  its energy at 2-12 kHz; the engine put -19.4 dB there before the voicing
-  and -14.9 dB after it (its 1-1.6 kHz lift reaches the attack too).
-  Measured over MIDI 40-66 since the spring-back (-17.3 dB against the
-  Eastman take's -29.1), the soft burst carries 3.2 dB of it and the
-  contact's width 1 dB; releasing the finger through its full slip, rather
-  than its slip as a ratio to a full-velocity stroke's, with the burst
-  halved, reached -21.8 but took the finger's soft-to-loud brightening
-  from 9.1 dB to 5.9 against a picked-recording target of 9.0, scored worse on the
-  picked sets rendered with the Finger and on GuitarSet, and better on the
-  finger-plucked flat-top sets. What remains, about -21 dB with no burst
-  and a wide contact, is not the Finger's. The Finger's contact and
-  release were chosen by ear (2026-09-28, 2026-09-30). The isolated Finger
-  full-slip revisit on 2026-10-07 keeps the burst and Thumb unchanged:
-  Finger recording scores improve about 5%, but the bass attack excess
-  remains about 21 dB. See the [current recording comparison](Docs/research/recording-realism-2026-10-07.md).
-- The room is a model of a room, not a measured one: an image-source
-  shoebox for its first reflections and a feedback delay network for its
-  field, at a level and decay a small treated studio has. The recordings it
-  was checked against were made in rooms nobody measured.
-- A note near a strong, lossy low bridge or body mode sounds a few cents
-  from its request: the loop is tuned to cancel the bridge's reflection
-  phase at the note (bridgePhaseDelay), but the damped string-body pole sits
-  where the reflection's loss also changes fastest. Sustained pitch against
-  the same note with the bridge decoupled, 1-2 s, default sympathetic
-  strings, 48 kHz: G3 on the steel Jumbo -2.0 cents (up to 5 cents on the
-  since-removed Fylde bridge and nylon strings); open strings and notes
-  away from those modes within 0.3 (the rates agree within 0.6). The 2026-09-30
-  audit found larger pulls on the default Dreadnought, up to 9 cents on the
-  low E around frets 14-17, and traced them to the parallel loop sharing the
-  normal loop's compensation (the first open item above). A
-  first-order correction of the loop's pole (one Newton step on the
-  single-string loop, through the measured port's slope) accounted for at
-  most 2 of those 5 cents, so it is not applied: the rest is the parallel polarisation and the other strings'
-  anchors, which the tuning leaves out. A real guitar pulls similarly near
-  its body resonances; a bridge mobility measured strung would say by how
-  much. BodyShapeTests keeps it within 5 cents.
-- With Gather Chords off, its default, a chord played live on a keyboard is
-  fretted as it arrives. Already sounded notes stay on their strings;
-  unfired attacks can be moved inside the 30 ms forming window. Some
-  arrival orders therefore keep a wider final fingering than one hand can
-  reach. A dense roll may occupy every string that can fret its last high
-  note; the incoming note then takes an earlier note's string, retaining
-  its old wave as the normal re-pluck tail.
-  Switching Gather Chords on plans the entire shape before sounding it,
-  at 30 ms of latency. Successive notes more than 30 ms apart are taken
-  as melody: each note goes where the hand reaches. The
-  hand's span, memory and costs are set by the listener's direction and the
-  finger-span study above, not fitted to recorded fingerings.
-- Capture choices provide measured microphone positions and a piezo chain
-  modelled at component level from published values: a documented preamp
-  circuit (ESP Project 202) with datasheet op-amp and diode behaviour, a
-  published element sensitivity and capacitance, the measured bridge
-  conductance, and a saddle mass and seat stiffness chosen from documented
-  ranges. The saddle's own bending modes, friction in its slot, its real
-  string-to-string balance and named microphone electronics remain
-  unidentified. Matched captures with documented loading and channel gains
-  are still needed to identify them. Piezo has no matched reference yet.
-  Pick and Thumb use authored hand-position/contact-width ratios, not measured
-  tool dimensions or a beam/friction plectrum solver; Pick adds a fitted
-  release velocity and contact transient (Pluck and strings), and the picked
-  archtop is the only picked recording in the bank, so the plectrum's values
-  are fitted to one guitar and one player. The real-note archive supports a
-  brighter Pick direction but merges finger and thumb labels.
-  [Picking comparison and assumptions](Docs/research/picking-styles-2026-09-08.md)
-  record the audible separation and the remaining identification limits.
+**Strings and excitation**
 
-  An offline prototype audited Perng's published two-dimensional beam/string
-  contact geometry.
-  With the stated rectangular geometry, the paper and thesis force laws fail
-  near the rounded tip. A separately derived virtual-work tip force reaches
-  the prescribed 90-degree boundary, but still exerts about 149 N against a
-  135 N string and retains pick energy: physical detachment is unvalidated.
-  Four rates leave 0.94–4.22% of grip work lost to substep averaging, so the
-  string field was not fully converged either. The unavailable solver was
-  removed during the 2026-10-09 cleanup; its recorded findings remain in
-  the historical documentation.
+- The strings are linear apart from the bounded attack-pitch surrogate; the
+  geometrically exact nonlinear string, which supplies up to about 58% of the
+  recordings' loud-layer brightness rise, is not built. Velocity brightens a
+  Pick stroke about half as much as the recordings show.
+- The recordings snap and then mellow; the engine's upper partials die at
+  about 35% of the recorded rate and the attack transient those partials stood
+  for is missing. The Finger's attack stays brighter than the finger-plucked
+  recordings'. A noise-free or floor-documented finger-plucked steel corpus,
+  and an attack transient a listener accepts, would settle both.
+- Attack colour varies less between repeated takes than real round robins
+  (34-81 against about 270-290 cents of centroid spread); the plucking angle's
+  real spread is not measured.
+- Pick and Thumb dimensions are authored and the plectrum's values are fitted
+  to one picked archtop; no beam/friction plectrum solver is available.
+- The pluck is a propagated ideal shape, not a finger-loaded rest state;
+  dispersion above H12 is not fitted (about 30 cents by H24 on the open low E);
+  the highest partials' decay still varies by up to about 5% between 44.1, 48
+  and 96 kHz.
+- Where the pluck nearly nulls a partial, the random release burst decides its
+  level.
 
-- The recordings snap and then mellow; the engine mellows part of the way and
-  does not snap. Over their
-  first 300 ms the archtop's low steel strings lose 1-12 kHz at 96-121 dB/s
-  and the never-fitted Eastman E1D's wound strings 2-4, 4-8 and 8-12 kHz at
-  86, 153 and 300 dB/s (picked); the engine's fall at 15-32. The strings'
-  bending loss (above) reaches those rates at a steel wound factor of 0.10,
-  and the benchmark refuses it even with the pluck refitted around it: a joint
-  fit over Finger and Pick (the loss with the contact width, burst, velocity
-  brightness, plectrum edge, release velocity and pick burst) takes steel's
-  wound loss back to zero from shipping and from the measured value alike, and
-  holding it at half or all of that value leaves training 5-8% worse with the
-  Finger contact on its 0.35 floor, the finger burst on its 3.0 ceiling and,
-  under Pick alone, the release-velocity share on its 2.0 ceiling. Three
-  measurements say why. The attack the lost partials were standing in for is
-  missing: at the loud archtop layer the recordings' energy between partials
-  at 2.3-12 kHz stands 10-25 dB over the engine's in the first 15 ms (a pick
-  transient, then a tail falling at 100-200 dB/s), the Eastman's wound strings
-  start 13-21 dB brighter at 1-5 kHz, and the engine's first period carried
-  its first corner as a/L of the real step while the held string's static
-  load was not released, so its loud onset came a period late (since
-  2026-10-01 the load is released, The top's spring-back, and the scorer
-  finds the onset within 0.6 ms of the first sample, where it found it up
-  to 4 ms late).
-  The recordings have a hiss floor the engine does not: the soft archtop
-  layer's 5-12 kHz is that floor from the first frame, and strings whose upper
-  partials die as fast as the recordings' fall a median 12-16 dB under it by
-  0.6-0.9 s (shipping sits 3-5 dB over), which the log-averaged and band
-  descriptors charge. With each recording's own floor added to both engines
-  ([`AuditRecordingFloor.py`](Tools/AuditRecordingFloor.py), a diagnostic, not
-  the benchmark), the half-loss candidate of the listening set beats shipping
-  under Finger on training, validation and the frozen test split (-1.3, -2.3,
-  -1.8%) and on the Eastman finger rows (-7.4%); under Pick it trails on
-  training and the test split (+1.7, +0.6%), leads on validation (-2.3%) and
-  is level on the Eastman picked rows (+0.4%). And the recordings' partials
-  decay in two stages, faster before 0.3 s than over the decay term's 0.12-4
-  s, which one loss per partial cannot follow. The finger-plucked flat-top and
-  the picked archtop also disagree about the attack itself: against the
-  Eastman finger rows the engine's plain strings are 13-18 dB too bright at
-  5-12 kHz (measured before the Finger's burst lost its white share on
-  2026-09-30, which took a mean 3.7 dB off its first 15 ms' 2-12 kHz share)
-  and its wound strings 7-14 dB too dark at 1-5 kHz, the opposite of
-  the authored contact law's extra width on the three wound strings, while the
-  archtop, rendered with Finger, wants every Finger contact narrower. A blind listener preferred both the half-loss snap
-  and the joint optimum to the loss-free engine and asked for something
-  between them, and what ships since 2026-09-28 is that, chosen by ear
-  (Docs/decisions.md): steel 70% of the way from the joint optimum toward the
-  half-loss snap in the loss and in every pluck value the two fits set (wound
-  0.035, plain 0.0023). What it closes: steel's
-  upper partials now die at about 70% of the half-loss snap's added rate, 35%
-  of the rate the recordings measure. What
-  it does not: the attack those partials stood in for is still missing. A
-  measured contact noise and click per pluck (after Akay, JASA 111 (2002)
-  1525-1548: one random contact force from the release, decaying at the
-  recordings' 420 dB/s) was rejected by a blind listener as too loud on every
-  picked pair. It stayed at zero and its implementation was removed during
-  the 2026-10-09 cleanup. These loss comparisons
-  predate the static-load spring-back added on 2026-10-01. The benchmark
-  then charged the shipped loss: steel training
-  +4.6% (Finger) and +5.7% (Pick), development validation +3.9% and +3.1%,
-  the frozen test split 6.1015 -> 6.3473 (+4.0%) and 5.4031 -> 5.6644 (+4.8%),
-  the flat-top rows +2.1%. With
-  each recording's floor added it is level: steel under Finger -0.3%, -0.6%
-  and -1.1% on training, validation and test, under Pick +1.8%, +0.1% and
-  +1.7%. What would settle it by measurement is a noise-free or
-  floor-documented finger-plucked steel corpus and an attack that supplies
-  the recordings' transient at a level a listener accepts.
-- The highest steel partials still vary with rate. A fresh 2026-10-11 probe
-  on `6b80170`, following each partial's windowed peak on isolated strings,
-  measures H8 decay spreads of 1.14291–4.83627% across MIDI 76–84 at
-  44.1, 48 and 96 kHz, with maximum H1 spread 0.0176261%. This supersedes
-  the older 4.1–12.8% H8 and 0.21% H1 measurements; the Engine guards are
-  6% and 0.1%, respectively. The fixture disables bridge coupling and
-  observes saddle force, avoiding microphone coloration and mistaking
-  tension-glide detuning for decay. It does not establish full-instrument
-  rate invariance: loss, dispersion and sampling designs remain approximate.
-  See the [current evidence checklist](Docs/research/dsp-finalization-2026-10-11.md).
+**Bridge and body**
 
-- The bridge mobility the corpus wants is not the mobility that was measured.
-  The 2026-09-04 pattern search drove `bridgeMobilityScale` to its 0.25 floor,
-  a quarter of the archive's own value, and that rail was worth 3.9% of
-  training and 11% of the flat-top rows. It is not what ships: at the floor a
-  nylon hammer-on (legato and nylon, both since removed) got *quieter* as it was played
-  harder, by 0.35 dB per velocity step at all three rates, so the measured
-  0.754677154 is restored
-  and the fit's preference is recorded rather than taken. What the corpus is
-  buying with that rail — less bridge damping, or something the modal fit
-  above 10 kHz does not carry — is the open question.
+- Shape and Body Material morph one measured, nylon-strung flamenca (g21);
+  the steel-string mobility level comes from one other guitar. A measured body
+  of each size, and a bridge mobility measured strung on a steel-string
+  guitar, would replace the morphs.
+- The parallel polarisation reaches the body through the measured rocking,
+  not a measured tangential admittance; the saddle's in-plane translation is
+  unmeasured. Sharing the normal loop's bridge compensation leaves sustained
+  pitch up to 9 cents off on a few Dreadnought notes, kept by ear for its
+  beating.
+- Notes near strong lossy body modes sit a few cents from their request, and
+  coincident partials in chords pull up to about 10 cents; each Shape has an
+  air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over
+  their neighbours.
+- Low-frequency damping is too fast below 180 Hz and too slow above; the
+  by-ear plate conductance floor is about seven times the value measured from
+  the same record. A bridge mobility measurement of the modelled instrument
+  would close both.
+- Note-to-note level is rougher than the open recordings' (2.2 dB against
+  1.8); the holes are the measured bodies' antiresonances at a close
+  microphone. The default 20% Piezo Mix deepens two of them (Parlor F#5,
+  Jumbo C5) and has not been heard yet. A bridge-microphone fit to the
+  archive's measured positions, heard before it ships, would be the way to
+  close them.
+- Radiation above each bank's fitted band (8-12 kHz up) is a statistical
+  continuation; a microphone response measured past 10 kHz would replace it.
+- The two-way junction has not been refitted since the strings came to end on
+  the bridge; the converged refit failed engine regressions and is held for
+  the ear.
 
-- Repeated strums with identical MIDI differ by their stroke's speed, force
-  and direction, each string's own moment and pluck point, and the strings'
-  state, the hand's variation measured on GuitarSet's strokes. Sixteen
-  alternating picked E major strokes 0.3 s apart, keys released 0.2 s in,
-  correlate 0.015 between downstrokes and 0.034 between upstrokes over their
-  first 250 ms, 0.093 and 0.127 without each string's own moment
-  (`Docs/validation/playing-physics-2026-10-13/probes`); the 0.93 and 0.995 of
-  2026-09-02 were eight hand-damped strokes against the first, by an earlier
-  protocol and engine. Where a stroke starts against
-  the beat is still the sequencer's: its earliest string sounds at the
-  note-on, and the sweep only touches chords that arrive on one sample or
-  are gathered.
-- Velocity reaches attack brightness under Pick only in part. The string
-  now slides off the plectrum's edge in r/u, u the speed its own held force
-  gives it, so a soft stroke is released darker than a hard one: on the
-  archtop's picked training layers the H5-H12 over H1-H4 balance rises
-  4.07 dB from MIDI 16 to 112 against the recordings' 8.43 (0.65 before),
-  and the 0-12 ms centroid 554 cents against 1944 (183 before). The soft
-  layer's excess treble is gone (H11/H12 +1.7/+2.9 dB from +5.6/+6.1), but
-  every louder layer was already too dark and the slip darkens it slightly
-  more (H1 at MIDI 80 +11.1 dB, at 112 +9.2); the remaining loud-end
-  brightness belongs to the string's nonlinearity and the high-frequency
-  loss, not the release. Rendered with Finger, which the slip did not then
-  touch, the same rows sit within a decibel at the soft layer and 9.6 dB
-  too dark at the loud one. These figures are at the fitted 0.15 mm edge
-  with no release share; the edge is a fitted length (0.116 mm since
-  2026-09-28, chosen by ear between two fits) because a single note's pick
-  speed is not measured here. Since 2026-09-30 the Finger and Thumb release
-  by the same slip law, as a ratio to their full-velocity release, which
-  closes the finger-plucked instrument's velocity-brightness gap described
-  next: on the strings' own probe (eight notes, MIDI 16 against 112, the
-  default controls) a Finger's H5-H12 over H1-H4 now rises a median 9.2 dB,
-  against the recordings' 9.0 and 2.1 before. The loud-end attack centroid
-  and the attack energy between partials are not closed by it. What follows
-  describes the finger-plucked instrument before that change. A fresh comparison uses all 54 already-opened Shinyguitar
-  training recordings: nine roots, MIDI layers 16/112 and three takes each,
-  against 18 deterministic model renders. On the shared finite same-root
-  loud/soft pairs, the recordings' median 12 ms power-centroid rise is 2,054
-  cents and the model's 76 cents; 60 of 81 round-robin combinations are
-  measurable. The median H5--H12 versus H1--H4 balance rise is 9.04 dB in the
-  recordings and 0.36 dB in the model, with all 81 combinations measurable.
-  These combinations reuse 54 recordings; they are not 81 independent
-  performances. Median paired model-minus-recording differences in normalized
-  attack energy are +4.97/+4.32 dB at the quiet layer and −9.02/−10.82 dB at
-  the loud layer in the 2.56--5.12 and 5.12--10 kHz bands, respectively.
-  These descriptors preserve their existing window-stability guards and
-  establish a velocity-response gap; they do not isolate its physical source
-  or make body effects cancel. This two-layer training comparison replaces the
-  obsolete current-build claim based on the older four-layer audit.
-  Removing unintended pluck rectification leaves mixed recording agreement:
-  median absolute harmonic-balance error moves from 3.89 to 4.38 dB on quiet
-  steel and 9.80 to 9.85 dB on loud steel. These use unchanged common masks; this is a
-  correction to the specified linear contact model, not an overall realism
-  improvement established by these recordings.
-  Earlier audio-rate tension modulation was built and
-  is inert at the fitted displacement (the decision log says by how much). A
-  finite plectrum release — the string held by a rounded tip of radius r
-  advancing at the pick's speed, so the corner is spread over c·t_release of
-  string rather than let go instantly — was tried since and rejected on
-  measurement, not shipped: on the archive's two lowest roots it does what
-  the physics says, but above about the twelfth fret c·t_release exceeds the
-  sounding length itself, so both velocity layers lose their upper partials
-  and the model's already-small velocity-to-brightness rise inverts sign
-  rather than growing toward the recordings' nine decibels, and the corpus
-  gets worse at every published tip radius. Earlier percussive descriptors did
-  not isolate the current random release burst. A controlled source-on/off
-  subtraction now keeps every random draw and the entire instrument unchanged:
-  on quiet/loud E2, its microphone perturbation has a power centroid of
-  4.94/5.73 kHz over 80 Hz–10 kHz and a stereo level of −47.9/−32.6 dB relative
-  to the whole first 350 ms note. Touch changes the burst's level, duration and
-  colour. These are native causal differences,
-  not new recording comparisons or identification of a real pick click.
-  Since 2026-09-08 the burst leaves the picking point toward the bridge and
-  the nut as two travelling waves on fixed fractional delays, so its first
-  bridge arrival is the contact's own travel time rather than a string period
-  later ([Steel contact travels from the picking point](Docs/research/contact-travel-2026-09-08.md));
-  natural harmonics, whose burst the node filters out, keep no travel. The
-  burst itself still has no measured local-force interpretation.
-  Sustained radiation above 5 kHz is 6 to 13 dB weak on steel. In the scalar body used before
-  2026-09-05, the 2026-09-04 refit halved the Q scale to 0.053, placing 77 of
-  steel's 96 original modes and 80 of nylon's 103 on the Q=4 floor; the previous
-  0.098 scale placed 29 and 30 there. At that older 0.098 scale, fine modal
-  structure above 300 Hz measured 0.8 dB of standard deviation after octave
-  smoothing, against the measurement's 4.6 dB. The selected force-pair bank now uses unit
-  Q calibration, removing that fitted suppression while retaining the wood
-  morph and Q limits. The banks are now kept for the 250 ms at which every
-  mode below 700 Hz has converged, so their low modes carry the guitars' own
-  decays (steel's air mode Q 19 at 90.8 Hz, not the 62.5 ms window's Q 6 at
-  95.5); earlier scalar attempts to restore those decays on the old
-  single-input body had worsened the corpus, while the resolved force-pair
-  bank improves every split. Real flat-top fundamentals beat at about 1 Hz and
-  5 dB, a doublet 5 to 9 cents wide; the radiating parallel polarisation
-  (Pluck and strings) now gives the model's partials a beat of the same kind,
-  but its fundamentals still beat less than the recordings' (flat-top H1
-  0.33 against 1.50 dB RMS residual), since the parallel plane's path through
-  the rocking is weakest at the lowest partials. And
-  the flat-top targets carry 11 to 12 ms of pre-roll that the
-  scorer charges to every such row's attack term as a constant the model
-  cannot remove.
-- The polarisation end correction is set by ear, not by the benchmark. At
-  Woodhouse's 0.8 mm the parallel loop is longer at every fret, 4.8 cents of
-  doublet at the 14th fret and 6.8 at the 20th, and since a steel pluck
-  leaves most of its energy in that plane, its member took over from the
-  faster-dying normal one within 0.2-0.4 s: the soft steel F#5 and C6 rows
-  sat 4.0-6.3 cents above their settled pitch over the first 400 ms where the
-  recordings sit within 0.5, and the pitch-trajectory term doubled. A blind
-  listener preferred high notes that keep their pitch on every pair, so it
-  ships at zero, though zero loses slightly more on the attack and decay
-  terms than it gains (under 0.7% on every split, measured before the other
-  by-ear changes; the decision log has the figures). Woodhouse measured the
-  correction on an open string and publishes no law for a fret; a measured
-  split for stopped strings would settle it.
-- The top's spring-back (The top's spring-back) excites the low body modes.
-  The earlier 85-105 Hz envelope comparison did not establish matched air
-  decay: it cut through the model's then intrinsic 84.7 Hz radiation pole
-  and mixed adjacent components. A broad-filter, source-domain audit
-  separated that pole from the dominant rendered transient near 99 Hz, which
-  was the anchor spring's. Since 2026-10-10 the air mode sits at 94.2 Hz, and
-  its transient sounds at 94.3 Hz with a T60 of 0.55 s.
-  With the modest Original air-Q extension, its fitted output T60 rises
-  from about 0.45 to 0.50 s, against screened medians of 0.65 s for Eastman
-  picked, 0.51 s for Eastman finger and 0.55 s for Martin. Those recording
-  estimates include room and microphone effects. Frequency and spring-back
-  level retain the listener's choices. Martin still has an approximately
-  4.9 dB air-component onset deficit on matched notes; Eastman does not
-  support a general gain increase. The 94.2 Hz retune was subsequently
-  adopted with removal of the false saddle ground spring on 2026-10-10;
-  see the [accepted termination change](Docs/research/saddle-termination-2026-10-10.md).
-  The [2026-10-02 audit](Docs/research/realism-consolidation-2026-10-02.md) describes
-  the earlier configuration, not the final retuned instrument.
-  The bank's archtop
-and classical rows, whose tops barely ring there, read the step as 13-43 dB
-too much low end in their attacks, and the piezo reads only the saddle
-motion it causes, not the released force itself: fed that, the hardest
-Pick strums kept 0.11 dB of the preamp's swing, and the preamp's gain was
-set without it.
-- A natural harmonic sheds its open string's held force at the pluck, as
-  any note does (The top's spring-back), and against a quiet harmonic that
-  knock stands near the harmonic's own level: on E6 and F#6 its 60-180 Hz
-  over the first 300 ms reads -0.2 to -4.9 dB against the harmonic's first
-  second, where an ordinary note's reads -10 to -15. The harmonic is quiet
-  for the string's own reason, not the model's: read in the string, it
-  keeps the modes its pluck put on the node's multiples to within 1.2 dB,
-  and the hand that plucks the open high E stands at 0.237 of it with the
-  Finger, beside the fourth harmonic's node at 1/4, so those modes hold
-  27.8 dB under the pluck's energy (13.9 with the Thumb at 0.328, 7.4 with
-  the Pick at 0.099). Without the knock E6 sits 25 dB under an E4 at the
-  same velocity with the Finger, 20 with the Thumb and 14 with the Pick. A
-  player moves the hand off a node for a harmonic; the engine keeps it
-  where Pluck Position puts it, and moving it would be a choice by ear.
-- Steel's excitation was fitted with Finger on recordings that were picked,
-  and refitting it with the technique that played them does not ship. The
-  optimizer's pick-excitation stage (aperture, transient, pluck distance and
-  velocity brightness with the plectrum's three values, 166 evaluations under
-  Pick) improves every technique-matched split: picked archtop training
-  6.284861 -> 6.101598 and development validation 5.904206 -> 5.846431 under
-  Pick, and the eight finger-plucked flat-top rows under Finger 8.120313 ->
-  7.821725 on steel's own bridge. It gets there by
-  running the aperture scale to its 2.5 ceiling and still improving toward
-  it, which at a soft velocity is a Gaussian contact with a sigma of 8 cm
-  on an open A (13% of the string, against 2 cm now): far wider than a
-  fingertip,
-  so the pluck is standing in for the recordings' darker body and
-  microphone rather than describing a finger. It is the direction a listener
-  already called "a bit too dull" at full extent, it dropped a soft pluck's
-  first second 5 to 6 dB against a hammer-on (legato, since removed) at the
-  same velocity (steel
-  hammer-over-pluck energy +10.1 dB at velocity 0.3 and +13.7 at 0.1, from
-  +5.2 and +7.4), and rounding the hammer's dent with the same contact does
-  not close it, because at soft velocities the whole segment moves and there
-  is no front to round. A following steel-string stage under Pick also
-  reverses the fret T60 slope (-0.060 -> +0.017), which the picked archtop
-  wants and the flat-top rows do not. A matched
-  finger-plucked steel corpus, or a measured contact, would decide it.
-- The loudest layer's missing brightness has been split between two owners
-  by measurement. A geometrically exact (non-linear) string solver, driven by
-  the engine's own string data, supplies between nil and about 58% of the
-  recordings' loud-layer harmonic-balance rise — the span reflecting a loud
-  displacement known only to within a factor from the recordings' own pitch
-  excursion, not any uncertainty about the mechanism — and about 4% of their
-  attack-centroid rise, so the centroid deficit belongs to the excitation
-  (items above), not the string. It has not been built into the engine: doing
-  so is an L-effort project of its own, and the measurement was made with an
-  offline solver instead. The reference recordings' own excitation still
-  leaves the top of the velocity map short of real.
-- Since 2026-10-11 a restrained roughness source follows the continuous
-  stopping-point motion of an already-held wound string, through Release
-  Noise ([the model and limits](Docs/research/fret-motion-2026-10-11.md)). Its level
-  and texture are authored; the string set's wrap pitch and absolute friction
-  force are not measured. The earlier evidence remains limited: measured against
-  GuitarSet's acoustic (not hex-pickup) stream with a band that excludes the
-  note's own harmonics, solo slides on wound strings show a real, moderately
-  elevated broadband-excess ratio (about 1.4x, a dozen usable slides), but
-  that statistic conflates the wrap-wire friction pulse with other
-  position-change noise a mono room microphone also hears, so it is not
-  specific enough to license a shipped gain. A close-miked solo slide/bend
-  capture built to isolate the mechanism would close it.
+**Capture, room and level**
 
-- Explicit hammer-on and pull-off gestures now preserve the sounding string,
-  but their short contact is an authored approximation rather than a full
-  moving-fret scattering boundary. The contact and release paths include
-  authored hand sounds. A complete physical fret/finger-friction boundary,
-  buzz, artificial and pinch harmonics, and body knocks are absent. Sliding
-  roughness is now approximated, and automatic return strokes reverse the
-  sideways release direction; neither is a fully measured hand-contact model.
-  A harmonic's sounding partial runs a few cents sharp of equal
-  temperament, which is the stiff string's own inharmonicity plus the model's
-  partial-placement residual, and is not corrected. Bridge-hand pressure
-  now reaches a tail left by a string taken for a different pitch while its captured
-  pitch and intrinsic filters stay fixed. The nominal 10 ms loss setting does not
-  bound its lifetime: bridge back-drive kept it active for 1.4–5.0 seconds
-  in the overlap audit. Same-pitch repeats now act on one continuing string,
-  with an ideal stopped contact and a bounded new release. A moving physical
-  contact boundary preserving displacement and velocity through an ordinary
-  re-plucked refret remains unimplemented; its two-port accounting only makes
-  that transition's junction algebra consistent.
-- The instrument varies pluck position, polarisation share and shared stroke
-  speed, but that variation remains narrower than real takes. Across the reference corpus's
-  round robins — the same root at the same captured velocity, played again —
-  attack spectral centroid ranges by a median 287 cents over the first 40 ms.
-  Measured against the model's own sensitivities, reproducing that would take
-  30 mm of pluck-point movement on an 85 mm pluck distance, 14 dB of plucking
-  force, or a 111% change in release aperture. All three are an order of
-  magnitude beyond anything a player does, so the model's attack colour is
-  too closely tied to note and velocity for a reason its excitation parameters
-  cannot reach. The plucking angle is the mechanism this points to. The parallel
-  polarisation now radiates where the rocking was measured (Pluck and
-  strings), so an angle colours a note rather than only scaling it, but each
-  pluck still draws its share from a narrow authored spread (+-0.025 about
-  its material's share), and what spread a player's angle actually has is not
-  measured here. Widening it does not reach the recordings either: on the
-  picked archtop's three takes per note the recordings' 0-40 ms centroid
-  ranges a median 267 cents, the model's 34-81, and even +-30 degrees of angle
-  moves the model's to only 35-94. Level spread cannot be read from that corpus,
-  whose per-zone playback trim normalises it, and its settled-pitch spread sits
-  below the analysis resolution.
-- The string waveguides remain linear apart from the bounded steel
-  Kirchhoff--Carrier energy surrogate. The
-  full geometrically exact nonlinear string and finger/fret collision model
-  are not implemented.
-- The initial pluck is a propagated ideal shape, not a complete finger-loaded
-  rest state. Changing its phase or subtracting its travelling-wave mean alone
-  does not transform the coupled filter and body histories. The scalar loop
-  attenuation also replaces the static elastic limit with a small creep term;
-  this is a limitation of the high-frequency loss approximation, not something
-  filter priming can repair. The modal preload reference above retains the
-  static elastic term and checks release energy, but mapping that state into
-  the shipping waveguide remains unresolved. The pressure bank is fitted over
-  80 Hz–10 kHz and has nonzero static force-to-microphone transfer. Its constant
-  force history has an algebraically defined filter state, but that does not
-  identify a real microphone's acoustic equilibrium before release. This is a
-  limit on a new preload model; it does not establish an audible DC fault in
-  the current differentiated-wave drive.
-- Above H12 the loop's dispersion is not fitted at all, and drift there
-  reaches 29.6 cents by H24 on an open steel low E. High on the neck the
-  two-section fit roughly halves the drift the single collocated section
-  left there, but not all of it: E2 at the 20th fret, measured on the loop
-  alone at 48 kHz, sits 23 and 69 cents flat at H16 and H20 (43 and 104
-  before). A multi-biquad cascade sized by the published group-delay-area
-  method (Abel and Smith, DAFx-06) was built and re-solved on the loop's own
-  collocation; it reaches 1.7-1.8 cents worst case, still short of the
-  1.2-cent target and costing about two orders of magnitude more design time
-  per note on the audio thread, so it is not shipped; the two-section design
-  that is costs less than the collocation alone did.
-- The parallel polarisation radiates through the measured rocking, not
-  through a measured tangential admittance. Woodhouse, who measured the full
-  2x2 bridge admittance matrix on a guitar and synthesised with and without
-  the second polarisation, reports that including it "makes rather little
-  difference" to the damping factors and found no convincing double
-  exponential decay across every note to the twelfth fret of his test guitar;
-  what he does report is that plucks parallel to the soundboard are markedly
-  quieter and that where a partial splits into a doublet the normal pluck
-  excites the upper member and the parallel pluck the lower. Acustra's
-  parallel plane now reaches the body the way a sideways crown force does,
-  as a moment through `h/a` onto the measured rocking and moment paths, with
-  `h` the published crown heights of the measured guitars (Pluck and
-  strings). Two things that route does not cover remain open: the saddle's
-  in-plane translation, which no archive here measures, and the rotation
-  axis's depth below the top, taken as the top surface. In a modal expansion the direct and cross admittances all follow
-  from each mode's normal and tangential components, so one extra measured
-  number per mode would replace the rocking route with the full matrix.
-  Where the rocking is strong the two loops form one pair of modes; the pair
-  is tuned by its sustained, energy-weighted centre, so its attack can sit a
-  few cents from its sustain (the flamenca bridge's open B starts about 7
-  cents under the pitch it sustains at), and across the fretboard the settled
-  pitch of a single note stays within -1.8 to +3.0 cents on the flamenca
-  bridge where it was -4.2 to +3.7 with one radiating plane. The benchmark's pitch-trajectory term
-  rises with it (Finger, Original bridge: training 0.455 -> 0.855,
-  validation 0.143 -> 0.499) while every total falls. The superseded
-  saddle-height prototype tuned each
-  plane against its own port, which is what left its open B 19.6 cents from
-  the mode that sustained.
-- The two-way junction is calibrated around a one-way, 17 mm-spring engine,
-  and since 2026-10-10 the strings end on the bridge with no anchor at all;
-  no refit has followed either change. With the stub anchor, the open-string
-  partials sat 21 to 25 dB under a played fundamental against the
-  recordings' 25 to 40. The played strings' own damping, which the idle halo
-  used to fill in, showed: on the finger-played flat-top rows the fundamental
-  decayed at about 15 dB/s against the recordings' 6. The benchmark read
-  6.111540, 6.072344 and 8.073304 against the previous engine's 6.835, 6.824
-  and 5.655, better on the picked splits and worse on those eight rows.
-  Without the anchor it reads 6.9190, 6.8121 and 6.5366 (training,
-  development validation, flat-top) against the stub's last 6.8630, 6.5775
-  and 6.5853. A staged refit around the
-  new termination was run twice. The first, with a one-sided-derivative
-  solver, was rejected on a held-out miss. The second, with a bounded compass
-  search, converged and beat the shipping calibration on all four splits, but
-  it doubles the open low E's own fundamental decay rate away from its
-  recorded target and fails eleven engine regressions, so it was held back
-  for the ear rather than adopted (Docs/decisions.md).
-- Chords still pull. On steel's own bridge the worst note in E, G, Am, D
-  and C chords sits 7 cents off equal temperament early and 9 late: G3 in the G chord reads +8.6
-  cents at one second and B3 in the E chord +7.4. Neither string is detuned by
-  its bridge. G3 alone reads +1.9 and B3 alone +0.1. Each reading is a
-  coincident partial of a lower string coupled through the bridge: G2's
-  second partial on G3, and E2's third on B3, which equal temperament and
-  stiffness put 6.7 cents sharp. Damping the 190 Hz rocking pole changed
-  which member of the G2/G3 doublet outlasts the other (1.0 cents before it).
-  The other pulls are the anchor's resonance at 306 and 668 Hz coupling E4 and
-  E5 to their coincident partials, and coupled doublets at exact coincidences
-  (E3 on the low E's second partial sits on the lower member, -1.5 cents).
-  The levers are measured values the listener chose, the steel mobility level
-  and the plate-Q damping, and no correction is derived from them. A bridge
-  mobility measured strung on the same body would show whether a real guitar
-  pulls as far.
-- Shape and Body Material morph one measured body, the g21 flamenca, and
-  are not separate measurements of four guitar sizes or three woods. Shape
-  re-couples the measured A0/T1 pair for a published box and scales the
-  plate modes with the top, but the Original's anchor is an authored
-  transform, a wider box chosen by ear, and the E1D rows place a real
-  dreadnought's A0/T1 above it (Construction controls). What would settle it is a measured body of
-  each size. The original steel bank adapts a nylon-strung flamenca blanca;
-  the archive lists Savarez Tomatito strings for g21. Steel's own bridge
-  takes a steel-string guitar's mobility level from one measured Fylde
-  Falstaff (strings damped) against one flamenca: 0.274, 0.23-0.30 over bands
-  and statistics. On it the picked notes' prominent partials now fade as the
-  recordings' do, but ring gain (3.8/4.5 dB against the recordings' 6.9-8.5),
-  late flatness and beating do not follow them, finger-played
-  notes' early decay residual does not improve, and the flamenca's full
-  mobility, which drains far more, thinned the low E through the 3.25 mm
-  anchor stub the strings then ended on. The one-second chord pull read 8.6
-  cents then (G3 in a G chord; above).
-  g21's damping is
-  read against five anechoic flamencas by one octave-median rule: its
-  208.7 Hz rocking mode keeps Q 27.4 where the population's rocking modes
-  in 200-280 Hz measure Q 11-21, because the rule halves an excess that is
-  concentrated in one mode; a rule by mode class would bring in a
-  classification and a constant of its own, and is not made. No second
-  measured body remains beside it: the Classical 78's matched bridge and
-  radiation bank, once a separate Model, was removed on 2026-10-10, and the
-  three steel guitars before it were retired (Construction controls).
-- The band audits now measure a distance the build chose rather than an error
-  it is trying to close. With the body moved by ear toward the flat-top rows,
-  the model over the first 350 ms carries 4.0 dB more energy than the archtop
-  references over 160--320 Hz, matches to 0.1 dB over 320--640 Hz, and carries
-  7.1 dB less over 640--1280 Hz, 7.8 dB less over 1280--2560 Hz, 3.8 dB less
-  over 2560--5120 Hz and 10.5 dB less over 5--10 kHz. Steel's
-  80--160 Hz band is not reported at all: the archtop puts almost no attack
-  energy there, so the reading is its neighbour's leakage skirt and moves 19 dB
-  with one sample of window length.
-  [`Tools/AuditAttackBands.py`](Tools/AuditAttackBands.py) measures each band at
-  two window lengths and withholds any that disagree.
-- Whether that darkness is a dreadnought or an overshoot is the open question,
-  and it is the one the outstanding bracket asks. The listener who chose the
-  direction also called its full extent "a bit too dull", and what shipped is
-  the middle of the range the two verdicts describe, not that extent. Against
-  the archtop it is 10.5 dB down at 5--10 kHz, and against a real flat-top
-  nothing here can say, because the flat-top evidence is eight notes and was
-  used to choose the direction.
-- The decay audit moved with it. Steel now decays 6.4 dB/s too fast at
-  80--120 Hz and 8.7 dB/s too fast at 180--270 Hz against the archtop, but
-  4.4 and 4.6 dB/s too slowly over 270--600 Hz. The 80--120 and 180--270 Hz excesses
-  were the fitted anchor spring, retired on 2026-10-10. The rest are g21's own
-  modes, and only those need a matched measurement or an invented
-  conductance.
-- The steel calibration corpus is a miked archtop, which limits how literally
-  the current fit can describe a flat-top steel guitar. None of the 280 real-note
-  regions was recorded from the g21 guitar that supplied the measured bridge
-  and body, and none includes calibrated pluck force or bridge motion. A
-  decisive end-to-end fit therefore needs same-instrument controlled plucks,
-  reciprocal two-axis saddle admittance and microphone paths for one
-  flat-top steel guitar. The flat-top split now says what that costs, on
-  eight rows nothing fits or gates on: the body term reads 14.73 there against
-  12.99 on development validation, and the body is the largest term in both.
-  Eight rows cannot become a corpus, and their score is not comparable with the
-  other splits' — different rows — but the same eight rows on two builds are.
-- Damping a note or a chord no longer makes a sound of its own. The release
-  loss is a per-round-trip gain, and applying the whole of it to the first
-  sample after a key came up drove the junction filter with a step; a chord
-  release peaked 0.83 times the chord's own level, but a single low fretted
-  note - the case the chord measurement hid - peaked 4.6 to 8.6 dB above what
-  it had at that moment. Slewing the gain across one round trip leaves every
-  release below the note it ends. Moving the loss to what the loop stores
-  instead only delays the same step by a round trip and was measured worse
-  again. A 96-semitone pitch bend, where the delay line clamps, still peaks
-  above the chord; two semitones does not.
-- The by-ear plate conductance floor (0.011 m/s/N) is not the measured plate
-  constant. Measured from the same g21 record it extrapolates — the
-  sliding-window mean mobility over 2-10 kHz (Elie, Gautier and David, JASA
-  132(6), 4013-4024, 2012, Eq. 25) — the conductance the bridge fit is
-  missing is about 0.0015 m/s/N (measured against the 50-mode single-point
-  fit that shipped when the reading was taken), a seventh of the shipping value; even the
-  whole measured mean mobility of that plate over the band is less than half
-  0.011. Substituting the measured value trades one band for another: it
-  brings 2-4.5 kHz decay closer to the recordings but over-damps 4.5-6.8 kHz
-  by nearly 13 dB/s, so the by-ear floor is standing in for a loss whose
-  frequency dependence a plate resistance does not explain (the modal fit's
-  10 kHz ceiling, string-side high-frequency loss, or radiation, are the
-  candidates). A bridge mobility measurement of the modelled instruments, or
-  an accounting of that missing loss, would close it.
-- The remaining damping error is at the low end. With the strings ending on
-  the bridge (2026-10-10) the steel median early decay reads 11.4, 10.8, 8.7
-  and 13.9 dB/s over 80-120, 120-180, 180-270 and 270-400 Hz, against the
-  recordings' 5.1, 9.6, 12.0 and 15.0 (`Tools/AuditDampingCurve.py`). So it is
-  too fast at the bottom and too slow above 180 Hz. The anchor spring's
-  resonances at 102 and 233 Hz, which made the earlier excesses, are gone.
-  The rest are g21's own modes: the bridge's 412 Hz Q 38 beside the body's
-  406 Hz, and its 591 Hz Q 75 and 656 Hz Q 65. Those cannot be corrected
-  without either a matched measurement or an invented conductance.
-- The gated loss and the damping audit used to disagree about the upper band,
-  and no longer do. Re-run at three cutoffs, every band the audit will report
-  prefers the fitted 2.170 except steel's 2000--3000 Hz, which prefers 1.2 by
-  1.3 dB/s out of 27. The loss and
-  all three splits agree with it. The bands above 4.5 kHz that were the grounds
-  for "opposite corrections" are withheld by the audit's own stability guard at
-  every cutoff for steel, so there is nothing there to disagree about.
-- Bridge-stage telemetry shows that the extreme low-E loss is a
-  frequency-specific bridge/body effect; removing g21's 82.764 Hz bridge mode
-  helped low E but worsened harmonics overall. Eight alternate public
-  measured-body banks also lost on a training screen when paired with the
-  current g21 bridge. A
-  raw-phase modal replacement and an exact 3000-tap, two-microphone FIR were
-  both materially worse on the full training split, without clipping; neither
-  was allowed to open validation or blind data. The next justified work is
-  therefore a richer, simultaneously measured
-  bridge/contact/body model followed by measured per-string damping; more
-  sympathy, a scalar darkening filter, a note-specific body correction and a
-  phase-only body substitution are not the first fixes.
-- The training corpus and a flat-top guitar want opposite instruments, and the
-  build now follows the flat-top rows rather than the corpus on five values.
-  Six parameters swept one at a time, all three splits rescored: against the
-  fitted corpus the model wants less bass, a brighter body, more string loss
-  and shorter sustain, and against the eight flat-top rows it wants the
-  opposite of all four. No single move improves all three splits, so the fit is
-  at a real local optimum on the corpus it was given and the distance to a
-  flat-top is not closed by fitting harder — which is why this was put to a
-  listener rather than to the optimiser. Both directions remain defensible on
-  their own evidence: the fitted corpus's rows of real recordings on one side, eight rows of the
-  right kind of guitar and one listening verdict on the other.
-- The bridge mobility scale improves training all the way to its 0.25 lower
-  bound — 6.1266 training and 6.2146 development validation against the fitted
-  6.4414 and 6.4278 — while the flat-top rows are worst there. That is a real
-  improvement the staged optimiser never reaches, and it is deliberately not
-  taken: it buys training score by scaling a measured bridge three times away
-  from its measurement, in the direction that moves the flat-top evidence the
-  wrong way.
-- Fret collision is absent, and it is not because it would be inert. A rigid
-  barrier at the published action line plus published neck relief (Martin's
-  and Taylor's own set-up specifications) was built and measured: read from
-  the string's own d'Alembert swing, a released triangle does reach the
-  frets, and the barrier does fire — an open low E at full velocity crosses
-  the crowns of frets 2 and 3 by up to 0.04 mm, and a fretted note starts
-  buzzing at about half velocity. It is passive (zero energy added in any
-  gesture at three sample rates) but does not ship, because the pluck gives
-  every string at every fret the same released peak while the clearance one
-  fret above a stopped note is only 0.13 to 0.24 mm, so the fitted corpus
-  moves against it on both splits (+2.4%) even though the reported-only
-  flat-top rows improve (-4.2%), and three measured engine gates break. What
-  is missing is not the collision model but a displacement measurement on
-  the instrument: the displacement scale it reads against is fitted to the
-  attack-pitch glide, not measured as a physical displacement.
-- One listening question from 2026-09-01 is outstanding, a set with the user
-  and a key unread by design: the close-microphone pair (the shipping bridge
-  pair against the treble-bridge/upper-bout pair of the same measurement). The
-  other, the body's low-mode damping, was overtaken by a measurement: the
-  force-pair bank regenerated at the resolved 250 ms window improves every
-  split (decision log, 2026-09-24). The bridge-anchor and two-way-junction
-  sets of 2026-09-02 were likewise decided by chord tuning. A verdict for any
-  letter but A moves a header, re-pins the regression it trips, and is
-  recorded as chosen by ear; a tie keeps A.
-  The body direction chosen earlier stands: a symmetric bracket around it
-  found the letter half way back clearly worst and the letter half way
-  further indistinguishable from what ships.
-- A mechanism-level scan of what else exists puts one gap ahead of the others.
-  Applied Acoustics Systems' Strum GS-2, the established physically modelled
-  acoustic guitar, states that it models the vertical *and* horizontal
-  vibrational motion of each string, along with an acoustic body and its air
-  cavity. A recent finite-difference academic prototype pairs a collision-capable
-  string with an impulse-response body and offers sustain, palm mute, tapping,
-  slapping, sliding, legato, natural harmonics and both fingerpicking and
-  plectrum modes. Against that list Acustra has sustain, bridge-hand damping,
-  natural harmonics, continuous finger-to-pick contact through Touch, slides —
-  pitch bend retunes a sounding string without replaying it, verified by the
-  delay line moving 276.4 to 245.6 samples for two semitones and back. It
-  lacks tapping, slapping and buzz. Its explicit connected finger gestures
-  remain an approximation needing controlled listening. Like the commercial
-  instrument it now radiates both transverse axes, the second through the
-  measured rocking rather than a modelled one. Its measured-body and
-  published-fit approach has no counterpart in either. This is a reading of
-  what those products say they model, not a listening comparison.
-- No controlled expert study has compared this build with real guitars and
-  leading commercial instruments. “Top of market” remains the target, not a
-  validated product claim.
-- MPE support is lower-zone-only: member/manager pitch bend and sustain, plus
-  member CC74 (per-note pluck point) and member channel pressure (vibrato-depth
-  bias only), all scoped to the zone's member channels. Upper-zone MPE, and
-  per-note aftertouch beyond that one bias, remain absent.
-- A note held in a chord no longer rings longer than the same note alone.
-  Until 2026-10-10 a fitted saddle-to-anchor spring closed that gap as a
-  corpus-fitted low-frequency shield rather than a bridge dimension: its
-  resonance with the body's mass between modes drained the strings at 6 to
-  34 times the bridge's conductance above A0 and T1. With the strings ending
-  on the bridge, what the coupling does near A0 and T1 shows instead
-  ([the saddle-termination report](Docs/research/saddle-termination-2026-10-10.md)):
-  - The worst separable note in E, G, Am, D and C chords reads 10.3 cents
-    early and 2.1 late on the Dreadnought (E3 in Am and C, against the idle
-    low E's second partial), 8.2/1.5 on the Parlor and 3.2/7.0 on the Jumbo.
-  - Each Shape has a note on its A0 that drains fast and splits: the
-    Dreadnought's F#2, the Jumbo's E2 at 23.5 dB/s, and the Parlor's G2/B2.
-  - On notes near A0 and T1 the late pitch drifts by up to about 10 cents as
-    the parallel plane takes over, since it shares the normal loop's
-    compensated length.
-- Starting a note while the instrument is sounding no longer clicks, and the
-  port impedance was not the reason it did. That step is real but small: with
-  the bridge's immediate admittance at 0.00305 and a string impedance of
-  1.0371, the junction's `1 + Y_b*sum(Z)` moves only from 1.0032 to 1.0114
-  between one string and six. What made the noise was differencing a released
-  shape. On this build a note over a six-string chord peaks 0.0162 against
-  0.0169 for the same note on a silent engine, and always on its own attack
-  rather than the first sample. A repluck of a note already sounding on its
-  string now lands the hand on it first, and its first samples sit 25 dB and
-  more below its own attack.
-- None of the three faults above could be seen by the reference corpus, which
-  renders one note on a fresh engine and never releases it. A benchmark of
-  single notes cannot measure a polyphonic error of any size, and this
-  instrument is played in chords. There is no held-out evidence for any of
-  these corrections: they are gated by derivation and by regressions that
-  assert the behaviour directly.
+- The capture voicing is a consensus correction from other guitars'
+  recordings, and the room is a model; a steel-string guitar's own response
+  measured where a recording is made, and a measured room, would replace them.
+- The piezo's saddle bending modes, slot friction and real string balance are
+  not modelled, and there is no matched piezo recording.
+- The hardest playing (velocity 127, Pick, Touch 1, Pluck Position 0) reaches
+  the safety limiter on most constructions; keeping it under the knee would
+  lower every construction by 2.6 dB, which is the user's choice. Loudness is
+  matched over a phrase set, so one strum can sit up to about 6.6 dB from the
+  default construction's.
+
+**Evidence**
+
+- The steel calibration corpus is a miked archtop, and none of it was recorded
+  on the guitar that supplied the bridge and body; same-instrument controlled
+  plucks with reciprocal saddle admittance and microphone paths are needed.
+  The corpus also prefers a bridge mobility a quarter of the measured one,
+  which is not taken.
+- The single-note benchmark cannot see polyphonic faults; chord and release
+  corrections are gated by derivation and direct regressions only.
+- One listening question from 2026-09-01 (the close-microphone pair) is
+  outstanding, and no controlled expert study has compared this build with
+  real guitars or commercial instruments.
 
 ## Build
 
@@ -2623,35 +570,17 @@ ctest --test-dir build-dsp -L "unit|audio" --output-on-failure
 ./build-dsp/AcustraRenderDemos Docs/audio
 ```
 
-The [expressive repertoire](#more-demos) is written and
-rendered separately (`Tools/PerformRepertoire.py`, then
-`./build-dsp/AcustraRenderRepertoire`); its generator needs Python 3 alone and
-fetches its scores from mutopiaproject.org with `--download`.
-
-The Python self-tests (the scorer, calibration, loudness, piezo, benchmark and
-fit-tool checks) are registered only when CMake's Python 3 can import NumPy and
-SciPy. Without them configure prints a warning naming what was skipped; pass
-`-DPython3_EXECUTABLE=<a Python with numpy and scipy>` to run them, and
-`-DACUSTRA_REQUIRE_PYTHON_TESTS=ON` (as CI does, and `scripts/build-macos.sh`
-when `PYTHON` names an interpreter) to make their absence a configure error.
-
-Render the demos from a Release build, which is what CI does. On one platform
-a clean Release build reproduces its own WAVs byte for byte - two independent
-Release builds here agree exactly - while an unoptimised one does not, because
-the arithmetic contracts differently. Across platforms it no longer holds:
-previous comparisons between CI and local renders of the same source differed
-by up to 981 of 32767 on the polyphonic demo and by 9 on the single-note one.
-The junction couples six strings and the tension model depends on their
-squared slopes, so a last-bit rounding difference
-grows over seconds of chords, and it grows with how polyphonic and how
-hard-played the passage is. Generated WAVs are local outputs, not a
-cross-platform checksum.
+The Python self-tests are registered only when CMake's Python 3 can import
+NumPy and SciPy; pass `-DPython3_EXECUTABLE=<a Python with numpy and scipy>`,
+and `-DACUSTRA_REQUIRE_PYTHON_TESTS=ON` (as CI does) to make their absence a
+configure error. Render the demos from a Release build: one platform
+reproduces its own WAVs byte for byte, but renders differ across platforms.
+The [expressive repertoire](#more-demos) is generated with
+`Tools/PerformRepertoire.py` and `./build-dsp/AcustraRenderRepertoire`.
 
 The plug-in build fetches pinned JUCE 8.0.14 unless `ACUSTRA_JUCE_PATH` names a
 local checkout, and clap-juce-extensions `c1a5ad02` for the CLAP unless
-`ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH` does (`-DACUSTRA_BUILD_CLAP=OFF` skips it). `CMAKE_BUILD_TYPE` selects the optimised build for Make and
-Ninja, and `--config` for Xcode and Visual Studio; the packagers read
-`<build>/Acustra_artefacts/Release`:
+`ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH` does (`-DACUSTRA_BUILD_CLAP=OFF` skips it):
 
 ```sh
 cmake -S . -B build-plugin -DCMAKE_BUILD_TYPE=Release -DACUSTRA_BUILD_PLUGIN=ON -DBUILD_TESTING=ON
@@ -2659,334 +588,45 @@ cmake --build build-plugin --config Release --parallel
 ctest --test-dir build-plugin -C Release --output-on-failure
 ```
 
-macOS builds VST3, Audio Unit, CLAP and Standalone targets; other supported desktop
-platforms build VST3, CLAP and Standalone. Universal arm64/x86_64 macOS output is on
-by default. Visual C++ builds link Microsoft's C and C++ runtime statically, so
-the Windows zip needs no Visual C++ redistributable. The macOS scripts build,
-test, sign and package all three formats:
+macOS builds VST3, Audio Unit, CLAP and Standalone (universal arm64/x86_64 by
+default); Windows and Linux build VST3, CLAP and Standalone, with the C++
+runtime linked statically. On macOS the scripts build, test, sign and package:
 
 ```sh
 ./scripts/build-macos.sh
 ./scripts/sign-and-package-macos.sh
 ```
 
-`sign-and-package-macos.sh` signs ad hoc and leaves the pkg unsigned unless
-these name items in the keychain:
+`sign-and-package-macos.sh` signs ad hoc unless `APP_SIGN_IDENTITY`,
+`INSTALLER_SIGN_IDENTITY` and `NOTARY_PROFILE` name Developer ID identities and
+a notarytool profile. Rack builds also need the current Rack panel source
+(selector layout at Rack revision `d6b6dbf`); the JUCE editor is not part of
+a Rack build.
 
-- `APP_SIGN_IDENTITY`: a Developer ID Application identity. The three bundles
-  are then signed with the hardened runtime and a secure timestamp.
-- `INSTALLER_SIGN_IDENTITY`: a Developer ID Installer identity, with which
-  `productsign` signs the pkg.
-- `NOTARY_PROFILE`: a profile saved by `xcrun notarytool store-credentials`.
-  It needs both identities; the pkg is then notarized, stapled and validated.
-  The zip holds the same signed bundles without a stapled ticket.
-
-The pkg installs each bundle at its standard path and replaces whatever version
-is there: its component list turns off relocation and the version check, since
-the three formats share one bundle identifier.
-
-Rack builds also need the current Rack panel source. The current selector
-layout is recorded at Rack revision `d6b6dbf`: one Guitar selector for
-Parlor, Auditorium, Dreadnought and Jumbo, with Spruce and Mahogany as the
-two visible Wood choices. Legacy stored model/construction and Maple values
-remain compatible. The Rack wrapper has its own 24 Hz fretboard in a 9U
-panel. Record the Rack design revision and
-shared DSP snapshot separately, and verify the installed panel images and
-both GUI definitions against the build's manifest before testing in Recon.
-The JUCE editor is not part of a Rack build.
-
-To run the bounded offline fit after building the JUCE-free tools:
-
-```sh
-python3 Tools/OptimizePhysicalModel.py \
-  ./build-dsp/AcustraPhysicalFitRenderer /tmp/acustra-physical-fit
-```
-
-The output directory must not already exist. NumPy and SciPy are required.
-
-To reproduce the fixed performance benchmark with the published GuitarSet
-`annotation.zip` and `audio_mono-mic.zip` archives in one directory:
-
-```sh
-python3 Tools/BenchmarkPerformances.py \
-  --dataset /path/to/guitarset \
-  --renderer ./build-dsp/AcustraPerformanceRenderer \
-  --output /tmp/acustra-performances
-```
-
-The output directory must be new. `--capture` and `--picking` can evaluate
-explicit alternatives, and `--room 0..1` renders with the Room (default 0;
-`Tools/BenchmarkOpenCorpora.py`, `AcustraPhysicalFitRenderer`,
-`AcustraExternalCorpusRenderer` and `AcustraPerformanceRenderer` take it
-too, and `AcustraRenderRepertoire` reads `room=` on a part's line). To compare with the simultaneous
-magnetic recording, download `audio_mono-pickup_mix.zip` instead of the microphone
-archive and add `--reference-capture magnetic_pickup --capture piezo`. This is a
-cross-sensor comparison; the retired magnetic model is no longer available.
-The tool verifies only the selected audio archive plus the annotations and
-records both the reference transducer and model capture. Scores against a
-microphone recording cannot validate a pickup's response.
-`--self-test --renderer ./build-dsp/AcustraPerformanceRenderer`
-checks the scoring, string scheduling and renderer without downloading audio.
-For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the optional
-`--models-only`/`--smoke` mode, then `--shape`, `--body-material` and
-`--archtop-picking`, the output directory and the 25 calibration arguments in
-`OptimizePhysicalModel.NAMES` order (the obsolete 37-value and nylon-era
-48-value vectors are refused). The selected shape, wood and archtop picking
-tool are recorded in each model manifest, with `guitar_model` fixed at
-`original` so new runs still pair with earlier ones; without them every row
-renders at the default Dreadnought and the archtop rows with Finger.
-`AcustraExternalCorpusRenderer` accepts the same `--shape` and
-`--body-material` options; `BenchmarkOpenCorpora.py` forwards them and
-records the returned controls.
-For an explicit performance event file, `AcustraPerformanceRenderer` also
-accepts a trailing `--tuning standard|drop_d|dadgad|open_g|half_step_down`
-option (the plug-in's five tunings). String/fret validation uses the selected
-tuning; omitting it preserves the Standard render.
-
-The independent technique-note audit needs the published v3 archive
-(`4563a70d5dd9a14919171d103f10f6731fd78e63f1498dd11047bfea471f6a6d` SHA-256):
-
-```sh
-python3 Tools/BenchmarkTechniqueNotes.py \
-  --archive /path/to/guitar-notes-v3.zip \
-  --renderer ./build-dsp/AcustraPerformanceRenderer \
-  --output /tmp/acustra-technique-notes
-```
-
-The output must be new;
-`--self-test` checks selection, fingering and missing-feature accounting without
-the recordings. Keep the downloaded archive and emitted audio out of git.
-
-The recording-only hammer-on audit uses the two Taylor high-E hammer-on WAVs
-from AG-PT-set. Its tool docstring lists the exact names and protocol:
-
-```sh
-python3 Tools/BenchmarkHammerOnNotes.py \
-  --audio-dir /path/to/agpt/audio \
-  --output /tmp/acustra-hammer-report.json
-```
-
-`--self-test` checks octave ambiguity, plateau selection and level measurement
-without downloading recordings. The report's inferred times are not authored
-MIDI events; timing, finger dynamics and capture remain uncertain.
-
-An optional host renders installed VST3 instruments from their normal saved
-states. Enable it in a JUCE/plugin build and build its target:
-
-```sh
-cmake -S . -B build-reference -DCMAKE_BUILD_TYPE=Release \
-  -DACUSTRA_BUILD_PLUGIN_REFERENCE_HOST=ON
-cmake --build build-reference --config Release --target AcustraPluginReferenceHost
-```
-
-The executable is under `build-reference/AcustraPluginReferenceHost_artefacts/Release/`.
-Its `editor PLUGIN OUTPUT.state [INPUT.state]` command opens the ordinary plugin
-editor; closing the window saves a new state file. Then use
-`render PLUGIN STATE MIDI OUTPUT.wav BPM SECONDS` for a fresh-process render.
-The host uses 48 kHz stereo float audio, 128-frame blocks and explicit 4/4
-tempo/PPQ transport. Existing outputs, silent renders and failed renders are
-rejected. Its bounded loading wait is not a general sample-readiness guarantee;
-verify repeated fresh-process renders for each reference instrument.
-
-Two audits read a rendered fit corpus and compare the model with the recordings
-where the fitted score cannot say where a difference sits: one along the
-frequency axis for decay, one band by band for the attack. Both withhold any
-band whose answer moves with the analysis window, printing that instead of a
-number, and both carry a self-test:
-
-```sh
-python3 Tools/AuditDampingCurve.py /tmp/acustra-physical-fit
-python3 Tools/AuditAttackBands.py /tmp/acustra-physical-fit
-python3 Tools/AuditDampingCurve.py --self-test
-python3 Tools/AuditAttackBands.py --self-test
-```
-
-For a generated-note bridge audit, the probe writes headerless 48 kHz
-little-endian float32 stereo audio plus a companion with five interleaved
-channels: main reaction force, body force, tail force, bridge velocity and a
-fifth that is always zero (the engine's separate sympathetic force, removed;
-idle strings reach the body through the junction). The analyser reports matched-window magnitudes
-and each signal's intra-signal harmonic phase relative to its H1; those phases
-are not cross-stage transfer phase:
-
-```sh
-./build-dsp/AcustraBridgeProbe /tmp/e4.f32 on 0.5 auditorium 64
-python3 Tools/AnalyzeBridgeProbe.py --midi 64 \
-  /tmp/e4.f32 /tmp/e4.f32.telemetry.f32
-```
-
-To refit the Original's capture voicing after a change that moves its
-radiation, render the three sources with the new build and fit twice
-(rebuilding between), then re-level the Original's constructions:
-
-```sh
-./build-dsp/AcustraPhysicalFitRenderer /tmp/bank <25 shipping values>
-python3 Tools/BenchmarkOpenCorpora.py --renderer ./build-dsp/AcustraExternalCorpusRenderer \
-  --output /tmp/open --keep eastman/rows.json martin-hd28/rows.json
-python3 Tools/BenchmarkPerformances.py --dataset /path/to/guitarset \
-  --renderer ./build-dsp/AcustraPerformanceRenderer --output /tmp/guitarset
-python3 Tools/FitCaptureVoicing.py --bank /tmp/bank --open /tmp/open \
-  --guitarset /tmp/guitarset --write-header [--level-db DB]
-python3 Tools/CalibrateConstructionLoudness.py \
-  --renderer ./build-dsp/AcustraPerformanceRenderer --write-header
-```
-
-`--level-db` is the level that keeps the default construction's loudness
-(`CalibrateConstructionLoudness.py --json` reports it before and after);
-`python3 Tools/FitCaptureVoicing.py --self-test` recovers a known voicing
-from a synthetic corpus and downloads nothing.
-
-To regenerate the offline reference bank from separately downloaded source
-archives:
-
-```sh
-python3 Tools/GenerateSampleBank.py \
-  --eastman /path/to/acoustic-guitar-eastman-e1d \
-  --shiny /path/to/karoryfer.shinyguitar
-```
-
-To reproduce the measured g21 coefficient tables from the separately
-downloaded CC BY 4.0 Mores archive, including the passive bridge and force-pair
-body regression gates, use a new output directory for the body generator:
-
-```sh
-python3 Tools/GenerateBodyForcePair.py \
-  --raw-mat /path/to/qualified_selected_impulses.mat --plate-q median \
-  --output /tmp/acustra-body-force-pair-regeneration
-cmp /tmp/acustra-body-force-pair-regeneration/MeasuredBodyData.h \
-  Source/DSP/MeasuredBodyData.h
-python3 Tools/GenerateMeasuredBridge.py \
-  --raw-mat /path/to/qualified_selected_impulses.mat \
-  --body-report /tmp/acustra-body-force-pair-regeneration/report.json --check
-```
-
-To preflight a commissioned calibration pilot or full standard-tuning delivery
-without modifying it:
-
-```sh
-python3 Tools/ValidateCapture.py /path/to/pilot-delivery
-python3 Tools/ValidateCapture.py --full /path/to/full-delivery
-python3 Tools/ValidateCapture.py --self-test
-```
+For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the output
+directory and the 25 calibration arguments in `OptimizePhysicalModel.NAMES`
+order. The offline fit, recording benchmarks, audits, reference host and
+table generators are described in
+[offline measurement tools](Docs/research/offline-measurement-tools.md).
 
 ### Packages
 
-Customer files use `Acustra-<version>-build.<number>-<Platform>-<arch>` and live
-under `dist/<version>/build.<number>/<Platform>-<arch>/`. For example, a
-universal 1.1.3 build numbered 1 uses `dist/1.1.3/build.1/macOS-universal/`, containing
-`Acustra-1.1.3-build.1-macOS-universal.zip`, the matching `.pkg`,
-`.manifest.json` and `-SHA256SUMS.txt`. The manifest records the compiled
-identity, source revision, architectures and package hashes. These are local
-development packages; the existing validation findings are not a release claim.
-
-The default `dist/` belongs to the primary Git checkout. Linked worktrees use
-the Git common directory plus the project's repository-relative path, so their
-packages land in the same stable location. Without Git, it is the source
-project's `dist/`. Set `DIST_ROOT` to choose another root. Earlier version/build
-folders are retained. A populated version/build/platform folder is immutable:
-packaging rejects it, so select a fresh build number for a new package. Generated `Acustra_artefacts/` files and package staging
-folders are compiler intermediates; installed `Acustra.vst3`, `.component` and
-`.app` names and host IDs stay stable.
-
-`ACUSTRA_BUILD_NUMBER` is a positive integer or `run.attempt`, defaults to `1`
-locally, and defaults to the workflow's run number (`GITHUB_RUN_NUMBER`) in CI. CMake freezes
-it with the project version from `project(Acustra VERSION ...)` and the source revision. Changing that identity rebuilds
-the wrappers; each linked format receives its frozen identity record (the
-editor reads its version and build number from it), and macOS
-bundles embed the build number. Packaging rejects a cache
-that disagrees with those records or macOS bundle metadata. Assign a new build
-number for a new distributable; changing the package name alone is insufficient.
-
-To rebuild only the macOS product formats and package build 1:
-
-```sh
-cmake -S . -B build-macos -DCMAKE_BUILD_TYPE=Release -DACUSTRA_BUILD_NUMBER=1
-cmake --build build-macos --config Release --parallel 3 --target Acustra_VST3 Acustra_AU Acustra_Standalone
-./scripts/sign-and-package-macos.sh
-```
-
-The full validation script accepts `BUILD_NUMBER=42 ./scripts/build-macos.sh`.
-It defaults to three concurrent build jobs; set `BUILD_JOBS` to change that limit.
-For existing Windows or Linux builds, package with
-`python scripts/package-windows.py --build-dir build-win`
-or `python3 scripts/package-linux.py --build-dir build-dsp`.
-Both use the same versioned layout and named manifests/checksums. Run
-`python3 scripts/test-distribution.py` to check packaging without rebuilding DSP.
+Packages are named `Acustra-<version>-build.<number>-<Platform>-<arch>` and
+land in `dist/<version>/build.<number>/<Platform>-<arch>/` with a manifest and
+checksums; `ACUSTRA_BUILD_NUMBER` sets the build number. See
+[packaging and the release workflow](Docs/release/packaging-and-release-workflow.md).
 
 ### Release workflow
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) builds,
-validates and packages the three platforms from one commit:
-
-- **macOS universal** (macos-15): `scripts/build-macos.sh` with
-  `BUILD_UNIVERSAL=ON` builds VST3, AU, CLAP and Standalone and runs the whole test suite, `auval -strict`
-  validates the AU and pluginval the VST3, then
-  `scripts/sign-and-package-macos.sh` makes the zip and the pkg. The runner is
-  arm64, so the x86_64 slice is built but never run.
-- **Windows x64** (windows-2025) and **Linux x64** (ubuntu-22.04): the VST3,
-  the CLAP, the Standalone and the plug-in wrapper tests (`Acustra.PluginProcessor`,
-  `Acustra.PluginTempoRelease`), pluginval on the VST3, then
-  `scripts/package-windows.py` or `scripts/package-linux.py`. The Windows job fails if either binary imports
-  the Visual C++ runtime DLLs. The Linux job links libstdc++ and libgcc
-  statically and fails if either binary asks for a glibc newer than Ubuntu
-  22.04's 2.35.
-
-[`.github/workflows/main-build.yml`](.github/workflows/main-build.yml) calls
-the same workflow on every push to `main`, nightly at 03:00 UTC and on demand,
-keeps the packages for 30 days, renders the ten demos, collects everything with
-`BUILD.txt` and `SHA256SUMS` into one `acustra-main-build-<run>` artifact, and
-commits the editor screenshot and the [Downloads](#downloads) block when `main`
-still points at the commit it built. CLAP is built and packaged on every
-platform; pluginval v1.0.4 validates only the VST3.
-
-pluginval is release v1.0.4, downloaded and checked against pinned SHA-256
-sums, at strictness level 10. Build numbers are the workflow's run number,
-as in CI, and each platform's package set is kept as a workflow artifact for
-seven days (30 for a main build).
-
-The workflow runs on a pull request that changes it, `scripts/`, `cmake/` or
-`CMakeLists.txt`, never signing there; on a manual run of any branch, which
-signs on macOS when the secrets exist and makes no release; and on a pushed
-`v*` tag. After a tag's three jobs pass, a last job checks that every manifest
-names the tag's version and the tagged commit built from a clean tree, writes
-one `SHA256SUMS` over all the files, and attaches them to a **draft** GitHub
-release whose notes state each platform's signing and what was validated. To
-draft a release of a version, confirm that `project(Acustra VERSION ...)` in
-`CMakeLists.txt` names it and that CI passed on the commit, then tag that
-commit:
-
-```sh
-git tag -a v<version> -m "Acustra <version>" <commit>
-git push origin v<version>
-```
-
-macOS signing runs only when its secrets exist (repository Settings, Secrets
-and variables, Actions). With none set, nothing fails for it: the macOS bundles
-are signed ad hoc, the pkg is unsigned and nothing is notarized. The workflow
-has no Windows signing step: publicly trusted code-signing certificates issued
-since June 2023 keep their private key in a hardware module (a token, an HSM or
-a cloud signing service), not in an exportable .pfx, so that step depends on
-the provider chosen.
-
-| Secret | Use |
-| --- | --- |
-| `MACOS_CERTIFICATES_P12` | Base64 of a .p12 holding the Developer ID Application and Developer ID Installer identities and their keys; imported into a temporary keychain |
-| `MACOS_CERTIFICATES_PASSWORD` | The .p12's password |
-| `MACOS_APP_SIGN_IDENTITY` | The application identity's name, passed as `APP_SIGN_IDENTITY` |
-| `MACOS_INSTALLER_SIGN_IDENTITY` | The installer identity's name, passed as `INSTALLER_SIGN_IDENTITY` |
-| `MACOS_NOTARY_APPLE_ID`, `MACOS_NOTARY_TEAM_ID`, `MACOS_NOTARY_PASSWORD` | Apple ID, team ID and app-specific password, saved as the notarytool profile passed as `NOTARY_PROFILE`; notarizing needs the certificates as well |
-
-The owner's decisions before publishing a draft are still open, and a run
-settles none of them:
-
-- Whether and how to sign: an Apple Developer ID with notarization, and a
-  Windows signing provider. Until then the packages are signed ad hoc or
-  unsigned, as above.
-- Qualification in real hosts. The workflow runs the wrapper tests, pluginval
-  and auval; it opens the plug-ins in no DAW.
-- A listening verdict on the version's sound changes.
-- The JUCE licence route (see [Licensing](#licensing)), the EULA, terms and
-  privacy policy, and the price and purchase path.
+validates (whole test suite on macOS, auval and pluginval) and packages macOS
+universal, Windows x64 and Linux x64 from one commit, and drafts a GitHub
+release on a pushed `v*` tag.
+[`.github/workflows/main-build.yml`](.github/workflows/main-build.yml) runs it
+on every push to `main`, nightly and on demand, and rewrites the
+[Downloads](#downloads) block. Signing secrets, release steps and the owner's
+open decisions before publishing are in
+[packaging and the release workflow](Docs/release/packaging-and-release-workflow.md#release-workflow).
 
 ## Licensing
 
