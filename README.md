@@ -656,18 +656,22 @@ open decisions before publishing are in
 
 ## Licensing
 
-Acustra's original source is MIT-licensed; see [`LICENSE`](LICENSE). The
-Shinyguitar and Eastman E1D recordings in the offline reference bank
-are dedicated under CC0 1.0 and are not linked into the plug-in. The measured
-bridge/body coefficient tables are adapted from Robert Mores' archive under CC
-BY 4.0, and two derived level constants and the piezo's bridge conductance
-from Carcagno et al.'s Fylde measurement, also CC BY 4.0. GuitarSet, CC BY
-4.0, is one of the recording sets the capture voicing is fitted to and the
-source of three strum statistics. JUCE is
-a separate dependency offered under AGPLv3 or a commercial JUCE licence, and
-the libraries it compiles in (the VST3 SDK, HarfBuzz, SheenBidi, libpng, zlib,
-the IJG JPEG code and, on macOS, Apple's AudioUnitSDK) carry their own
-licences, collected in
+Acustra's source is available under the [PolyForm Noncommercial License
+1.0.0](LICENSE): you may read, study, change and share it for any non-commercial
+purpose, but not sell it or use it commercially. Official Protocodus builds
+carry an additional permission in the same file to use them for any purpose,
+including making music commercially. Commits made before this licence change
+were published under MIT and remain so. The Shinyguitar and Eastman E1D
+recordings in the offline reference bank are dedicated under CC0 1.0 and are not
+linked into the plug-in. The measured bridge/body coefficient tables are adapted
+from Robert Mores' archive under CC BY 4.0, and two derived level constants and
+the piezo's bridge conductance from Carcagno et al.'s Fylde measurement, also CC
+BY 4.0. GuitarSet, CC BY 4.0, is one of the recording sets the capture voicing
+is fitted to and the source of three strum statistics. JUCE is a separate
+dependency offered under AGPLv3 or a commercial JUCE licence (official builds
+use a JUCE 8 Starter licence), and the libraries it compiles in (the VST3 SDK,
+HarfBuzz, SheenBidi, libpng, zlib, the IJG JPEG code and, on macOS, Apple's
+AudioUnitSDK) carry their own licences, collected in
 [`ThirdParty/JUCE-DEPENDENCY-LICENSES.txt`](ThirdParty/JUCE-DEPENDENCY-LICENSES.txt).
 See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the files in
 [`ThirdParty`](ThirdParty) before distributing a combined plug-in or app; the

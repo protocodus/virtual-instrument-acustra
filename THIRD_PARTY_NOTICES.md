@@ -473,6 +473,10 @@ AGPLv3 for the complete combined work or an appropriate commercial JUCE
 licence. Review the JUCE 8 licence terms before distribution:
 <https://github.com/juce-framework/JUCE/blob/8.0.14/LICENSE.md>
 
+Protocodus's official builds use JUCE under a commercial JUCE 8 Starter
+licence. Acustra's own licence is not the AGPLv3, so anyone else who distributes
+a build needs their own commercial JUCE licence.
+
 The JUCE modules Acustra builds with (`juce_audio_utils`, the modules it
 depends on, and `juce_audio_plugin_client` for the plug-in formats) compile
 further third-party code into the binaries. Their licence texts, copied
