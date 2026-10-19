@@ -105,7 +105,7 @@ long per-version notes are in the
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 12](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39109481841/artifacts/12131586022)**, built from [`9ee6c418e810`](https://github.com/protocodus/virtual-instrument-acustra/commit/9ee6c418e8101a81e3d08e36a3ecee59a656096f). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 13](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39224600612/artifacts/12178910009)**, built from [`c7cf77b30cc9`](https://github.com/protocodus/virtual-instrument-acustra/commit/c7cf77b30cc90742eae67ad02a38d2f55e2bb88d). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
