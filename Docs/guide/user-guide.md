@@ -287,7 +287,9 @@ you hear crackles, raise the buffer size or work at 44.1 or 48 kHz.
 
 ## Licences and trademarks
 
-Acustra's own code is MIT-licensed (`LICENSE`). Acustra is built with
+Acustra's source is available under the PolyForm Noncommercial License 1.0.0,
+and official builds may be used for any purpose, including making music
+commercially (`LICENSE`). Acustra is built with
 JUCE, includes code and data from others, and adapts measurements
 published under CC BY 4.0; `THIRD_PARTY_NOTICES.md` and the `ThirdParty`
 folder beside this guide give their credits and licences.
