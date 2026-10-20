@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.10.0 — 2026-10-20 — body damping while held
+
+- Fixed torso/back and forearm/top contact now add passive loss to the body
+  while playing and through note releases. Body resonances decay sooner;
+  strings feel the same damped body through the bridge. This is a bounded
+  playing-posture approximation, with no new control or saved parameter.
+  Existing sessions intentionally use the new body response. The
+  [design and validation](Docs/research/player-contact-2026-10-20.md)
+  distinguishes authored losses from measured guitar data.
+
 ### 1.9.0 — 2026-10-20 — no two notes at quite the same pitch
 
 - Each contact, a pluck, a re-pluck or a hammer-on, sounds a small pitch
@@ -219,6 +229,13 @@ measured to stand in for the listener's preferred mix
 ([`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h)). The microphone
 observation is a fixed weighted mix of measured and spatial pressure paths;
 Mono mic uses its right observation.
+
+Fixed torso/back and forearm/top contact add two passive structural losses
+to the body modes. These are conservative authored frequency envelopes,
+not measurements of a player's posture. They shorten free body ringing
+while the bridge and tuning observer follow the same loaded body; string
+release, palm muting and room decay remain separate mechanisms. See the
+[contact model](Docs/research/player-contact-2026-10-20.md).
 
 **References.** Robert Mores' bridge and radiation archive (g21, CC BY 4.0);
 the steel-string mobility level from [Carcagno et al.](https://doi.org/10.1121/1.5084735)'s

@@ -18,8 +18,8 @@ struct AcustraEngineTestAccess
 {
     static auto properties(BodyMaterial wood) { return AcustraEngine::bodyWoodProperties(wood); }
     static auto factors(const EngineParameters& p) { return AcustraEngine::bodyWoodFactors(p); }
-    static auto pole(const EngineParameters& p, int i)
-    { return AcustraEngine::radiationModePole(p, fittedPhysicalCalibration, i); }
+    static auto pole(const EngineParameters& p, int i, bool playerLoading = true)
+    { return AcustraEngine::radiationModePole(p, fittedPhysicalCalibration, i, playerLoading); }
     static auto bridge(const AcustraEngine& e) { return e.bridgeLoad_; }
     static auto table(const AcustraEngine& e) { return e.bridgeMobilityTable(); }
     static std::complex<double> residue(const AcustraEngine& e, int i)
@@ -147,9 +147,12 @@ Pair solve(double plateSquared, double cavitySquared, double holeSquared)
     return result;
 }
 
-std::unique_ptr<Engine> engine(Parameters p, double rate=48000.0)
+std::unique_ptr<Engine> engine(Parameters p, double rate=48000.0, bool playerLoading=true)
 {
-    auto e = std::make_unique<Engine>(); e->setParameters(p); e->prepare(rate,127); return e;
+    auto e = std::make_unique<Engine>();
+    auto realism = e->performanceRealism(); realism.playerBodyLoading = playerLoading;
+    e->setPerformanceRealism(realism);
+    e->setParameters(p); e->prepare(rate,127); return e;
 }
 
 void materialPropertiesAndPlateLaw()
@@ -182,15 +185,18 @@ void materialPropertiesAndPlateLaw()
 
 void coupledModesAndResidues()
 {
+    // Verify the independent wood-only pole/residue transform. Contact has
+    // its own frequency-dependent loss and continuous-input correction,
+    // tested separately under every construction with loading enabled.
     double worstPole=0.0,worstTrace=0.0,worstProduct=0.0,worstRadiation=0.0,worstBridge=0.0;
     for(int shape=0;shape<4;++shape)
     {
         Parameters spruce; spruce.shape=static_cast<acustra::BodyShape>(shape);
-        const auto s=engine(spruce); const auto baseBridge=Access::bridge(*s);
+        const auto s=engine(spruce,48000.0,false); const auto baseBridge=Access::bridge(*s);
         // The measured bank's dominant low modes are rows 0 and 1. Divide
         // out the independent global calibration before identifying K/M.
         const double scale=acustra::fittedPhysicalCalibration.bodyFrequencyScale;
-        const double a0=Access::pole(spruce,0)[0]/scale,t1=Access::pole(spruce,1)[0]/scale;
+        const double a0=Access::pole(spruce,0,false)[0]/scale,t1=Access::pole(spruce,1,false)[0]/scale;
         const double hole=helmholtz(shape), hole2=hole*hole;
         const double plate2=a0*a0*t1*t1/hole2;
         const double cavity2=a0*a0+t1*t1-plate2-hole2;
@@ -199,16 +205,16 @@ void coupledModesAndResidues()
         for(int wood=1;wood<3;++wood)
         {
             const auto r=ratios(wood); const auto expected=solve(plate2*r.stiffness/r.mass,cavity2/r.mass,hole2);
-            auto p=spruce;p.bodyMaterial=static_cast<Wood>(wood);const auto e=engine(p);const auto b=Access::bridge(*e);
-            const double fa=Access::pole(p,0)[0]/scale, ft=Access::pole(p,1)[0]/scale;
+            auto p=spruce;p.bodyMaterial=static_cast<Wood>(wood);const auto e=engine(p,48000.0,false);const auto b=Access::bridge(*e);
+            const double fa=Access::pole(p,0,false)[0]/scale, ft=Access::pole(p,1,false)[0]/scale;
             worstTrace=std::max(worstTrace,std::abs((fa*fa+ft*ft)/expected.trace-1.0));
             worstProduct=std::max(worstProduct,std::abs(fa*fa*ft*ft/expected.determinant-1.0));
             for(int index : {0,1,5,12,30})
             {
-                const double oldFrequency=Access::pole(spruce,index)[0],newFrequency=Access::pole(p,index)[0];
+                const double oldFrequency=Access::pole(spruce,index,false)[0],newFrequency=Access::pole(p,index,false)[0];
                 const double expectedFrequency=index<2?expected.frequency[std::size_t(index)]/reference.frequency[std::size_t(index)]:r.frequency;
                 worstPole=std::max(worstPole,std::abs(newFrequency/oldFrequency/expectedFrequency-1.0));
-                expect(Access::pole(p,index)[1]==Access::pole(spruce,index)[1],"Wood changed unmeasured modal Q");
+                expect(Access::pole(p,index,false)[1]==Access::pole(spruce,index,false)[1],"Wood changed unmeasured modal Q");
                 const double expectedResidue=index<2?expected.radiation[std::size_t(index)]/reference.radiation[std::size_t(index)]:r.residue;
                 const auto contour=[](double f) {
                     const double bass=1.0+.28*std::exp(-f/520.0);

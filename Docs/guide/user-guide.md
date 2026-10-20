@@ -116,6 +116,10 @@ window can be resized from its corner and keeps its proportions.
 
 **Guitar**
 
+The body includes gentle damping from a fixed playing posture: contact with
+the torso and forearm lets resonances settle sooner. This is always active
+and separate from the Mute control's damping of the strings.
+
 - **Construction**: Dreadnought, Auditorium or Parlor, each with a spruce
   top, sets Body Shape and Body Material together; the label reads
   CONSTRUCTION / CUSTOM when they match none of the three.

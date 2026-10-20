@@ -10,6 +10,10 @@ namespace acustra
 // testable without maintaining separate engine implementations.
 struct PerformanceRealism
 {
+    // Continuous fixed torso/back and forearm/top contact loss on the body,
+    // including while strings are held and after release. A bounded authored
+    // posture, not string palm muting or a MIDI note-off envelope.
+    bool playerBodyLoading { true };
     bool contactRelease { true };
     bool coherentHand { true };
     bool gestureDamping { true };

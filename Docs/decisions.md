@@ -5,6 +5,24 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-20 — add a fixed held-player body load
+
+The user found the after-note resonance too loud/long and asked to model a
+guitar held against the torso and under the forearm, then rebuild. Version
+1.10.0 adds two restrained positive inverse-Q loss terms to the existing
+calibrated body. They act continuously, including while notes are held;
+string release and palm muting retain their existing mechanisms. Radiation,
+reciprocal bridge and the tuning observer share the loaded poles. No new
+control or parameter is introduced; old sessions intentionally hear this
+version's held-body response.
+
+The contact envelopes are authored physical approximations, not measured
+player coefficients. The user authorized this direction; no new listening
+preference or same-instrument held/free calibration is claimed. The
+[research note](research/player-contact-2026-10-20.md) records the law,
+limits and independent validation. The older Classical 78 implementation
+remains historical and is not restored.
+
 ## 2026-10-20 — every contact its own pitch: the middle ground, by ear
 
 The user asked for minor, almost inaudible differences so that no two notes
