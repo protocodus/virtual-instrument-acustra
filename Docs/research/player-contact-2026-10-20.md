@@ -99,8 +99,10 @@ against fresh engines.
 
 Historical raw-fit fixtures explicitly disable contact only where they
 assert the pre-contact data: the selected air-decay extension, measured
-modal damping, wood-only pole/residue transforms and frozen approved
-microphone observation. Their numeric tolerances remain unchanged. Other
+modal damping, construction/wood-only pole/residue transforms, frozen
+approved microphone observation and the frozen Finger-velocity observer.
+The latter retains its separate native Finger-brightness comparison with
+contact enabled. Their numeric tolerances remain unchanged. Other
 passivity, rate, cache, tuning and lifecycle cases run the production held
 model. The capture rate oracle compares against the loaded 48 kHz reference;
 the frozen pre-contact CSV retains its separate raw-observation check.

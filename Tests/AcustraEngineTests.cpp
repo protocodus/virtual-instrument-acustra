@@ -562,10 +562,13 @@ struct AcustraEngineTestAccess
 
     static BodyModeSnapshot configuredBody(
         PhysicalCalibration calibration, int index,
-        BodyShape shape = EngineParameters {}.shape)
+        BodyShape shape = EngineParameters {}.shape, bool playerLoading = true)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
+        auto realism = engine.performanceRealism();
+        realism.playerBodyLoading = playerLoading;
+        engine.setPerformanceRealism(realism);
         EngineParameters parameters;
         parameters.shape = shape;
         // The measured body at the wood it was built of, where Body
@@ -4983,11 +4986,12 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
     // The approved blend retains .4 of the original observation. Only its
     // low-mode treble contribution takes airGain; scaling the entire summed
     // pressure by 128 would now incorrectly scale the other microphones.
+    // Its golden residues precede player contact; isolate that raw fixture.
     for (int index : { 0, 1, 2, 133, 134 })
     {
-        const auto quiet = acustra::AcustraEngineTestAccess::configuredBody(quietLowModes, index);
-        const auto middle = acustra::AcustraEngineTestAccess::configuredBody(middleLowModes, index);
-        const auto strong = acustra::AcustraEngineTestAccess::configuredBody(strongLowModes, index);
+        const auto quiet = acustra::AcustraEngineTestAccess::configuredBody(quietLowModes, index, acustra::BodyShape::Dreadnought, false);
+        const auto middle = acustra::AcustraEngineTestAccess::configuredBody(middleLowModes, index, acustra::BodyShape::Dreadnought, false);
+        const auto strong = acustra::AcustraEngineTestAccess::configuredBody(strongLowModes, index, acustra::BodyShape::Dreadnought, false);
         expect(quiet.frequency == strong.frequency && quiet.q == strong.q,
                "low-body observation calibration changed a physical pole");
         const bool airMode = index == 0 || index == 133;
@@ -8452,7 +8456,9 @@ void testBodyShapesFollowTheCoupledTopAndCavity()
     const auto calibration = acustra::fittedPhysicalCalibration;
     const auto body = [&] (BodyShape shape, int index)
     {
-        return Access::configuredBody(calibration, index, shape);
+        // This independent geometry/measurement law predates the separate
+        // frequency-dependent contact loss; verify its raw Q/residue map.
+        return Access::configuredBody(calibration, index, shape, false);
     };
 
     // The anchor is the Dreadnought: the flamenca's bank, resolved over
@@ -9029,6 +9035,14 @@ std::vector<double> renderOnString(acustra::EngineParameters parameters, int mid
     // the same fretting draw, a pitch nuisance their takes cannot average
     // (it moved MIDI 72's Finger velocity rise 3.29 -> 2.72 dB at one draw).
     acustra::exactIntonation(*engine);
+    if (fixedVelocityObserver)
+    {
+        // The frozen velocity-articulation observer pins the pre-contact
+        // instrument. Its separate native comparison keeps player loading.
+        auto realism = engine->performanceRealism();
+        realism.playerBodyLoading = false;
+        engine->setPerformanceRealism(realism);
+    }
     engine->prepare(sampleRate, block);
     engine->setParameters(parameters);
     engine->setStringPerChannelMode(true);
