@@ -21,14 +21,14 @@ rewrites this table. Longer technique and repertoire renders are described in
 
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
-| 1 | Dreadnought Steel | [01-dreadnought-steel.mp3](Docs/audio/01-dreadnought-steel.mp3) | 18.7 s | -4.0 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.mp3](Docs/audio/02-parlor-steel-fingerstyle.mp3) | 18.2 s | -12.2 dBFS |
+| 1 | Dreadnought Steel | [01-dreadnought-steel.mp3](Docs/audio/01-dreadnought-steel.mp3) | 18.7 s | -3.5 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.mp3](Docs/audio/02-parlor-steel-fingerstyle.mp3) | 18.2 s | -12.0 dBFS |
 | 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.mp3](Docs/audio/03-mahogany-steel-thumb.mp3) | 16.8 s | -11.9 dBFS |
 | 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.mp3](Docs/audio/04-jumbo-steel-pick.mp3) | 19.6 s | -3.7 dBFS |
-| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.mp3](Docs/audio/05-palm-muted-steel-pick.mp3) | 14.1 s | -3.3 dBFS |
-| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.mp3](Docs/audio/06-dadgad-mono-mic.mp3) | 15.0 s | -12.6 dBFS |
-| 7 | Open G Slide-ready | [07-open-g-slide-ready.mp3](Docs/audio/07-open-g-slide-ready.mp3) | 16.0 s | -13.5 dBFS |
-| 8 | Piezo Stage Steel | [08-piezo-stage-steel.mp3](Docs/audio/08-piezo-stage-steel.mp3) | 18.8 s | -6.7 dBFS |
+| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.mp3](Docs/audio/05-palm-muted-steel-pick.mp3) | 14.1 s | -3.2 dBFS |
+| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.mp3](Docs/audio/06-dadgad-mono-mic.mp3) | 15.0 s | -12.4 dBFS |
+| 7 | Open G Slide-ready | [07-open-g-slide-ready.mp3](Docs/audio/07-open-g-slide-ready.mp3) | 16.0 s | -12.9 dBFS |
+| 8 | Piezo Stage Steel | [08-piezo-stage-steel.mp3](Docs/audio/08-piezo-stage-steel.mp3) | 18.8 s | -6.4 dBFS |
 
 <!-- audio-demos-end -->
 
@@ -115,7 +115,7 @@ long per-version notes are in the
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 15](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39392968227/artifacts/12255446263)**, built from [`8aa08d746663`](https://github.com/protocodus/virtual-instrument-acustra/commit/8aa08d746663781fd13846ff7688b4b6bd903c99). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 16](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39454389249/artifacts/12281354610)**, built from [`e995d5b63dbc`](https://github.com/protocodus/virtual-instrument-acustra/commit/e995d5b63dbc77ac3bf207f351ac6fe95e3b4e59). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
