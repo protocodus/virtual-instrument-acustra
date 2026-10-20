@@ -86,6 +86,9 @@ auto make(double rate, Picking picking, float handPosition, bool contact = true)
     auto realism = engine->performanceRealism();
     realism.coherentHand = false;
     realism.contactRelease = contact;
+    // The pre-bend contract compares one hand force at exact tensions, which
+    // the fretting finger's own pitch offset would move.
+    realism.frettingPitch = false;
     engine->setPerformanceRealism(realism);
     acustra::EngineParameters parameters;
     parameters.picking = picking;

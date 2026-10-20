@@ -12,6 +12,15 @@
 
 namespace acustra
 {
+// These checks hold a note to its exact reference geometry, which the
+// fretting finger's own pitch offset would move (frettingPitchCents).
+inline void exactIntonation(AcustraEngine& engine) noexcept
+{
+    auto realism = engine.performanceRealism();
+    realism.frettingPitch = false;
+    engine.setPerformanceRealism(realism);
+}
+
 struct AcustraEngineTestAccess
 {
     static float noteDetune(const AcustraEngine& engine, int string)
@@ -21,6 +30,10 @@ struct AcustraEngineTestAccess
     static std::uint32_t detuneSeed(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].noteDetuneState;
+    }
+    static std::uint32_t frettingSeed(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].frettingPitchState;
     }
     static double settledPitch(AcustraEngine& engine, int string)
     {
@@ -73,6 +86,7 @@ struct AcustraEngineTestAccess
         for (auto& e : engines)
         {
             e = std::make_unique<AcustraEngine>();
+            exactIntonation(*e);
             e->prepare(rate, 128);
             EngineParameters parameters;
             parameters.picking = PickingTechnique::Pick;
@@ -167,6 +181,7 @@ struct AcustraEngineTestAccess
         bool queued, bool memberMode, float slide, float member)
     {
         auto e = std::make_unique<AcustraEngine>();
+        exactIntonation(*e);
         e->prepare(rate, 64);
         EngineParameters parameters;
         parameters.picking = technique;
@@ -215,6 +230,7 @@ struct AcustraEngineTestAccess
                                int harmonic = 1, bool memberMode = false)
     {
         auto e = std::make_unique<AcustraEngine>();
+        exactIntonation(*e);
         e->prepare(rate, 64);
         EngineParameters parameters;
         parameters.picking = technique;
@@ -269,6 +285,7 @@ struct AcustraEngineTestAccess
                              float slide, float member)
     {
         auto e = std::make_unique<AcustraEngine>();
+        exactIntonation(*e);
         e->prepare(rate, 64);
         e->setLowerZoneMemberCount(15);
         auto& v = e->voices_[static_cast<std::size_t>(string)];
@@ -590,6 +607,7 @@ void testDetuneBelongsToActualPlayedContact()
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         auto engine = std::make_unique<acustra::AcustraEngine>();
+        exactIntonation(*engine);
         engine->prepare(rate, 128);
         engine->setStringPerChannelMode(true);
         acustra::EngineParameters parameters;
@@ -643,6 +661,7 @@ void testDetuneBelongsToActualPlayedContact()
                "queued contact ignored the current Detune amount");
         const auto afterContact = Access::detuneSeed(*engine, 0);
         auto fullAmount = std::make_unique<acustra::AcustraEngine>();
+        exactIntonation(*fullAmount);
         fullAmount->prepare(rate, 128);
         fullAmount->setStringPerChannelMode(true);
         auto fullParameters = parameters;
@@ -674,6 +693,87 @@ void testDetuneBelongsToActualPlayedContact()
 }
 }
 
+// GuitarSet's fretted notes scatter 1.57 cents (robust sigma) more than its
+// open strings (Tools/MeasureFrettedPitchScatter.py): each fretted contact
+// takes its own uniform offset within +/-2.73 cents, and the string sounds it.
+void testTheFrettingFingerMovesEachFrettedContact()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    std::array<float, 128> left {}, right {};
+    const auto advance = [&] (acustra::AcustraEngine& engine, int count)
+    {
+        while (count > 0)
+        {
+            const int frames = std::min(count, 128);
+            engine.process(left.data(), right.data(), frames);
+            count -= frames;
+        }
+    };
+    const auto equalTempered = [] (int note, double cents)
+    { return 440.0 * std::exp2((note - 69.0) / 12.0 + cents / 1200.0); };
+    constexpr int string = 2, open = 50, channel = string + 1;
+    for (const double rate : { 44100.0, 96000.0 })
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(rate, 128);
+        engine->setStringPerChannelMode(true);
+        auto plain = std::make_unique<acustra::AcustraEngine>();
+        acustra::exactIntonation(*plain);
+        plain->prepare(rate, 128);
+        plain->setStringPerChannelMode(true);
+        double low = 0.0, high = 0.0, squares = 0.0;
+        int fretted = 0;
+        for (int attack = 0; attack < 120; ++attack)
+        {
+            const int note = open + (attack % 3 == 0 ? 0 : 1 + attack % 7);
+            engine->noteOn(note, 0.6f, channel);
+            plain->noteOn(note, 0.6f, channel);
+            const float cents = Access::noteDetune(*engine, string);
+            expect(Access::detuneSeed(*engine, string) == Access::detuneSeed(*plain, string)
+                && Access::noteDetune(*plain, string) == 0.0f,
+                "the fretting finger moved the Detune stream or survived its switch");
+            if (note == open)
+                expect(cents == 0.0f, "an open string took a fretting finger's pitch");
+            else
+            {
+                expect(std::isfinite(cents) && std::abs(cents) <= 2.73f,
+                       "a fretted contact's pitch left the measured +/-2.73 cents");
+                low = std::min(low, static_cast<double>(cents));
+                high = std::max(high, static_cast<double>(cents));
+                squares += static_cast<double>(cents) * cents;
+                ++fretted;
+            }
+            expect(std::abs(1200.0 * std::log2(Access::settledPitch(*engine, string)
+                    / equalTempered(note, cents))) < 0.001,
+                "the string did not sound its contact's fretting pitch");
+            advance(*engine, 64);
+            advance(*plain, 64);
+            expect(Access::noteDetune(*engine, string) == cents,
+                   "a held note's fretting pitch drifted");
+        }
+        const double deviation = std::sqrt(squares / fretted);
+        expect(low < -2.0 && high > 2.0 && deviation > 1.3 && deviation < 1.85,
+               "fretted contacts did not spread as the measured 1.57 cents");
+
+        // A hammer-on is a new finger on a new fret, with its own press; a
+        // pull-off to the open string leaves no finger stopping it.
+        engine->noteOn(open + 3, 0.6f, channel);
+        const float before = Access::noteDetune(*engine, string);
+        const auto seed = Access::frettingSeed(*engine, string);
+        advance(*engine, 256);
+        expect(engine->transitionNote(open + 3, open + 5, 0.6f, channel)
+                && Access::frettingSeed(*engine, string) != seed
+                && Access::noteDetune(*engine, string) != before
+                && std::abs(Access::noteDetune(*engine, string)) <= 2.73f,
+               "a hammer-on kept the previous finger's pitch");
+        // Past the hammer's own finger contact, which refuses a transition.
+        advance(*engine, static_cast<int>(0.2 * rate));
+        expect(engine->transitionNote(open + 5, open, 0.6f, channel)
+                && Access::noteDetune(*engine, string) == 0.0f,
+               "a pull-off to the open string kept a fretting pitch");
+    }
+}
+
 int main()
 {
     testSlideAndFretHaveTheSamePhysicalString();
@@ -684,6 +784,7 @@ int main()
     testScheduledFreshAttackReadsCurrentControllers();
     testRepeatedPickRefreshesReferenceWithoutReplacingTheWave();
     testDetuneBelongsToActualPlayedContact();
+    testTheFrettingFingerMovesEachFrettedContact();
     if (failures == 0)
         std::cout << "All string pitch realism tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

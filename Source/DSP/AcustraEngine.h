@@ -1327,6 +1327,10 @@ private:
         std::uint32_t repeatPluckState { 1 };
         // A separate stream leaves picking/noise variation unchanged at zero.
         std::uint32_t noteDetuneState { 1 };
+        // The fretting finger's draw (frettingPitchCents), its own stream so
+        // the Detune and picking draws stay where they were. noteDetuneCents
+        // carries the sum of both offsets.
+        std::uint32_t frettingPitchState { 1 };
         float noteDetuneCents { 0.0f };
         int lastPluckMidiNote { -1 };
         int lastPluckMidiChannel { 0 };
@@ -1846,6 +1850,7 @@ private:
     [[nodiscard]] static float handDamping(float t60Seconds,
                                            float fundamental) noexcept;
     void restartRandomDraws() noexcept;
+    [[nodiscard]] float frettingPitchCents(Voice& voice, int midiNote) noexcept;
     void freezeMemberPitchBend(Voice& voice) noexcept;
     [[nodiscard]] bool isLowerZoneMaster(int midiChannel) const noexcept;
     [[nodiscard]] bool isLowerZoneMember(int midiChannel) const noexcept;

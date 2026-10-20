@@ -237,6 +237,20 @@ constexpr float twoPi = 2.0f * pi;
 // (Docs/research/string-hf-loss-2026-10-10.md). It is still an authored value.
 constexpr float stringRoundTripGain = 0.99915f;
 constexpr float noteDetuneRangeCents = 20.0f;
+// A fretting finger stops the string a little differently each time it
+// presses: deeper behind the fret or nearer it, so the string is stretched
+// more or less over the fret crown and its tension, and with it its pitch,
+// differs from note to note (Varieschi and Gower, "Intonation and
+// compensation of fretted string instruments", Am. J. Phys. 78(1) (2010)
+// 47-55, Eqs. 6-9: the depth h_i and place f_i of the finger's depression
+// set the stretch). The saddle's compensation takes the mean, so only the
+// spread is left. Measured on GuitarSet (Tools/MeasureFrettedPitchScatter.py):
+// a fretted note's sustained pitch about the mean of the same string, fret
+// and take scatters by 2.38 cents (robust sigma, 15316 notes), an open
+// string's by 1.78 (1342 notes), which carries the tracker and everything
+// else that is not the finger; the difference, sqrt(2.38^2 - 1.78^2), is
+// 1.57 cents. Uniform with that standard deviation reaches +/-2.73 cents.
+constexpr float frettingPitchHalfWidthCents = 2.73f;
 // The dislocation Q of an isolated plain steel string, constant over the
 // audio band, fitted by Paté et al. (Sec. III.D) to a d'Addario G string's
 // measured partial Qs from 200 Hz to 1 kHz (constantLossSection).
@@ -2900,6 +2914,8 @@ void AcustraEngine::restartRandomDraws() noexcept
             ^ (0x63d83595u * static_cast<std::uint32_t>(string + 1));
         voice.noteDetuneState = 0x243f6a88u
             ^ (0xb7e15163u * static_cast<std::uint32_t>(string + 1));
+        voice.frettingPitchState = 0x3c6ef372u
+            ^ (0xa54ff53au * static_cast<std::uint32_t>(string + 1));
         voice.releaseNoiseState = 0x68e31da4u
             ^ (0x85ebca6bu * static_cast<std::uint32_t>(string + 7));
         voice.legatoFrictionState = 0xd1b54a35u
@@ -6623,6 +6639,19 @@ float AcustraEngine::nextNoise(Voice& voice) noexcept
     return xorshiftNoise(voice.randomState);
 }
 
+// The fretting finger's own pitch offset for a contact on this note (see
+// frettingPitchHalfWidthCents). An open string or a natural harmonic has no
+// finger pressing it; its draw is still taken, so whether a note is fretted
+// never moves the pitch of the string's later notes.
+float AcustraEngine::frettingPitchCents(Voice& voice, int midiNote) noexcept
+{
+    if (!performanceRealism_.frettingPitch)
+        return 0.0f;
+    const float draw = xorshiftNoise(voice.frettingPitchState);
+    return midiNote > voice.openMidi && voice.harmonic == 1
+        ? frettingPitchHalfWidthCents * draw : 0.0f;
+}
+
 AcustraEngine::PickingGesture AcustraEngine::nextPickingGesture() noexcept
 {
     if (!performanceRealism_.coherentHand)
@@ -9599,7 +9628,8 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     voice.attackPitchCents = 0.0f;
     voice.attackPitchDecay = 1.0f;
     voice.noteDetuneCents = noteDetuneRangeCents * parameters_.detune
-        * xorshiftNoise(voice.noteDetuneState);
+        * xorshiftNoise(voice.noteDetuneState)
+        + frettingPitchCents(voice, targetMidiNote);
     // Stop only future picking input. Already emitted waves keep travelling.
     voice.excitationEnvelope = 0.0f;
     voice.strumming = false;
@@ -10113,7 +10143,8 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     // take the control's current value at contact, never when they were queued.
     const float previousDetune = voice.noteDetuneCents;
     voice.noteDetuneCents = noteDetuneRangeCents * parameters_.detune
-        * xorshiftNoise(voice.noteDetuneState);
+        * xorshiftNoise(voice.noteDetuneState)
+        + frettingPitchCents(voice, voice.midiNote);
     if (repluck || scheduled || voice.noteDetuneCents != previousDetune)
     {
         // Repeated Pick releases refresh reference-rate geometry while their

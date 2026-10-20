@@ -77,6 +77,9 @@ struct PerformanceRealism
     // Keep crossed-but-unused strings under the fretting hand while the
     // associated chord is held, rather than releasing them on a fixed timer.
     bool heldShapeMute { true };
+    // Each fretted contact's pitch differs by the fretting finger's own
+    // press, measured on GuitarSet (AcustraEngine::frettingPitchCents).
+    bool frettingPitch { true };
 };
 
 } // namespace acustra

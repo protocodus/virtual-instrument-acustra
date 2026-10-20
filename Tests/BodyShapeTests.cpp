@@ -923,8 +923,10 @@ void testRetuneAndTailOwnership()
         for (int i = 0; i < 6; ++i)
         {
             tailCount += before[i].tailActive;
+            // The pitch the string plays includes its contact's own offset
+            // (the fretting finger's, and Detune's), not only the note's.
             frequency[i] = 440*std::exp2((before[i].midiNote-69
-                +.01*before[i].attackPitchCents)/12.0);
+                +.01*(before[i].attackPitchCents+before[i].noteDetuneCents))/12.0);
             oldPhase[i] = Access::phase(*e,static_cast<float>(frequency[i]),i);
         }
         expect(tailCount == 2,"retune fixture did not retain both repluck tails");
