@@ -34,6 +34,15 @@ void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); 
 
 namespace acustra
 {
+// These checks hold a note to its exact reference geometry, which each
+// contact's own pitch offset would move (frettingPitchCents).
+inline void exactIntonation(AcustraEngine& engine) noexcept
+{
+    auto realism = engine.performanceRealism();
+    realism.frettingPitch = false;
+    engine.setPerformanceRealism(realism);
+}
+
 struct AcustraEngineTestAccess
 {
     static float playedFrequency(const AcustraEngine& engine)
@@ -785,6 +794,8 @@ void testMasterTune()
     const auto play = [](float cents, std::vector<Event> events)
     {
         auto performer = std::make_unique<Performer>();
+        // Compares exact frequencies between renders of one note.
+        acustra::exactIntonation(performer->engine());
         performer->prepare(48000.0, 64);
         performer->setMasterTuneCents(cents);
         std::vector<float> left(64 * 150), right(64 * 150);

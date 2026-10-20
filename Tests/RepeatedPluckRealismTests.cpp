@@ -18,6 +18,15 @@
 
 namespace acustra
 {
+// These checks hold a note to its exact reference geometry, which each
+// contact's own pitch offset would move (frettingPitchCents).
+inline void exactIntonation(AcustraEngine& engine) noexcept
+{
+    auto realism = engine.performanceRealism();
+    realism.frettingPitch = false;
+    engine.setPerformanceRealism(realism);
+}
+
 struct AcustraEngineTestAccess
 {
     using Loop = AcustraEngine::StringLoop;
@@ -214,6 +223,8 @@ void testGaussianReleaseStepMatchesLibmAtRoundingBoundaries()
 auto fresh(double rate = 48000.0)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
+    // Repeats are compared against the first contact's exact geometry.
+    acustra::exactIntonation(*engine);
     engine->prepare(rate, 128);
     engine->setStringPerChannelMode(true);
     return engine;

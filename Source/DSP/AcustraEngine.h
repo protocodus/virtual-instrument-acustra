@@ -1327,7 +1327,7 @@ private:
         std::uint32_t repeatPluckState { 1 };
         // A separate stream leaves picking/noise variation unchanged at zero.
         std::uint32_t noteDetuneState { 1 };
-        // The fretting finger's draw (frettingPitchCents), its own stream so
+        // The contact's own pitch draw (frettingPitchCents), its own stream so
         // the Detune and picking draws stay where they were. noteDetuneCents
         // carries the sum of both offsets.
         std::uint32_t frettingPitchState { 1 };

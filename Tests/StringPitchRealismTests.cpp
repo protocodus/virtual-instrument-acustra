@@ -693,10 +693,10 @@ void testDetuneBelongsToActualPlayedContact()
 }
 }
 
-// GuitarSet's fretted notes scatter 1.57 cents (robust sigma) more than its
-// open strings (Tools/MeasureFrettedPitchScatter.py): each fretted contact
-// takes its own uniform offset within +/-2.73 cents, and the string sounds it.
-void testTheFrettingFingerMovesEachFrettedContact()
+// Each contact takes its own uniform pitch offset, within +/-3 cents fretted
+// and +/-1 open, the half-widths chosen by ear inside GuitarSet's bounds
+// (frettingPitchHalfWidthCents), and the string sounds it.
+void testEveryContactTakesItsOwnPitch()
 {
     using Access = acustra::AcustraEngineTestAccess;
     std::array<float, 128> left {}, right {};
@@ -721,7 +721,7 @@ void testTheFrettingFingerMovesEachFrettedContact()
         acustra::exactIntonation(*plain);
         plain->prepare(rate, 128);
         plain->setStringPerChannelMode(true);
-        double low = 0.0, high = 0.0, squares = 0.0;
+        double low = 0.0, high = 0.0, squares = 0.0, openLow = 0.0, openHigh = 0.0;
         int fretted = 0;
         for (int attack = 0; attack < 120; ++attack)
         {
@@ -733,11 +733,16 @@ void testTheFrettingFingerMovesEachFrettedContact()
                 && Access::noteDetune(*plain, string) == 0.0f,
                 "the fretting finger moved the Detune stream or survived its switch");
             if (note == open)
-                expect(cents == 0.0f, "an open string took a fretting finger's pitch");
+            {
+                expect(std::isfinite(cents) && std::abs(cents) <= 1.0f,
+                       "an open string's pitch left its +/-1 cent");
+                openLow = std::min(openLow, static_cast<double>(cents));
+                openHigh = std::max(openHigh, static_cast<double>(cents));
+            }
             else
             {
-                expect(std::isfinite(cents) && std::abs(cents) <= 2.73f,
-                       "a fretted contact's pitch left the measured +/-2.73 cents");
+                expect(std::isfinite(cents) && std::abs(cents) <= 3.0f,
+                       "a fretted contact's pitch left its +/-3 cents");
                 low = std::min(low, static_cast<double>(cents));
                 high = std::max(high, static_cast<double>(cents));
                 squares += static_cast<double>(cents) * cents;
@@ -752,11 +757,14 @@ void testTheFrettingFingerMovesEachFrettedContact()
                    "a held note's fretting pitch drifted");
         }
         const double deviation = std::sqrt(squares / fretted);
-        expect(low < -2.0 && high > 2.0 && deviation > 1.3 && deviation < 1.85,
-               "fretted contacts did not spread as the measured 1.57 cents");
+        // Uniform +/-3 has a 1.73-cent standard deviation.
+        expect(low < -2.2 && high > 2.2 && deviation > 1.45 && deviation < 2.0,
+               "fretted contacts did not spread across +/-3 cents");
+        expect(openLow < -0.6 && openHigh > 0.6,
+               "open contacts did not spread across +/-1 cent");
 
         // A hammer-on is a new finger on a new fret, with its own press; a
-        // pull-off to the open string leaves no finger stopping it.
+        // pull-off to the open string takes the open string's smaller spread.
         engine->noteOn(open + 3, 0.6f, channel);
         const float before = Access::noteDetune(*engine, string);
         const auto seed = Access::frettingSeed(*engine, string);
@@ -764,12 +772,12 @@ void testTheFrettingFingerMovesEachFrettedContact()
         expect(engine->transitionNote(open + 3, open + 5, 0.6f, channel)
                 && Access::frettingSeed(*engine, string) != seed
                 && Access::noteDetune(*engine, string) != before
-                && std::abs(Access::noteDetune(*engine, string)) <= 2.73f,
+                && std::abs(Access::noteDetune(*engine, string)) <= 3.0f,
                "a hammer-on kept the previous finger's pitch");
         // Past the hammer's own finger contact, which refuses a transition.
         advance(*engine, static_cast<int>(0.2 * rate));
         expect(engine->transitionNote(open + 5, open, 0.6f, channel)
-                && Access::noteDetune(*engine, string) == 0.0f,
+                && std::abs(Access::noteDetune(*engine, string)) <= 1.0f,
                "a pull-off to the open string kept a fretting pitch");
     }
 }
@@ -784,7 +792,7 @@ int main()
     testScheduledFreshAttackReadsCurrentControllers();
     testRepeatedPickRefreshesReferenceWithoutReplacingTheWave();
     testDetuneBelongsToActualPlayedContact();
-    testTheFrettingFingerMovesEachFrettedContact();
+    testEveryContactTakesItsOwnPitch();
     if (failures == 0)
         std::cout << "All string pitch realism tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
