@@ -14,6 +14,15 @@
 
 namespace acustra
 {
+// These checks hold a note to its exact reference geometry, which the
+// fretting finger's own pitch offset would move (frettingPitchCents).
+inline void exactIntonation(AcustraEngine& engine) noexcept
+{
+    auto realism = engine.performanceRealism();
+    realism.frettingPitch = false;
+    engine.setPerformanceRealism(realism);
+}
+
 struct AcustraEngineTestAccess
 {
     static const auto& voice(const AcustraEngine& engine, int string)
@@ -69,6 +78,7 @@ void testKnownGeometry()
             for (const int fret : { 0, 7, 20 })
             {
                 auto engine = std::make_unique<Engine>();
+                acustra::exactIntonation(*engine);
                 engine->setMasterTuneCents(cents);
                 engine->prepare(rate, 64);
                 engine->setStringPerChannelMode(true);
@@ -103,6 +113,7 @@ void testLiveOpenTuningIsNotAContact()
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         auto engine = std::make_unique<Engine>();
+        acustra::exactIntonation(*engine);
         engine->prepare(rate, 64);
         engine->setStringPerChannelMode(true);
         engine->noteOn(40, 0.8f, 1);
@@ -143,6 +154,7 @@ void testLiveOpenTuningIsNotAContact()
 void testReferenceDoesNotMoveASlidFinger()
 {
     auto engine = std::make_unique<Engine>();
+    acustra::exactIntonation(*engine);
     engine->prepare(48000.0, 64);
     engine->setStringPerChannelMode(true);
     engine->setPitchBend(1.37f, 1);
@@ -166,6 +178,7 @@ void testInitialAndClearedSilenceAdoptsReference()
     for (const bool priorPerformance : { false, true })
     {
         auto immediate = std::make_unique<Engine>();
+        acustra::exactIntonation(*immediate);
         immediate->prepare(48000.0, 64);
         if (priorPerformance)
         {
@@ -202,6 +215,7 @@ void testInitialAndClearedSilenceAdoptsReference()
 std::vector<float> reordered(float cents, bool tuneFirst, bool reset, bool prepareAgain)
 {
     auto performer = std::make_unique<Performer>();
+    acustra::exactIntonation(performer->engine());
     if (tuneFirst) performer->setMasterTuneCents(cents);
     performer->prepare(48000.0, 64);
     if (!tuneFirst) performer->setMasterTuneCents(cents);
@@ -243,6 +257,7 @@ void testReferenceStateOrderAndInvalidInput()
 void testMpeWheelsComposeOnce()
 {
     auto p = std::make_unique<Performer>();
+    acustra::exactIntonation(p->engine());
     p->setMasterTuneCents(50.0f);
     p->prepare(48000.0, 64);
     std::array<float, 64> l {}, r {};
@@ -276,6 +291,7 @@ void testMpeWheelsComposeOnce()
 void testCachedStateCopiesAndRepeats()
 {
     auto cached = std::make_unique<Engine>();
+    acustra::exactIntonation(*cached);
     cached->prepare(48000.0, 64);
     cached->setStringPerChannelMode(true);
     cached->noteOn(43, 0.8f, 1);
@@ -367,6 +383,7 @@ void testRenderedPitchTracksReference()
         for (const float cents : { 0.0f, -100.0f, 100.0f })
         {
             auto engine = std::make_unique<Engine>();
+            acustra::exactIntonation(*engine);
             engine->prepare(rate, 64);
             engine->setBridgeCouplingEnabled(false);
             engine->setSympatheticStringsEnabled(false);

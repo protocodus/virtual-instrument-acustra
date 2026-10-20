@@ -5,6 +5,29 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-20 — every contact its own pitch: the middle ground, by ear
+
+The user asked for minor, almost inaudible differences so that no two notes
+sound the same. Repeats of a note sounded at one pitch (eight plucks of A3
+within 0.04 cents). GuitarSet's note-to-note scatter about each take, string
+and fret (`Tools/MeasureFrettedPitchScatter.py`, robust sigma) is 2.38 cents
+fretted and 1.78 open; how much is the pitch tracker the data cannot say, so
+it bounds each spread rather than fixing it. Three letters, RMS-matched, on
+repeated A4/G4 eighths, a fretted octave and four G-major strums through
+factory preset 1 (key in the project files,
+`acustra/listening/2026-10-20-fretting-pitch/`):
+
+- A: the shipping 1.8.0 engine, no per-contact pitch.
+- B: fretted only, uniform +/-2.73 cents (the finger's excess over the open
+  strings, 1.57 cents SD); open strings exact.
+- C: the whole scatter as real sound, fretted +/-4.12, open +/-3.08.
+
+The user heard B and C as both great and chose a middle ground between them:
+fretted +/-3 cents, open strings and harmonics +/-1. That is a choice by ear
+between the measurement's two readings, not a fit; each half-width lies
+inside its measured bounds. `PerformanceRealism::frettingPitch` off renders
+byte-identically to 1.8.0. Shipped as 1.9.0.
+
 ## 2026-10-17 — Half-step down removed
 
 The user asked for the Half-step down tuning to be removed everywhere, after

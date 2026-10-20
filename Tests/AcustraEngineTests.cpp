@@ -24,6 +24,15 @@
 
 namespace acustra
 {
+// These checks hold a note to its exact reference geometry, which the
+// fretting finger's own pitch offset would move (frettingPitchCents).
+inline void exactIntonation(AcustraEngine& engine) noexcept
+{
+    auto realism = engine.performanceRealism();
+    realism.frettingPitch = false;
+    engine.setPerformanceRealism(realism);
+}
+
 struct AcustraEngineTestAccess
 {
     // Body, Width, Output and Piezo Mix as the audio loop glides them.
@@ -768,6 +777,7 @@ struct AcustraEngineTestAccess
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
         auto& engine = *engineOwner;
+        exactIntonation(engine);
         EngineParameters parameters;
         engine.setParameters(parameters);
         engine.prepare(rate, 64);
@@ -3071,6 +3081,7 @@ void testEveryStringStaysOnEqualTemperedPitch()
             for (int fret : { 0, 1, 5, 12, 20 })
             {
                 auto engine = std::make_unique<acustra::AcustraEngine>();
+                acustra::exactIntonation(*engine);
                 engine->prepare(rate, blockSize);
                 engine->setStringPerChannelMode(true);
                 const int note = acustra::AcustraEngine::openNotes(
@@ -9014,6 +9025,10 @@ std::vector<double> renderOnString(acustra::EngineParameters parameters, int mid
 {
     constexpr int block = 256;
     auto engine = std::make_unique<acustra::AcustraEngine>();
+    // Timbre comparisons between renders: a fresh engine gives every render
+    // the same fretting draw, a pitch nuisance their takes cannot average
+    // (it moved MIDI 72's Finger velocity rise 3.29 -> 2.72 dB at one draw).
+    acustra::exactIntonation(*engine);
     engine->prepare(sampleRate, block);
     engine->setParameters(parameters);
     engine->setStringPerChannelMode(true);

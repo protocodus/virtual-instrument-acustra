@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.0 — 2026-10-20 — no two notes at quite the same pitch
+
+- Each contact, a pluck, a re-pluck or a hammer-on, sounds a small pitch
+  offset of its own, as a fretting finger presses the string a little
+  differently every time: within +/-3 cents on a fretted note and +/-1 on
+  an open string or harmonic. Both lie inside the note-to-note scatter
+  measured on GuitarSet (`Tools/MeasureFrettedPitchScatter.py`) and were
+  chosen by ear between its bounds. No control changes; Detune still adds
+  its own wider spread on top.
+
 ### 1.8.0 — 2026-10-17 — four tunings
 
 - The Half-step down tuning is gone from the Tuning control, the engine and
