@@ -102,6 +102,14 @@ using Engine = acustra::AcustraEngine;
 using Access = acustra::AcustraEngineTestAccess;
 using Complex = std::complex<double>;
 constexpr double pi = 3.14159265358979323846;
+// The four original offline switches have positional aggregate callers.
+// A newly inserted field must not reinterpret those callers or disable the
+// production contact load through an unrelated hand comparison.
+constexpr acustra::PerformanceRealism legacySwitches { false, true, false, false };
+static_assert(!legacySwitches.contactRelease && legacySwitches.coherentHand
+              && !legacySwitches.gestureDamping && !legacySwitches.retuneContinuity
+              && legacySwitches.playerBodyLoading,
+              "new realism switches must preserve existing aggregate positions");
 int failures = 0;
 void expect(bool pass, const char* message)
 {
