@@ -1692,7 +1692,8 @@ private:
     // steel's own bridge modes share (tests).
     static std::array<float, 2> radiationModePole(
         const EngineParameters& parameters,
-        const PhysicalCalibration& calibration, int index) noexcept;
+        const PhysicalCalibration& calibration, int index,
+        bool playerLoading = true) noexcept;
     // Top material inputs and higher-plate-mode factors (frequency, Q,
     // brightness, pressure residue). The coupled A0/T1 modes have their own
     // mass/stiffness and participation calculation; Q and brightness are 1.

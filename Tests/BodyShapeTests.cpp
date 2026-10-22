@@ -46,8 +46,8 @@ struct AcustraEngineTestAccess
     static const PhysicalCalibration& calibration(const AcustraEngine& e)
     { return e.physicalCalibration_; }
     static std::array<float, 2> radiationPole(const EngineParameters& p,
-                                              const PhysicalCalibration& c, int index)
-    { return AcustraEngine::radiationModePole(p, c, index); }
+                                              const PhysicalCalibration& c, int index, bool playerLoading = true)
+    { return AcustraEngine::radiationModePole(p, c, index, playerLoading); }
     static std::array<float, 4> woodFactors(const EngineParameters& p)
     { return AcustraEngine::bodyWoodFactors(p); }
     static std::array<int, 2> bodyCounts(const AcustraEngine& e)
@@ -147,6 +147,11 @@ void testOriginalAirDecayIsLocalized()
     {
         acustra::EngineParameters original;
         auto engine = std::make_unique<Engine>();
+        // Verify the independently selected pre-contact air extension;
+        // held-player decay is covered by Acustra.PlayerBodyLoading.
+        auto realism = engine->performanceRealism();
+        realism.playerBodyLoading = false;
+        engine->setPerformanceRealism(realism);
         engine->setParameters(original);
         engine->prepare(rate, 64);
         const auto& calibration = Access::calibration(*engine);
@@ -155,10 +160,10 @@ void testOriginalAirDecayIsLocalized()
                "the air decay extension moved the Original's A0 frequency");
         expect(air[2] > 0.54 && air[2] < 0.56,
                "the Original's configured A0 free T60 left the 0.54-0.56 s bracket");
-        expect(std::abs(Access::radiationPole(original, calibration, 0)[1] - 23.5f)
+        expect(std::abs(Access::radiationPole(original, calibration, 0, false)[1] - 23.5f)
                    < 2e-5f,
                "the Original's air pole does not have the selected Q of 23.5");
-        expect(Access::radiationPole(original, calibration, 1)[1]
+        expect(Access::radiationPole(original, calibration, 1, false)[1]
                    == d::measuredSteelBodyModes[1].q * calibration.bodyQScale,
                "the air decay extension changed the Original's T1 damping");
 

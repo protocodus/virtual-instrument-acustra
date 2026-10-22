@@ -5,6 +5,27 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-22 — player body contact shipped, by ear, over the A-Z limit
+
+The owner asked whether the unmerged body-contact damping (1.10.0 on
+`codex/acustra-player-contact-20261020`) brings something more. Two letters
+on factory preset 1, at the same gain because the amount of after-note ring
+was the question (key in the project files,
+`acustra/listening/2026-10-22-player-body-contact/`):
+
+- A: the shipping 1.6.1 engine (the branch with `playerBodyLoading` off,
+  byte-identical to canonical `cb6aebc`).
+- B: the same with the fixed torso/back and forearm/top loss on.
+
+Measured, B against A: 0.10 to 0.17 dB less energy while notes sound and in
+the gaps after releases, 0.7 dB less late in a held chord's tail; the
+difference signal sits 31 dB under A. The owner heard B as great and chose
+it. Its two loss strengths and four corner frequencies are authored, not
+measured, so under this repository's A-Z limit a listening preference alone
+would not license them; the owner shipped B knowing that, as the owner's
+product decision. This is a choice by ear, not a measurement: nothing here
+establishes the coefficients as player data. Shipped as 1.6.2.
+
 ## 2026-10-22 — 1.7.0 to 1.9.0 renumbered 1.6.1
 
 The owner asked for the version to come down to the lowest number Reason
@@ -15,6 +36,24 @@ is the floor: the source versions 1.7.0, 1.8.0 and 1.9.0 become one 1.6.1,
 and the Rack device follows as 1.6.1d1. This was the owner's product
 decision, not a listening verdict. Entries below keep the numbers they were
 written with.
+
+## 2026-10-20 — add a fixed held-player body load
+
+The user found the after-note resonance too loud/long and asked to model a
+guitar held against the torso and under the forearm, then rebuild. Version
+1.10.0 (shipped as 1.6.2) adds two restrained positive inverse-Q loss terms to the existing
+calibrated body. They act continuously, including while notes are held;
+string release and palm muting retain their existing mechanisms. Radiation,
+reciprocal bridge and the tuning observer share the loaded poles. No new
+control or parameter is introduced; old sessions intentionally hear this
+version's held-body response.
+
+The contact envelopes are authored physical approximations, not measured
+player coefficients. The user authorized this direction; no new listening
+preference or same-instrument held/free calibration is claimed. The
+[research note](research/player-contact-2026-10-20.md) records the law,
+limits and independent validation. The older Classical 78 implementation
+remains historical and is not restored.
 
 ## 2026-10-20 — every contact its own pitch: the middle ground, by ear
 

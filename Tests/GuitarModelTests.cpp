@@ -100,6 +100,11 @@ void testMeasuredModalDampingIsPreserved()
                     auto calibration = fittedPhysicalCalibration;
                     calibration.bodyQScale = qScale;
                     auto e = std::make_unique<AcustraEngine>();
+                    // This fixture reconstructs measured/calibrated Q before
+                    // the separately tested playing-posture loss is added.
+                    auto realism = e->performanceRealism();
+                    realism.playerBodyLoading = false;
+                    e->setPerformanceRealism(realism);
                     e->setParameters(p);
                     e->setPhysicalCalibration(calibration);
                     e->prepare(rate, 64);

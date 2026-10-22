@@ -3,7 +3,7 @@
 Acustra is an acoustic steel-string guitar for VST®3, CLAP and Audio Unit
 hosts, with a standalone app. Every note is synthesised in real time from six
 physical string models, a measured bridge and a measurement-derived body;
-there are no recorded samples. This guide covers version 1.6.1.
+there are no recorded samples. This guide covers version 1.6.2.
 
 ## Install
 
@@ -118,6 +118,10 @@ window can be resized from its corner and keeps its proportions.
   returns the strum keyswitches to automatic.
 
 **Guitar**
+
+The body includes gentle damping from a fixed playing posture: contact with
+the torso and forearm lets resonances settle sooner. This is always active
+and separate from the Mute control's damping of the strings.
 
 - **Construction**: Dreadnought, Auditorium or Parlor, each with a spruce
   top, sets Body Shape and Body Material together; the label reads
