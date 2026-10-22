@@ -5,6 +5,38 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-22 — retain the candidate's decay with the newer dynamics
+
+After the eight-song comparison of the installed released 1.3.3 package
+(identified by the owner as 1.3.3f2) against Rack 1.6.2f1, the owner chose
+the candidate, then explicitly clarified: keep the newer 1.6.3 dynamics
+already on main and "apply the best of both". The accepted combination is:
+
+- the 1.6.2 candidate's string-loss, key-up damping and player-loaded body
+  model, retaining its natural resonance and decay;
+- 1.6.3's linear playing-force response, matching hammer/pull response and
+  bounded ±1 dB strum residual;
+- the Rack wrapper's later repeated-note ownership and note-release fixes.
+
+Canonical 1.6.3 already combines those physical models and dynamics. The
+changes from 1.6.2 affect pluck/contact force and connected-note excitation;
+they do not change the body-loading, string-loss or key-up damping laws.
+Retain that source and the newer Rack fixes. This decision requires no DSP
+retune, version change, level matching or normalization. Changed excitation
+can still change the emitted level and spectrum; this is not a claim of
+waveform identity with the older candidate.
+
+The audition's B was canonical `fc69dd0` / Rack `9fc5ff5c` (1.6.2f1), not
+1.6.3. Both letters used the same eight factory MIDI songs, preset values,
+48 kHz/64-frame Rack-native rendering, 2x quality, zero gain trim and
+eight-second tails. The frozen listening pack is
+`acustra-ab-133f2-vs-162f1-20261022`, SHA-256
+`130bf73fb1d1e8b239e16ee0c13813f7dd1307f22551bbcd32bb7da460fa9b9c`.
+Its key records the old public package's omitted f2 suffix and the Open G
+demo's single-track controller mapping. No per-song votes were supplied.
+Retaining the later dynamics is the owner's explicit product instruction,
+not a new blind listening verdict on 1.6.3.
+
 ## 2026-10-22 — softer velocity contrast and steadier strums, at the owner's request
 
 On 13 October the owner asked for less level contrast between velocities,
