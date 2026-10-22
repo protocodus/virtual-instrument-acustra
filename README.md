@@ -39,6 +39,22 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.6.3 — 2026-10-22 — softer velocity contrast, steadier strums, 10% Room
+
+- Playing force follows MIDI velocity in proportion instead of its square,
+  so soft and medium notes sit closer to firm ones: on factory preset 1, D3
+  at velocity 24 now sounds 12 dB under velocity 120 instead of 27 dB.
+  Full velocity is unchanged, and soft notes keep their slower, darker
+  release. Hammer-ons and pull-offs follow the same force law.
+- Repeated strums at one velocity draw a one-dB force residual instead of
+  the recorded players' ±7.74 dB accents, so a fixed-velocity strum pattern
+  no longer swells at random. Stroke direction, edge strings and ringing
+  still vary the level.
+- The plug-in starts new instances at 10% Room, as the Rack device does;
+  saved sessions keep their Room.
+- These are the owner's 2026-10-13 requests, authored keyboard responses
+  rather than measurements ([notes](Docs/research/responsive-dynamics-2026-10-22.md)).
+
 ### 1.6.2 — 2026-10-22 — the player's body damps the guitar
 
 - Fixed torso/back and forearm/top contact add passive loss to the body
@@ -287,7 +303,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Capture** | Stereo mic, a single measured mono mic, or the under-saddle piezo through its preamp. |
 | **Piezo Mix** | The piezo beneath the microphones on Main; 20% for a new instance, 0% for an older session. |
 | **Release Noise** | The damping hand's touch as a note ends, and faint friction on held wound-string slides; 0% adds nothing. |
-| **Room** | Small-studio reflections around the microphones, 0-100% (50% for a new instance); the piezo stays dry. |
+| **Room** | Small-studio reflections around the microphones, 0-100% (10% for a new instance); the piezo stays dry. |
 | **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
 | **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |
 | **Pluck Position** | The hand from bridgeward toward the neck, bending smoothly toward 0.36 of a short string. |
@@ -554,7 +570,7 @@ These PCM16 stereo WAVs are rendered deterministically by
 `AcustraEngine` used by the plug-in. Each file receives one whole-file peak
 normalisation after rendering. There is no external post-EQ, compression,
 reverb, room effect or recorded-note layer, and the engine's own Room is at
-its engine default, off (the plug-in starts at 50%).
+its engine default, off (the plug-in starts at 10%).
 
 - **Steel sustain range** — isolated held
   notes from open E2 through B5.

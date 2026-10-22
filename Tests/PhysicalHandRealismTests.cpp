@@ -183,7 +183,10 @@ void testThumbRoughnessHasAFinitePhysicalRelease()
                 const double a = contact.position * contact.length;
                 const double releaseSpeed = 0.5 * contact.waveSpeed * contact.displacement
                     * (1.0 / a + 1.0 / (contact.length - a));
-                const double pole = std::exp(-releaseSpeed / (0.2e-3 * rate));
+                // The authored edge expands at softer MIDI velocities to
+                // retain their contact time under the linear force response.
+                const double radius = 0.2e-3 / velocity;
+                const double pole = std::exp(-releaseSpeed / (radius * rate));
                 // Two smoothing stages have mean time 2q/(1-q). Equate
                 // that to the independently predicted contact b/(1-b).
                 const double expected = std::min(double(contact.colourCorner),

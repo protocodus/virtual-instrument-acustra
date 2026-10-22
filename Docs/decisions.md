@@ -5,6 +5,26 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-22 — softer velocity contrast and steadier strums, at the owner's request
+
+On 13 October the owner asked for less level contrast between velocities,
+for repeated strums to lose their dramatic accents, and for the desktop
+plug-in to start at 10% Room. That work stayed on
+`codex/acustra-rack-polish-20261012`. On 22 October they asked for its
+useful parts to be taken, so 1.6.3 ports it onto 1.6.2:
+
+- playing force follows `v` instead of `v²`, with the release edge scaled to
+  keep the soft-to-hard articulation;
+- hammer-ons and pull-offs follow the same law;
+- strum members draw a ±1 dB force residual instead of GuitarSet's ±7.74 dB;
+- the plug-in's Room default is 10%.
+
+This reverses the wider response of 2026-10-10. No listening test was run:
+the direction is the owner's request, not a choice between letters, and
+every term is an authored keyboard response rather than a measurement.
+Before/after renders and levels are in
+[the notes](research/responsive-dynamics-2026-10-22.md).
+
 ## 2026-10-22 — player body contact shipped, by ear, over the A-Z limit
 
 The owner asked whether the unmerged body-contact damping (1.10.0 on

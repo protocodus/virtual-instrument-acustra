@@ -245,8 +245,8 @@ public:
     // strumMember marks a note as one string of a strum (including its
     // first, undelayed string): its scheduled delay is scaled by the
     // stroke's beginStrum() draw and its level draws its own jitter,
-    // bounded to what repeated real strums vary by; a single note leaves it
-    // false and is unaffected down to the bit.
+    // restrained to a one-dB force residual; a single note leaves it false
+    // and is unaffected by that residual.
     // upstroke is a single note's own stroke direction (a strum member takes
     // its stroke's, from beginStrum): an upstroke releases the sideways
     // plane the other way, as a returning plectrum does. The Performer

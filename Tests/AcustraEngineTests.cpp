@@ -3059,7 +3059,11 @@ void testSteadyPitchIsCompensated()
     {
         const double expected = 440.0
             * std::exp2((static_cast<double>(midiNote) - 69.0) / 12.0);
-        const auto audio = render({}, midiNote, 0.72f, 1.0,
+        // 0.5184 = 0.72^2: the stroke force this test was written at under
+        // the earlier quadratic velocity law. The pitch target is the loop's
+        // compensation, not the slight sharpening a stronger stroke's
+        // tension modulation adds (+0.17 cents on MIDI 52 at 0.72 linear).
+        const auto audio = render({}, midiNote, 0.5184f, 1.0,
                                   blockSize, false);
         // Autocorrelation returns a sharper weighted pseudo-period for a
         // deliberately stretched string. Search H1 itself instead.
@@ -5598,7 +5602,7 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
     expect(responsiveHigh.touch - responsiveLow.touch > 0.70,
            "velocity brightness did not reach effective pluck touch");
     // Brightness may change contact shape and the small Touch force factor;
-    // it must not boost low MIDI velocities by changing the force curve.
+    // it must leave the independently authored linear force curve intact.
     const auto forceRatio = [] (const auto& low, const auto& high)
     {
         return (low.heldDisplacement / (0.92 + 0.08 * low.touch))
@@ -5606,8 +5610,8 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
     };
     expect(std::abs(forceRatio(responsiveLow, responsiveHigh)
                        - forceRatio(fixedLow, fixedHigh)) < 1.0e-6
-               && forceRatio(responsiveLow, responsiveHigh) < 0.08,
-           "brightness calibration compressed the authored velocity-force range");
+               && std::abs(forceRatio(responsiveLow, responsiveHigh) - 0.25) < 1.0e-6,
+           "brightness calibration changed the authored linear velocity force");
 
 
 }
@@ -7709,15 +7713,13 @@ void testRepeatedStrumsCrossTheStringsLikeRepeatedRealStrums()
            "landed inside the measured traversal-speed band");
 }
 
-void testRepeatedStrumsVaryLikeRepeatedRealStrums()
+void testRepeatedStrumsKeepRestrainedLevelVariation()
 {
-    // GuitarSet's comping tracks (Tools/MeasureStrums.py), pooled over runs
-    // of >=3 repeats of one chord and direction on the hex-pickup channels,
-    // put a stroke's own span deviation at a 36.5% std relative to its
-    // run's own mean span, a repeated string's own level deviation at a
-    // 4.47 dB std, and two adjacent real strokes' raw first-250-ms
-    // correlation at a mean of -0.02 (min -0.51, max 0.46) rather than
-    // phase-locked.
+    // Real comping includes intentional accents, so its uncontrolled force
+    // spread must not be added on top of a player's fixed MIDI velocity.
+    // Same-velocity repeats retain a restrained authored force residual,
+    // contact variation, and the established wrist timing. The timing and
+    // phase-correlation witnesses below remain independent of level spread.
     auto engineOwner = std::make_unique<acustra::AcustraEngine>();
     auto& engine = *engineOwner;
     acustra::EngineParameters parameters;
@@ -7725,10 +7727,9 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
     engine.prepare(sampleRate, blockSize);
     engine.setParameters(parameters);
 
-    // Per-string level spread: one string, repeatedly plucked as a strum
-    // member (so it draws initialisePluck's strumLevelGain), damped between
-    // repeats. Unlike the summed six-string chord peak, this is exactly the
-    // same-channel quantity GuitarSet's 4.47 dB figure measures.
+    // One string repeatedly played at the same MIDI velocity as a strum
+    // member, damped between repeats. This isolates automatic contact/force
+    // variety from the legitimate energy of an already ringing chord.
     constexpr int levelRepeats = 40;
     constexpr int levelWindowSamples = static_cast<int>(0.040 * sampleRate);
     std::vector<float> left(static_cast<std::size_t>(levelWindowSamples));
@@ -7767,11 +7768,13 @@ void testRepeatedStrumsVaryLikeRepeatedRealStrums()
         return std::sqrt(variance / static_cast<double>(values.size()));
     };
     const double levelStd = stdOf(stringPeakDb);
-    // Sampling error on a 40-draw std of the measured 4.47 dB figure is a
-    // few tenths of a dB; a 2 dB half-width around it is generous.
-    expect(std::abs(levelStd - 4.47) < 2.0,
-           "one string's own level spread across repeated strums moved "
-           "away from GuitarSet's measured 4.47 dB std");
+    // A small remaining spread is healthy; large random accents are not.
+    // This bounds emitted audio, including position and polarisation, rather
+    // than merely reasserting the internal force-gain formula.
+    expect(levelStd > 0.1 && levelStd < 1.5,
+           "fixed-velocity strums lost natural variety or acquired large random accents");
+    std::cout << "Fixed-velocity isolated-strum peak-level standard deviation: "
+              << levelStd << " dB\n";
 
     // Stroke span and same-direction correlation: eight repeats of one
     // chord, hand-damped between strokes like the prior single-note
@@ -9581,7 +9584,7 @@ int main()
     testCancelledScheduledAttacksKeepOnlyTheExistingWave();
     testStrumTimingFollowsThePickAcrossTheStrings();
     testRepeatedStrumsCrossTheStringsLikeRepeatedRealStrums();
-    testRepeatedStrumsVaryLikeRepeatedRealStrums();
+    testRepeatedStrumsKeepRestrainedLevelVariation();
     testNoTwoPlucksLandInTheSamePlace();
     testTheSteelBanksFillTheirSlotsAndStayPassive();
     testBodyShapesFollowTheCoupledTopAndCavity();

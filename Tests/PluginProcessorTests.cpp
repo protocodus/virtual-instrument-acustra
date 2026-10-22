@@ -160,10 +160,10 @@ void testParameterContract()
                    "legacy slot; Piezo Mix, Release Noise, Room and Sustain are "
                    "appended");
     // Piezo Mix defaults to 20%, a bit of the piezo under the microphones;
-    // Release Noise to the requested 10%; Room to 50%; Sustain off.
+    // Release Noise and Room to the requested 10%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 50.0f, 0.0f, 0.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 10.0f, 0.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -276,8 +276,8 @@ void testParameterContract()
                 && room->getName (32) == "Room"
                 && room->range.start == 0.0f && room->range.end == 100.0f,
             "Room must append a 0-100% parameter with AU version hint 11");
-    expect (std::abs (processor.snapshotEngineParameters().room - 0.5f) < 0.002f,
-            "a new session's room is not at its 50% default");
+    expect (std::abs (processor.snapshotEngineParameters().room - 0.1f) < 0.002f,
+            "a new session's room is not at the requested 10% default");
     const auto* sustain = dynamic_cast<const juce::AudioParameterBool*> (
         processor.parameters.getParameter (ids::sustain));
     expect (sustain != nullptr && sustain->getVersionHint() == 12
@@ -1822,7 +1822,7 @@ void testMalformedStateParameters()
             const auto snapshot = target.snapshotEngineParameters();
             expect (snapshot.capture == acustra::CaptureType::StereoMic
                         && snapshot.outputGain == 1.0f
-                        && std::abs (snapshot.room - 0.5f) < 0.002f
+                        && std::abs (snapshot.room - 0.1f) < 0.002f
                         && std::abs (snapshot.releaseNoise - 0.1f) < 0.002f,
                     "malformed explicit controls used legacy missing-control defaults");
         };
