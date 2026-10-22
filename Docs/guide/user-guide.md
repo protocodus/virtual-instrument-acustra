@@ -1,9 +1,9 @@
 # Acustra user guide
 
-Acustra is an acoustic steel-string guitar for VST®3 and Audio Unit hosts,
-with a standalone app. Every note is synthesised in real time from six
+Acustra is an acoustic steel-string guitar for VST®3, CLAP and Audio Unit
+hosts, with a standalone app. Every note is synthesised in real time from six
 physical string models, a measured bridge and a measurement-derived body;
-there are no recorded samples. This guide covers version 1.3.2.
+there are no recorded samples. This guide covers version 1.6.1.
 
 ## Install
 
@@ -11,7 +11,7 @@ Each package is named `Acustra-<version>-build.<number>-<platform>-<arch>`.
 Next to it, `-SHA256SUMS.txt` lists the package's SHA-256 checksums and
 `.manifest.json` records the build it came from.
 
-### macOS (VST3, Audio Unit, standalone)
+### macOS (VST3, CLAP, Audio Unit, standalone)
 
 The architecture in the file name says where it runs: `arm64` on Apple
 silicon, `universal` on Apple silicon and Intel. Acustra is built for
@@ -20,6 +20,7 @@ macOS 11 or later.
 - **Installer (`.pkg`)**: open it and follow the steps. It installs
   `Acustra.vst3` to `/Library/Audio/Plug-Ins/VST3/`,
   `Acustra.component` to `/Library/Audio/Plug-Ins/Components/`,
+  `Acustra.clap` to `/Library/Audio/Plug-Ins/CLAP/`,
   `Acustra.app` to `/Applications/`, and this guide with the licence
   files to `/Library/Application Support/Acustra/Documentation/`.
 - **Archive (`.zip`)**: it holds the same folders. Copy each bundle to
@@ -32,24 +33,26 @@ installer puts in place carry no such flag. A build that Apple has not
 notarized fails the check: macOS reports that it cannot verify the
 developer, and a host may refuse to load the plug-in.
 
-### Windows (VST3, standalone; 64-bit)
+### Windows (VST3, CLAP, standalone; 64-bit)
 
 Unzip the `.zip`. Copy the folder `VST3/Acustra.vst3` into
-`C:\Program Files\Common Files\VST3\`. The standalone app is
+`C:\Program Files\Common Files\VST3\` and `CLAP/Acustra.clap` into
+`C:\Program Files\Common Files\CLAP\`. The standalone app is
 `Standalone/Acustra.exe` and runs from any folder. Windows SmartScreen
 may stop a downloaded app that is not Authenticode-signed before it runs.
 
-### Linux (VST3, standalone; x86-64)
+### Linux (VST3, CLAP, standalone; x86-64)
 
 Unpack the `.tar.gz`. Copy the folder `VST3/Acustra.vst3` into `~/.vst3/`
-(for your user) or `/usr/lib/vst3/` (for every user). The standalone app
+(for your user) or `/usr/lib/vst3/` (for every user), and `CLAP/Acustra.clap`
+into `~/.clap/` or `/usr/lib/clap/`. The standalone app
 is `Standalone/Acustra`. Both need the system's FreeType and fontconfig
 libraries, and the app needs ALSA.
 
 ### Uninstall
 
-Delete `Acustra.vst3`, `Acustra.component` and `Acustra.app` from the
-folders above (and, on macOS, `/Library/Application Support/Acustra/`).
+Delete `Acustra.vst3`, `Acustra.clap`, `Acustra.component` and `Acustra.app`
+from the folders above (and, on macOS, `/Library/Application Support/Acustra/`).
 
 ## First sound
 
