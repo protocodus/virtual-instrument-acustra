@@ -21,14 +21,14 @@ rewrites this table. Longer technique and repertoire renders are described in
 
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
-| 1 | Dreadnought Steel | [01-dreadnought-steel.mp3](Docs/audio/01-dreadnought-steel.mp3) | 18.7 s | -3.7 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.mp3](Docs/audio/02-parlor-steel-fingerstyle.mp3) | 18.2 s | -12.1 dBFS |
-| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.mp3](Docs/audio/03-mahogany-steel-thumb.mp3) | 16.8 s | -12.0 dBFS |
-| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.mp3](Docs/audio/04-jumbo-steel-pick.mp3) | 19.6 s | -3.9 dBFS |
-| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.mp3](Docs/audio/05-palm-muted-steel-pick.mp3) | 14.1 s | -3.4 dBFS |
-| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.mp3](Docs/audio/06-dadgad-mono-mic.mp3) | 15.0 s | -12.5 dBFS |
-| 7 | Open G Slide-ready | [07-open-g-slide-ready.mp3](Docs/audio/07-open-g-slide-ready.mp3) | 16.0 s | -12.9 dBFS |
-| 8 | Piezo Stage Steel | [08-piezo-stage-steel.mp3](Docs/audio/08-piezo-stage-steel.mp3) | 18.8 s | -6.4 dBFS |
+| 1 | Dreadnought Steel | [01-dreadnought-steel.mp3](Docs/audio/01-dreadnought-steel.mp3) | 18.7 s | -3.3 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.mp3](Docs/audio/02-parlor-steel-fingerstyle.mp3) | 18.2 s | -9.4 dBFS |
+| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.mp3](Docs/audio/03-mahogany-steel-thumb.mp3) | 16.8 s | -9.5 dBFS |
+| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.mp3](Docs/audio/04-jumbo-steel-pick.mp3) | 19.6 s | -3.7 dBFS |
+| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.mp3](Docs/audio/05-palm-muted-steel-pick.mp3) | 14.1 s | -4.0 dBFS |
+| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.mp3](Docs/audio/06-dadgad-mono-mic.mp3) | 15.0 s | -12.1 dBFS |
+| 7 | Open G Slide-ready | [07-open-g-slide-ready.mp3](Docs/audio/07-open-g-slide-ready.mp3) | 16.0 s | -11.0 dBFS |
+| 8 | Piezo Stage Steel | [08-piezo-stage-steel.mp3](Docs/audio/08-piezo-stage-steel.mp3) | 18.8 s | -7.9 dBFS |
 
 <!-- audio-demos-end -->
 
@@ -152,7 +152,7 @@ later builds to exceed.
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 20](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39802609518/artifacts/12437333355)**, built from [`fc69dd07e72f`](https://github.com/protocodus/virtual-instrument-acustra/commit/fc69dd07e72fa05e89d0c4c25145e47c0cc38ebb). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 21](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39848151533/artifacts/12456944694)**, built from [`fc5e99cae866`](https://github.com/protocodus/virtual-instrument-acustra/commit/fc5e99cae866df8fd0d7fee95227910ab448a3ee). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
