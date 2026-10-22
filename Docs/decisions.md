@@ -5,6 +5,17 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-22 — 1.7.0 to 1.9.0 renumbered 1.6.1
+
+The owner asked for the version to come down to the lowest number Reason
+will accept, since nothing after 1.3.x had been released. The Rack Extension
+already built 1.6.0f1 to f4 on this engine, and Reason refuses a later build
+whose version is not higher (it compared 1.9.0d1 against 1.6.0f4), so 1.6.1
+is the floor: the source versions 1.7.0, 1.8.0 and 1.9.0 become one 1.6.1,
+and the Rack device follows as 1.6.1d1. This was the owner's product
+decision, not a listening verdict. Entries below keep the numbers they were
+written with.
+
 ## 2026-10-20 — every contact its own pitch: the middle ground, by ear
 
 The user asked for minor, almost inaudible differences so that no two notes
@@ -26,13 +37,13 @@ The user heard B and C as both great and chose a middle ground between them:
 fretted +/-3 cents, open strings and harmonics +/-1. That is a choice by ear
 between the measurement's two readings, not a fit; each half-width lies
 inside its measured bounds. `PerformanceRealism::frettingPitch` off renders
-byte-identically to 1.8.0. Shipped as 1.9.0.
+byte-identically to 1.8.0. Shipped as 1.9.0, renumbered 1.6.1 on 2026-10-22.
 
 ## 2026-10-17 — Half-step down removed
 
 The user asked for the Half-step down tuning to be removed everywhere, after
 the product page was found listing four tunings while the Rack Extension
-offered five. From 1.8.0 the engine, the plug-in and the Rack Extension offer
+offered five. From 1.8.0 (renumbered 1.6.1 on 2026-10-22) the engine, the plug-in and the Rack Extension offer
 Standard, Drop D, DADGAD and Open G. No build with it was released, so a
 stored Half-step down is not migrated and plays Open G, the last choice. This
 was the owner's product decision, not a listening verdict.

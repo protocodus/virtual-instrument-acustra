@@ -67,7 +67,7 @@ int heightFor (int width)
     return juce::roundToInt (static_cast<double> (width) * designHeight / designWidth);
 }
 
-// The build identity the packages carry, "1.8.0-build.12".
+// The build identity the packages carry, "1.6.1-build.12".
 juce::String displayVersion()
 {
     const auto identity = juce::JSON::parse (juce::String::fromUTF8 (AcustraBuildIdentity));

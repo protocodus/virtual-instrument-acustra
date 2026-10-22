@@ -39,31 +39,30 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
-### 1.9.0 — 2026-10-20 — no two notes at quite the same pitch
+### 1.6.1 — 2026-10-22 — eight factory presets, four tunings, no two notes at quite the same pitch
 
-- Each contact, a pluck, a re-pluck or a hammer-on, sounds a small pitch
-  offset of its own, as a fretting finger presses the string a little
-  differently every time: within +/-3 cents on a fretted note and +/-1 on
-  an open string or harmonic. Both lie inside the note-to-note scatter
-  measured on GuitarSet (`Tools/MeasureFrettedPitchScatter.py`) and were
-  chosen by ear between its bounds. No control changes; Detune still adds
-  its own wider spread on top.
+This version collects the source versions numbered 1.7.0, 1.8.0 and 1.9.0
+until 2026-10-22, none of them released; the owner folded them into the
+lowest number above the Rack Extension's 1.6.0f4, which Reason requires
+later builds to exceed.
 
-### 1.8.0 — 2026-10-17 — four tunings
-
-- The Half-step down tuning is gone from the Tuning control, the engine and
-  the Rack Extension, which now offer Standard, Drop D, DADGAD and Open G.
-  No build with it was released, so saved values are not migrated: a stored
+- **Eight factory presets.** The plug-in's program list holds eight factory
+  presets, the Rack Extension's factory patches value for value
+  ([user guide](Docs/guide/user-guide.md#factory-presets)). Each has a demo
+  phrase written for it in `Docs/audio/midi/`.
+- **Four tunings.** The Half-step down tuning is gone from the Tuning
+  control, the engine and the Rack Extension, which now offer Standard,
+  Drop D, DADGAD and Open G. Saved values are not migrated: a stored
   Half-step down plays Open G, and Tuning automation written for five
   choices lands on different tunings.
-
-### 1.7.0 — 2026-10-17 — eight factory presets
-
-- The plug-in's program list holds eight factory presets, the Rack
-  Extension's factory patches value for value
-  ([user guide](Docs/guide/user-guide.md#factory-presets)). Each has a demo
-  phrase written for it in `Docs/audio/midi/`. The sound engine is
-  unchanged.
+- **No two notes at quite the same pitch.** Each contact, a pluck, a
+  re-pluck or a hammer-on, sounds a small pitch offset of its own, as a
+  fretting finger presses the string a little differently every time:
+  within +/-3 cents on a fretted note and +/-1 on an open string or
+  harmonic. Both lie inside the note-to-note scatter measured on GuitarSet
+  (`Tools/MeasureFrettedPitchScatter.py`) and were chosen by ear between
+  its bounds. No control changes; Detune still adds its own wider spread on
+  top.
 
 ### 1.6.0 — 2026-10-17 — playing and room realism, smoother pick, CLAP
 
@@ -90,6 +89,16 @@ long per-version notes are in the
 ### 1.4.0 — 2026-10-13 — upstrokes lean treble, picked notes alternate, released notes fall
 
 [Details](Docs/release/release-history.md#140--2026-10-13--upstrokes-lean-treble-picked-notes-alternate-released-notes-fall).
+
+### 1.3.4 — 2026-10-13 — chord joins keep their common tones, and a piezo polarity switch
+
+- A chord refingered inside the release-join window no longer loses the
+  stroke on a string the two chords share, and every damping contact takes
+  its own string travel geometry while earlier arrivals keep theirs.
+- **Invert Piezo Blend** on the back reverses only the pickup mixed under
+  microphone Capture; Piezo-only Capture and the separate Piezo output keep
+  their polarity. Normal is the default, including for older sessions, and
+  switching glides.
 
 ### 1.3.3 — 2026-10-12 — launch preparation: packages, notices, Standalone MIDI, editor size
 
