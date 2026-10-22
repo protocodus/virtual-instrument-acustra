@@ -6905,30 +6905,34 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         voice.contactTravel.reset(0.5f * position * voice.contactPeriodSamples,
             (1.0f - 0.5f * position) * voice.contactPeriodSamples);
     // MIDI velocity is an authored playing-force response, independent of
-    // the fitted brightness depth. The old sublinear exponent boosted soft
-    // strokes and compressed the usable dynamics. A quadratic force curve
-    // keeps the full-velocity reference and gives half velocity a quarter of
-    // its force; the actual lower force also slows the physical contact's
-    // release below, rather than attenuating an otherwise hard pluck.
-    const float velocityForce = v * v;
-    // A strummed string's own level varies stroke to stroke too, at the
-    // one nominal velocity a strum's mean gives every string: GuitarSet's
-    // comping tracks put the pooled deviation of a repeated string's own
-    // level, across 25 runs of >=3 repeats of one chord and direction, at
-    // a 4.47 dB standard deviation, matched here by uniform jitter at a
-    // half-width of std*sqrt(3). A single note never sets voice.strumming,
-    // so it never draws this and stays exactly as it was.
+    // the fitted brightness depth. Linear force keeps softer voices present:
+    // half velocity supplies half the full stroke's force, rather than the
+    // quarter of the 2026-10-10 quadratic curve (the owner asked for less
+    // level contrast on 2026-10-13). The release gesture below retains the
+    // established soft/hard contact-time response, so this does not turn a
+    // soft note into a hard note played through an output fader. Full
+    // velocity is unchanged.
+    const float velocityForce = v;
+    // Retain small string-contact differences at a fixed strum velocity.
+    // GuitarSet's +/-7.74 dB spread (a 4.47 dB std) copied the players'
+    // uncontrolled accents into nominally identical MIDI strokes, causing
+    // sudden swells. Use an authored +/-1 dB force residual instead; timing,
+    // hand position, polarisation and the measured direction and edge terms
+    // below still supply their variation. A single note never sets
+    // voice.strumming and does not draw this.
     float strumLevelGain = 1.0f;
     if (voice.strumming)
     {
         const float forceDraw = nextNoise(voice);
         // One hand drives the chord, with smaller string-to-string contact
-        // differences. The same bounds retain headroom; a convex blend
-        // reduces the old marginal spread as it adds shared motion. The
-        // new distribution must be checked in phrase-level calibration.
+        // differences. The convex blend stays inside the same force bounds.
         const float forceVariation = gesture.active
             ? 0.35f * gesture.pressure + 0.65f * forceDraw : forceDraw;
-        strumLevelGain = std::pow(10.0f, 7.74f * forceVariation / 20.0f);
+        constexpr double halfWidth = 0.1151292546497022842; // ln(10)/20: 1 dB
+        // Unit linear mean for the independent uniform draw. Sharing hand
+        // pressure reduces its spread without adding a positive gain bias.
+        strumLevelGain = static_cast<float>(std::exp(halfWidth * forceVariation)
+            * halfWidth / std::sinh(halfWidth));
         // The same corpus strikes a muted string a median 4.6 dB under that
         // string's own played attacks (Tools/MeasureMutedStrokes.py): the
         // finger on it takes part of the pick's push.
@@ -6964,7 +6968,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // their 20-250 ms levels have median within-group SD 1.09 dB (Finger)
     // and 1.47 dB (Pick). Their intended force/string/fret is unknown, so
     // +/-1 dB is a conservative authored listening candidate, not a fitted
-    // universal law. The strum already has its own measured variation.
+    // universal law. The strum already has its own bounded variation.
     // Nearby force commands belong to the same continuing gesture: exact
     // equality of MIDI velocities must not switch this residual on or off.
     // Fade it smoothly with elapsed hand memory and with the commanded
@@ -6998,7 +7002,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const double nominalForce = static_cast<double>(velocityForce)
             * (0.92 + 0.08 * touch);
         const float previousVelocity = voice.lastPluckVelocity;
-        const double previousForce = static_cast<double>(previousVelocity * previousVelocity)
+        const double previousForce = static_cast<double>(previousVelocity)
             * (0.92 + 0.08 * effectiveTouch(voice.lastPluckVelocity));
         const double forceChange = exact::abs(std::log(nominalForce / previousForce));
         const double weight = fade(elapsed) * fade(forceChange / (2.0 * halfWidth));
@@ -7104,13 +7108,15 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // recordings with unknown dynamics.
     constexpr float fingerReleaseRadius = 0.2e-3f;
     // Playing force and release gesture have independent authored responses.
-    // Retain Finger's established contact-time response as the force curve
-    // widens: r/u then follows v^-0.766875 instead of v^-2. A fixed radius
-    // at the new tiny forces over-slows the release past a string period
-    // and reverses emitted soft/hard articulation on some notes. This
-    // effective-radius response preserves that articulation and the full
-    // force reference; it is not a measured fingertip-area law or a runtime
-    // dependency on fitted brightness depth. Thumb keeps its reference.
+    // Raising soft-note force from v^2 to v also raises its release speed.
+    // Scale the effective edge by the same 1/v ratio to preserve u/r and
+    // the established velocity-dependent release shape for all techniques.
+    // Finger's resulting radius follows v^0.233125 and its contact time
+    // still follows v^-0.766875. These are keyboard-response choices, not
+    // measured fingertip/plectrum dimensions. The full-force reference and
+    // every raw-velocity Touch/noise/style response remain unchanged.
+    const float releaseGestureScale = 1.0f / v;
+    const float contactForce = v * v;
     constexpr float fingerContactForceExponent = 0.6165625f;
     constexpr double releaseBoostLimit = 3.0;
     double unslipPole = 0.0;
@@ -7121,7 +7127,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         slipPole = plectrumSlipPole(voice, releasedAmplitude, heldDistance,
             soundingLength, scaleLength,
             physicalCalibration_.pickEdgeRadiusMetres * releaseTouch
-                * gestureCompliance);
+                * gestureCompliance * releaseGestureScale);
     else
     {
         // The nominal full-velocity contact bounds release speed. Thumb
@@ -7134,9 +7140,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             heldDistance, soundingLength, scaleLength, fingerReleaseRadius);
         const double pole = plectrumSlipPole(voice, releasedAmplitude,
             heldDistance, soundingLength, scaleLength,
-            fingerReleaseRadius * releaseTouch * gestureCompliance
+            fingerReleaseRadius * releaseTouch * gestureCompliance * releaseGestureScale
                 * (fullSoftSlip
-                    ? std::pow(velocityForce, fingerContactForceExponent) : 1.0f));
+                    ? std::pow(contactForce, fingerContactForceExponent) : 1.0f));
         if (referencePole > 0.0 && pole > 0.0)
         {
             const double referenceTau = -1.0 / std::log(referencePole);
@@ -9614,8 +9620,10 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     {
         // Bilbao et al., DAFx 2024, Eqs. 9–13: the finger supplies external
         // work; it does not vanish when the held string becomes quiet.
-        // Use an authored 0.24*v^2 contact-force law at the ordinary pluck's
-        // 0.16L open reference; this is not the calibrated picking-velocity law.
+        // Use the ordinary pluck's authored linear 0.24*v contact-force law at
+        // its 0.16L open reference, so a hammer or pull keeps its balance
+        // against the pluck at every velocity; this is not a calibrated
+        // picking-velocity law.
         // A point force deflects by L*p*(1-p)/T; its triangular wave has
         // discrete slope energy A^2/(N*p*(1-p)), proportional to 1/fs.
         // The 0.35 hammer / 0.30 pull force fractions are conservative authored
@@ -9626,7 +9634,7 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
         const double tensionRatio = voice.tensionNewtons > 0.0f
             ? std::min(1.0, static_cast<double>(voice.pitchGeometry.value.tension)
                 / voice.tensionNewtons) : 1.0;
-        const double amplitude = 0.24 * velocity * velocity * (hammer ? 0.35 : 0.30)
+        const double amplitude = 0.24 * velocity * (hammer ? 0.35 : 0.30)
             * length * p * (1.0 - p) / (0.648 * 0.16 * 0.84) * tensionRatio;
         work = amplitude * amplitude / (contactPeriod * p * (1.0 - p));
     }

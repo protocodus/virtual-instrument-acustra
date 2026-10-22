@@ -61,7 +61,7 @@ void workAndRates(){
             expect(std::abs(seconds-(hammer?.002:.003))<=1/rate,"contact duration changed with rate");
             if(rate==8000.)reference=work*rate;else expect(std::abs(work*rate/reference-1)<.025,"continuous finger work changed with rate");
             auto softer=engine(hammer,true,rate);Access::quiet(*softer);expect(softer->transitionNote(hammer?43:45,hammer?45:43,.4f),"contact fixture transition rejected");
-            expect(std::abs(Access::contactEnergy(*softer)/work-1./16)<1e-6,"independent force law is not continuous quadratic force");
+            expect(std::abs(Access::contactEnergy(*softer)/work-1./4)<1e-6,"independent force law is not the pluck's continuous linear force");
             auto old=engine(hammer,false,rate);Access::quiet(*old);expect(old->transitionNote(hammer?43:45,hammer?45:43,.8f),"contact fixture transition rejected");
             expect(Access::contactEnergy(*old)==0,"legacy ablation injected external finger work");
             advance(*e,int(.3*rate));

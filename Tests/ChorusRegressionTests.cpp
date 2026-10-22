@@ -115,8 +115,14 @@ int main()
             std::cerr << "FAIL: upper partial acquired an audible beating envelope\n";
             ++failures;
         }
-        const double reference = referenceAmplitude[rate == 48000.0 ? 0 : 1]
-                                                  [static_cast<int>(technique)][fixture];
+        // The references were observed under the earlier quadratic velocity
+        // law. 1.6.3's linear law gives velocity 0.6 a force of 0.6 instead
+        // of 0.36, and its release-edge scaling keeps the contact shape, so
+        // every partial scales by that ratio (1.66-1.68x on 1.6.2's output).
+        constexpr double linearForceScale = 0.6 / 0.36;
+        const double reference = linearForceScale
+            * referenceAmplitude[rate == 48000.0 ? 0 : 1]
+                                [static_cast<int>(technique)][fixture];
         if (!(envelope.meanAmplitude > 0.5 * reference
               && envelope.meanAmplitude < 2.0 * reference))
         {

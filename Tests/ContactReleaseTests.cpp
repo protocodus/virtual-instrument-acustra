@@ -37,7 +37,7 @@ struct AcustraEngineTestAccess
         // Independently apply Finger's authored radius response to observed
         // MIDI velocity, while recovering actual held force above.
         const double radius = 0.2e-3 * std::exp2(2.0 * (0.58 - engine.parameters_.touch))
-            * std::pow(double(v.velocity), 1.233125);
+            * std::pow(double(v.velocity), 0.233125);
         return { std::exp(-speed / (radius * engine.sampleRate_)),
                  v.excitationCoefficient, v.excitationReleaseCoefficient,
                  v.excitationColour, v.excitationEnvelope, v.excitationDecay,
