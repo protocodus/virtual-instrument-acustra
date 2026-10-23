@@ -39,6 +39,18 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.0 — 2026-10-23 — less CPU during retuning, identical output
+
+- Reduce SDK complex-math overhead during continuous pitch bends, keeping
+  the library's arithmetic and exact output. Exceptional values and directed
+  rounding retain the original library path. The native plug-in keeps its
+  standard-library implementation.
+- Continue the current 1.6.3 sound, including its velocity response, strums,
+  body contact and release behavior. The owner requested this version for
+  the fresh Rack Extension 1.9.0d2 rebuild; the earlier, pre-renumbering
+  1.9.0 source and packages remain archived separately.
+- [Exact-output checks and SDK timing](Docs/validation/exact-bend-cpu-2026-10-23.md).
+
 ### 1.6.3 — 2026-10-22 — softer velocity contrast, steadier strums, 10% Room
 
 - Playing force follows MIDI velocity in proportion instead of its square,

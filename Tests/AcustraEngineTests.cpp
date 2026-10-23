@@ -8649,8 +8649,16 @@ void testPerformance()
         std::chrono::steady_clock::now() - start).count();
     const double realtimeRatio = elapsed / seconds;
     std::cout << "Acustra six-string realtime ratio: " << realtimeRatio << '\n';
+#if defined(ACUSTRA_TIMING_INSTRUMENTED)
+    // ASan/UBSan check this exact processing workload too, but their
+    // instrumentation cost is not the shipping engine's CPU consumption.
+    // CTest registers this separately and serially; non-instrumented CI
+    // enforces the unchanged release budget below.
+    std::cout << "Instrumented timing is diagnostic; the release CPU gate runs in plain builds\n";
+#else
     expect(realtimeRatio < 0.25,
            "six-string engine exceeded the 0.25x realtime CPU gate");
+#endif
 }
 // The idle flush lands on the same sample whatever blocks the audio is
 // rendered in. It used to be counted in whole process() calls, so with
@@ -9487,8 +9495,21 @@ void testControlGlidesSettleExactly()
     }
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    bool contractsOnly = false;
+    if (argc == 2 && std::string(argv[1]) == "--performance-only")
+    {
+        testPerformance();
+        return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
+    if (argc == 2 && std::string(argv[1]) == "--contracts-only")
+        contractsOnly = true;
+    else if (argc != 1)
+    {
+        std::cerr << "usage: " << argv[0] << " [--contracts-only|--performance-only]\n";
+        return EXIT_FAILURE;
+    }
     testControlGlidesSettleExactly();
     testThePluckKinkLandsAtThePluckPoint();
     testPluckPositionChangesEveryFret();
@@ -9592,7 +9613,8 @@ int main()
     testAPickReleaseKeepsItsHumpAcrossRates();
     testAPlectrumSlipsOffItsEdgeFasterWhenHarder();
     testTheParallelPolarisationRadiatesThroughTheRockingSaddle();
-    testPerformance();
+    if (!contractsOnly)
+        testPerformance();
     if (failures == 0)
         std::cout << "All Acustra engine tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
