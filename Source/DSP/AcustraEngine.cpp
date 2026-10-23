@@ -198,12 +198,131 @@ inline std::complex<float> divide(const std::complex<float>& z,
         return z / w;
     return { x, y };
 }
+
+// The double path uses the SDK's identical complex division arithmetic.
+// Scaling a normal value to another normal value only changes its exponent,
+// without rounding. Zero keeps its sign. Every exceptional, subnormal, or
+// out-of-range scaling case is delegated to the SDK's complete algorithm.
+inline std::uint64_t doubleBits(double value) noexcept
+{
+    std::uint64_t result;
+    __builtin_memcpy(&result, &value, sizeof(result));
+    return result;
+}
+
+inline bool scaleNormalOrZero(double& value, int shift) noexcept
+{
+    const std::uint64_t word = doubleBits(value);
+    if ((word & 0x7fffffffffffffffull) == 0)
+        return true;
+    const int exponent = static_cast<int>((word >> 52) & 0x7ffu);
+    const int shifted = exponent + shift;
+    if (exponent == 0 || exponent == 0x7ff || shifted <= 0 || shifted >= 0x7ff)
+        return false;
+    const std::uint64_t result = (word & 0x800fffffffffffffull)
+        | (static_cast<std::uint64_t>(shifted) << 52);
+    __builtin_memcpy(&value, &result, sizeof(value));
+    return true;
+}
+
+inline std::complex<double> divide(const std::complex<double>& z,
+                                   const std::complex<double>& w) noexcept
+{
+    const double a = z.real(), b = z.imag();
+    double c = w.real(), d = w.imag();
+    const std::uint64_t magnitude = std::max(doubleBits(c) & 0x7fffffffffffffffull,
+                                            doubleBits(d) & 0x7fffffffffffffffull);
+    if (!__builtin_isfinite(a) || !__builtin_isfinite(b)
+        || magnitude < 0x0010000000000000ull || magnitude >= 0x7ff0000000000000ull)
+        return z / w;
+    const int exponent = static_cast<int>(magnitude >> 52) - 1023;
+    if (!scaleNormalOrZero(c, -exponent) || !scaleNormalOrZero(d, -exponent))
+        return z / w;
+    const double denominator = c * c + d * d;
+    double x = (a * c + b * d) / denominator;
+    double y = (b * c - a * d) / denominator;
+    if (!scaleNormalOrZero(x, -exponent) || !scaleNormalOrZero(y, -exponent))
+        return z / w;
+    return { x, y };
+}
+
+
+inline double doubleFromBits(std::uint64_t word) noexcept
+{
+    double result;
+    __builtin_memcpy(&result, &word, sizeof(result));
+    return result;
+}
+
+// The SDK's newlib hypot uses this compensated split before its software
+// square root. Keep its two branches and operation order, but use the
+// correctly rounded instruction for sqrt. Restrict the inline path to its
+// unscaled normal range; the library retains all special and scaling cases.
+// The Sun Microsystems permission notice above applies to this algorithm.
+inline double magnitude(const std::complex<double>& value) noexcept
+{
+    if (__builtin_flt_rounds() != 1)
+        return std::abs(value);
+    std::uint64_t aWord = doubleBits(value.real()) & 0x7fffffffffffffffull;
+    std::uint64_t bWord = doubleBits(value.imag()) & 0x7fffffffffffffffull;
+    std::uint32_t ha = static_cast<std::uint32_t>(aWord >> 32);
+    std::uint32_t hb = static_cast<std::uint32_t>(bWord >> 32);
+    if (hb > ha)
+    {
+        std::swap(ha, hb);
+        std::swap(aWord, bWord);
+    }
+    if (ha > 0x5f300000u || hb < 0x20b00000u)
+        return std::abs(value);
+    const double a = doubleFromBits(aWord), b = doubleFromBits(bWord);
+    if (ha - hb > 0x03c00000u)
+        return a + b;
+    const double w = a - b;
+    if (w > b)
+    {
+        const double t1 = doubleFromBits(static_cast<std::uint64_t>(ha) << 32);
+        const double t2 = a - t1;
+        return exact::sqrt(t1 * t1 - (b * (-b) - t2 * (a + t1)));
+    }
+    const double twiceA = a + a;
+    const double y1 = doubleFromBits(static_cast<std::uint64_t>(hb) << 32);
+    const double y2 = b - y1;
+    const double t1 = doubleFromBits(static_cast<std::uint64_t>(ha + 0x00100000u) << 32);
+    const double t2 = twiceA - t1;
+    return exact::sqrt(y1 * t1 - (w * (-w) - (y2 * t1 + b * t2)));
+}
+
+inline std::complex<double> complexSqrt(const std::complex<double>& value) noexcept
+{
+    if (__builtin_flt_rounds() != 1
+        || !exact::isfinite(value.real()) || !exact::isfinite(value.imag()))
+        return std::sqrt(value);
+    // This is libc++'s finite complex sqrt expression, with its scalar sqrt
+    // and hypot computed above; polar and arg keep the SDK's own routines.
+    return std::polar(exact::sqrt(magnitude(value)), std::arg(value) / 2.0);
+}
+
 #else
 inline std::complex<float> divide(const std::complex<float>& z,
                                   const std::complex<float>& w) noexcept
 {
     return z / w;
 }
+inline std::complex<double> divide(const std::complex<double>& z,
+                                   const std::complex<double>& w) noexcept
+{
+    return z / w;
+}
+
+inline double magnitude(const std::complex<double>& value) noexcept
+{
+    return std::abs(value);
+}
+inline std::complex<double> complexSqrt(const std::complex<double>& value) noexcept
+{
+    return std::sqrt(value);
+}
+
 #endif
 template <typename T> void abs(T) = delete;
 template <typename T> void isfinite(T) = delete;
@@ -5760,23 +5879,23 @@ float AcustraEngine::coupledPolarisationDetune(
             const int anchor = delayAnchor(model.delay);
             double a1, a2; thiranCoefficients(model.delay - anchor, a1, a2);
             const auto ap = [&](double first, double second) {
-                return (second + first * z + zz) / (1.0 + first * z + second * zz);
+                return exact::divide(second + first * z + zz, 1.0 + first * z + second * zz);
             };
             Complex feedback = std::polar(double(model.loopGain), -omega * anchor) * ap(a1, a2);
             feedback *= ap(model.dispersion[0], model.dispersion[1]);
             if (model.secondDispersion) feedback *= ap(model.dispersion[2], model.dispersion[3]);
             const double pole = model.highFilter.remapped ? model.highFilter.ratePole : model.highCoefficient;
             const double delayed = model.highFilter.remapped ? model.highFilter.delayedInputGain : 0.0;
-            feedback *= 1.0 - double(model.highMix) + double(model.highMix)
-                * ((1.0 - pole - delayed) + delayed * z) / (1.0 - pole * z);
-            feedback *= 1.0 - (1.0 - z)
-                * (double(1.0f - model.bendingGain) - double(model.bendingA2) * z)
-                / (1.0 + double(model.bendingA1) * z + double(model.bendingA2) * zz);
-            feedback *= 1.0 - (1.0 - z)
-                * (double(1.0f - model.constantGain) + double(model.constantN2 - model.constantA2) * z)
-                / (1.0 + double(model.constantA1) * z + double(model.constantA2) * zz);
-            if (std::abs(1.0 - feedback) < 1.0e-9) continue;
-            const Complex load = otherImpedance * (1.0 + feedback) / (1.0 - feedback);
+            feedback *= 1.0 - double(model.highMix) + exact::divide(double(model.highMix)
+                * ((1.0 - pole - delayed) + delayed * z), 1.0 - pole * z);
+            feedback *= 1.0 - exact::divide((1.0 - z)
+                * (double(1.0f - model.bendingGain) - double(model.bendingA2) * z),
+                1.0 + double(model.bendingA1) * z + double(model.bendingA2) * zz);
+            feedback *= 1.0 - exact::divide((1.0 - z)
+                * (double(1.0f - model.constantGain) + double(model.constantN2 - model.constantA2) * z),
+                1.0 + double(model.constantA1) * z + double(model.constantA2) * zz);
+            if (exact::magnitude(1.0 - feedback) < 1.0e-9) continue;
+            const Complex load = exact::divide(otherImpedance * (1.0 + feedback), 1.0 - feedback);
             const double u = saddleLeverArm(other);
             g00 += load;
             g01 += load * u;
@@ -5788,10 +5907,10 @@ float AcustraEngine::coupledPolarisationDetune(
         const Complex c = y01 * g00 + y11 * g01;
         const Complex d = 1.0 + y01 * g01 + y11 * g11;
         const Complex determinant = a * d - b * c;
-        if (std::abs(determinant) < 1.0e-10) return effective;
-        const Complex h = (d * y00 - b * y01) / determinant;
-        const Complex cross = (d * y01 - b * y11) / determinant;
-        const Complex rock = (a * y11 - c * y01) / determinant;
+        if (exact::magnitude(determinant) < 1.0e-10) return effective;
+        const Complex h = exact::divide(d * y00 - b * y01, determinant);
+        const Complex cross = exact::divide(d * y01 - b * y11, determinant);
+        const Complex rock = exact::divide(a * y11 - c * y01, determinant);
         effective.normal = h + 2.0 * arm * cross + arm * arm * rock;
         effective.transfer = -eta * (cross + arm * rock);
         effective.parallel = eta * eta * rock;
@@ -5803,7 +5922,7 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex parallel = loaded.parallel;
     const Complex b00 = admittance + normal;
     const Complex b11 = admittance + parallel;
-    const Complex inverseDeterminant = 1.0 / (b00 * b11 - transfer * transfer);
+    const Complex inverseDeterminant = exact::divide(Complex(1.0), b00 * b11 - transfer * transfer);
     // R = (Y0 I - Y)(Y0 I + Y)^-1 with Y symmetric.
     const Complex c00 = admittance - normal;
     const Complex c11 = admittance - parallel;
@@ -5813,8 +5932,8 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex r11 = (transfer * transfer + c11 * b00) * inverseDeterminant;
     // The parallel plane's phase follows the same bounded correction share
     // used when its delay is configured below.
-    const double ownPhase = std::arg(Complex((unbentAdmittance - Complex(port.normal))
-                                             / (unbentAdmittance + Complex(port.normal))));
+    const double ownPhase = std::arg(exact::divide(unbentAdmittance - Complex(port.normal),
+                                             unbentAdmittance + Complex(port.normal)));
     const Complex gainNormal = std::polar(static_cast<double>(normalGain), -ownPhase);
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain), -ownPhase);
     const Complex a00 = gainNormal * r00;
@@ -5822,7 +5941,7 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex a10 = gainParallel * r10;
     const Complex a11 = gainParallel * r11;
     const Complex halfTrace = 0.5 * (a00 + a11);
-    const Complex root = std::sqrt(halfTrace * halfTrace - (a00 * a11 - a01 * a10));
+    const Complex root = exact::complexSqrt(halfTrace * halfTrace - (a00 * a11 - a01 * a10));
     constexpr double onsetSeconds = 3.0;
     const double onsetPeriods = onsetSeconds * static_cast<double>(frequency);
     std::array<double, 2> logWeight { -1.0e300, -1.0e300 }, phase {};
