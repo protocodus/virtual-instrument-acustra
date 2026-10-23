@@ -13460,8 +13460,10 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
         {
             constexpr int taps = static_cast<int>(std::tuple_size<decltype(arrival.weights)>::value);
             float value = 0.0f;
-            const int newest = earlyHead - arrival.firstDelay;
-            if (newest >= taps - 1)
+            const unsigned newest = (static_cast<unsigned>(earlyHead)
+                - static_cast<unsigned>(arrival.firstDelay))
+                & static_cast<unsigned>(earlyCapacity - 1);
+            if (newest >= static_cast<unsigned>(taps - 1))
             {
                 // The whole arrival lies on one side of the ring's wrap: the
                 // same samples, products and sum order, read contiguously.
