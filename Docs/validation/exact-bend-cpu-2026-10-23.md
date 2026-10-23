@@ -1,7 +1,8 @@
 # Exact SDK retune math, 2026-10-23
 
 This candidate targets continuous pitch-controller retuning. It changes only
-scalar/complex math inside `coupledPolarisationDetune`; physical coefficients,
+scalar/complex math inside `coupledPolarisationDetune` and the loss-magnitude
+helpers; physical coefficients,
 controller cadence, voice state, delay transitions, and model quality stay the
 same. Other toolchains keep their own standard-library implementations.
 
@@ -79,3 +80,33 @@ The divide-only intermediate candidate was exact but saved less (1.41%
 equal-case aggregate). The guarded combined candidate was retained for the
 clear continuous-retune improvement; final integration needs the complete
 SDK package and expanded regression gates.
+
+A subsequent conservative predicate candidate returned false when a finite
+component exceeded twice the tiny rejection threshold, retaining SDK hypot
+for all near-boundary and nonfinite cases. Its 15,065,376 threshold booleans
+matched the SDK across four rounding modes, and actual-module audio/state
+parity passed. The adjacent three-repeat SDK screen saved only 0.303%
+aggregate CPU over the accepted math candidate (48/96 kHz bend savings
+1.46%/0.20%, mixed steady results). It was rejected as marginal; its source
+snapshots, modules, oracle results, and raw timing remain in the artifacts.
+
+The final two-call-site extension reuses the same proved magnitude helper for
+`bendingLossMagnitude` and `constantLossMagnitude`. The former wraps the same
+real/imaginary pair in a complex value; the latter already has a complex
+response. No additional algorithm or cache is added. Independent actual-SDK
+parity passed all three buses and nine MOM values in twelve eight-second
+cells (six fixtures at 48/96 kHz, default capture).
+
+A separate adjacent three-repeat six-cell SDK screen compared this extension
+to the accepted math-only module. Every cell improved; aggregate incremental
+saving was 1.04%. Bend means improved 243.06 to 237.38 us (2.34%) at 48 kHz
+and 228.67 to 222.81 us (2.56%) at 96 kHz. Corresponding p99 improved
+392.71 to 387.21 us and 380.25 to 368.83 us. These are separate paired runs,
+so their absolute timings should not be combined with the earlier table.
+Rare tails remain: 96 kHz bend CPU misses were 3 in both versions, and the
+48 kHz bend p99.9 increased from 430.04 to 533.08 us. All callbacks remain
+in `bench/loss-time01`; final combined/package timing is a separate gate.
+
+The standalone oracle driver was reformatted and rerun with
+`-Wall -Wextra -Werror`: all 7,400,832 math cases pass. Both math-bit and
+predicate-boolean deliberate corruption controls exit with failure.

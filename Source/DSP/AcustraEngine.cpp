@@ -2056,7 +2056,7 @@ double bendingLossMagnitude(double gain, double a1, double a2,
 {
     const double real = 1.0 + a1 * std::cos(omega) + a2 * std::cos(2.0 * omega);
     const double imaginary = a1 * std::sin(omega) + a2 * std::sin(2.0 * omega);
-    return gain / std::hypot(real, imaginary);
+    return gain / exact::magnitude(std::complex<double>(real, imaginary));
 }
 
 // The loop's realisation of the constant-loss section (StringLoop::advance),
@@ -2089,7 +2089,7 @@ double constantLossLag(double a1, double a2, double n1, double n2,
 double constantLossMagnitude(double gain, double a1, double a2, double n2,
                              double omega) noexcept
 {
-    return std::abs(constantLossResponse(gain, a1, a2, n2, omega));
+    return exact::magnitude(constantLossResponse(gain, a1, a2, n2, omega));
 }
 
 // The loop's fractional delay is a second-order Thiran allpass read from the
