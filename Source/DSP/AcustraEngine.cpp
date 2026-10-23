@@ -13506,9 +13506,12 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
     early[static_cast<std::size_t>(earlyHead)] = input;
     const auto delayed = [this] (int delay)
     {
-        int index = earlyHead - delay;
-        if (index < 0)
-            index += earlyCapacity;
+        // The power-of-two ring maps the same signed difference without a
+        // conditional wrap for each receiver interpolation tap.
+        static_assert((earlyCapacity & (earlyCapacity - 1)) == 0,
+                      "early reflection ring must be a power of two");
+        const auto index = static_cast<unsigned>(earlyHead - delay)
+            & static_cast<unsigned>(earlyCapacity - 1);
         return early[static_cast<std::size_t>(index)];
     };
     float reflectedLeft = 0.0f;
