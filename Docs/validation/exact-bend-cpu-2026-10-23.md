@@ -110,3 +110,33 @@ in `bench/loss-time01`; final combined/package timing is a separate gate.
 The standalone oracle driver was reformatted and rerun with
 `-Wall -Wextra -Werror`: all 7,400,832 math cases pass. Both math-bit and
 predicate-boolean deliberate corruption controls exit with failure.
+
+A directed design-event follow-up checked the remaining scalar square root
+in `stretchedPartial`. The original SDK Engine IR already contains
+`llvm.sqrt.f64` inside the bending/constant-loss bisections. It is a hardware
+operation. The attempted guarded scalar wrapper was discarded. Its first
+oracle mistakenly used raw `__ieee754_sqrt` as the reference for scalar
+`std::sqrt`; under directed modes both the candidate and a directly compiled
+SDK `std::sqrt` probe differed identically from that reference. This was a
+reference-scope error, not an audio mismatch. The failed oracle and IR are
+retained with `design-scalar/README.md`; no scalar helper or call change is
+part of production.
+
+The complex-only follow-up reused the proved helpers at six calibration
+root/magnitude call sites, with no scalar changes. Independent actual-SDK
+parity passed 14 cells including repeated six-string attacks under bends
+at offsets 0/17/63: 27,216,000 samples, 1,275,750 MOM values, and 425,250
+write flags exact (129,701,250 bytes per version). A fresh compiled-SDK
+primitive run again matched all 37,004,160 math doubles over four rounding
+modes.
+
+The three-repeat, six-cell joint setup screen found only 0.0392% aggregate
+CPU saving versus `ebd23f5`, with mixed cell results. At 96 kHz repeated
+attack note callbacks averaged 604.30 to 594.47 us, but misses changed only
+26 to 25; original bend-note callback means worsened 582.09 to 592.55 us
+with misses unchanged at 3. One candidate repetition had 210 controller
+misses away from notes amid recorded desktop activity. This does not prove
+a causal regression, and no outliers or repetitions were removed, but it
+provides no robust gain for retaining the six-call expansion. Rejected;
+production source is restored exactly to `ebd23f5`. Evidence is retained in
+`bench/setup-time01` and `bench/complex-design-parity01`.
