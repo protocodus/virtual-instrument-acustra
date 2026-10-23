@@ -3388,7 +3388,7 @@ float AcustraEngine::FixedDerivative::processAcrossStep(
     return process(input, sampleRateRatio);
 }
 
-float AcustraEngine::StringLoop::readDelay(float samples) noexcept
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::StringLoop::readDelay(float samples) noexcept
 {
     const auto sampleBits = exact::bits(samples);
     if (!readDelayValid || sampleBits != readDelayBits)
@@ -3435,6 +3435,7 @@ float AcustraEngine::StringLoop::readDelay(float samples) noexcept
     allpassY1 = output;
     return output;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 float AcustraEngine::StringLoop::displacementAt(float fraction) const noexcept
 {
@@ -3655,13 +3656,14 @@ ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::StringLoop::advance(float del
 }
 ACUSTRA_GCC_INLINE_DEFINITION_END
 
-void AcustraEngine::StringLoop::write(float value) noexcept
+ACUSTRA_GCC_INLINE_DEFINITION void AcustraEngine::StringLoop::write(float value) noexcept
 {
     if (!exact::isfinite(value) || exact::abs(value) < 1.0e-30f)
         value = 0.0f;
     delay[static_cast<std::size_t>(writeIndex)] = value;
     writeIndex = wrapDelayIndex(writeIndex + 1);
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 void AcustraEngine::StringLoop::GestureContact::configure(
     float strength, int relaxationSamples) noexcept
@@ -3780,7 +3782,7 @@ void AcustraEngine::StringLoop::applyGestureContact() noexcept
     secondNext += w[3] * changeSecond;
 }
 
-double AcustraEngine::BridgeMode::processPast(double input) noexcept
+ACUSTRA_GCC_INLINE_DEFINITION double AcustraEngine::BridgeMode::processPast(double input) noexcept
 {
     const double output = numerator1 * input + numerator2 * input1
                         - denominator1 * output1
@@ -3790,6 +3792,7 @@ double AcustraEngine::BridgeMode::processPast(double input) noexcept
     output1 = output;
     return output;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 void AcustraEngine::BridgeLoad::reset() noexcept
 {
