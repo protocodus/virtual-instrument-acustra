@@ -39,6 +39,26 @@
 #define ACUSTRA_NOINLINE
 #endif
 
+// GCC refuses always_inline on a declaration that another translation unit
+// calls without the body (the tests call these out of line), so the header's
+// ACUSTRA_ALWAYS_INLINE is empty there. GCC takes the attribute on the
+// definition alone instead: the engine's own per-sample calls then inline as
+// they already do under Clang and MSVC, while other units call the emitted
+// copy. Hidden visibility keeps a position-independent build from treating
+// that copy as replaceable at link time, which would forbid the inlining;
+// nothing outside the engine's own binary calls it. GCC's warning that the
+// copy might not be inlinable is expected and silenced for that definition
+// only. The arithmetic is unchanged.
+#if defined(__GNUC__) && !defined(__clang__)
+#define ACUSTRA_GCC_INLINE_DEFINITION _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wattributes\"") \
+    __attribute__((always_inline, visibility("hidden")))
+#define ACUSTRA_GCC_INLINE_DEFINITION_END _Pragma("GCC diagnostic pop")
+#else
+#define ACUSTRA_GCC_INLINE_DEFINITION
+#define ACUSTRA_GCC_INLINE_DEFINITION_END
+#endif
+
 namespace acustra
 {
 namespace
@@ -3276,7 +3296,7 @@ void AcustraEngine::StringLoop::setLoopGain(float gain, bool transition) noexcep
         loopGain = gain;
 }
 
-float AcustraEngine::StringLoop::bridgeVelocity(
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::StringLoop::bridgeVelocity(
     float incident, float sampleRateRatio) noexcept
 {
     if (derivativeNeedsPriming)
@@ -3304,8 +3324,9 @@ float AcustraEngine::StringLoop::bridgeVelocity(
     }
     return bridgeDerivative.process(incident, sampleRateRatio);
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
-float AcustraEngine::FixedDerivative::process(float input,
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::FixedDerivative::process(float input,
                                               float sampleRateRatio) noexcept
 {
     history[static_cast<std::size_t>(index)] = input;
@@ -3334,6 +3355,7 @@ float AcustraEngine::FixedDerivative::process(float input,
     index = static_cast<int>((static_cast<unsigned>(index) + 1) & historyMask);
     return input - delayed;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 float AcustraEngine::FixedDerivative::processAcrossRelease(
     float input, float sampleRateRatio) noexcept
@@ -3496,7 +3518,7 @@ void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
     }
 }
 
-float AcustraEngine::StringLoop::advance(float delaySmoothing,
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                          float releaseGain) noexcept
 {
     if (loopGainTransitionSamples > 0)
@@ -3631,6 +3653,7 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                       appliedReleaseGain - releaseGainStep);
     return reflected * loopGain * appliedReleaseGain;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 void AcustraEngine::StringLoop::write(float value) noexcept
 {
