@@ -13385,20 +13385,36 @@ void AcustraEngine::RoomAmbience::reset() noexcept
 void AcustraEngine::RoomAmbience::step(float input) noexcept
 {
     early[static_cast<std::size_t>(earlyHead)] = input;
+    // Every delay lies in [1, earlyCapacity - 1] (prepare) and the capacity
+    // is a power of two, so masking the unsigned difference wraps the ring
+    // exactly as adding the capacity to a negative index did.
+    static_assert((earlyCapacity & (earlyCapacity - 1)) == 0,
+                  "the early ring wraps by masking");
     const auto delayed = [this] (int delay)
     {
-        int index = earlyHead - delay;
-        if (index < 0)
-            index += earlyCapacity;
-        return early[static_cast<std::size_t>(index)];
+        const unsigned index = (static_cast<unsigned>(earlyHead)
+            - static_cast<unsigned>(delay)) & static_cast<unsigned>(earlyCapacity - 1);
+        return early[index];
     };
     float reflectedLeft = 0.0f;
     float reflectedRight = 0.0f;
     if (directional)
     {
-        const auto arrivalValue = [&delayed] (const Arrival& arrival)
+        const auto arrivalValue = [this, &delayed] (const Arrival& arrival)
         {
+            constexpr int taps = static_cast<int>(std::tuple_size<decltype(arrival.weights)>::value);
             float value = 0.0f;
+            const int newest = earlyHead - arrival.firstDelay;
+            if (newest >= taps - 1)
+            {
+                // The whole arrival lies on one side of the ring's wrap: the
+                // same samples, products and sum order, read contiguously.
+                const float* sample = early.data() + newest;
+                for (int index = 0; index < taps; ++index)
+                    value += arrival.weights[static_cast<std::size_t>(index)]
+                        * sample[-index];
+                return value;
+            }
             for (std::size_t index = 0; index < arrival.weights.size(); ++index)
                 value += arrival.weights[index]
                     * delayed(arrival.firstDelay + static_cast<int>(index));
