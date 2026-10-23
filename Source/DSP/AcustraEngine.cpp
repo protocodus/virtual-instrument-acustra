@@ -3810,6 +3810,25 @@ void AcustraEngine::BridgeLoad::reset() noexcept
         mode.reset();
 }
 
+void AcustraEngine::BridgeLoad::packActiveModes() noexcept
+{
+    for (int active = 0; active < activeModeCount; ++active)
+    {
+        const std::size_t index = activeModes[static_cast<std::size_t>(active)];
+        const auto& h = heaveModes[index];
+        const auto& r = rockModes[index];
+        auto& packed = packedModes[static_cast<std::size_t>(active)];
+        packed.numerator1 = { h.numerator1, r.numerator1 };
+        packed.numerator2 = { h.numerator2, r.numerator2 };
+        packed.denominator1 = { h.denominator1, r.denominator1 };
+        packed.denominator2 = { h.denominator2, r.denominator2 };
+        packed.residueHeave = static_cast<double>(residueHeave[index]);
+        packed.residueCross = static_cast<double>(residueCross[index]);
+        packed.residueRock = static_cast<double>(residueRock[index]);
+        packed.rocking = rocking[index];
+    }
+}
+
 void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
                                              float bodyMoment) noexcept
 {
@@ -3818,20 +3837,30 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
     for (int active = 0; active < activeModeCount; ++active)
     {
         const std::size_t index = activeModes[static_cast<std::size_t>(active)];
+        // The same coefficients and residues as heaveModes, rockModes and the
+        // residue arrays hold, read side by side (packActiveModes); a float
+        // residue widened to double is exact, as the sums' own promotion was.
+        const auto& packed = packedModes[static_cast<std::size_t>(active)];
         double heaveState, rockState;
         // Pack this mode's heave and rock with their own coefficients and history.
         // Preserve each lane's arithmetic and the serial residue sums below.
 #if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
-        if (rocking[index])
+        if (packed.rocking)
         {
             typedef double Vector __attribute__((vector_size(16)));
+            const auto load = [] (const std::array<double, 2>& pair)
+            {
+                Vector value;
+                __builtin_memcpy(&value, pair.data(), sizeof(value));
+                return value;
+            };
             auto& h = heaveModes[index];
             auto& r = rockModes[index];
             const Vector input = { bodyForce, bodyMoment };
-            const Vector n1 = { h.numerator1, r.numerator1 };
-            const Vector n2 = { h.numerator2, r.numerator2 };
-            const Vector d1 = { h.denominator1, r.denominator1 };
-            const Vector d2 = { h.denominator2, r.denominator2 };
+            const Vector n1 = load(packed.numerator1);
+            const Vector n2 = load(packed.numerator2);
+            const Vector d1 = load(packed.denominator1);
+            const Vector d2 = load(packed.denominator2);
             const Vector i1 = { h.input1, r.input1 };
             const Vector o1 = { h.output1, r.output1 };
             const Vector o2 = { h.output2, r.output2 };
@@ -3852,14 +3881,14 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
         }
 #else
         heaveState = heaveModes[index].processPast(bodyForce);
-        rockState = rocking[index] ? rockModes[index].processPast(bodyMoment) : 0.0;
+        rockState = packed.rocking ? rockModes[index].processPast(bodyMoment) : 0.0;
 #endif
-        nextPastHeave += residueHeave[index] * heaveState;
-        if (!rocking[index])
+        nextPastHeave += packed.residueHeave * heaveState;
+        if (!packed.rocking)
             continue;
-        nextPastHeave += residueCross[index] * rockState;
-        nextPastRock += residueCross[index] * heaveState
-                      + residueRock[index] * rockState;
+        nextPastHeave += packed.residueCross * rockState;
+        nextPastRock += packed.residueCross * heaveState
+                      + packed.residueRock * rockState;
     }
     pastHeave = exact::isfinite(nextPastHeave)
         ? static_cast<float>(nextPastHeave) : 0.0f;
@@ -5365,6 +5394,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         bridgeLoad_.activeModes[static_cast<std::size_t>(
             bridgeLoad_.activeModeCount++)] = static_cast<std::uint8_t>(index);
     }
+    bridgeLoad_.packActiveModes();
 }
 
 // The rebuild a construction change asked for while the bridge was still
