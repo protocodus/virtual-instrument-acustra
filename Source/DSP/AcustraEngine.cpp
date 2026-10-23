@@ -13153,15 +13153,20 @@ bool roomPrime(int value) noexcept
 // The eight lines' Hadamard mix, in place, normalised to stay lossless.
 void roomHadamard(std::array<float, roomLineTotal>& values) noexcept
 {
-    for (std::size_t span = 1; span < values.size(); span *= 2)
-        for (std::size_t start = 0; start < values.size(); start += 2 * span)
-            for (std::size_t index = start; index < start + span; ++index)
-            {
-                const float a = values[index];
-                const float b = values[index + span];
-                values[index] = a + b;
-                values[index + span] = a - b;
-            }
+    // The three butterfly stages over spans 1, 2 and 4, written out: the
+    // same sums and differences of the same pairs as the loop over spans,
+    // which the per-sample room step otherwise ran as loop control.
+    static_assert(roomLineTotal == 8, "the butterflies are written for eight lines");
+    const auto butterfly = [&values] (std::size_t index, std::size_t span)
+    {
+        const float a = values[index];
+        const float b = values[index + span];
+        values[index] = a + b;
+        values[index + span] = a - b;
+    };
+    butterfly(0, 1); butterfly(2, 1); butterfly(4, 1); butterfly(6, 1);
+    butterfly(0, 2); butterfly(1, 2); butterfly(4, 2); butterfly(5, 2);
+    butterfly(0, 4); butterfly(1, 4); butterfly(2, 4); butterfly(3, 4);
     for (auto& value : values)
         value *= 0.35355339f;
 }
