@@ -2173,6 +2173,34 @@ double secondOrderAllpassPhase(double a1, double a2,
     return lag;
 }
 
+// A fixed-frequency phase basis used only within one collocation solve.
+// Its values are evaluated by the same trig calls as the ordinary phase
+// helper. Coefficient trials retain the original phase arithmetic and wraps.
+struct AllpassPhaseBasis
+{
+    double cosine { 0.0 }, sine { 0.0 }, cosine2 { 0.0 }, sine2 { 0.0 };
+};
+
+double secondOrderAllpassPhase(double a1, double a2,
+                               const AllpassPhaseBasis& basis) noexcept
+{
+    const double cosine = basis.cosine;
+    const double sine = basis.sine;
+    const double cosine2 = basis.cosine2;
+    const double sine2 = basis.sine2;
+    const double numeratorPhase = std::atan2(
+        -a1 * sine - sine2, a2 + a1 * cosine + cosine2);
+    const double denominatorPhase = std::atan2(
+        -a1 * sine - a2 * sine2, 1.0 + a1 * cosine + a2 * cosine2);
+    double lag = denominatorPhase - numeratorPhase;
+    constexpr double twoPiDouble = 2.0 * 3.14159265358979323846;
+    while (lag < 0.0)
+        lag += twoPiDouble;
+    while (lag >= twoPiDouble)
+        lag -= twoPiDouble;
+    return lag;
+}
+
 // The loop's dispersion is two second-order allpass sections in cascade
 // (calibrateDispersion says why two).
 constexpr int dispersionSectionCount = 2;
@@ -2212,6 +2240,16 @@ double thiranDelayPhase(double samples, int anchor, double omega) noexcept
     thiranCoefficients(samples - static_cast<double>(anchor), a1, a2);
     return static_cast<double>(anchor) * omega
          + secondOrderAllpassPhase(a1, a2, omega);
+}
+
+double thiranDelayPhase(double samples, int anchor, double omega,
+                         const AllpassPhaseBasis& basis) noexcept
+{
+    double a1 = 0.0;
+    double a2 = 0.0;
+    thiranCoefficients(samples - static_cast<double>(anchor), a1, a2);
+    return static_cast<double>(anchor) * omega
+         + secondOrderAllpassPhase(a1, a2, basis);
 }
 
 double tunedLoopDelay(double fundamental, double sampleRate,
@@ -2358,11 +2396,14 @@ DispersionCalibration collocateDispersion(
     // loss filters and the bending loss - is read once.
     double anchorOmega[3] {};
     double anchorLag[3] {};
+    AllpassPhaseBasis anchorBasis[3] {};
     for (int index = 0; index < 3; ++index)
     {
         const double omega = stretchedOmega(anchors[index]);
         const double lossOmega = referenceLossOmega(omega, sampleRate);
         anchorOmega[index] = omega;
+        anchorBasis[index] = { std::cos(omega), std::sin(omega),
+                               std::cos(2.0 * omega), std::sin(2.0 * omega) };
         anchorLag[index] = mixedOnePolePhase(broadCoefficient, broadMix,
                                              lossOmega)
             + mixedOnePolePhase(highCoefficient, highMix, lossOmega)
@@ -2380,8 +2421,9 @@ DispersionCalibration collocateDispersion(
         for (int index = 0; index < 3; ++index)
         {
             const double omega = anchorOmega[index];
-            residuals[index] = thiranDelayPhase(values[0], splitAnchor, omega)
-                + secondOrderAllpassPhase(a1, a2, omega) + anchorLag[index];
+            residuals[index] = thiranDelayPhase(values[0], splitAnchor, omega,
+                                                anchorBasis[index])
+                + secondOrderAllpassPhase(a1, a2, anchorBasis[index]) + anchorLag[index];
         }
     };
     const auto maximumResidual = [] (const double residuals[3])
