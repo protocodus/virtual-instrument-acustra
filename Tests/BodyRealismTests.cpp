@@ -47,7 +47,7 @@ struct AcustraEngineTestAccess
             for (int active = 0; active < bridge.activeModeCount; ++active)
             {
                 const auto index = bridge.activeModes[std::size_t(active)];
-                const auto& mode = bridge.heaveModes[index];
+                const auto& mode = bridge.heaveMode(index);
                 const double immediate = -mode.numerator2 / (1.0 + mode.denominator2);
                 const auto response = immediate
                     + (mode.numerator1 * z + mode.numerator2 * z * z)

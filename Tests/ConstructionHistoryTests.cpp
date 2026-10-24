@@ -79,9 +79,9 @@ struct AcustraEngineTestAccess
                 for (const auto& state : *states) result.insert(result.end(), state.begin(), state.end());
         }
         for (const auto* bridge : { &engine.bridgeLoad_, &engine.fadingBridgeLoad_ })
-            for (std::size_t index = 0; index < bridge->heaveModes.size(); ++index)
-                for (const auto* mode : { &bridge->heaveModes[index], &bridge->rockModes[index] })
-                    result.insert(result.end(), { mode->input1, mode->output1, mode->output2 });
+            for (std::size_t index = 0; index < bridge->modes.size(); ++index)
+                for (const auto& mode : { bridge->heaveMode(index), bridge->rockMode(index) })
+                    result.insert(result.end(), { mode.input1, mode.output1, mode.output2 });
         result.insert(result.end(), engine.micDelayLeft_.begin(), engine.micDelayLeft_.end());
         result.insert(result.end(), engine.micDelayRight_.begin(), engine.micDelayRight_.end());
         result.insert(result.end(), engine.micDelayMono_.begin(), engine.micDelayMono_.end());
@@ -101,11 +101,11 @@ struct AcustraEngineTestAccess
                 mode.rightMomentReal, mode.rightMomentImaginary })
                 result.push_back(value);
         const auto& bridge = engine.bridgeLoad_;
-        for (std::size_t index = 0; index < bridge.heaveModes.size(); ++index)
+        for (std::size_t index = 0; index < bridge.modes.size(); ++index)
         {
-            for (const auto* mode : { &bridge.heaveModes[index], &bridge.rockModes[index] })
-                for (double value : { mode->denominator1, mode->denominator2,
-                                     mode->numerator1, mode->numerator2 })
+            for (const auto& mode : { bridge.heaveMode(index), bridge.rockMode(index) })
+                for (double value : { mode.denominator1, mode.denominator2,
+                                     mode.numerator1, mode.numerator2 })
                     result.push_back(value);
             result.push_back(bridge.residueHeave[index]);
             result.push_back(bridge.residueCross[index]);

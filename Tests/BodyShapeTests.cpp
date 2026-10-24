@@ -198,9 +198,9 @@ Matrix mobility(const auto& bridge, double frequency, double rate)
     const Complex z = std::polar(1.0, -2*pi*frequency/rate);
     Matrix result { bridge.immediateHeave, bridge.immediateCross,
                     bridge.immediateRock };
-    for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+    for (std::size_t i = 0; i < bridge.modes.size(); ++i)
     {
-        const auto& mode = bridge.heaveModes[i];
+        const auto& mode = bridge.heaveMode(i);
         const auto past = (double(mode.numerator1)*z
             + double(mode.numerator2)*z*z)
             / (1.0+double(mode.denominator1)*z+double(mode.denominator2)*z*z);
@@ -245,11 +245,11 @@ void testPhaseAndPassivity()
             const auto actual = Access::bridge(*e);
             // The authored high-band floor has no measured geometry
             // map, so even non-native shapes must preserve it exactly.
-            const auto last = actual.heaveModes.size()-1;
-            expect(actual.heaveModes[last].denominator1
-                       == reference.heaveModes[last].denominator1
-                && actual.heaveModes[last].denominator2
-                       == reference.heaveModes[last].denominator2
+            const auto last = actual.modes.size()-1;
+            expect(actual.heaveMode(last).denominator1
+                       == reference.heaveMode(last).denominator1
+                && actual.heaveMode(last).denominator2
+                       == reference.heaveMode(last).denominator2
                 && actual.residueHeave[last] == reference.residueHeave[last],
                 "shape changed the unmapped conductance floor");
             for (int string = 0; string < 6; ++string)
@@ -487,7 +487,7 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
             {
                 if (twins[i] < 0) continue;
                 const auto pole = Access::bodyPole(*e, twins[i]);
-                const auto& mode = bridge.heaveModes[i];
+                const auto& mode = bridge.heaveMode(i);
                 if (pole[1] == 0.0)
                 {
                     expect(bridge.residueHeave[i] == 0.0f && bridge.residueRock[i] == 0.0f,
@@ -517,9 +517,9 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
             live->setParameters(p); process(*live, 64);
             const auto liveBridge = Access::bridge(*live);
             bool same = true;
-            for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
-                same = same && liveBridge.heaveModes[i].denominator1 == bridge.heaveModes[i].denominator1
-                            && liveBridge.heaveModes[i].denominator2 == bridge.heaveModes[i].denominator2;
+            for (std::size_t i = 0; i < bridge.modes.size(); ++i)
+                same = same && liveBridge.heaveMode(i).denominator1 == bridge.heaveMode(i).denominator1
+                            && liveBridge.heaveMode(i).denominator2 == bridge.heaveMode(i).denominator2;
             expect(same, "a live Wood change did not move steel's own bridge");
         }
     std::cout << "steel own bridge twin pole relative error=" << worst << '\n';
@@ -581,8 +581,8 @@ void testBridgeModesMoveWithTheirRadiationNeighbours()
                 return 48000/pi*std::atan(std::sqrt(ratio));
             };
             const double bridgeCents = 1200*std::log2(
-                designFrequency(bridge.heaveModes[i])
-                / designFrequency(anchorBridge.heaveModes[i]));
+                designFrequency(bridge.heaveMode(i))
+                / designFrequency(anchorBridge.heaveMode(i)));
             const double radiationCents = 1200*std::log2(
                 double(Access::radiationPole(q, Access::calibration(*e), int(nearest))[0])
                 / Access::radiationPole(p, Access::calibration(*anchor), int(nearest))[0]);
@@ -656,7 +656,7 @@ void testSteelBlend()
                   w * d::steelJointTopMobilityRatio);
         ++slot;
     }
-    for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+    for (std::size_t i = 0; i < bridge.modes.size(); ++i)
     {
         const double h = bridge.residueHeave[i], c = bridge.residueCross[i], r = bridge.residueRock[i];
         expect(h >= 0.0 && r >= 0.0, "a blended bridge section has a negative residue");
@@ -732,10 +732,10 @@ void testSteelBlend()
                         least = std::min(least, (y[0] + 2 * u * y[1] + u * u * y[2]).real());
                     }
                 }
-                for (std::size_t i = 0; i < b.heaveModes.size(); ++i)
+                for (std::size_t i = 0; i < b.modes.size(); ++i)
                 {
                     // Roots of 1 + d1 z^-1 + d2 z^-2.
-                    const Complex d1 = b.heaveModes[i].denominator1, d2 = b.heaveModes[i].denominator2;
+                    const Complex d1 = b.heaveMode(i).denominator1, d2 = b.heaveMode(i).denominator2;
                     const Complex root = std::sqrt(d1 * d1 - 4.0 * d2);
                     largestBridge = std::max({ largestBridge, std::abs((-d1 + root) / 2.0),
                                                std::abs((-d1 - root) / 2.0) });
@@ -851,14 +851,14 @@ void testSteelBlendJointBridgeRingsOnItsRadiation()
                     const double radius = std::hypot(pole[0], pole[1]);
                     const double bodyHz = std::atan2(pole[1], pole[0]) * rate / (2.0 * pi);
                     const double bodyQ = -pi * bodyHz / (rate * std::log(radius));
-                    const auto& mode = bridge.heaveModes[std::size_t(bridgeSlot)];
+                    const auto& mode = bridge.heaveMode(std::size_t(bridgeSlot));
                     const double bridgeHz = sectionFrequency(mode, rate);
                     const double bridgeQ = -2.0*pi*bridgeHz
                         / (rate*std::log(mode.denominator2));
                     worstCents = std::max(worstCents, std::abs(1200.0 * std::log2(bridgeHz / bodyHz)));
                     worstQ = std::max(worstQ, std::abs(bridgeQ / bodyQ - 1.0));
                 }
-                for (std::size_t i = 0; i < bridge.heaveModes.size(); ++i)
+                for (std::size_t i = 0; i < bridge.modes.size(); ++i)
                 {
                     const double h = bridge.residueHeave[i], c = bridge.residueCross[i],
                                  r = bridge.residueRock[i];
@@ -876,8 +876,8 @@ void testSteelBlendJointBridgeRingsOnItsRadiation()
                 for (const auto& pair : pairs)
                 {
                     const auto slot = std::size_t(pair[1]);
-                    liveMismatches += liveBridge.heaveModes[slot].denominator1 != bridge.heaveModes[slot].denominator1
-                        || liveBridge.heaveModes[slot].denominator2 != bridge.heaveModes[slot].denominator2
+                    liveMismatches += liveBridge.heaveMode(slot).denominator1 != bridge.heaveMode(slot).denominator1
+                        || liveBridge.heaveMode(slot).denominator2 != bridge.heaveMode(slot).denominator2
                         || liveBridge.residueHeave[slot] != bridge.residueHeave[slot];
                     const auto a = Access::bodyPole(*live, pair[0]), b = Access::bodyPole(*e, pair[0]);
                     liveMismatches += a[0] != b[0] || a[1] != b[1];

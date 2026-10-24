@@ -34,7 +34,7 @@ struct AcustraEngineTestAccess
         for (int k = 0; k < b.activeModeCount; ++k)
         {
             int i = b.activeModes[k];
-            const auto& m = b.heaveModes[i];
+            const auto& m = b.heaveMode(i);
             C r = (m.numerator1 * q + m.numerator2 * q2) /
                   (1. + m.denominator1 * q + m.denominator2 * q2);
             y[0] += double(b.residueHeave[i]) * r;

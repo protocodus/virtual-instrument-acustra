@@ -39,6 +39,29 @@
 #define ACUSTRA_NOINLINE
 #endif
 
+// ACUSTRA_ALWAYS_INLINE (AcustraEngine.h) is empty under GCC, which rejects
+// any call it cannot inline into a function declared that way, and the tests
+// call some of these members from their own files. GCC gets the request here
+// instead, on the definitions, so it covers the calls in this file: the
+// string loop's and bridge derivative's per-sample recurrences, which it
+// otherwise leaves as calls, about 3% of the engine's time. They are hidden
+// too, since under -fPIC GCC never inlines a function a shared object could
+// interpose; that also keeps them out of a plug-in's exports. GCC still
+// warns that a function not declared inline "might not be inlinable", so
+// the definitions are wrapped to keep that warning out of the build.
+#if defined(__GNUC__) && !defined(__clang__)
+#define ACUSTRA_GCC_ALWAYS_INLINE_BEGIN \
+    _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wattributes\"")
+#define ACUSTRA_GCC_ALWAYS_INLINE \
+    __attribute__((always_inline, visibility("hidden")))
+#define ACUSTRA_GCC_ALWAYS_INLINE_END _Pragma("GCC diagnostic pop")
+#else
+#define ACUSTRA_GCC_ALWAYS_INLINE_BEGIN
+#define ACUSTRA_GCC_ALWAYS_INLINE
+#define ACUSTRA_GCC_ALWAYS_INLINE_END
+#endif
+
 namespace acustra
 {
 namespace
@@ -2034,13 +2057,37 @@ void secondOrderAllpassCoefficients(double omega, double decayRatio,
     a2 = radius * radius;
 }
 
-double secondOrderAllpassPhase(double a1, double a2,
-                               double omega) noexcept
+// The cosine and sine of omega and of 2 omega that a second-order section's
+// phase at omega reads. The tuning and dispersion solves evaluate many
+// sections at the same few frequencies, so they take these once per
+// frequency instead of once per section: the same four calls on the same
+// argument, so the same values, and every phase below is unchanged to the
+// bit. Recomputing them was half of a dispersion design's cost.
+struct AllpassTrig
 {
-    const double cosine = std::cos(omega);
-    const double sine = std::sin(omega);
-    const double cosine2 = std::cos(2.0 * omega);
-    const double sine2 = std::sin(2.0 * omega);
+    double cosine { 1.0 };
+    double sine { 0.0 };
+    double cosine2 { 1.0 };
+    double sine2 { 0.0 };
+};
+
+AllpassTrig allpassTrig(double omega) noexcept
+{
+    AllpassTrig trig;
+    trig.cosine = std::cos(omega);
+    trig.sine = std::sin(omega);
+    trig.cosine2 = std::cos(2.0 * omega);
+    trig.sine2 = std::sin(2.0 * omega);
+    return trig;
+}
+
+double secondOrderAllpassPhase(double a1, double a2,
+                               const AllpassTrig& trig) noexcept
+{
+    const double cosine = trig.cosine;
+    const double sine = trig.sine;
+    const double cosine2 = trig.cosine2;
+    const double sine2 = trig.sine2;
     const double numeratorPhase = std::atan2(
         -a1 * sine - sine2, a2 + a1 * cosine + cosine2);
     const double denominatorPhase = std::atan2(
@@ -2069,13 +2116,13 @@ struct DispersionSections
 // per-section [0, 2 pi) values add without an unwrap. An unused section is
 // bypassed and adds none.
 double dispersionPhase(const DispersionSections& sections,
-                       double omega) noexcept
+                       const AllpassTrig& trig) noexcept
 {
     double lag = 0.0;
     for (std::size_t section = 0; section < dispersionSectionCount; ++section)
         if (sections.used[section])
             lag += secondOrderAllpassPhase(sections.a1[section],
-                                           sections.a2[section], omega);
+                                           sections.a2[section], trig);
     return lag;
 }
 
@@ -2086,13 +2133,14 @@ double dispersionPhase(const DispersionSections& sections,
 // makes its residual smooth in the delay and lets the delay travel as far as
 // the pole pair moves it, and then re-derives the tap from its own answer and
 // solves again at that tap.
-double thiranDelayPhase(double samples, int anchor, double omega) noexcept
+double thiranDelayPhase(double samples, int anchor, double omega,
+                        const AllpassTrig& trig) noexcept
 {
     double a1 = 0.0;
     double a2 = 0.0;
     thiranCoefficients(samples - static_cast<double>(anchor), a1, a2);
     return static_cast<double>(anchor) * omega
-         + secondOrderAllpassPhase(a1, a2, omega);
+         + secondOrderAllpassPhase(a1, a2, trig);
 }
 
 double tunedLoopDelay(double fundamental, double sampleRate,
@@ -2105,6 +2153,7 @@ double tunedLoopDelay(double fundamental, double sampleRate,
 {
     constexpr double twoPiDouble = 2.0 * 3.14159265358979323846;
     const double omega = twoPiDouble * fundamental / sampleRate;
+    const AllpassTrig trig = allpassTrig(omega);
     const double lossOmega = referenceLossOmega(omega, sampleRate);
     // The bending-loss section is designed at the host rate, so its lag is
     // read at the host frequency rather than the 48 kHz reference one.
@@ -2114,7 +2163,7 @@ double tunedLoopDelay(double fundamental, double sampleRate,
         + bendingLossLag(bendingA1, bendingA2, omega)
         + constantLossLag(constantA1, constantA2, constantN1,
                           constantN2, omega)
-        + dispersionPhase(dispersion, omega);
+        + dispersionPhase(dispersion, trig);
     double delay = std::clamp(sampleRate / fundamental - fixedPhase / omega,
                               3.0,
                               static_cast<double>(delayCapacityForRate(sampleRate) - 3));
@@ -2123,14 +2172,14 @@ double tunedLoopDelay(double fundamental, double sampleRate,
         const int anchor = delayAnchor(delay);
         for (int iteration = 0; iteration < 6; ++iteration)
         {
-            const double residual = thiranDelayPhase(delay, anchor, omega)
+            const double residual = thiranDelayPhase(delay, anchor, omega, trig)
                                   + fixedPhase - twoPiDouble;
             if (exact::abs(residual) < 1.0e-11)
                 break;
             constexpr double step = 0.01;
             const double slope
-                = (thiranDelayPhase(delay + step, anchor, omega)
-                 - thiranDelayPhase(delay - step, anchor, omega))
+                = (thiranDelayPhase(delay + step, anchor, omega, trig)
+                 - thiranDelayPhase(delay - step, anchor, omega, trig))
                 / (2.0 * step);
             if (exact::abs(slope) < 1.0e-12)
                 break;
@@ -2238,12 +2287,14 @@ DispersionCalibration collocateDispersion(
     // Everything at the three points that the solve does not move - the
     // loss filters and the bending loss - is read once.
     double anchorOmega[3] {};
+    AllpassTrig anchorTrig[3] {};
     double anchorLag[3] {};
     for (int index = 0; index < 3; ++index)
     {
         const double omega = stretchedOmega(anchors[index]);
         const double lossOmega = referenceLossOmega(omega, sampleRate);
         anchorOmega[index] = omega;
+        anchorTrig[index] = allpassTrig(omega);
         anchorLag[index] = mixedOnePolePhase(broadCoefficient, broadMix,
                                              lossOmega)
             + mixedOnePolePhase(highCoefficient, highMix, lossOmega)
@@ -2252,18 +2303,41 @@ DispersionCalibration collocateDispersion(
                               constantN2, omega)
             - twoPiDouble * anchors[index];
     }
-    const auto evaluate = [&] (const double values[3], double residuals[3])
+    // A residual is the tap's lag, which only the delay moves, plus the
+    // section's, which only the two ratios move, plus the fixed lag. A
+    // Jacobian column steps one unknown, so it reuses the other part from
+    // the point it steps from, and an accepted step's parts become the next
+    // iteration's: the same values summed in the same order, half the phase
+    // evaluations.
+    const auto delayLags = [&] (double delay, double lags[3])
+    {
+        for (int index = 0; index < 3; ++index)
+            lags[index] = thiranDelayPhase(delay, splitAnchor,
+                anchorOmega[index], anchorTrig[index]);
+    };
+    const auto sectionLags = [&] (double decayRatio, double poleRatio,
+                                  double lags[3])
     {
         double a1 = 0.0;
         double a2 = 0.0;
-        secondOrderAllpassCoefficients(
-            omega0, values[1], values[2], a1, a2);
+        secondOrderAllpassCoefficients(omega0, decayRatio, poleRatio, a1, a2);
         for (int index = 0; index < 3; ++index)
-        {
-            const double omega = anchorOmega[index];
-            residuals[index] = thiranDelayPhase(values[0], splitAnchor, omega)
-                + secondOrderAllpassPhase(a1, a2, omega) + anchorLag[index];
-        }
+            lags[index] = secondOrderAllpassPhase(a1, a2, anchorTrig[index]);
+    };
+    const auto combine = [&] (const double delayLag[3],
+                              const double sectionLag[3], double residuals[3])
+    {
+        for (int index = 0; index < 3; ++index)
+            residuals[index] = delayLag[index] + sectionLag[index]
+                             + anchorLag[index];
+    };
+    const auto evaluate = [&] (const double values[3], double residuals[3])
+    {
+        double delayLag[3] {};
+        double sectionLag[3] {};
+        delayLags(values[0], delayLag);
+        sectionLags(values[1], values[2], sectionLag);
+        combine(delayLag, sectionLag, residuals);
     };
     const auto maximumResidual = [] (const double residuals[3])
     {
@@ -2279,10 +2353,14 @@ DispersionCalibration collocateDispersion(
     constexpr double steps[] { 0.02, 0.01, 0.01 };
     const auto refine = [&] (double values[3])
     {
+        double delayLag[3] {};
+        double sectionLag[3] {};
+        delayLags(values[0], delayLag);
+        sectionLags(values[1], values[2], sectionLag);
         for (int iteration = 0; iteration < 9; ++iteration)
         {
             double residuals[3] {};
-            evaluate(values, residuals);
+            combine(delayLag, sectionLag, residuals);
             const double oldNorm = maximumResidual(residuals);
             if (oldNorm < 1.0e-10)
                 break;
@@ -2296,8 +2374,24 @@ DispersionCalibration collocateDispersion(
                 lower[column] -= steps[column];
                 double higherResiduals[3] {};
                 double lowerResiduals[3] {};
-                evaluate(higher, higherResiduals);
-                evaluate(lower, lowerResiduals);
+                if (column == 0)
+                {
+                    double higherLag[3] {};
+                    double lowerLag[3] {};
+                    delayLags(higher[0], higherLag);
+                    delayLags(lower[0], lowerLag);
+                    combine(higherLag, sectionLag, higherResiduals);
+                    combine(lowerLag, sectionLag, lowerResiduals);
+                }
+                else
+                {
+                    double higherLag[3] {};
+                    double lowerLag[3] {};
+                    sectionLags(higher[1], higher[2], higherLag);
+                    sectionLags(lower[1], lower[2], lowerLag);
+                    combine(delayLag, higherLag, higherResiduals);
+                    combine(delayLag, lowerLag, lowerResiduals);
+                }
                 for (int row = 0; row < 3; ++row)
                     jacobian[row][column] = (higherResiduals[row]
                         - lowerResiduals[row]) / (2.0 * steps[column]);
@@ -2317,12 +2411,21 @@ DispersionCalibration collocateDispersion(
                     std::clamp(values[1] + amount * update[1], 0.1, 30.0),
                     std::clamp(values[2] + amount * update[2], 0.05, 15.0)
                 };
+                double candidateDelayLag[3] {};
+                double candidateSectionLag[3] {};
+                delayLags(candidate[0], candidateDelayLag);
+                sectionLags(candidate[1], candidate[2], candidateSectionLag);
                 double candidateResiduals[3] {};
-                evaluate(candidate, candidateResiduals);
+                combine(candidateDelayLag, candidateSectionLag,
+                        candidateResiduals);
                 if (maximumResidual(candidateResiduals) < oldNorm)
                 {
                     std::copy(std::begin(candidate), std::end(candidate),
                         values);
+                    std::copy(std::begin(candidateDelayLag),
+                        std::end(candidateDelayLag), delayLag);
+                    std::copy(std::begin(candidateSectionLag),
+                        std::end(candidateSectionLag), sectionLag);
                     accepted = true;
                     break;
                 }
@@ -3276,7 +3379,8 @@ void AcustraEngine::StringLoop::setLoopGain(float gain, bool transition) noexcep
         loopGain = gain;
 }
 
-float AcustraEngine::StringLoop::bridgeVelocity(
+ACUSTRA_GCC_ALWAYS_INLINE_BEGIN
+ACUSTRA_GCC_ALWAYS_INLINE float AcustraEngine::StringLoop::bridgeVelocity(
     float incident, float sampleRateRatio) noexcept
 {
     if (derivativeNeedsPriming)
@@ -3304,8 +3408,10 @@ float AcustraEngine::StringLoop::bridgeVelocity(
     }
     return bridgeDerivative.process(incident, sampleRateRatio);
 }
+ACUSTRA_GCC_ALWAYS_INLINE_END
 
-float AcustraEngine::FixedDerivative::process(float input,
+ACUSTRA_GCC_ALWAYS_INLINE_BEGIN
+ACUSTRA_GCC_ALWAYS_INLINE float AcustraEngine::FixedDerivative::process(float input,
                                               float sampleRateRatio) noexcept
 {
     history[static_cast<std::size_t>(index)] = input;
@@ -3334,6 +3440,7 @@ float AcustraEngine::FixedDerivative::process(float input,
     index = static_cast<int>((static_cast<unsigned>(index) + 1) & historyMask);
     return input - delayed;
 }
+ACUSTRA_GCC_ALWAYS_INLINE_END
 
 float AcustraEngine::FixedDerivative::processAcrossRelease(
     float input, float sampleRateRatio) noexcept
@@ -3496,7 +3603,8 @@ void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
     }
 }
 
-float AcustraEngine::StringLoop::advance(float delaySmoothing,
+ACUSTRA_GCC_ALWAYS_INLINE_BEGIN
+ACUSTRA_GCC_ALWAYS_INLINE float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                          float releaseGain) noexcept
 {
     if (loopGainTransitionSamples > 0)
@@ -3631,6 +3739,7 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                       appliedReleaseGain - releaseGainStep);
     return reflected * loopGain * appliedReleaseGain;
 }
+ACUSTRA_GCC_ALWAYS_INLINE_END
 
 void AcustraEngine::StringLoop::write(float value) noexcept
 {
@@ -3757,17 +3866,6 @@ void AcustraEngine::StringLoop::applyGestureContact() noexcept
     secondNext += w[3] * changeSecond;
 }
 
-double AcustraEngine::BridgeMode::processPast(double input) noexcept
-{
-    const double output = numerator1 * input + numerator2 * input1
-                        - denominator1 * output1
-                        - denominator2 * output2;
-    input1 = input;
-    output2 = output1;
-    output1 = output;
-    return output;
-}
-
 void AcustraEngine::BridgeLoad::reset() noexcept
 {
     pastHeave = 0.0f;
@@ -3778,9 +3876,7 @@ void AcustraEngine::BridgeLoad::reset() noexcept
     mainIntegratedMoment = 0.0f;
     bodyIntegratedForce = 0.0f;
     bodyIntegratedMoment = 0.0f;
-    for (auto& mode : heaveModes)
-        mode.reset();
-    for (auto& mode : rockModes)
+    for (auto& mode : modes)
         mode.reset();
 }
 
@@ -3795,38 +3891,42 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
         double heaveState, rockState;
         // Pack this mode's heave and rock with their own coefficients and history.
         // Preserve each lane's arithmetic and the serial residue sums below.
+        auto& mode = modes[index];
 #if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
         if (rocking[index])
         {
             typedef double Vector __attribute__((vector_size(16)));
-            auto& h = heaveModes[index];
-            auto& r = rockModes[index];
+            const auto load = [] (const std::array<double, 2>& pair)
+            {
+                Vector value;
+                __builtin_memcpy(&value, pair.data(), sizeof(value));
+                return value;
+            };
+            const auto store = [] (std::array<double, 2>& pair, Vector value)
+            {
+                __builtin_memcpy(pair.data(), &value, sizeof(value));
+            };
             const Vector input = { bodyForce, bodyMoment };
-            const Vector n1 = { h.numerator1, r.numerator1 };
-            const Vector n2 = { h.numerator2, r.numerator2 };
-            const Vector d1 = { h.denominator1, r.denominator1 };
-            const Vector d2 = { h.denominator2, r.denominator2 };
-            const Vector i1 = { h.input1, r.input1 };
-            const Vector o1 = { h.output1, r.output1 };
-            const Vector o2 = { h.output2, r.output2 };
-            const Vector output = n1 * input + n2 * i1 - d1 * o1 - d2 * o2;
-            h.input1 = bodyForce;
-            r.input1 = bodyMoment;
-            h.output2 = h.output1;
-            r.output2 = r.output1;
-            h.output1 = output[0];
-            r.output1 = output[1];
+            const Vector o1 = load(mode.output1);
+            const Vector output = load(mode.numerator1) * input
+                                + load(mode.numerator2) * load(mode.input1)
+                                - load(mode.denominator1) * o1
+                                - load(mode.denominator2) * load(mode.output2);
+            store(mode.input1, input);
+            store(mode.output2, o1);
+            store(mode.output1, output);
             heaveState = output[0];
             rockState = output[1];
         }
         else
         {
-            heaveState = heaveModes[index].processPast(bodyForce);
+            heaveState = mode.processPast(BridgeModePair::heave, bodyForce);
             rockState = 0.0;
         }
 #else
-        heaveState = heaveModes[index].processPast(bodyForce);
-        rockState = rocking[index] ? rockModes[index].processPast(bodyMoment) : 0.0;
+        heaveState = mode.processPast(BridgeModePair::heave, bodyForce);
+        rockState = rocking[index]
+            ? mode.processPast(BridgeModePair::rock, bodyMoment) : 0.0;
 #endif
         nextPastHeave += residueHeave[index] * heaveState;
         if (!rocking[index])
@@ -5206,8 +5306,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
                                 float heave, float cross, float rock,
                                 bool sharedPole = false)
     {
-        auto& heaveMode = bridgeLoad_.heaveModes[index];
-        auto& rockMode = bridgeLoad_.rockModes[index];
+        auto& mode = bridgeLoad_.modes[index];
         bridgeLoad_.residueHeave[index] = 0.0f;
         bridgeLoad_.residueCross[index] = 0.0f;
         bridgeLoad_.residueRock[index] = 0.0f;
@@ -5220,12 +5319,9 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
                           && (plateFloor || frequency < (sharedPole ? 0.46f : 0.45f) * rate);
         if (!active)
         {
-            for (auto* mode : { &heaveMode, &rockMode })
-            {
-                mode->denominator1 = mode->denominator2 = 0.0;
-                mode->numerator1 = mode->numerator2 = 0.0;
-                mode->reset();
-            }
+            mode.denominator1 = mode.denominator2 = std::array<double, 2> {};
+            mode.numerator1 = mode.numerator2 = std::array<double, 2> {};
+            mode.reset();
             return;
         }
         const double rateD = sampleRate_;
@@ -5248,18 +5344,20 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         const double denominator2 = (bilinearD * bilinearD
             - 2.0 * damping * bilinearD + omega * omega) / denominator0;
         const float immediate = static_cast<float>(bilinearD / denominator0);
-        for (auto* mode : { &heaveMode, &rockMode })
+        // The heave and the rock sections share these coefficients; only
+        // their histories differ.
+        for (std::size_t lane = 0; lane < 2; ++lane)
         {
-            mode->denominator1 = denominator1;
-            mode->denominator2 = denominator2;
-            mode->numerator1 = -static_cast<double>(immediate) * denominator1;
-            mode->numerator2 = -static_cast<double>(immediate)
+            mode.denominator1[lane] = denominator1;
+            mode.denominator2[lane] = denominator2;
+            mode.numerator1[lane] = -static_cast<double>(immediate) * denominator1;
+            mode.numerator2[lane] = -static_cast<double>(immediate)
                 * (1.0 + denominator2);
-            // The same bank retuned (Shape, Wood) keeps ringing as it was;
-            // the new coefficients carry the state on from here.
-            if (!keepModalState)
-                mode->reset();
         }
+        // The same bank retuned (Shape, Wood) keeps ringing as it was;
+        // the new coefficients carry the state on from here.
+        if (!keepModalState)
+            mode.reset();
         bridgeLoad_.residueHeave[index] = heave;
         bridgeLoad_.residueCross[index] = cross;
         bridgeLoad_.residueRock[index] = rock;
@@ -5324,14 +5422,14 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     configuredBridgeShape_ = parameters_.shape;
     configuredBridgeMaterial_ = parameters_.bodyMaterial;
     bridgeLoad_.activeModeCount = 0;
-    for (std::size_t index = 0; index < bridgeLoad_.heaveModes.size(); ++index)
+    for (std::size_t index = 0; index < bridgeLoad_.modes.size(); ++index)
     {
         const auto zero = [] (const BridgeMode& mode)
         {
             return mode.denominator1 == 0.0 && mode.denominator2 == 0.0
                 && mode.numerator1 == 0.0 && mode.numerator2 == 0.0;
         };
-        if (zero(bridgeLoad_.heaveModes[index]) && zero(bridgeLoad_.rockModes[index])
+        if (zero(bridgeLoad_.heaveMode(index)) && zero(bridgeLoad_.rockMode(index))
             && bridgeLoad_.residueHeave[index] == 0.0f
             && bridgeLoad_.residueCross[index] == 0.0f
             && bridgeLoad_.residueRock[index] == 0.0f)
@@ -11745,12 +11843,52 @@ void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept
         state[1] = exact::abs(second) < 1.0e-30 ? 0.0 : second;
         return static_cast<float>(result);
     };
+#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+    // Left and right advanced together, one two-wide double vector per
+    // section: each lane is filter() above, the same products, sums,
+    // flush and float rounding between sections, so each channel's states
+    // and output are the scalar ones bit for bit.
+    (void) filter;
+    typedef double Vector __attribute__((vector_size(16)));
+    typedef std::int64_t Mask __attribute__((vector_size(16)));
+    const auto flush = [] (Vector value)
+    {
+        const Vector magnitude = reinterpret_cast<Vector>(
+            reinterpret_cast<Mask>(value) & 0x7fffffffffffffffLL);
+        const Mask tiny = magnitude < 1.0e-30;
+        return reinterpret_cast<Vector>(reinterpret_cast<Mask>(value) & ~tiny);
+    };
+    Vector input = { output.left, output.right };
+    for (int index = 0; index < sections; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        const auto& coefficient = coefficients[slot];
+        auto& left = stateLeft[slot];
+        auto& right = stateRight[slot];
+        const Vector result = coefficient[0] * input
+                            + Vector { left[0], right[0] };
+        const Vector first = coefficient[1] * input - coefficient[3] * result
+                           + Vector { left[1], right[1] };
+        const Vector second = coefficient[2] * input - coefficient[4] * result;
+        const Vector firstState = flush(first);
+        const Vector secondState = flush(second);
+        left[0] = firstState[0];
+        right[0] = firstState[1];
+        left[1] = secondState[0];
+        right[1] = secondState[1];
+        input = Vector { static_cast<double>(static_cast<float>(result[0])),
+                         static_cast<double>(static_cast<float>(result[1])) };
+    }
+    output.left = static_cast<float>(input[0]);
+    output.right = static_cast<float>(input[1]);
+#else
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
         output.left = filter(output.left, coefficients[slot], stateLeft[slot]);
         output.right = filter(output.right, coefficients[slot], stateRight[slot]);
     }
+#endif
     output.left *= gain;
     output.right *= gain;
 }
