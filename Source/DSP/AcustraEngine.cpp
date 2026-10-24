@@ -39,6 +39,26 @@
 #define ACUSTRA_NOINLINE
 #endif
 
+// GCC refuses always_inline on a declaration that another translation unit
+// calls without the body (the tests call these out of line), so the header's
+// ACUSTRA_ALWAYS_INLINE is empty there. GCC takes the attribute on the
+// definition alone instead: the engine's own per-sample calls then inline as
+// they already do under Clang and MSVC, while other units call the emitted
+// copy. Hidden visibility keeps a position-independent build from treating
+// that copy as replaceable at link time, which would forbid the inlining;
+// nothing outside the engine's own binary calls it. GCC's warning that the
+// copy might not be inlinable is expected and silenced for that definition
+// only. The arithmetic is unchanged.
+#if defined(__GNUC__) && !defined(__clang__)
+#define ACUSTRA_GCC_INLINE_DEFINITION _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wattributes\"") \
+    __attribute__((always_inline, visibility("hidden")))
+#define ACUSTRA_GCC_INLINE_DEFINITION_END _Pragma("GCC diagnostic pop")
+#else
+#define ACUSTRA_GCC_INLINE_DEFINITION
+#define ACUSTRA_GCC_INLINE_DEFINITION_END
+#endif
+
 namespace acustra
 {
 namespace
@@ -3276,7 +3296,7 @@ void AcustraEngine::StringLoop::setLoopGain(float gain, bool transition) noexcep
         loopGain = gain;
 }
 
-float AcustraEngine::StringLoop::bridgeVelocity(
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::StringLoop::bridgeVelocity(
     float incident, float sampleRateRatio) noexcept
 {
     if (derivativeNeedsPriming)
@@ -3304,8 +3324,9 @@ float AcustraEngine::StringLoop::bridgeVelocity(
     }
     return bridgeDerivative.process(incident, sampleRateRatio);
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
-float AcustraEngine::FixedDerivative::process(float input,
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::FixedDerivative::process(float input,
                                               float sampleRateRatio) noexcept
 {
     history[static_cast<std::size_t>(index)] = input;
@@ -3334,6 +3355,7 @@ float AcustraEngine::FixedDerivative::process(float input,
     index = static_cast<int>((static_cast<unsigned>(index) + 1) & historyMask);
     return input - delayed;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 float AcustraEngine::FixedDerivative::processAcrossRelease(
     float input, float sampleRateRatio) noexcept
@@ -3366,7 +3388,7 @@ float AcustraEngine::FixedDerivative::processAcrossStep(
     return process(input, sampleRateRatio);
 }
 
-float AcustraEngine::StringLoop::readDelay(float samples) noexcept
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::StringLoop::readDelay(float samples) noexcept
 {
     const auto sampleBits = exact::bits(samples);
     if (!readDelayValid || sampleBits != readDelayBits)
@@ -3413,6 +3435,7 @@ float AcustraEngine::StringLoop::readDelay(float samples) noexcept
     allpassY1 = output;
     return output;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 float AcustraEngine::StringLoop::displacementAt(float fraction) const noexcept
 {
@@ -3496,7 +3519,7 @@ void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
     }
 }
 
-float AcustraEngine::StringLoop::advance(float delaySmoothing,
+ACUSTRA_GCC_INLINE_DEFINITION float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                          float releaseGain) noexcept
 {
     if (loopGainTransitionSamples > 0)
@@ -3631,14 +3654,16 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                       appliedReleaseGain - releaseGainStep);
     return reflected * loopGain * appliedReleaseGain;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
-void AcustraEngine::StringLoop::write(float value) noexcept
+ACUSTRA_GCC_INLINE_DEFINITION void AcustraEngine::StringLoop::write(float value) noexcept
 {
     if (!exact::isfinite(value) || exact::abs(value) < 1.0e-30f)
         value = 0.0f;
     delay[static_cast<std::size_t>(writeIndex)] = value;
     writeIndex = wrapDelayIndex(writeIndex + 1);
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 void AcustraEngine::StringLoop::GestureContact::configure(
     float strength, int relaxationSamples) noexcept
@@ -3757,7 +3782,7 @@ void AcustraEngine::StringLoop::applyGestureContact() noexcept
     secondNext += w[3] * changeSecond;
 }
 
-double AcustraEngine::BridgeMode::processPast(double input) noexcept
+ACUSTRA_GCC_INLINE_DEFINITION double AcustraEngine::BridgeMode::processPast(double input) noexcept
 {
     const double output = numerator1 * input + numerator2 * input1
                         - denominator1 * output1
@@ -3767,6 +3792,7 @@ double AcustraEngine::BridgeMode::processPast(double input) noexcept
     output1 = output;
     return output;
 }
+ACUSTRA_GCC_INLINE_DEFINITION_END
 
 void AcustraEngine::BridgeLoad::reset() noexcept
 {
@@ -3784,6 +3810,25 @@ void AcustraEngine::BridgeLoad::reset() noexcept
         mode.reset();
 }
 
+void AcustraEngine::BridgeLoad::packActiveModes() noexcept
+{
+    for (int active = 0; active < activeModeCount; ++active)
+    {
+        const std::size_t index = activeModes[static_cast<std::size_t>(active)];
+        const auto& h = heaveModes[index];
+        const auto& r = rockModes[index];
+        auto& packed = packedModes[static_cast<std::size_t>(active)];
+        packed.numerator1 = { h.numerator1, r.numerator1 };
+        packed.numerator2 = { h.numerator2, r.numerator2 };
+        packed.denominator1 = { h.denominator1, r.denominator1 };
+        packed.denominator2 = { h.denominator2, r.denominator2 };
+        packed.residueHeave = static_cast<double>(residueHeave[index]);
+        packed.residueCross = static_cast<double>(residueCross[index]);
+        packed.residueRock = static_cast<double>(residueRock[index]);
+        packed.rocking = rocking[index];
+    }
+}
+
 void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
                                              float bodyMoment) noexcept
 {
@@ -3792,20 +3837,30 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
     for (int active = 0; active < activeModeCount; ++active)
     {
         const std::size_t index = activeModes[static_cast<std::size_t>(active)];
+        // The same coefficients and residues as heaveModes, rockModes and the
+        // residue arrays hold, read side by side (packActiveModes); a float
+        // residue widened to double is exact, as the sums' own promotion was.
+        const auto& packed = packedModes[static_cast<std::size_t>(active)];
         double heaveState, rockState;
         // Pack this mode's heave and rock with their own coefficients and history.
         // Preserve each lane's arithmetic and the serial residue sums below.
 #if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
-        if (rocking[index])
+        if (packed.rocking)
         {
             typedef double Vector __attribute__((vector_size(16)));
+            const auto load = [] (const std::array<double, 2>& pair)
+            {
+                Vector value;
+                __builtin_memcpy(&value, pair.data(), sizeof(value));
+                return value;
+            };
             auto& h = heaveModes[index];
             auto& r = rockModes[index];
             const Vector input = { bodyForce, bodyMoment };
-            const Vector n1 = { h.numerator1, r.numerator1 };
-            const Vector n2 = { h.numerator2, r.numerator2 };
-            const Vector d1 = { h.denominator1, r.denominator1 };
-            const Vector d2 = { h.denominator2, r.denominator2 };
+            const Vector n1 = load(packed.numerator1);
+            const Vector n2 = load(packed.numerator2);
+            const Vector d1 = load(packed.denominator1);
+            const Vector d2 = load(packed.denominator2);
             const Vector i1 = { h.input1, r.input1 };
             const Vector o1 = { h.output1, r.output1 };
             const Vector o2 = { h.output2, r.output2 };
@@ -3826,14 +3881,14 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
         }
 #else
         heaveState = heaveModes[index].processPast(bodyForce);
-        rockState = rocking[index] ? rockModes[index].processPast(bodyMoment) : 0.0;
+        rockState = packed.rocking ? rockModes[index].processPast(bodyMoment) : 0.0;
 #endif
-        nextPastHeave += residueHeave[index] * heaveState;
-        if (!rocking[index])
+        nextPastHeave += packed.residueHeave * heaveState;
+        if (!packed.rocking)
             continue;
-        nextPastHeave += residueCross[index] * rockState;
-        nextPastRock += residueCross[index] * heaveState
-                      + residueRock[index] * rockState;
+        nextPastHeave += packed.residueCross * rockState;
+        nextPastRock += packed.residueCross * heaveState
+                      + packed.residueRock * rockState;
     }
     pastHeave = exact::isfinite(nextPastHeave)
         ? static_cast<float>(nextPastHeave) : 0.0f;
@@ -5339,6 +5394,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         bridgeLoad_.activeModes[static_cast<std::size_t>(
             bridgeLoad_.activeModeCount++)] = static_cast<std::uint8_t>(index);
     }
+    bridgeLoad_.packActiveModes();
 }
 
 // The rebuild a construction change asked for while the bridge was still
@@ -13097,15 +13153,20 @@ bool roomPrime(int value) noexcept
 // The eight lines' Hadamard mix, in place, normalised to stay lossless.
 void roomHadamard(std::array<float, roomLineTotal>& values) noexcept
 {
-    for (std::size_t span = 1; span < values.size(); span *= 2)
-        for (std::size_t start = 0; start < values.size(); start += 2 * span)
-            for (std::size_t index = start; index < start + span; ++index)
-            {
-                const float a = values[index];
-                const float b = values[index + span];
-                values[index] = a + b;
-                values[index + span] = a - b;
-            }
+    // The three butterfly stages over spans 1, 2 and 4, written out: the
+    // same sums and differences of the same pairs as the loop over spans,
+    // which the per-sample room step otherwise ran as loop control.
+    static_assert(roomLineTotal == 8, "the butterflies are written for eight lines");
+    const auto butterfly = [&values] (std::size_t index, std::size_t span)
+    {
+        const float a = values[index];
+        const float b = values[index + span];
+        values[index] = a + b;
+        values[index + span] = a - b;
+    };
+    butterfly(0, 1); butterfly(2, 1); butterfly(4, 1); butterfly(6, 1);
+    butterfly(0, 2); butterfly(1, 2); butterfly(4, 2); butterfly(5, 2);
+    butterfly(0, 4); butterfly(1, 4); butterfly(2, 4); butterfly(3, 4);
     for (auto& value : values)
         value *= 0.35355339f;
 }
@@ -13385,20 +13446,38 @@ void AcustraEngine::RoomAmbience::reset() noexcept
 void AcustraEngine::RoomAmbience::step(float input) noexcept
 {
     early[static_cast<std::size_t>(earlyHead)] = input;
+    // Every delay lies in [1, earlyCapacity - 1] (prepare) and the capacity
+    // is a power of two, so masking the unsigned difference wraps the ring
+    // exactly as adding the capacity to a negative index did.
+    static_assert((earlyCapacity & (earlyCapacity - 1)) == 0,
+                  "the early ring wraps by masking");
     const auto delayed = [this] (int delay)
     {
-        int index = earlyHead - delay;
-        if (index < 0)
-            index += earlyCapacity;
-        return early[static_cast<std::size_t>(index)];
+        const unsigned index = (static_cast<unsigned>(earlyHead)
+            - static_cast<unsigned>(delay)) & static_cast<unsigned>(earlyCapacity - 1);
+        return early[index];
     };
     float reflectedLeft = 0.0f;
     float reflectedRight = 0.0f;
     if (directional)
     {
-        const auto arrivalValue = [&delayed] (const Arrival& arrival)
+        const auto arrivalValue = [this, &delayed] (const Arrival& arrival)
         {
+            constexpr int taps = static_cast<int>(std::tuple_size<decltype(arrival.weights)>::value);
             float value = 0.0f;
+            const unsigned newest = (static_cast<unsigned>(earlyHead)
+                - static_cast<unsigned>(arrival.firstDelay))
+                & static_cast<unsigned>(earlyCapacity - 1);
+            if (newest >= static_cast<unsigned>(taps - 1))
+            {
+                // The whole arrival lies on one side of the ring's wrap: the
+                // same samples, products and sum order, read contiguously.
+                const float* sample = early.data() + newest;
+                for (int index = 0; index < taps; ++index)
+                    value += arrival.weights[static_cast<std::size_t>(index)]
+                        * sample[-index];
+                return value;
+            }
             for (std::size_t index = 0; index < arrival.weights.size(); ++index)
                 value += arrival.weights[index]
                     * delayed(arrival.firstDelay + static_cast<int>(index));

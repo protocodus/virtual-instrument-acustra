@@ -39,6 +39,15 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.6.4 — 2026-10-23 — less CPU, the same sound
+
+- The engine needs less CPU for an identical sound: on a held-chord, strum
+  and melody performance at the default controls, block processing takes
+  12% fewer instructions and about 8% less CPU time in GCC (Linux) builds,
+  and 5% fewer instructions and about 4% less time in Clang builds. Every
+  output sample is bit for bit 1.6.3's
+  ([CPU optimization](Docs/benchmarks/cpu-optimization-2026-10-23.md)).
+
 ### 1.6.3 — 2026-10-22 — softer velocity contrast, steadier strums, 10% Room
 
 - Playing force follows MIDI velocity in proportion instead of its square,

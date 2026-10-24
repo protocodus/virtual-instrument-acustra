@@ -1003,6 +1003,21 @@ private:
             return all;
         }();
         int activeModeCount { bridgeModeCount + 1 };
+        // What advanceModes reads for each active slot, in activeModes order:
+        // the heave and rock section coefficients side by side, the residues
+        // widened (exactly) to the double the sums are taken in, and the
+        // rocking flag. Derived from the arrays above by packActiveModes,
+        // which configureBridge calls after its every write; copies of the
+        // load carry it along. The states stay in heaveModes and rockModes.
+        struct alignas(16) PackedMode
+        {
+            std::array<double, 2> numerator1 {}, numerator2 {},
+                                  denominator1 {}, denominator2 {};
+            double residueHeave { 0.0 }, residueCross { 0.0 }, residueRock { 0.0 };
+            bool rocking { false };
+        };
+        std::array<PackedMode, bridgeModeCount + 1> packedModes {};
+        void packActiveModes() noexcept;
         float immediateHeave { 0.0f };
         float immediateCross { 0.0f };
         float immediateRock { 0.0f };
