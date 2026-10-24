@@ -2280,19 +2280,41 @@ DispersionCalibration collocateDispersion(
                               constantN2, omega)
             - twoPiDouble * anchors[index];
     }
-    const auto evaluate = [&] (const double values[3], double residuals[3])
+    // A residual is the tap's lag, which only the delay moves, plus the
+    // section's, which only the two ratios move, plus the fixed lag. A
+    // Jacobian column steps one unknown, so it reuses the other part from
+    // the point it steps from, and an accepted step's parts become the next
+    // iteration's: the same values summed in the same order, half the phase
+    // evaluations.
+    const auto delayLags = [&] (double delay, double lags[3])
+    {
+        for (int index = 0; index < 3; ++index)
+            lags[index] = thiranDelayPhase(delay, splitAnchor,
+                anchorOmega[index], anchorTrig[index]);
+    };
+    const auto sectionLags = [&] (double decayRatio, double poleRatio,
+                                  double lags[3])
     {
         double a1 = 0.0;
         double a2 = 0.0;
-        secondOrderAllpassCoefficients(
-            omega0, values[1], values[2], a1, a2);
+        secondOrderAllpassCoefficients(omega0, decayRatio, poleRatio, a1, a2);
         for (int index = 0; index < 3; ++index)
-        {
-            const double omega = anchorOmega[index];
-            const AllpassTrig& trig = anchorTrig[index];
-            residuals[index] = thiranDelayPhase(values[0], splitAnchor, omega, trig)
-                + secondOrderAllpassPhase(a1, a2, trig) + anchorLag[index];
-        }
+            lags[index] = secondOrderAllpassPhase(a1, a2, anchorTrig[index]);
+    };
+    const auto combine = [&] (const double delayLag[3],
+                              const double sectionLag[3], double residuals[3])
+    {
+        for (int index = 0; index < 3; ++index)
+            residuals[index] = delayLag[index] + sectionLag[index]
+                             + anchorLag[index];
+    };
+    const auto evaluate = [&] (const double values[3], double residuals[3])
+    {
+        double delayLag[3] {};
+        double sectionLag[3] {};
+        delayLags(values[0], delayLag);
+        sectionLags(values[1], values[2], sectionLag);
+        combine(delayLag, sectionLag, residuals);
     };
     const auto maximumResidual = [] (const double residuals[3])
     {
@@ -2308,10 +2330,14 @@ DispersionCalibration collocateDispersion(
     constexpr double steps[] { 0.02, 0.01, 0.01 };
     const auto refine = [&] (double values[3])
     {
+        double delayLag[3] {};
+        double sectionLag[3] {};
+        delayLags(values[0], delayLag);
+        sectionLags(values[1], values[2], sectionLag);
         for (int iteration = 0; iteration < 9; ++iteration)
         {
             double residuals[3] {};
-            evaluate(values, residuals);
+            combine(delayLag, sectionLag, residuals);
             const double oldNorm = maximumResidual(residuals);
             if (oldNorm < 1.0e-10)
                 break;
@@ -2325,8 +2351,24 @@ DispersionCalibration collocateDispersion(
                 lower[column] -= steps[column];
                 double higherResiduals[3] {};
                 double lowerResiduals[3] {};
-                evaluate(higher, higherResiduals);
-                evaluate(lower, lowerResiduals);
+                if (column == 0)
+                {
+                    double higherLag[3] {};
+                    double lowerLag[3] {};
+                    delayLags(higher[0], higherLag);
+                    delayLags(lower[0], lowerLag);
+                    combine(higherLag, sectionLag, higherResiduals);
+                    combine(lowerLag, sectionLag, lowerResiduals);
+                }
+                else
+                {
+                    double higherLag[3] {};
+                    double lowerLag[3] {};
+                    sectionLags(higher[1], higher[2], higherLag);
+                    sectionLags(lower[1], lower[2], lowerLag);
+                    combine(delayLag, higherLag, higherResiduals);
+                    combine(delayLag, lowerLag, lowerResiduals);
+                }
                 for (int row = 0; row < 3; ++row)
                     jacobian[row][column] = (higherResiduals[row]
                         - lowerResiduals[row]) / (2.0 * steps[column]);
@@ -2346,12 +2388,21 @@ DispersionCalibration collocateDispersion(
                     std::clamp(values[1] + amount * update[1], 0.1, 30.0),
                     std::clamp(values[2] + amount * update[2], 0.05, 15.0)
                 };
+                double candidateDelayLag[3] {};
+                double candidateSectionLag[3] {};
+                delayLags(candidate[0], candidateDelayLag);
+                sectionLags(candidate[1], candidate[2], candidateSectionLag);
                 double candidateResiduals[3] {};
-                evaluate(candidate, candidateResiduals);
+                combine(candidateDelayLag, candidateSectionLag,
+                        candidateResiduals);
                 if (maximumResidual(candidateResiduals) < oldNorm)
                 {
                     std::copy(std::begin(candidate), std::end(candidate),
                         values);
+                    std::copy(std::begin(candidateDelayLag),
+                        std::end(candidateDelayLag), delayLag);
+                    std::copy(std::begin(candidateSectionLag),
+                        std::end(candidateSectionLag), sectionLag);
                     accepted = true;
                     break;
                 }
