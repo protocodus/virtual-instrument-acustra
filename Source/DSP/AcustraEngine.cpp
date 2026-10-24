@@ -3866,17 +3866,6 @@ void AcustraEngine::StringLoop::applyGestureContact() noexcept
     secondNext += w[3] * changeSecond;
 }
 
-double AcustraEngine::BridgeMode::processPast(double input) noexcept
-{
-    const double output = numerator1 * input + numerator2 * input1
-                        - denominator1 * output1
-                        - denominator2 * output2;
-    input1 = input;
-    output2 = output1;
-    output1 = output;
-    return output;
-}
-
 void AcustraEngine::BridgeLoad::reset() noexcept
 {
     pastHeave = 0.0f;
@@ -3887,9 +3876,7 @@ void AcustraEngine::BridgeLoad::reset() noexcept
     mainIntegratedMoment = 0.0f;
     bodyIntegratedForce = 0.0f;
     bodyIntegratedMoment = 0.0f;
-    for (auto& mode : heaveModes)
-        mode.reset();
-    for (auto& mode : rockModes)
+    for (auto& mode : modes)
         mode.reset();
 }
 
@@ -3904,38 +3891,42 @@ void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
         double heaveState, rockState;
         // Pack this mode's heave and rock with their own coefficients and history.
         // Preserve each lane's arithmetic and the serial residue sums below.
+        auto& mode = modes[index];
 #if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
         if (rocking[index])
         {
             typedef double Vector __attribute__((vector_size(16)));
-            auto& h = heaveModes[index];
-            auto& r = rockModes[index];
+            const auto load = [] (const std::array<double, 2>& pair)
+            {
+                Vector value;
+                __builtin_memcpy(&value, pair.data(), sizeof(value));
+                return value;
+            };
+            const auto store = [] (std::array<double, 2>& pair, Vector value)
+            {
+                __builtin_memcpy(pair.data(), &value, sizeof(value));
+            };
             const Vector input = { bodyForce, bodyMoment };
-            const Vector n1 = { h.numerator1, r.numerator1 };
-            const Vector n2 = { h.numerator2, r.numerator2 };
-            const Vector d1 = { h.denominator1, r.denominator1 };
-            const Vector d2 = { h.denominator2, r.denominator2 };
-            const Vector i1 = { h.input1, r.input1 };
-            const Vector o1 = { h.output1, r.output1 };
-            const Vector o2 = { h.output2, r.output2 };
-            const Vector output = n1 * input + n2 * i1 - d1 * o1 - d2 * o2;
-            h.input1 = bodyForce;
-            r.input1 = bodyMoment;
-            h.output2 = h.output1;
-            r.output2 = r.output1;
-            h.output1 = output[0];
-            r.output1 = output[1];
+            const Vector o1 = load(mode.output1);
+            const Vector output = load(mode.numerator1) * input
+                                + load(mode.numerator2) * load(mode.input1)
+                                - load(mode.denominator1) * o1
+                                - load(mode.denominator2) * load(mode.output2);
+            store(mode.input1, input);
+            store(mode.output2, o1);
+            store(mode.output1, output);
             heaveState = output[0];
             rockState = output[1];
         }
         else
         {
-            heaveState = heaveModes[index].processPast(bodyForce);
+            heaveState = mode.processPast(BridgeModePair::heave, bodyForce);
             rockState = 0.0;
         }
 #else
-        heaveState = heaveModes[index].processPast(bodyForce);
-        rockState = rocking[index] ? rockModes[index].processPast(bodyMoment) : 0.0;
+        heaveState = mode.processPast(BridgeModePair::heave, bodyForce);
+        rockState = rocking[index]
+            ? mode.processPast(BridgeModePair::rock, bodyMoment) : 0.0;
 #endif
         nextPastHeave += residueHeave[index] * heaveState;
         if (!rocking[index])
@@ -5315,8 +5306,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
                                 float heave, float cross, float rock,
                                 bool sharedPole = false)
     {
-        auto& heaveMode = bridgeLoad_.heaveModes[index];
-        auto& rockMode = bridgeLoad_.rockModes[index];
+        auto& mode = bridgeLoad_.modes[index];
         bridgeLoad_.residueHeave[index] = 0.0f;
         bridgeLoad_.residueCross[index] = 0.0f;
         bridgeLoad_.residueRock[index] = 0.0f;
@@ -5329,12 +5319,9 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
                           && (plateFloor || frequency < (sharedPole ? 0.46f : 0.45f) * rate);
         if (!active)
         {
-            for (auto* mode : { &heaveMode, &rockMode })
-            {
-                mode->denominator1 = mode->denominator2 = 0.0;
-                mode->numerator1 = mode->numerator2 = 0.0;
-                mode->reset();
-            }
+            mode.denominator1 = mode.denominator2 = std::array<double, 2> {};
+            mode.numerator1 = mode.numerator2 = std::array<double, 2> {};
+            mode.reset();
             return;
         }
         const double rateD = sampleRate_;
@@ -5357,18 +5344,20 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
         const double denominator2 = (bilinearD * bilinearD
             - 2.0 * damping * bilinearD + omega * omega) / denominator0;
         const float immediate = static_cast<float>(bilinearD / denominator0);
-        for (auto* mode : { &heaveMode, &rockMode })
+        // The heave and the rock sections share these coefficients; only
+        // their histories differ.
+        for (std::size_t lane = 0; lane < 2; ++lane)
         {
-            mode->denominator1 = denominator1;
-            mode->denominator2 = denominator2;
-            mode->numerator1 = -static_cast<double>(immediate) * denominator1;
-            mode->numerator2 = -static_cast<double>(immediate)
+            mode.denominator1[lane] = denominator1;
+            mode.denominator2[lane] = denominator2;
+            mode.numerator1[lane] = -static_cast<double>(immediate) * denominator1;
+            mode.numerator2[lane] = -static_cast<double>(immediate)
                 * (1.0 + denominator2);
-            // The same bank retuned (Shape, Wood) keeps ringing as it was;
-            // the new coefficients carry the state on from here.
-            if (!keepModalState)
-                mode->reset();
         }
+        // The same bank retuned (Shape, Wood) keeps ringing as it was;
+        // the new coefficients carry the state on from here.
+        if (!keepModalState)
+            mode.reset();
         bridgeLoad_.residueHeave[index] = heave;
         bridgeLoad_.residueCross[index] = cross;
         bridgeLoad_.residueRock[index] = rock;
@@ -5433,14 +5422,14 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     configuredBridgeShape_ = parameters_.shape;
     configuredBridgeMaterial_ = parameters_.bodyMaterial;
     bridgeLoad_.activeModeCount = 0;
-    for (std::size_t index = 0; index < bridgeLoad_.heaveModes.size(); ++index)
+    for (std::size_t index = 0; index < bridgeLoad_.modes.size(); ++index)
     {
         const auto zero = [] (const BridgeMode& mode)
         {
             return mode.denominator1 == 0.0 && mode.denominator2 == 0.0
                 && mode.numerator1 == 0.0 && mode.numerator2 == 0.0;
         };
-        if (zero(bridgeLoad_.heaveModes[index]) && zero(bridgeLoad_.rockModes[index])
+        if (zero(bridgeLoad_.heaveMode(index)) && zero(bridgeLoad_.rockMode(index))
             && bridgeLoad_.residueHeave[index] == 0.0f
             && bridgeLoad_.residueCross[index] == 0.0f
             && bridgeLoad_.residueRock[index] == 0.0f)

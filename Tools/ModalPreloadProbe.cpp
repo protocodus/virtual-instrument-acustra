@@ -53,7 +53,7 @@ struct AcustraEngineTestAccess
             // Reconstructing it from stored f/Q silently conflated those two
             // conventions and duplicated the engine's construction mapping.
             const auto& bridge = engine->bridgeLoad_;
-            for (std::size_t index = 0; index < bridge.heaveModes.size(); ++index)
+            for (std::size_t index = 0; index < bridge.modes.size(); ++index)
             {
                 const float heave = bridge.residueHeave[index];
                 const float cross = bridge.residueCross[index];
@@ -61,7 +61,7 @@ struct AcustraEngineTestAccess
                 if (heave == 0.0f && cross == 0.0f && rock == 0.0f)
                     continue;
 
-                const auto& mode = bridge.heaveModes[index];
+                const auto& mode = bridge.heaveMode(index);
                 const double d1 = mode.denominator1, d2 = mode.denominator2;
                 const double bilinear = 2.0 * rate;
                 const double denominator = 1.0 - d1 + d2;

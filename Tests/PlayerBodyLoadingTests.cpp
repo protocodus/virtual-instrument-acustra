@@ -300,7 +300,7 @@ void testActualBridgePassivity()
                 for (int active = 0; active < bridge.activeModeCount; ++active)
                 {
                     const auto i = bridge.activeModes[std::size_t(active)];
-                    const auto& m = bridge.heaveModes[i];
+                    const auto& m = bridge.heaveMode(i);
                     const double immediate = -m.numerator2/(1+m.denominator2);
                     const auto mode = immediate
                         + (m.numerator1*z + m.numerator2*z*z)
