@@ -11843,12 +11843,52 @@ void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept
         state[1] = exact::abs(second) < 1.0e-30 ? 0.0 : second;
         return static_cast<float>(result);
     };
+#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+    // Left and right advanced together, one two-wide double vector per
+    // section: each lane is filter() above, the same products, sums,
+    // flush and float rounding between sections, so each channel's states
+    // and output are the scalar ones bit for bit.
+    (void) filter;
+    typedef double Vector __attribute__((vector_size(16)));
+    typedef std::int64_t Mask __attribute__((vector_size(16)));
+    const auto flush = [] (Vector value)
+    {
+        const Vector magnitude = reinterpret_cast<Vector>(
+            reinterpret_cast<Mask>(value) & 0x7fffffffffffffffLL);
+        const Mask tiny = magnitude < 1.0e-30;
+        return reinterpret_cast<Vector>(reinterpret_cast<Mask>(value) & ~tiny);
+    };
+    Vector input = { output.left, output.right };
+    for (int index = 0; index < sections; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        const auto& coefficient = coefficients[slot];
+        auto& left = stateLeft[slot];
+        auto& right = stateRight[slot];
+        const Vector result = coefficient[0] * input
+                            + Vector { left[0], right[0] };
+        const Vector first = coefficient[1] * input - coefficient[3] * result
+                           + Vector { left[1], right[1] };
+        const Vector second = coefficient[2] * input - coefficient[4] * result;
+        const Vector firstState = flush(first);
+        const Vector secondState = flush(second);
+        left[0] = firstState[0];
+        right[0] = firstState[1];
+        left[1] = secondState[0];
+        right[1] = secondState[1];
+        input = Vector { static_cast<double>(static_cast<float>(result[0])),
+                         static_cast<double>(static_cast<float>(result[1])) };
+    }
+    output.left = static_cast<float>(input[0]);
+    output.right = static_cast<float>(input[1]);
+#else
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
         output.left = filter(output.left, coefficients[slot], stateLeft[slot]);
         output.right = filter(output.right, coefficients[slot], stateRight[slot]);
     }
+#endif
     output.left *= gain;
     output.right *= gain;
 }
