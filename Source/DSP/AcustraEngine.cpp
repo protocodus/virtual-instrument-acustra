@@ -2034,13 +2034,37 @@ void secondOrderAllpassCoefficients(double omega, double decayRatio,
     a2 = radius * radius;
 }
 
-double secondOrderAllpassPhase(double a1, double a2,
-                               double omega) noexcept
+// The cosine and sine of omega and of 2 omega that a second-order section's
+// phase at omega reads. The tuning and dispersion solves evaluate many
+// sections at the same few frequencies, so they take these once per
+// frequency instead of once per section: the same four calls on the same
+// argument, so the same values, and every phase below is unchanged to the
+// bit. Recomputing them was half of a dispersion design's cost.
+struct AllpassTrig
 {
-    const double cosine = std::cos(omega);
-    const double sine = std::sin(omega);
-    const double cosine2 = std::cos(2.0 * omega);
-    const double sine2 = std::sin(2.0 * omega);
+    double cosine { 1.0 };
+    double sine { 0.0 };
+    double cosine2 { 1.0 };
+    double sine2 { 0.0 };
+};
+
+AllpassTrig allpassTrig(double omega) noexcept
+{
+    AllpassTrig trig;
+    trig.cosine = std::cos(omega);
+    trig.sine = std::sin(omega);
+    trig.cosine2 = std::cos(2.0 * omega);
+    trig.sine2 = std::sin(2.0 * omega);
+    return trig;
+}
+
+double secondOrderAllpassPhase(double a1, double a2,
+                               const AllpassTrig& trig) noexcept
+{
+    const double cosine = trig.cosine;
+    const double sine = trig.sine;
+    const double cosine2 = trig.cosine2;
+    const double sine2 = trig.sine2;
     const double numeratorPhase = std::atan2(
         -a1 * sine - sine2, a2 + a1 * cosine + cosine2);
     const double denominatorPhase = std::atan2(
@@ -2069,13 +2093,13 @@ struct DispersionSections
 // per-section [0, 2 pi) values add without an unwrap. An unused section is
 // bypassed and adds none.
 double dispersionPhase(const DispersionSections& sections,
-                       double omega) noexcept
+                       const AllpassTrig& trig) noexcept
 {
     double lag = 0.0;
     for (std::size_t section = 0; section < dispersionSectionCount; ++section)
         if (sections.used[section])
             lag += secondOrderAllpassPhase(sections.a1[section],
-                                           sections.a2[section], omega);
+                                           sections.a2[section], trig);
     return lag;
 }
 
@@ -2086,13 +2110,14 @@ double dispersionPhase(const DispersionSections& sections,
 // makes its residual smooth in the delay and lets the delay travel as far as
 // the pole pair moves it, and then re-derives the tap from its own answer and
 // solves again at that tap.
-double thiranDelayPhase(double samples, int anchor, double omega) noexcept
+double thiranDelayPhase(double samples, int anchor, double omega,
+                        const AllpassTrig& trig) noexcept
 {
     double a1 = 0.0;
     double a2 = 0.0;
     thiranCoefficients(samples - static_cast<double>(anchor), a1, a2);
     return static_cast<double>(anchor) * omega
-         + secondOrderAllpassPhase(a1, a2, omega);
+         + secondOrderAllpassPhase(a1, a2, trig);
 }
 
 double tunedLoopDelay(double fundamental, double sampleRate,
@@ -2105,6 +2130,7 @@ double tunedLoopDelay(double fundamental, double sampleRate,
 {
     constexpr double twoPiDouble = 2.0 * 3.14159265358979323846;
     const double omega = twoPiDouble * fundamental / sampleRate;
+    const AllpassTrig trig = allpassTrig(omega);
     const double lossOmega = referenceLossOmega(omega, sampleRate);
     // The bending-loss section is designed at the host rate, so its lag is
     // read at the host frequency rather than the 48 kHz reference one.
@@ -2114,7 +2140,7 @@ double tunedLoopDelay(double fundamental, double sampleRate,
         + bendingLossLag(bendingA1, bendingA2, omega)
         + constantLossLag(constantA1, constantA2, constantN1,
                           constantN2, omega)
-        + dispersionPhase(dispersion, omega);
+        + dispersionPhase(dispersion, trig);
     double delay = std::clamp(sampleRate / fundamental - fixedPhase / omega,
                               3.0,
                               static_cast<double>(delayCapacityForRate(sampleRate) - 3));
@@ -2123,14 +2149,14 @@ double tunedLoopDelay(double fundamental, double sampleRate,
         const int anchor = delayAnchor(delay);
         for (int iteration = 0; iteration < 6; ++iteration)
         {
-            const double residual = thiranDelayPhase(delay, anchor, omega)
+            const double residual = thiranDelayPhase(delay, anchor, omega, trig)
                                   + fixedPhase - twoPiDouble;
             if (exact::abs(residual) < 1.0e-11)
                 break;
             constexpr double step = 0.01;
             const double slope
-                = (thiranDelayPhase(delay + step, anchor, omega)
-                 - thiranDelayPhase(delay - step, anchor, omega))
+                = (thiranDelayPhase(delay + step, anchor, omega, trig)
+                 - thiranDelayPhase(delay - step, anchor, omega, trig))
                 / (2.0 * step);
             if (exact::abs(slope) < 1.0e-12)
                 break;
@@ -2238,12 +2264,14 @@ DispersionCalibration collocateDispersion(
     // Everything at the three points that the solve does not move - the
     // loss filters and the bending loss - is read once.
     double anchorOmega[3] {};
+    AllpassTrig anchorTrig[3] {};
     double anchorLag[3] {};
     for (int index = 0; index < 3; ++index)
     {
         const double omega = stretchedOmega(anchors[index]);
         const double lossOmega = referenceLossOmega(omega, sampleRate);
         anchorOmega[index] = omega;
+        anchorTrig[index] = allpassTrig(omega);
         anchorLag[index] = mixedOnePolePhase(broadCoefficient, broadMix,
                                              lossOmega)
             + mixedOnePolePhase(highCoefficient, highMix, lossOmega)
@@ -2261,8 +2289,9 @@ DispersionCalibration collocateDispersion(
         for (int index = 0; index < 3; ++index)
         {
             const double omega = anchorOmega[index];
-            residuals[index] = thiranDelayPhase(values[0], splitAnchor, omega)
-                + secondOrderAllpassPhase(a1, a2, omega) + anchorLag[index];
+            const AllpassTrig& trig = anchorTrig[index];
+            residuals[index] = thiranDelayPhase(values[0], splitAnchor, omega, trig)
+                + secondOrderAllpassPhase(a1, a2, trig) + anchorLag[index];
         }
     };
     const auto maximumResidual = [] (const double residuals[3])
