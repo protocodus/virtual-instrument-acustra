@@ -39,6 +39,12 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.6.4 — 2026-10-25 — lower CPU, sound unchanged
+
+- About 9.6 % fewer instructions on the factory presets (Rack-like build, 2x
+  quality); every output sample is bit-identical to 1.6.3's
+  ([benchmark](Docs/benchmarks/cpu-instruction-trims-2026-10-25.md)).
+
 ### 1.6.3 — 2026-10-22 — softer velocity contrast, steadier strums, 10% Room
 
 - Playing force follows MIDI velocity in proportion instead of its square,
