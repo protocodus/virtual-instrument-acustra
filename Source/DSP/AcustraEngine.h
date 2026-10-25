@@ -2159,7 +2159,10 @@ private:
         std::array<float, lineCount> absorptionState {};
         std::array<float, lineCount> absorptionGain {};
         std::array<float, lineCount> absorptionPole {};
-        std::array<float, earlyCapacity> early {};
+        // Every input is written twice, at earlyHead and earlyHead +
+        // earlyCapacity, so the last earlyCapacity inputs always lie in one
+        // contiguous window and a read needs no wrap (RoomAmbience::step).
+        std::array<float, 2 * earlyCapacity> early {};
         int earlyHead { 0 };
         // Four Schroeder allpasses diffusing what enters the late field.
         static constexpr int diffuserCapacity = 512;

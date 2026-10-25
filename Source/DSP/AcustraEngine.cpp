@@ -13415,12 +13415,13 @@ void AcustraEngine::RoomAmbience::reset() noexcept
 void AcustraEngine::RoomAmbience::step(float input) noexcept
 {
     early[static_cast<std::size_t>(earlyHead)] = input;
-    const auto delayed = [this] (int delay)
+    early[static_cast<std::size_t>(earlyHead + earlyCapacity)] = input;
+    // Every delay lies in [0, earlyCapacity] (prepare), so the mirrored
+    // window holds the sample a wrapped read would find.
+    const float* const window = early.data() + earlyHead + earlyCapacity;
+    const auto delayed = [window] (int delay)
     {
-        int index = earlyHead - delay;
-        if (index < 0)
-            index += earlyCapacity;
-        return early[static_cast<std::size_t>(index)];
+        return window[-delay];
     };
     float reflectedLeft = 0.0f;
     float reflectedRight = 0.0f;
