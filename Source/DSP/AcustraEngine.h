@@ -2168,10 +2168,17 @@ private:
         static constexpr int converterOrder = 64;
         static constexpr int maximumDecimation = 12; // through 768 kHz
         static constexpr int converterCapacity = converterOrder * maximumDecimation + 1;
-        std::array<float, converterCapacity> converterCoefficients {}, converterInput {};
-        std::array<std::array<float, converterOrder + 1>, maximumDecimation>
+        // The taps are designed in float and every value held here is a
+        // float's exact binary64 image: the filters multiply in double, and
+        // holding the operands already widened removes a conversion from
+        // every tap without changing a product or a sum. The input history
+        // holds each float input widened, and the output history each
+        // step's left/right pair, side by side so one 16-byte load feeds both
+        // channels' sums (RoomAmbience::process).
+        std::array<double, converterCapacity> converterCoefficients {}, converterInput {};
+        std::array<std::array<double, converterOrder + 1>, maximumDecimation>
             converterPhases {};
-        std::array<float, converterOrder + 1> converterLeft {}, converterRight {};
+        std::array<std::array<double, 2>, converterOrder + 1> converterOutput {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };
