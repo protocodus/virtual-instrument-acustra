@@ -11909,13 +11909,21 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
 #pragma clang fp reassociate(off)
 #endif
             // Scale each unchanged contribution exactly once, then interleave
-            // constant lane pairs. Only the lower L/R sums become output.
+            // constant lane pairs. Only the lower L/R sums become output: the
+            // second and fourth pairs reach them as the upper half of the
+            // first and third moved down (one movhlps), and what the upper
+            // lanes then add is never read.
             const Vector leftScaled = 2.0f * leftPart;
             const Vector rightScaled = 2.0f * rightPart;
             const Vector zip01 = { leftScaled[0], rightScaled[0], leftScaled[1], rightScaled[1] };
             const Vector zip23 = { leftScaled[2], rightScaled[2], leftScaled[3], rightScaled[3] };
-            const Vector swap01 = { zip01[2], zip01[3], zip01[0], zip01[1] };
-            const Vector swap23 = { zip23[2], zip23[3], zip23[0], zip23[1] };
+            typedef std::int64_t Halves __attribute__((vector_size(16)));
+            const Halves half01 = reinterpret_cast<Halves>(zip01);
+            const Halves half23 = reinterpret_cast<Halves>(zip23);
+            const Halves high01 = { half01[1], half01[1] };
+            const Halves high23 = { half23[1], half23[1] };
+            const Vector swap01 = reinterpret_cast<Vector>(high01);
+            const Vector swap23 = reinterpret_cast<Vector>(high23);
             addScaledStereo(zip01);
             addScaledStereo(swap01);
             addScaledStereo(zip23);
