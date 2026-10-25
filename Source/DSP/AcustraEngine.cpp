@@ -13187,15 +13187,19 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate,
         for (int part = 0; part < decimation; ++part)
         {
             auto& coefficients = converterPhases[static_cast<std::size_t>(part)];
-            coefficients.fill(0.0f);
+            for (auto& tap : coefficients)
+                tap = { 0.0, 0.0 };
             double phaseSum = 0.0;
             for (int index = part; index <= order; index += decimation)
                 phaseSum += converterCoefficients[static_cast<std::size_t>(index)];
             // Normalise each branch's DC gain, rather than inheriting the
             // small phase-dependent gain from the window's truncation.
             for (int index = part; index <= order; index += decimation)
-                coefficients[static_cast<std::size_t>(index / decimation)]
-                    = static_cast<float>(converterCoefficients[static_cast<std::size_t>(index)] / phaseSum);
+            {
+                const double tap = static_cast<float>(
+                    converterCoefficients[static_cast<std::size_t>(index)] / phaseSum);
+                coefficients[static_cast<std::size_t>(index / decimation)] = { tap, tap };
+            }
         }
     }
     // A fixed, gentle narrowing of the room below 150 Hz. Design at the
@@ -13568,11 +13572,10 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         Pair sum = { 0.0, 0.0 };
         const auto tap = [&] (std::size_t coefficient, int index)
         {
-            Pair history;
+            Pair history, weight;
             __builtin_memcpy(&history,
                 converterOutput[static_cast<std::size_t>(index)].data(), sizeof(history));
-            const double c = coefficients[coefficient];
-            const Pair weight = { c, c };
+            __builtin_memcpy(&weight, coefficients[coefficient].data(), sizeof(weight));
             sum += weight * history;
         };
 #else
@@ -13580,8 +13583,8 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         const auto tap = [&] (std::size_t coefficient, int index)
         {
             const auto& history = converterOutput[static_cast<std::size_t>(index)];
-            sumLeft += coefficients[coefficient] * history[0];
-            sumRight += coefficients[coefficient] * history[1];
+            sumLeft += coefficients[coefficient][0] * history[0];
+            sumRight += coefficients[coefficient][1] * history[1];
         };
 #endif
         int index = converterOutputHead;

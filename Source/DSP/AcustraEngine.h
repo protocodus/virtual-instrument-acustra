@@ -2194,10 +2194,11 @@ private:
         // every tap without changing a product or a sum. The input history
         // holds each float input widened, and the output history each
         // step's left/right pair, side by side so one 16-byte load feeds both
-        // channels' sums (RoomAmbience::process).
+        // channels' sums (RoomAmbience::process); each output tap is held
+        // twice, once per channel's lane, for the same reason.
         std::array<double, converterCapacity> converterCoefficients {}, converterInput {};
-        std::array<std::array<double, converterOrder + 1>, maximumDecimation>
-            converterPhases {};
+        alignas(16) std::array<std::array<std::array<double, 2>, converterOrder + 1>,
+                               maximumDecimation> converterPhases {};
         std::array<std::array<double, 2>, converterOrder + 1> converterOutput {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
