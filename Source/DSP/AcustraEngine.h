@@ -1003,6 +1003,23 @@ private:
             return all;
         }();
         int activeModeCount { bridgeModeCount + 1 };
+        // What advanceModes reads for the slot activeModes[k], at k, copied
+        // from heaveModes, rockModes and the residues when configureBridge
+        // lists the slots: each section's coefficient pair (heave, rock)
+        // side by side for one 16-byte load, and the float residues as their
+        // exact binary64 images. The states stay in heaveModes and rockModes.
+        struct ActiveMode
+        {
+            alignas(16) std::array<double, 2> numerator1 {};
+            alignas(16) std::array<double, 2> numerator2 {};
+            alignas(16) std::array<double, 2> denominator1 {};
+            alignas(16) std::array<double, 2> denominator2 {};
+            double residueHeave { 0.0 };
+            double residueCross { 0.0 };
+            double residueRock { 0.0 };
+            bool rocking { false };
+        };
+        std::array<ActiveMode, bridgeModeCount + 1> activeCoefficients {};
         float immediateHeave { 0.0f };
         float immediateCross { 0.0f };
         float immediateRock { 0.0f };
