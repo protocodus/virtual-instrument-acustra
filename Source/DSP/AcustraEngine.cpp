@@ -13535,23 +13535,20 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         // very operand every tap converted before.
         converterInput[static_cast<std::size_t>(converterInputHead)]
             = static_cast<double>(input);
+        converterInput[static_cast<std::size_t>(converterInputHead + converterLength)]
+            = static_cast<double>(input);
         if (phase == 0)
         {
             double filtered = 0.0;
-            int index = converterInputHead;
-            int coefficient = 0;
-            // Walk the two contiguous parts of the ring in the original
-            // coefficient order. Every product and addition stays unchanged;
-            // only the per-tap wrap test moves outside the inner loops.
-            for (; index >= 0; --index, ++coefficient)
+            // The last converterLength inputs, newest at window[0], in one
+            // contiguous run of the mirrored ring: the original coefficient
+            // order, every product and addition unchanged, and no wrap.
+            const double* const window
+                = converterInput.data() + converterInputHead + converterLength;
+            for (int coefficient = 0; coefficient < converterLength; ++coefficient)
             {
                 filtered += converterCoefficients[static_cast<std::size_t>(coefficient)]
-                    * converterInput[static_cast<std::size_t>(index)];
-            }
-            for (index = converterLength - 1; coefficient < converterLength; --index, ++coefficient)
-            {
-                filtered += converterCoefficients[static_cast<std::size_t>(coefficient)]
-                    * converterInput[static_cast<std::size_t>(index)];
+                    * window[-coefficient];
             }
             inputState += inputCoefficient * (static_cast<float>(filtered) - inputState);
             if (exact::abs(inputState) < 1.0e-20f)
@@ -13561,38 +13558,40 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
                 ? 0 : converterOutputHead + 1;
             converterOutput[static_cast<std::size_t>(converterOutputHead)]
                 = { static_cast<double>(currentLeft), static_cast<double>(currentRight) };
+            converterOutput[static_cast<std::size_t>(converterOutputHead + converterOrder + 1)]
+                = converterOutput[static_cast<std::size_t>(converterOutputHead)];
         }
         converterInputHead = converterInputHead + 1 == converterLength
             ? 0 : converterInputHead + 1;
         const auto& coefficients = converterPhases[static_cast<std::size_t>(phase)];
+        // The last converterOrder + 1 outputs, newest at window[0], in one
+        // contiguous run of the mirrored ring, in the original tap order.
+        const auto* const window
+            = converterOutput.data() + converterOutputHead + converterOrder + 1;
 #if defined(__clang__) || defined(__GNUC__)
         // Left and right are two independent sums, each lane taking the
         // scalar sum's own product and addition in the same tap order.
         typedef double Pair __attribute__((vector_size(16)));
         Pair sum = { 0.0, 0.0 };
-        const auto tap = [&] (std::size_t coefficient, int index)
+        const auto tap = [&] (std::size_t coefficient)
         {
             Pair history, weight;
             __builtin_memcpy(&history,
-                converterOutput[static_cast<std::size_t>(index)].data(), sizeof(history));
+                window[-static_cast<std::ptrdiff_t>(coefficient)].data(), sizeof(history));
             __builtin_memcpy(&weight, coefficients[coefficient].data(), sizeof(weight));
             sum += weight * history;
         };
 #else
         double sumLeft = 0.0, sumRight = 0.0;
-        const auto tap = [&] (std::size_t coefficient, int index)
+        const auto tap = [&] (std::size_t coefficient)
         {
-            const auto& history = converterOutput[static_cast<std::size_t>(index)];
+            const auto& history = window[-static_cast<std::ptrdiff_t>(coefficient)];
             sumLeft += coefficients[coefficient][0] * history[0];
             sumRight += coefficients[coefficient][1] * history[1];
         };
 #endif
-        int index = converterOutputHead;
-        std::size_t coefficient = 0;
-        for (; index >= 0; --index, ++coefficient)
-            tap(coefficient, index);
-        for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
-            tap(coefficient, index);
+        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
+            tap(coefficient);
 #if defined(__clang__) || defined(__GNUC__)
         left = static_cast<float>(sum[0]);
         right = static_cast<float>(sum[1]);

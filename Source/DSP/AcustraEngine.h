@@ -2196,10 +2196,15 @@ private:
         // step's left/right pair, side by side so one 16-byte load feeds both
         // channels' sums (RoomAmbience::process); each output tap is held
         // twice, once per channel's lane, for the same reason.
-        std::array<double, converterCapacity> converterCoefficients {}, converterInput {};
+        // The input history is written twice, at converterInputHead and one
+        // converterLength on, so the filter reads its window contiguously.
+        std::array<double, converterCapacity> converterCoefficients {};
+        std::array<double, 2 * converterCapacity> converterInput {};
         alignas(16) std::array<std::array<std::array<double, 2>, converterOrder + 1>,
                                maximumDecimation> converterPhases {};
-        std::array<std::array<double, 2>, converterOrder + 1> converterOutput {};
+        // Written twice, at converterOutputHead and converterOrder + 1 on,
+        // like the input history, so the taps read one contiguous run.
+        std::array<std::array<double, 2>, 2 * (converterOrder + 1)> converterOutput {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };
