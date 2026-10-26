@@ -21,14 +21,14 @@ rewrites this table. Longer technique and repertoire renders are described in
 
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
-| 1 | Dreadnought Steel | [01-dreadnought-steel.mp3](Docs/audio/01-dreadnought-steel.mp3) | 18.7 s | -3.3 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.mp3](Docs/audio/02-parlor-steel-fingerstyle.mp3) | 18.2 s | -9.4 dBFS |
-| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.mp3](Docs/audio/03-mahogany-steel-thumb.mp3) | 16.8 s | -9.5 dBFS |
-| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.mp3](Docs/audio/04-jumbo-steel-pick.mp3) | 19.6 s | -3.7 dBFS |
-| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.mp3](Docs/audio/05-palm-muted-steel-pick.mp3) | 14.1 s | -4.0 dBFS |
-| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.mp3](Docs/audio/06-dadgad-mono-mic.mp3) | 15.0 s | -12.1 dBFS |
-| 7 | Open G Slide-ready | [07-open-g-slide-ready.mp3](Docs/audio/07-open-g-slide-ready.mp3) | 16.0 s | -11.0 dBFS |
-| 8 | Piezo Stage Steel | [08-piezo-stage-steel.mp3](Docs/audio/08-piezo-stage-steel.mp3) | 18.8 s | -7.9 dBFS |
+| 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -1.9 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -8.1 dBFS |
+| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -9.7 dBFS |
+| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -4.3 dBFS |
+| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -4.0 dBFS |
+| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.wav](Docs/audio/06-dadgad-mono-mic.wav) | 11.2 s | -12.1 dBFS |
+| 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -7.2 dBFS |
+| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -8.1 dBFS |
 
 <!-- audio-demos-end -->
 
