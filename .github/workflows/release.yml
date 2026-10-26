@@ -1,9 +1,8 @@
 name: Release
 
 # A v* tag builds, validates and packages every format and drafts a GitHub
-# release from them. A manual run or a pull request that changes the release
-# path builds and validates the same packages without drafting a release, and
-# a pull request never signs. main-build.yml calls it for every main build.
+# release from them. A manual run builds and validates the same packages
+# without drafting a release. main-build.yml calls it for every main build.
 # README.md (Release workflow) lists the secrets.
 on:
   push:
@@ -15,19 +14,13 @@ on:
         description: Days to keep each platform's package artifact
         type: number
         default: 7
-  pull_request:
-    paths:
-      - ".github/workflows/release.yml"
-      - "scripts/**"
-      - "cmake/**"
-      - "CMakeLists.txt"
 
 permissions:
   contents: read
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 env:
   # A pinned pluginval release, each archive checked against its SHA-256.
@@ -95,7 +88,6 @@ jobs:
 
       - name: Import Developer ID identities
         id: signing
-        if: github.event_name != 'pull_request'
         env:
           CERTIFICATES_P12: ${{ secrets.MACOS_CERTIFICATES_P12 }}
           CERTIFICATES_PASSWORD: ${{ secrets.MACOS_CERTIFICATES_PASSWORD }}
