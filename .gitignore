@@ -28,8 +28,10 @@ DerivedData/
 .vscode/
 *~
 
-# Audio is generated locally and is not stored in this repository
+# Audio is generated locally and is not stored in this repository, except
+# the preset demos the main build commits
 *.[wW][aA][vV]
+!/Docs/audio/[0-9][0-9]*-*.wav
 
 # Coefficients fitted from Mark Rau's guitar measurements, which carry no
 # redistribution license: Tools/GenerateRauGuitarCandidates.py writes them
