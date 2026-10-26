@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.6.3 LANGUAGES C CXX)
+project(Acustra VERSION 1.9.0 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -376,6 +376,9 @@ if(BUILD_TESTING)
     add_executable(AcustraEngineTests Tests/AcustraEngineTests.cpp)
     target_link_libraries(AcustraEngineTests PRIVATE AcustraDSP)
     target_compile_features(AcustraEngineTests PRIVATE cxx_std_20)
+    if(ACUSTRA_ENABLE_SANITIZERS)
+        target_compile_definitions(AcustraEngineTests PRIVATE ACUSTRA_TIMING_INSTRUMENTED=1)
+    endif()
 
     if(MSVC)
         target_compile_options(AcustraEngineTests PRIVATE /W4 /permissive-)
@@ -388,8 +391,14 @@ if(BUILD_TESTING)
     # macOS runner (on 2026-09-25 the engine suite ran 268 s against 149 s
     # and the release suite timed out at 90 s against 50 s), so these two
     # long suites keep that much headroom over the slowest runner.
-    acustra_add_suite(Acustra.Engine AcustraEngineTests)
+    acustra_add_suite(Acustra.Engine AcustraEngineTests --contracts-only)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
+    # A release CPU budget cannot be measured while other CTest workloads
+    # compete for the runner, or against ASan/UBSan instrumentation overhead.
+    # The workload still runs under sanitizers; only its release-speed
+    # assertion is inapplicable there. Plain CI retains the same 0.25x gate.
+    acustra_add_suite(Acustra.EnginePerformance AcustraEngineTests --performance-only)
+    set_tests_properties(Acustra.EnginePerformance PROPERTIES RUN_SERIAL TRUE TIMEOUT 60)
 
     add_executable(AcustraChorusRegressionTests Tests/ChorusRegressionTests.cpp)
     target_link_libraries(AcustraChorusRegressionTests PRIVATE AcustraDSP)
@@ -961,6 +970,9 @@ if(BUILD_TESTING)
         add_test(NAME Acustra.ParameterMatrix
                  COMMAND AcustraParameterMatrixTests --jobs 4)
         set_tests_properties(Acustra.ParameterMatrix PROPERTIES LABELS fuzz TIMEOUT 1800)
+        add_test(NAME Acustra.ParameterMatrixProtocol
+                 COMMAND AcustraParameterMatrixTests --self-test)
+        set_tests_properties(Acustra.ParameterMatrixProtocol PROPERTIES TIMEOUT 30)
 
         add_executable(AcustraPluginTempoReleaseTests
             Tests/PluginTempoReleaseTests.cpp)
