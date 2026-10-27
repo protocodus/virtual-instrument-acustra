@@ -108,6 +108,17 @@ target_include_directories(AcustraDSP
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
 target_compile_features(AcustraDSP PUBLIC cxx_std_20)
 set_target_properties(AcustraDSP PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# Under -fPIC GCC assumes any exported function may be replaced at load time,
+# so it never inlines one into another, even inside AcustraEngine.cpp: the
+# per-sample string, bridge and body helpers each stayed a call. Nothing
+# interposes the engine's symbols (the library is linked in statically), so
+# let GCC inline as it does without -fPIC. Code generation only: every sample
+# is the same, and on x86-64 the paired callback benchmark measured about 8%
+# less CPU (Docs/benchmarks/cpu-optimization-2026-10-24.md). Clang already
+# behaves this way.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(AcustraDSP PRIVATE -fno-semantic-interposition)
+endif()
 
 target_include_directories(AcustraReferenceBank
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
