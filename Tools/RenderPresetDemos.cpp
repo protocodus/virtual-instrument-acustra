@@ -109,9 +109,10 @@ int main (int argc, char** argv)
     for (std::size_t preset = 0; preset < instrument.presets.size(); ++preset)
         tempos.push_back (phraseTempo (midiDir / (demos::detail::Stem (instrument, preset) + ".mid")));
 
-    // U7 perf budget: 0 reports without failing until the CI runner's median
-    // is measured.
-    instrument.cpuBudget = 0.0;
+    // U7 perf budget: about 3x the slowest demo's median realtime factor on
+    // the CI runner, 0.094 (08-piezo-stage-steel) in ci.yml run 186
+    // (ubuntu-24.04, AMD EPYC 7763, three repeats), 2026-10-27.
+    instrument.cpuBudget = 0.28;
     instrument.open = [tempos] (std::size_t preset, double sampleRate, int maxBlockFrames, std::uint32_t)
     {
         return std::make_unique<PresetVoice> (preset, sampleRate, maxBlockFrames, tempos[preset]);
