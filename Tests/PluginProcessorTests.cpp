@@ -2449,13 +2449,14 @@ void testUnsupportedSampleRatesAreSilent()
 void testEditorShowsTheBuildIdentity()
 {
     // The version and build number come from the identity record CMake
-    // freezes into every format; reading it keeps it in each binary.
+    // freezes into every format; reading it keeps it in each binary. The
+    // title is the About box, so the panel itself stays build-independent.
     auto owner = std::make_unique<AcustraAudioProcessor>();
     std::unique_ptr<juce::AudioProcessorEditor> editor { owner->createEditor() };
-    const auto* subtitle = findLabel (*editor, [] (const juce::Label& label)
-                                      { return label.getText().startsWith ("PHYSICALLY MODELLED"); });
-    expect (subtitle != nullptr
-                && subtitle->getText().contains (
+    auto* title = findLabel (*editor, [] (const juce::Label& label)
+                             { return label.getText() == "ACUSTRA"; });
+    expect (title != nullptr
+                && title->getTooltip().contains (
                     juce::String (JucePlugin_VersionString) + "-build."),
             "the editor does not show the version and build from the identity record");
 }
