@@ -28,7 +28,9 @@ DerivedData/
 .vscode/
 *~
 
-# Audio is generated locally and is not stored in this repository
+# Audio is generated locally and is not stored in this repository. The
+# preset demos are the exception: they are tracked, and the main build adds
+# them with -f, so the technique renders beside them in Docs/audio stay out.
 *.[wW][aA][vV]
 
 # Coefficients fitted from Mark Rau's guitar measurements, which carry no

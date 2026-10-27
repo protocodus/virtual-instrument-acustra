@@ -41,6 +41,7 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void mouseUp (const juce::MouseEvent&) override;
 
 private:
     class ChoiceButtonGroup;
@@ -67,6 +68,7 @@ private:
     juce::Image cedarBackground;
     juce::Image walnutBackground;
     juce::TooltipWindow tooltipWindow { this, 600 };
+    juce::ScopedMessageBox aboutMessageBox;
 
     juce::Label titleLabel;
     juce::Label subtitleLabel;

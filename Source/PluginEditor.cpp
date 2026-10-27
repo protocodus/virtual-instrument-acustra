@@ -769,12 +769,15 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     titleLabel.setFont (brandFont (40.0f));
     titleLabel.setColour (juce::Label::textColourId, ivory);
     titleLabel.setJustificationType (juce::Justification::centredLeft);
-    titleLabel.setInterceptsMouseClicks (false, false);
     titleLabel.setAccessible (false);
+    // The title is the About box: the build identity stays off the panel so
+    // the committed screenshot does not change with every build.
+    titleLabel.setTooltip ("About Acustra " + displayVersion());
+    titleLabel.setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    titleLabel.addMouseListener (this, false);
     addAndMakeVisible (titleLabel);
 
-    subtitleLabel.setText ("PHYSICALLY MODELLED ACOUSTIC GUITAR  |  " + displayVersion(),
-                           juce::dontSendNotification);
+    subtitleLabel.setText ("PHYSICALLY MODELLED ACOUSTIC GUITAR", juce::dontSendNotification);
     subtitleLabel.setFont (displayFont (15.5f, juce::Font::bold));
     subtitleLabel.setColour (juce::Label::textColourId, brass);
     subtitleLabel.setJustificationType (juce::Justification::centredLeft);
@@ -1014,9 +1017,21 @@ AcustraAudioProcessorEditor::Sizing AcustraAudioProcessorEditor::sizingFor (
 
 AcustraAudioProcessorEditor::~AcustraAudioProcessorEditor()
 {
+    aboutMessageBox = {};
     stopTimer();
     stringActivityDisplay.reset();
     setLookAndFeel (nullptr);
+}
+
+void AcustraAudioProcessorEditor::mouseUp (const juce::MouseEvent& event)
+{
+    if (event.eventComponent != &titleLabel || ! titleLabel.getLocalBounds().contains (event.getPosition()))
+        return;
+    aboutMessageBox = juce::AlertWindow::showScopedAsync (
+        juce::MessageBoxOptions().withTitle ("About Acustra")
+            .withMessage ("Acustra " + displayVersion())
+            .withButton ("OK")
+            .withAssociatedComponent (this), nullptr);
 }
 
 void AcustraAudioProcessorEditor::configureSetupChoice (

@@ -21,14 +21,14 @@ rewrites this table. Longer technique and repertoire renders are described in
 
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
-| 1 | Dreadnought Steel | [01-dreadnought-steel.mp3](Docs/audio/01-dreadnought-steel.mp3) | 18.7 s | -3.3 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.mp3](Docs/audio/02-parlor-steel-fingerstyle.mp3) | 18.2 s | -9.4 dBFS |
-| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.mp3](Docs/audio/03-mahogany-steel-thumb.mp3) | 16.8 s | -9.5 dBFS |
-| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.mp3](Docs/audio/04-jumbo-steel-pick.mp3) | 19.6 s | -3.7 dBFS |
-| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.mp3](Docs/audio/05-palm-muted-steel-pick.mp3) | 14.1 s | -4.0 dBFS |
-| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.mp3](Docs/audio/06-dadgad-mono-mic.mp3) | 15.0 s | -12.1 dBFS |
-| 7 | Open G Slide-ready | [07-open-g-slide-ready.mp3](Docs/audio/07-open-g-slide-ready.mp3) | 16.0 s | -11.0 dBFS |
-| 8 | Piezo Stage Steel | [08-piezo-stage-steel.mp3](Docs/audio/08-piezo-stage-steel.mp3) | 18.8 s | -7.9 dBFS |
+| 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -1.9 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -8.1 dBFS |
+| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -9.7 dBFS |
+| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -4.3 dBFS |
+| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -4.0 dBFS |
+| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.wav](Docs/audio/06-dadgad-mono-mic.wav) | 11.2 s | -12.1 dBFS |
+| 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -7.2 dBFS |
+| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -8.1 dBFS |
 
 <!-- audio-demos-end -->
 
@@ -38,6 +38,18 @@ Each entry is a source version in this repository; none has been published
 as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
+
+### 1.9.0 — 2026-10-23 — less CPU during retuning, identical output
+
+- Reduce SDK complex-math overhead during continuous pitch bends, keeping
+  the library's arithmetic and exact output. Exceptional values and directed
+  rounding retain the original library path. The native plug-in keeps its
+  standard-library implementation.
+- Continue the current 1.6.3 sound, including its velocity response, strums,
+  body contact and release behavior. The owner requested this version for
+  the fresh Rack Extension 1.9.0d2 rebuild; the earlier, pre-renumbering
+  1.9.0 source and packages remain archived separately.
+- [Exact-output checks and SDK timing](Docs/validation/exact-bend-cpu-2026-10-23.md).
 
 ### 1.6.4 — 2026-10-23 — less CPU, the same sound
 
@@ -161,7 +173,7 @@ later builds to exceed.
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 22](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/39858548334/artifacts/12461363648)**, built from [`bec9d409b368`](https://github.com/protocodus/virtual-instrument-acustra/commit/bec9d409b3689e637ac2835fd69db3863a6195c2). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 28](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/40471943571/artifacts/12721230457)**, built from [`710c2e904875`](https://github.com/protocodus/virtual-instrument-acustra/commit/710c2e904875f9a9442fcd590d35f6c7f274dd3f). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
