@@ -54,13 +54,15 @@ Both use the same versioned layout and named manifests/checksums. Run
 validates and packages the three platforms from one commit:
 
 - **macOS universal** (macos-15): `scripts/build-macos.sh` with
-  `BUILD_UNIVERSAL=ON` builds VST3, AU, CLAP and Standalone and runs the whole test suite, `auval -strict`
-  validates the AU and pluginval the VST3, then
+  `BUILD_UNIVERSAL=ON` builds VST3, AU, CLAP and Standalone and runs the whole test suite,
+  `scripts/validate-plugins.sh` runs pluginval on the VST3, clap-validator on
+  the CLAP and `auval -strict` on the AU, then
   `scripts/sign-and-package-macos.sh` makes the zip and the pkg. The runner is
   arm64, so the x86_64 slice is built but never run.
 - **Windows x64** (windows-2025) and **Linux x64** (ubuntu-22.04): the VST3,
   the CLAP, the Standalone and the plug-in wrapper tests (`Acustra.PluginProcessor`,
-  `Acustra.PluginTempoRelease`), pluginval on the VST3, then
+  `Acustra.PluginTempoRelease`), pluginval on the VST3 and clap-validator on
+  the CLAP, then
   `scripts/package-windows.py` or `scripts/package-linux.py`. The Windows job fails if either binary imports
   the Visual C++ runtime DLLs. The Linux job links libstdc++ and libgcc
   statically and fails if either binary asks for a glibc newer than Ubuntu
@@ -71,11 +73,13 @@ the same workflow on every push to `main`, nightly at 03:00 UTC and on demand,
 keeps the packages for 30 days, renders the ten demos, collects everything with
 `BUILD.txt` and `SHA256SUMS` into one `acustra-main-build-<run>` artifact, and
 commits the editor screenshot and the [Downloads](../../README.md#downloads) block when `main`
-still points at the commit it built. CLAP is built and packaged on every
-platform; pluginval v1.0.4 validates only the VST3.
+still points at the commit it built. CLAP is built, packaged and checked by
+clap-validator on every platform.
 
-pluginval is release v1.0.4, downloaded and checked against pinned SHA-256
-sums, at strictness level 10. Build numbers are the workflow's run number,
+`scripts/validate-plugins.sh` is the portfolio's shared copy: it downloads
+pluginval v1.0.4 and clap-validator 0.3.2, checks them against pinned SHA-256
+sums and runs pluginval at strictness level 10 with the fixed seed
+0x41435354. Build numbers are the workflow's run number,
 as in CI, and each platform's package set is kept as a workflow artifact for
 seven days (30 for a main build).
 
@@ -117,8 +121,8 @@ settles none of them:
 - Whether and how to sign: an Apple Developer ID with notarization, and a
   Windows signing provider. Until then the packages are signed ad hoc or
   unsigned, as above.
-- Qualification in real hosts. The workflow runs the wrapper tests, pluginval
-  and auval; it opens the plug-ins in no DAW.
+- Qualification in real hosts. The workflow runs the wrapper tests, pluginval,
+  clap-validator and auval; it opens the plug-ins in no DAW.
 - A listening verdict on the version's sound changes.
 - The JUCE licence route (see [Licensing](../../README.md#licensing)), the EULA, terms and
   privacy policy, and the price and purchase path.

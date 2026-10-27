@@ -2,14 +2,15 @@
 // processor: every automatable parameter at its extremes, alone, in pairs and
 // on every factory preset, at three rates and block sizes.
 //
-//   AcustraParameterMatrixTests [--jobs N] [--case LABEL] [--self-test]
+//   AcustraParameterMatrixTests [--jobs N] [--rotation] [--shard K/N]
+//                               [--case LABEL] [--count] [--list]
+//   AcustraParameterMatrixTests --self-test
 
 #include "PluginProcessor.h"
 
 #include "ParameterMatrix.h"
 
 #include <cmath>
-#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -136,38 +137,9 @@ int checkReleaseProtocol()
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
-    matrix::Options options;
-    std::string selectedCase;
-    bool selfTest = false;
-    for (int i = 1; i < argc; ++i)
-    {
-        if (std::strcmp (argv[i], "--jobs") == 0 && i + 1 < argc)
-            options.jobs = std::atoi (argv[++i]);
-        else if (std::strcmp (argv[i], "--case") == 0 && i + 1 < argc)
-            selectedCase = argv[++i];
-        else if (std::strcmp (argv[i], "--self-test") == 0)
-            selfTest = true;
-        else
-        {
-            std::fprintf (stderr, "usage: %s [--jobs N] [--case LABEL] [--self-test]\n", argv[0]);
-            return 2;
-        }
-    }
-    if (selfTest)
+    // --self-test checks the release protocol the limits above rely on; any
+    // other command line is the shared matrix CLI (U9).
+    if (argc == 2 && std::strcmp (argv[1], "--self-test") == 0)
         return checkReleaseProtocol();
-    bool foundCase = false;
-    if (! selectedCase.empty())
-        options.select = [&] (std::size_t, const matrix::Case& c)
-        {
-            const bool selected = c.label == selectedCase;
-            foundCase = foundCase || selected;
-            return selected;
-        };
-    const int failures = matrix::Run ([] { return std::make_unique<AcustraDevice>(); }, options);
-    if (! selectedCase.empty() && ! foundCase)
-    {
-        std::fprintf (stderr, "unknown case: %s\n", selectedCase.c_str());
-        return 2;
-    }
-    return failures == 0 ? 0 : 1;
+    return matrix::Main (argc, argv, [] { return std::make_unique<AcustraDevice>(); });
 }

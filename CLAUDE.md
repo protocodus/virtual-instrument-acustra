@@ -160,6 +160,26 @@ current engine was removed on 2026-10-17; reports link to it in Git history.
 The technique and
 repertoire WAV renders under README **Build** are local and not committed.
 
+## Testing
+
+Tests follow the portfolio testing standard (U1–U10); the `portfolio-testing`
+skill has the procedures. These hold in every session:
+
+- Every CTest test is `<Name>.<Suite>` with exactly one tier label: `unit`,
+  `audio`, `render`, `fuzz` or `perf`.
+- A test is never skipped, disabled, loosened or given a longer timeout to
+  get green. Diagnose a failure against the baseline first; when a fixture or
+  limit was wrong, fix it and say why beside it, in the same commit.
+- Checks run in Release builds: use the file's always-on helper, never a bare
+  `assert()`. Seeds, rates and block sizes are fixed.
+- No test outside the `perf` tier passes or fails on time, and `perf` never
+  runs in a Debug or sanitized build. CPU figures are development-machine
+  figures, never Reason or DAW CPU.
+- A fixed fuzz crash's input goes in `Tests/Fixtures/fuzz/`, which
+  `<Name>.DspFuzzReplay` replays in the `unit` tier.
+- A DSP change is done when the suites it touches, the `unit`, `audio` and
+  `perf` tiers and `<Name>DSPCxx17` pass.
+
 ## Build and verify
 
 Run from the repository root with CMake 3.22+ and a C++20 compiler. Prefer a
@@ -171,14 +191,15 @@ cmake --build build-dsp --config Release --parallel 2 --target AcustraEngineTest
 ctest --test-dir build-dsp -C Release -R "^Acustra[.](Engine|StringPitchRealism)$" --output-on-failure
 ```
 
-Every CTest test carries one tier label: `unit`, `audio` for the demo render
-checks, `render` for the editor screenshot, or `fuzz` for the parameter-extremes
-matrix (`Acustra.ParameterMatrix`, plug-in builds) and the libFuzzer run
-(`Acustra.DspFuzz`, Clang sanitizer builds); CI selects tiers with `ctest -L`.
-`-DACUSTRA_ENABLE_SANITIZERS=ON` (Clang or GCC) builds everything under
-ASan + UBSan, as the `sanitizers` and `parameter-matrix` jobs do. A fixed fuzz
-crash's input goes in `Tests/Fixtures/fuzz/`, which `Acustra.DspFuzzReplay`
-replays as a unit test.
+Acustra's suites by tier: `unit`, `audio` (the demo render checks), `render`
+(the editor screenshot), `fuzz` (the parameter-extremes matrix
+`Acustra.ParameterMatrix` in plug-in builds; `Acustra.DspFuzz` with
+`-DACUSTRA_BUILD_FUZZER=ON` and Clang) and `perf` (`Acustra.CpuBudget` and the
+engine's 0.25x gate `Acustra.EnginePerformance`, Release builds without
+sanitizers); CI selects tiers with `ctest -L`. `-DACUSTRA_ENABLE_SANITIZERS=ON`
+(Clang or GCC) builds everything under ASan + UBSan, as the `sanitizers` and
+`parameter-matrix` jobs do. `scripts/validate-plugins.sh build-plugin Acustra
+aumu Acu1 Acst 0x41435354` runs the host validators on a plug-in build.
 Select targets and an anchored test expression for the affected behavior.
 Choose parallelism for available memory; `ctest -N` lists registered tests.
 On non-MSVC builds, also build `AcustraDSPCxx17` for DSP/Performer changes.

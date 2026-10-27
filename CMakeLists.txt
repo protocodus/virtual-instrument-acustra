@@ -41,6 +41,7 @@ option(ACUSTRA_BUILD_TOOLS "Build offline Acustra tools" ON)
 option(ACUSTRA_BUILD_CLAP "Build the CLAP plug-in alongside the JUCE formats" ON)
 option(ACUSTRA_ENABLE_SANITIZERS
     "Instrument the DSP, tests and tools with address/undefined-behaviour sanitizers" OFF)
+option(ACUSTRA_BUILD_FUZZER "Build the Clang libFuzzer DSP harness (Acustra.DspFuzz)" OFF)
 option(ACUSTRA_BUILD_PLUGIN_REFERENCE_HOST
     "Build the optional JUCE VST3 reference renderer/editor" OFF)
 option(ACUSTRA_REQUIRE_PYTHON_TESTS
@@ -50,13 +51,16 @@ set(ACUSTRA_JUCE_PATH "" CACHE PATH
 set(ACUSTRA_CLAP_JUCE_EXTENSIONS_PATH "" CACHE PATH
     "Optional local clap-juce-extensions checkout with initialized submodules")
 
-if(ACUSTRA_ENABLE_SANITIZERS)
+if(ACUSTRA_BUILD_FUZZER AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "ACUSTRA_BUILD_FUZZER needs Clang's libFuzzer")
+endif()
+if(ACUSTRA_ENABLE_SANITIZERS OR ACUSTRA_BUILD_FUZZER)
     if(MSVC)
         message(FATAL_ERROR "ACUSTRA_ENABLE_SANITIZERS needs Clang or GCC")
     endif()
-    add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all
+    add_compile_options(-fsanitize=address,undefined,float-cast-overflow -fno-sanitize-recover=all
                         -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined)
+    add_link_options(-fsanitize=address,undefined,float-cast-overflow)
 endif()
 
 include(CTest)
@@ -376,7 +380,7 @@ if(BUILD_TESTING)
     add_executable(AcustraEngineTests Tests/AcustraEngineTests.cpp)
     target_link_libraries(AcustraEngineTests PRIVATE AcustraDSP)
     target_compile_features(AcustraEngineTests PRIVATE cxx_std_20)
-    if(ACUSTRA_ENABLE_SANITIZERS)
+    if(ACUSTRA_ENABLE_SANITIZERS OR ACUSTRA_BUILD_FUZZER)
         target_compile_definitions(AcustraEngineTests PRIVATE ACUSTRA_TIMING_INSTRUMENTED=1)
     endif()
 
@@ -393,12 +397,14 @@ if(BUILD_TESTING)
     # long suites keep that much headroom over the slowest runner.
     acustra_add_suite(Acustra.Engine AcustraEngineTests --contracts-only)
     set_tests_properties(Acustra.Engine PROPERTIES TIMEOUT 600)
-    # A release CPU budget cannot be measured while other CTest workloads
-    # compete for the runner, or against ASan/UBSan instrumentation overhead.
-    # The workload still runs under sanitizers; only its release-speed
-    # assertion is inapplicable there. Plain CI retains the same 0.25x gate.
-    acustra_add_suite(Acustra.EnginePerformance AcustraEngineTests --performance-only)
-    set_tests_properties(Acustra.EnginePerformance PROPERTIES RUN_SERIAL TRUE TIMEOUT 60)
+    # U7: a release CPU budget cannot be measured while other CTest workloads
+    # compete for the runner, or against ASan/UBSan instrumentation overhead,
+    # so the 0.25x gate is the perf tier's, registered only where it means
+    # something.
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ACUSTRA_ENABLE_SANITIZERS AND NOT ACUSTRA_BUILD_FUZZER)
+        acustra_add_suite(Acustra.EnginePerformance AcustraEngineTests --performance-only)
+        set_tests_properties(Acustra.EnginePerformance PROPERTIES LABELS perf RUN_SERIAL TRUE TIMEOUT 60)
+    endif()
 
     add_executable(AcustraChorusRegressionTests Tests/ChorusRegressionTests.cpp)
     target_link_libraries(AcustraChorusRegressionTests PRIVATE AcustraDSP)
@@ -654,7 +660,7 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.DspFuzzReplay AcustraDspFuzzReplay
         -seed=1 -runs=300 -max_len=1024 ${ACUSTRA_FUZZ_REPRODUCERS})
     set_tests_properties(Acustra.DspFuzzReplay PROPERTIES TIMEOUT 300)
-    if(ACUSTRA_ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if(ACUSTRA_BUILD_FUZZER)
         add_executable(AcustraDspFuzz Tests/DspFuzz.cpp)
         target_link_libraries(AcustraDspFuzz PRIVATE AcustraDSP)
         target_compile_features(AcustraDspFuzz PRIVATE cxx_std_20)
@@ -682,6 +688,14 @@ if(BUILD_TESTING)
                  COMMAND RenderAcustraPresetDemos --jobs 4 --check
                          "${CMAKE_CURRENT_SOURCE_DIR}/Docs/audio/midi")
         set_tests_properties(Acustra.AudioDemos PROPERTIES TIMEOUT 600)
+        # U7: the preset demos timed on one thread against the budget in
+        # Tools/RenderPresetDemos.cpp. Timing means nothing instrumented.
+        if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ACUSTRA_ENABLE_SANITIZERS AND NOT ACUSTRA_BUILD_FUZZER)
+            add_test(NAME Acustra.CpuBudget
+                     COMMAND RenderAcustraPresetDemos --cpu --json "${CMAKE_BINARY_DIR}/cpu.json"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/Docs/audio/midi")
+            set_tests_properties(Acustra.CpuBudget PROPERTIES LABELS perf RUN_SERIAL TRUE TIMEOUT 1800)
+        endif()
         add_test(NAME Acustra.RenderDemos
                  COMMAND AcustraRenderDemos --smoke
                          "${CMAKE_CURRENT_BINARY_DIR}/demo-smoke")

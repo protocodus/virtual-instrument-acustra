@@ -59,6 +59,19 @@ jobs:
           cmake --build build-dsp --target RenderAcustraPresetDemos --parallel
           ./build-dsp/RenderAcustraPresetDemos --jobs 4 Docs/audio/midi demos
 
+      # U7: the perf tier's figures for the record, one file per main build.
+      - name: Time the demos (perf tier)
+        run: |
+          ./build-dsp/RenderAcustraPresetDemos --cpu --json build-dsp/cpu.json --note "${GITHUB_SHA}" Docs/audio/midi
+
+      - name: Upload the CPU figures
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpu-acustra-main-build-${{ github.run_number }}
+          path: build-dsp/cpu.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload the demos
         uses: actions/upload-artifact@v4
         with:
@@ -71,6 +84,9 @@ jobs:
     name: Long libFuzzer run (fuzz tier)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,7 +106,7 @@ jobs:
           cmake -S . -B build-fuzz -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
             -DACUSTRA_BUILD_PLUGIN=OFF -DACUSTRA_BUILD_TOOLS=OFF \
-            -DACUSTRA_ENABLE_SANITIZERS=ON -DBUILD_TESTING=ON
+            -DACUSTRA_BUILD_FUZZER=ON -DBUILD_TESTING=ON
           cmake --build build-fuzz --parallel --target AcustraDspFuzz
 
       - name: Fuzz for 30 minutes

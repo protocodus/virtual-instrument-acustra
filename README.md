@@ -711,7 +711,8 @@ checksums; `ACUSTRA_BUILD_NUMBER` sets the build number. See
 ### Release workflow
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) builds,
-validates (whole test suite on macOS, auval and pluginval) and packages macOS
+validates (whole test suite on macOS; pluginval, clap-validator and auval through
+`scripts/validate-plugins.sh`) and packages macOS
 universal, Windows x64 and Linux x64 from one commit, and drafts a GitHub
 release on a pushed `v*` tag.
 [`.github/workflows/main-build.yml`](.github/workflows/main-build.yml) runs it

@@ -97,7 +97,7 @@ int main (int argc, char** argv)
     for (int i = 1; i < argc; ++i)
     {
         const std::string argument = argv[i];
-        if (argument == "--jobs")
+        if (argument == "--jobs" || argument == "--repeats" || argument == "--json" || argument == "--note")
             ++i;
         else if (argument.rfind ("--", 0) != 0)
         {
@@ -109,6 +109,9 @@ int main (int argc, char** argv)
     for (std::size_t preset = 0; preset < instrument.presets.size(); ++preset)
         tempos.push_back (phraseTempo (midiDir / (demos::detail::Stem (instrument, preset) + ".mid")));
 
+    // U7 perf budget: 0 reports without failing until the CI runner's median
+    // is measured.
+    instrument.cpuBudget = 0.0;
     instrument.open = [tempos] (std::size_t preset, double sampleRate, int maxBlockFrames, std::uint32_t)
     {
         return std::make_unique<PresetVoice> (preset, sampleRate, maxBlockFrames, tempos[preset]);

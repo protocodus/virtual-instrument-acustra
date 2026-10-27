@@ -63,6 +63,13 @@ jobs:
           cmake --build "build-dsp" --parallel
           ctest --test-dir "build-dsp" -L "unit|audio" --output-on-failure
 
+      # U7: fails above the budget in Tools/RenderPresetDemos.cpp or the
+      # engine's 0.25x gate; the figures are printed for the record.
+      - name: Perf tier
+        run: |
+          ctest --test-dir "build-dsp" -L '^perf$' --no-tests=error --output-on-failure
+          cat build-dsp/cpu.json
+
       - name: Render and verify demo audio
         run: |
           set -euo pipefail
@@ -231,6 +238,9 @@ jobs:
     runs-on: ubuntu-24.04
     # The instrumented suite takes several times the plain one.
     timeout-minutes: 150
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -261,6 +271,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang++ \
             "-DACUSTRA_BUILD_PLUGIN=OFF" \
             "-DACUSTRA_ENABLE_SANITIZERS=ON" \
+            -DACUSTRA_BUILD_FUZZER=ON \
             -DBUILD_TESTING=ON \
             "-DPython3_EXECUTABLE=${{ steps.python.outputs.python-path }}" \
             -DACUSTRA_REQUIRE_PYTHON_TESTS=ON
@@ -289,6 +300,9 @@ jobs:
     name: Parameter-extremes matrix (Acustra plug-in, ASan + UBSan, Linux)
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
     steps:
       - uses: actions/checkout@v4
         with:
