@@ -185,7 +185,8 @@ jobs:
             echo "::notice::main moved past ${GITHUB_SHA}; the next main build publishes instead."
             exit 0
           fi
-          git add README.md Docs/screenshots/acustra.png Docs/audio/*.wav
+          git add README.md Docs/screenshots/acustra.png
+          git add -f -- Docs/audio/*.wav
           if git diff --cached --quiet; then
             echo "Nothing changed."
             exit 0

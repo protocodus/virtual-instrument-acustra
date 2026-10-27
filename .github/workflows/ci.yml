@@ -70,7 +70,11 @@ jobs:
           "./build-dsp/AcustraRenderDemos" "Docs/audio"
           # Written by hand so a demo that stops writing fails here; the
           # Acustra.DemoCount test keeps it equal to AcustraRenderDemos --list.
-          rendered=$(find "Docs/audio" -maxdepth 1 -name '*.wav' | wc -l)
+          # The committed preset demos beside them each have a phrase.
+          rendered=0
+          for wav in Docs/audio/*.wav; do
+            [[ -e "Docs/audio/midi/$(basename "$wav" .wav).mid" ]] || rendered=$((rendered + 1))
+          done
           if (( rendered != 10 )); then
             echo "error: rendered $rendered demo WAVs, expected 10" >&2
             exit 1
