@@ -376,6 +376,10 @@ if(BUILD_TESTING)
 
     acustra_add_suite(Acustra.SampleBank AcustraSampleBankTests)
     set_tests_properties(Acustra.SampleBank PROPERTIES TIMEOUT 90)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ACUSTRA_ENABLE_SANITIZERS AND NOT ACUSTRA_BUILD_FUZZER)
+        acustra_add_suite(Acustra.SampleBankRealtime AcustraSampleBankTests --timing)
+        set_tests_properties(Acustra.SampleBankRealtime PROPERTIES LABELS perf RUN_SERIAL TRUE TIMEOUT 90)
+    endif()
 
     add_executable(AcustraEngineTests Tests/AcustraEngineTests.cpp)
     target_link_libraries(AcustraEngineTests PRIVATE AcustraDSP)

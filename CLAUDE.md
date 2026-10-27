@@ -194,8 +194,9 @@ ctest --test-dir build-dsp -C Release -R "^Acustra[.](Engine|StringPitchRealism)
 Acustra's suites by tier: `unit`, `audio` (the demo render checks), `render`
 (the editor screenshot), `fuzz` (the parameter-extremes matrix
 `Acustra.ParameterMatrix` in plug-in builds; `Acustra.DspFuzz` with
-`-DACUSTRA_BUILD_FUZZER=ON` and Clang) and `perf` (`Acustra.CpuBudget` and the
-engine's 0.25x gate `Acustra.EnginePerformance`, Release builds without
+`-DACUSTRA_BUILD_FUZZER=ON` and Clang) and `perf` (`Acustra.CpuBudget`, the
+engine's 0.25x gate `Acustra.EnginePerformance` and the reference sampler's
+real-time gate `Acustra.SampleBankRealtime`, Release builds without
 sanitizers); CI selects tiers with `ctest -L`. `-DACUSTRA_ENABLE_SANITIZERS=ON`
 (Clang or GCC) builds everything under ASan + UBSan, as the `sanitizers` and
 `parameter-matrix` jobs do. `scripts/validate-plugins.sh build-plugin Acustra

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <limits>
 #include <new>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -49,8 +50,11 @@ struct LibraryTestAccess {
 };
 }
 
-int main() {
+int main(int argc, char** argv) {
     using namespace acustra::dense;
+    // Only Acustra.SampleBankRealtime (perf tier) gates on wall time; the unit
+    // run also happens under ASan and beside other suites, where it means nothing.
+    const bool timing = argc > 1 && std::string_view(argv[1]) == "--timing";
     Library library;
     std::string error;
     REQUIRE(library.prepare(&error) && error.empty());
@@ -524,7 +528,8 @@ int main() {
     REQUIRE(allocations.load(std::memory_order_relaxed) == before);
     const auto wallSeconds = std::chrono::duration<double>(stopped - started).count();
     const auto audioSeconds = blocks * left.size() / 48000.0;
-    REQUIRE(audioSeconds / wallSeconds > 1.0);
+    if (timing)
+        REQUIRE(audioSeconds / wallSeconds > 1.0);
 
     const auto ratio = static_cast<double>(Library::packedBytes()) / library.decodedBytes();
     REQUIRE(ratio < 0.80);
