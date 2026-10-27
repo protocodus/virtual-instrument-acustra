@@ -943,6 +943,7 @@ private:
     // theta^2 of 2 and 1, and at 384 kHz a float held the bridge's air-mode
     // group's pole angles to only about 5%, which turned the heave's H1 by
     // 90 degrees against the rock.
+    // One section's coefficients and history, read out of a BridgeModePair.
     struct BridgeMode
     {
         double denominator1 { 0.0 };
@@ -952,11 +953,46 @@ private:
         double input1 { 0.0 };
         double output1 { 0.0 };
         double output2 { 0.0 };
+    };
 
-        double processPast(double input) noexcept;
+    // A mode's two sections side by side, each value's lane 0 the heave
+    // (driven by the net force) and lane 1 the rock (by the moment), so
+    // advanceModes loads each pair as one aligned two-wide vector instead of
+    // gathering it from two arrays. Each lane is its own section: its own
+    // coefficients, history and arithmetic.
+    struct BridgeModePair
+    {
+        static constexpr std::size_t heave = 0;
+        static constexpr std::size_t rock = 1;
+        alignas(16) std::array<double, 2> denominator1 {};
+        alignas(16) std::array<double, 2> denominator2 {};
+        alignas(16) std::array<double, 2> numerator1 {};
+        alignas(16) std::array<double, 2> numerator2 {};
+        alignas(16) std::array<double, 2> input1 {};
+        alignas(16) std::array<double, 2> output1 {};
+        alignas(16) std::array<double, 2> output2 {};
+
+        // One lane's section advanced by one input sample.
+        double processPast(std::size_t lane, double input) noexcept
+        {
+            const double output = numerator1[lane] * input
+                                + numerator2[lane] * input1[lane]
+                                - denominator1[lane] * output1[lane]
+                                - denominator2[lane] * output2[lane];
+            input1[lane] = input;
+            output2[lane] = output1[lane];
+            output1[lane] = output;
+            return output;
+        }
         void reset() noexcept
         {
-            input1 = output1 = output2 = 0.0;
+            input1 = output1 = output2 = std::array<double, 2> {};
+        }
+        [[nodiscard]] BridgeMode section(std::size_t lane) const noexcept
+        {
+            return { denominator1[lane], denominator2[lane], numerator1[lane],
+                     numerator2[lane], input1[lane], output1[lane],
+                     output2[lane] };
         }
     };
 
@@ -987,8 +1023,15 @@ private:
         // [cross, rock]] of MeasuredBridgeData.h, so it needs two states:
         // one driven by the net force and one by the moment. A mode with no
         // rocking residue leaves its second state alone.
-        std::array<BridgeMode, bridgeModeCount + 1> heaveModes {};
-        std::array<BridgeMode, bridgeModeCount + 1> rockModes {};
+        std::array<BridgeModePair, bridgeModeCount + 1> modes {};
+        [[nodiscard]] BridgeMode heaveMode(std::size_t index) const noexcept
+        {
+            return modes[index].section(BridgeModePair::heave);
+        }
+        [[nodiscard]] BridgeMode rockMode(std::size_t index) const noexcept
+        {
+            return modes[index].section(BridgeModePair::rock);
+        }
         std::array<float, bridgeModeCount + 1> residueHeave {};
         std::array<float, bridgeModeCount + 1> residueCross {};
         std::array<float, bridgeModeCount + 1> residueRock {};
@@ -1003,6 +1046,21 @@ private:
             return all;
         }();
         int activeModeCount { bridgeModeCount + 1 };
+        // What advanceModes reads for each active slot, in activeModes order:
+        // the heave and rock section coefficients side by side, the residues
+        // widened (exactly) to the double the sums are taken in, and the
+        // rocking flag. Derived from the arrays above by packActiveModes,
+        // which configureBridge calls after its every write; copies of the
+        // load carry it along. The states stay in heaveModes and rockModes.
+        struct alignas(16) PackedMode
+        {
+            std::array<double, 2> numerator1 {}, numerator2 {},
+                                  denominator1 {}, denominator2 {};
+            double residueHeave { 0.0 }, residueCross { 0.0 }, residueRock { 0.0 };
+            bool rocking { false };
+        };
+        std::array<PackedMode, bridgeModeCount + 1> packedModes {};
+        void packActiveModes() noexcept;
         float immediateHeave { 0.0f };
         float immediateCross { 0.0f };
         float immediateRock { 0.0f };
@@ -2142,7 +2200,10 @@ private:
         std::array<float, lineCount> absorptionState {};
         std::array<float, lineCount> absorptionGain {};
         std::array<float, lineCount> absorptionPole {};
-        std::array<float, earlyCapacity> early {};
+        // Every input is written twice, at earlyHead and earlyHead +
+        // earlyCapacity, so the last earlyCapacity inputs always lie in one
+        // contiguous window and a read needs no wrap (RoomAmbience::step).
+        std::array<float, 2 * earlyCapacity> early {};
         int earlyHead { 0 };
         // Four Schroeder allpasses diffusing what enters the late field.
         static constexpr int diffuserCapacity = 512;
@@ -2168,10 +2229,23 @@ private:
         static constexpr int converterOrder = 64;
         static constexpr int maximumDecimation = 12; // through 768 kHz
         static constexpr int converterCapacity = converterOrder * maximumDecimation + 1;
-        std::array<float, converterCapacity> converterCoefficients {}, converterInput {};
-        std::array<std::array<float, converterOrder + 1>, maximumDecimation>
-            converterPhases {};
-        std::array<float, converterOrder + 1> converterLeft {}, converterRight {};
+        // The taps are designed in float and every value held here is a
+        // float's exact binary64 image: the filters multiply in double, and
+        // holding the operands already widened removes a conversion from
+        // every tap without changing a product or a sum. The input history
+        // holds each float input widened, and the output history each
+        // step's left/right pair, side by side so one 16-byte load feeds both
+        // channels' sums (RoomAmbience::process); each output tap is held
+        // twice, once per channel's lane, for the same reason.
+        // The input history is written twice, at converterInputHead and one
+        // converterLength on, so the filter reads its window contiguously.
+        std::array<double, converterCapacity> converterCoefficients {};
+        std::array<double, 2 * converterCapacity> converterInput {};
+        alignas(16) std::array<std::array<std::array<double, 2>, converterOrder + 1>,
+                               maximumDecimation> converterPhases {};
+        // Written twice, at converterOutputHead and converterOrder + 1 on,
+        // like the input history, so the taps read one contiguous run.
+        std::array<std::array<double, 2>, 2 * (converterOrder + 1)> converterOutput {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };

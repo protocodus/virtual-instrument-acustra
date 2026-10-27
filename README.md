@@ -51,6 +51,21 @@ long per-version notes are in the
   1.9.0 source and packages remain archived separately.
 - [Exact-output checks and SDK timing](Docs/validation/exact-bend-cpu-2026-10-23.md).
 
+### 1.6.4 — 2026-10-23 — less CPU, the same sound
+
+- The engine needs less CPU for an identical sound: on a held-chord, strum
+  and melody performance at the default controls, block processing takes
+  12% fewer instructions and about 8% less CPU time in GCC (Linux) builds,
+  and 5% fewer instructions and about 4% less time in Clang builds. Every
+  output sample is bit for bit 1.6.3's
+  ([CPU optimization](Docs/benchmarks/cpu-optimization-2026-10-23.md)).
+
+### 1.6.4 — 2026-10-25 — lower CPU, sound unchanged
+
+- About 9.6 % fewer instructions on the factory presets (Rack-like build, 2x
+  quality); every output sample is bit-identical to 1.6.3's
+  ([benchmark](Docs/benchmarks/cpu-instruction-trims-2026-10-25.md)).
+
 ### 1.6.3 — 2026-10-22 — softer velocity contrast, steadier strums, 10% Room
 
 - Playing force follows MIDI velocity in proportion instead of its square,

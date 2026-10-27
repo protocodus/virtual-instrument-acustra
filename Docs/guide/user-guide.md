@@ -3,7 +3,7 @@
 Acustra is an acoustic steel-string guitar for VST®3, CLAP and Audio Unit
 hosts, with a standalone app. Every note is synthesised in real time from six
 physical string models, a measured bridge and a measurement-derived body;
-there are no recorded samples. This guide covers version 1.6.3.
+there are no recorded samples. This guide covers version 1.6.4.
 
 ## Install
 

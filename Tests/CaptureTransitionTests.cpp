@@ -33,8 +33,8 @@ struct AcustraEngineTestAccess
             for (int i = 0; i < load->activeModeCount; ++i)
             {
                 const auto index = load->activeModes[i];
-                for (const auto* mode : { &load->heaveModes[index], &load->rockModes[index] })
-                    for (double x : { mode->input1, mode->output1, mode->output2 })
+                for (const auto& mode : { load->heaveMode(index), load->rockMode(index) })
+                    for (double x : { mode.input1, mode.output1, mode.output2 })
                         value(x);
             }
         double mic = 0.0;

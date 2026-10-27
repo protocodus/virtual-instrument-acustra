@@ -5,6 +5,20 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-23 — lower CPU with exact audio preservation
+
+The owner asked for lower CPU use with no audible change. Six exact-output
+changes are retained, one commit each: masked and contiguous room
+early-reflection reads, written-out room butterflies, packed bridge
+coefficient pairs, and GCC inlining of the per-sample string-loop, delay and
+bridge-section helpers that Clang and MSVC already inlined. Every compared
+sample and public-state word matches 1.6.3. This is a numeric optimization,
+not a listening-based sound change; no listening test was needed or run.
+Changes that would shorten the remaining latency chains change rounding and
+were not attempted. See the
+[CPU report](benchmarks/cpu-optimization-2026-10-23.md) for the workload,
+per-commit figures, exactness coverage and the shared-machine limits.
+
 ## 2026-10-22 — retain the candidate's decay with the newer dynamics
 
 After the eight-song comparison of the installed released 1.3.3 package
