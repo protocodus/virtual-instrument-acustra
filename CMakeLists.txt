@@ -282,6 +282,14 @@ if(ACUSTRA_BUILD_TOOLS)
     target_link_libraries(RenderAcustraPresetDemos PRIVATE AcustraDSP Threads::Threads)
     target_compile_features(RenderAcustraPresetDemos PRIVATE cxx_std_20)
 
+    # The fixed regression stream CPU work counts and compares against
+    # (protocol at the head of the file; Tools/BuildCpuRegressionStream.sh
+    # builds it with the Rack-like flags for measurement).
+    add_executable(AcustraCpuRegressionStream Tools/CpuRegressionStream.cpp)
+    target_include_directories(AcustraCpuRegressionStream PRIVATE Tools)
+    target_link_libraries(AcustraCpuRegressionStream PRIVATE AcustraDSP)
+    target_compile_features(AcustraCpuRegressionStream PRIVATE cxx_std_17)
+
     add_executable(AcustraRenderRealismSongs Tools/RenderRealismSongs.cpp)
     target_link_libraries(AcustraRenderRealismSongs PRIVATE AcustraDSP)
     target_compile_features(AcustraRenderRealismSongs PRIVATE cxx_std_20)

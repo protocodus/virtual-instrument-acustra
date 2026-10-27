@@ -5618,6 +5618,18 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
             && bridgeLoad_.residueCross[index] == 0.0f
             && bridgeLoad_.residueRock[index] == 0.0f)
             continue;
+        const auto& heave = bridgeLoad_.heaveMode(index);
+        const auto& rock = bridgeLoad_.rockMode(index);
+        auto& packed = bridgeLoad_.packedModes[static_cast<std::size_t>(
+            bridgeLoad_.activeModeCount)];
+        packed.numerator1 = { heave.numerator1, rock.numerator1 };
+        packed.numerator2 = { heave.numerator2, rock.numerator2 };
+        packed.denominator1 = { heave.denominator1, rock.denominator1 };
+        packed.denominator2 = { heave.denominator2, rock.denominator2 };
+        packed.residueHeave = bridgeLoad_.residueHeave[index];
+        packed.residueCross = bridgeLoad_.residueCross[index];
+        packed.residueRock = bridgeLoad_.residueRock[index];
+        packed.rocking = bridgeLoad_.rocking[index];
         bridgeLoad_.activeModes[static_cast<std::size_t>(
             bridgeLoad_.activeModeCount++)] = static_cast<std::uint8_t>(index);
     }
@@ -12202,13 +12214,21 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
 #pragma clang fp reassociate(off)
 #endif
             // Scale each unchanged contribution exactly once, then interleave
-            // constant lane pairs. Only the lower L/R sums become output.
+            // constant lane pairs. Only the lower L/R sums become output: the
+            // second and fourth pairs reach them as the upper half of the
+            // first and third moved down (one movhlps), and what the upper
+            // lanes then add is never read.
             const Vector leftScaled = 2.0f * leftPart;
             const Vector rightScaled = 2.0f * rightPart;
             const Vector zip01 = { leftScaled[0], rightScaled[0], leftScaled[1], rightScaled[1] };
             const Vector zip23 = { leftScaled[2], rightScaled[2], leftScaled[3], rightScaled[3] };
-            const Vector swap01 = { zip01[2], zip01[3], zip01[0], zip01[1] };
-            const Vector swap23 = { zip23[2], zip23[3], zip23[0], zip23[1] };
+            typedef std::int64_t Halves __attribute__((vector_size(16)));
+            const Halves half01 = reinterpret_cast<Halves>(zip01);
+            const Halves half23 = reinterpret_cast<Halves>(zip23);
+            const Halves high01 = { half01[1], half01[1] };
+            const Halves high23 = { half23[1], half23[1] };
+            const Vector swap01 = reinterpret_cast<Vector>(high01);
+            const Vector swap23 = reinterpret_cast<Vector>(high23);
             addScaledStereo(zip01);
             addScaledStereo(swap01);
             addScaledStereo(zip23);
@@ -13477,15 +13497,19 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate,
         for (int part = 0; part < decimation; ++part)
         {
             auto& coefficients = converterPhases[static_cast<std::size_t>(part)];
-            coefficients.fill(0.0f);
+            for (auto& tap : coefficients)
+                tap = { 0.0, 0.0 };
             double phaseSum = 0.0;
             for (int index = part; index <= order; index += decimation)
                 phaseSum += converterCoefficients[static_cast<std::size_t>(index)];
             // Normalise each branch's DC gain, rather than inheriting the
             // small phase-dependent gain from the window's truncation.
             for (int index = part; index <= order; index += decimation)
-                coefficients[static_cast<std::size_t>(index / decimation)]
-                    = static_cast<float>(converterCoefficients[static_cast<std::size_t>(index)] / phaseSum);
+            {
+                const double tap = static_cast<float>(
+                    converterCoefficients[static_cast<std::size_t>(index)] / phaseSum);
+                coefficients[static_cast<std::size_t>(index / decimation)] = { tap, tap };
+            }
         }
     }
     // A fixed, gentle narrowing of the room below 150 Hz. Design at the
@@ -13703,8 +13727,8 @@ void AcustraEngine::RoomAmbience::reset() noexcept
     currentLeft = currentRight = 0.0f;
     sideHighpassState.fill(0.0);
     converterInput.fill(0.0f);
-    converterLeft.fill(0.0f);
-    converterRight.fill(0.0f);
+    for (auto& pair : converterOutput)
+        pair = { 0.0, 0.0 };
     converterInputHead = converterOutputHead = 0;
     quietSamples = 0;
     active = false;
@@ -13713,20 +13737,13 @@ void AcustraEngine::RoomAmbience::reset() noexcept
 void AcustraEngine::RoomAmbience::step(float input) noexcept
 {
     early[static_cast<std::size_t>(earlyHead)] = input;
-    // Every delay lies in [1, earlyCapacity - 1] (prepare) and the capacity
-    // is a power of two, so masking the unsigned difference wraps the ring
-    // exactly as adding the capacity to a negative index did.
-    static_assert((earlyCapacity & (earlyCapacity - 1)) == 0,
-                  "the early ring wraps by masking");
-    const auto delayed = [this] (int delay)
+    early[static_cast<std::size_t>(earlyHead + earlyCapacity)] = input;
+    // Every delay lies in [0, earlyCapacity] (prepare), so the mirrored
+    // window holds the sample a wrapped read would find.
+    const float* const window = early.data() + earlyHead + earlyCapacity;
+    const auto delayed = [window] (int delay)
     {
-        // The power-of-two ring maps the same signed difference without a
-        // conditional wrap for each receiver interpolation tap.
-        static_assert((earlyCapacity & (earlyCapacity - 1)) == 0,
-                      "early reflection ring must be a power of two");
-        const auto index = static_cast<unsigned>(earlyHead - delay)
-            & static_cast<unsigned>(earlyCapacity - 1);
-        return early[static_cast<std::size_t>(index)];
+        return window[-delay];
     };
     float reflectedLeft = 0.0f;
     float reflectedRight = 0.0f;
@@ -13838,24 +13855,24 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
     active = true;
     if (rateConversion && decimation > 1)
     {
-        converterInput[static_cast<std::size_t>(converterInputHead)] = input;
+        // Widening a float to double is exact, so the history holds the
+        // very operand every tap converted before.
+        converterInput[static_cast<std::size_t>(converterInputHead)]
+            = static_cast<double>(input);
+        converterInput[static_cast<std::size_t>(converterInputHead + converterLength)]
+            = static_cast<double>(input);
         if (phase == 0)
         {
             double filtered = 0.0;
-            int index = converterInputHead;
-            int coefficient = 0;
-            // Walk the two contiguous parts of the ring in the original
-            // coefficient order. Every product and addition stays unchanged;
-            // only the per-tap wrap test moves outside the inner loops.
-            for (; index >= 0; --index, ++coefficient)
+            // The last converterLength inputs, newest at window[0], in one
+            // contiguous run of the mirrored ring: the original coefficient
+            // order, every product and addition unchanged, and no wrap.
+            const double* const window
+                = converterInput.data() + converterInputHead + converterLength;
+            for (int coefficient = 0; coefficient < converterLength; ++coefficient)
             {
-                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
-                    * converterInput[static_cast<std::size_t>(index)];
-            }
-            for (index = converterLength - 1; coefficient < converterLength; --index, ++coefficient)
-            {
-                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
-                    * converterInput[static_cast<std::size_t>(index)];
+                filtered += converterCoefficients[static_cast<std::size_t>(coefficient)]
+                    * window[-coefficient];
             }
             inputState += inputCoefficient * (static_cast<float>(filtered) - inputState);
             if (exact::abs(inputState) < 1.0e-20f)
@@ -13863,31 +13880,49 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
             step(inputState);
             converterOutputHead = converterOutputHead == converterOrder
                 ? 0 : converterOutputHead + 1;
-            converterLeft[static_cast<std::size_t>(converterOutputHead)] = currentLeft;
-            converterRight[static_cast<std::size_t>(converterOutputHead)] = currentRight;
+            converterOutput[static_cast<std::size_t>(converterOutputHead)]
+                = { static_cast<double>(currentLeft), static_cast<double>(currentRight) };
+            converterOutput[static_cast<std::size_t>(converterOutputHead + converterOrder + 1)]
+                = converterOutput[static_cast<std::size_t>(converterOutputHead)];
         }
         converterInputHead = converterInputHead + 1 == converterLength
             ? 0 : converterInputHead + 1;
         const auto& coefficients = converterPhases[static_cast<std::size_t>(phase)];
+        // The last converterOrder + 1 outputs, newest at window[0], in one
+        // contiguous run of the mirrored ring, in the original tap order.
+        const auto* const window
+            = converterOutput.data() + converterOutputHead + converterOrder + 1;
+#if defined(__clang__) || defined(__GNUC__)
+        // Left and right are two independent sums, each lane taking the
+        // scalar sum's own product and addition in the same tap order.
+        typedef double Pair __attribute__((vector_size(16)));
+        Pair sum = { 0.0, 0.0 };
+        const auto tap = [&] (std::size_t coefficient)
+        {
+            Pair history, weight;
+            __builtin_memcpy(&history,
+                window[-static_cast<std::ptrdiff_t>(coefficient)].data(), sizeof(history));
+            __builtin_memcpy(&weight, coefficients[coefficient].data(), sizeof(weight));
+            sum += weight * history;
+        };
+#else
         double sumLeft = 0.0, sumRight = 0.0;
-        int index = converterOutputHead;
-        std::size_t coefficient = 0;
-        for (; index >= 0; --index, ++coefficient)
+        const auto tap = [&] (std::size_t coefficient)
         {
-            sumLeft += static_cast<double>(coefficients[coefficient])
-                * converterLeft[static_cast<std::size_t>(index)];
-            sumRight += static_cast<double>(coefficients[coefficient])
-                * converterRight[static_cast<std::size_t>(index)];
-        }
-        for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
-        {
-            sumLeft += static_cast<double>(coefficients[coefficient])
-                * converterLeft[static_cast<std::size_t>(index)];
-            sumRight += static_cast<double>(coefficients[coefficient])
-                * converterRight[static_cast<std::size_t>(index)];
-        }
+            const auto& history = window[-static_cast<std::ptrdiff_t>(coefficient)];
+            sumLeft += coefficients[coefficient][0] * history[0];
+            sumRight += coefficients[coefficient][1] * history[1];
+        };
+#endif
+        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
+            tap(coefficient);
+#if defined(__clang__) || defined(__GNUC__)
+        left = static_cast<float>(sum[0]);
+        right = static_cast<float>(sum[1]);
+#else
         left = static_cast<float>(sumLeft);
         right = static_cast<float>(sumRight);
+#endif
         phase = phase + 1 == decimation ? 0 : phase + 1;
         return;
     }
