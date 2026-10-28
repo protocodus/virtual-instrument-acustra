@@ -24,6 +24,18 @@ struct AcustraEngineTestAccess
         for (auto& voice : engine.voices_)
             voice.randomState = seed;
     }
+    static void holdNominalForce(AcustraEngine& engine, float velocity)
+    {
+        // Isolate the nominal force: a remembered stroke on this very
+        // sample, more than two dB softer, leaves the next contact none of
+        // the hand's force residual (initialisePluck), with no wave or draw.
+        for (auto& voice : engine.voices_)
+        {
+            voice.lastPluckMidiNote = voice.openMidi;
+            voice.lastPluckSample = engine.sampleClock_;
+            voice.lastPluckVelocity = 0.5f * velocity;
+        }
+    }
 
     static Contact inspect(const AcustraEngine& engine, int note)
     {
@@ -201,8 +213,14 @@ void testThumbRoughnessHasAFinitePhysicalRelease()
                 if (contact.releaseCorner < 0.9 * old.releaseCorner)
                     ++affected;
                 if (velocity == 1.0f)
-                    expect(contact.slip == 0.0 && contact.reference == 0.0,
+                {
+                    auto nominal = make(rate, Picking::Thumb, 0.28f);
+                    Access::holdNominalForce(*nominal, velocity);
+                    nominal->noteOn(note, velocity);
+                    const auto shape = Access::inspect(*nominal, note);
+                    expect(shape.slip == 0.0 && shape.reference == 0.0,
                            "full-force Thumb lost its selected reference-normalised string shape");
+                }
             }
     expect(affected >= 12, "Thumb physical contact had no meaningful release-time effect");
     std::cout << "Thumb contacts with at least 10% slower roughness corner: " << affected << '\n';

@@ -44,7 +44,7 @@ struct AcustraEngineTestAccess
     static std::array<std::uint32_t, 3> otherDraws(const AcustraEngine& engine)
     {
         return { engine.strumRandomState_, engine.voices_[0].randomState,
-                 engine.voices_[0].repeatPluckState };
+                 engine.voices_[0].pluckForceState };
     }
 
     static Contact contact(const AcustraEngine& engine, int string)
