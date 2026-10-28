@@ -7303,12 +7303,18 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     constexpr float fingerReleaseRadius = 0.2e-3f;
     // Playing force and release gesture have independent authored responses.
     // Raising soft-note force from v^2 to v also raises its release speed.
-    // Scale the effective edge by the same 1/v ratio to preserve u/r and
-    // the established velocity-dependent release shape for all techniques.
+    // Finger and Thumb scale their effective edge by the same 1/v ratio to
+    // preserve u/r and their established velocity-dependent release shape:
     // Finger's resulting radius follows v^0.233125 and its contact time
     // still follows v^-0.766875. These are keyboard-response choices, not
-    // measured fingertip/plectrum dimensions. The full-force reference and
-    // every raw-velocity Touch/noise/style response remain unchanged.
+    // measured fingertip dimensions. The full-force reference and every
+    // raw-velocity Touch/noise/style response remain unchanged.
+    // The plectrum keeps its fitted edge (FittedPhysicalData.h) at every
+    // force, so its slip takes r/u with u ~ v. Scaled by 1/v as well, it
+    // took 1/v^2 and a soft stroke let go over much of a period: Jumbo
+    // Steel Pick's velocity 16 stood 8-16 dB under the linear force law
+    // over E2-E5, and stands 1-3 dB under it with the fixed edge
+    // (Docs/decisions.md, 2026-10-28). Soft picked notes still darken.
     const float releaseGestureScale = 1.0f / v;
     const float contactForce = v * v;
     constexpr float fingerContactForceExponent = 0.6165625f;
@@ -7321,7 +7327,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         slipPole = plectrumSlipPole(voice, releasedAmplitude, heldDistance,
             soundingLength, scaleLength,
             physicalCalibration_.pickEdgeRadiusMetres * releaseTouch
-                * gestureCompliance * releaseGestureScale);
+                * gestureCompliance);
     else
     {
         // The nominal full-velocity contact bounds release speed. Thumb

@@ -5,6 +5,73 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-28 — the plectrum keeps its edge at every force, 1.9.2
+
+**What was decided.** Whether Pick stops shrinking its edge radius as
+velocity rises. 1.6.3 moved the playing force from `v²` to `v`. To keep the
+soft-to-hard articulation, it also scaled every technique's release edge by
+`1/v` (2026-10-22, below). The plectrum's slip time is the edge radius over
+the string's speed, and that speed already follows the held force. With
+both scalings the slip lengthened as `1/v²`, as it had under the `v²` force
+at the fixed fitted edge. A soft stroke was let go over much of a string
+period, which cost its level as well as its treble. At velocity 16, on a
+fresh device from E2 to E5, Jumbo Steel Pick stood 7.8 to 16.4 dB under
+1.6.3's own linear law, and the default patch under Pick 9.7 to 16.5 dB.
+Aculele found and fixed the same fault.
+
+**The fit history.** The edge was fitted at 0.15 mm on 2026-09-27 across
+the picked archtop's four velocity layers, under the `v²` force. It was
+pinned by ear at 0.1162 mm on 2026-09-28 (Set 14). The fit moved the
+model's soft-to-loud H5-H12 over H1-H4 rise (v16 to v112) from +0.65 to
++4.07 dB, against the recordings' +8.43 dB. The fitted value is a radius:
+nothing in the fit says the radius shrinks with force. The 1.6.3 scaling was
+authored to keep the old velocity-to-release-time mapping, not measured. B
+keeps the fitted radius and lets the string's speed carry the force, as the
+edge model (`τ = r/u`) states.
+
+**The letters.** Each letter played 120 BPM eighth notes: an E-minor
+pentatonic line from E3 to G5, rising in velocity in equal ratios from 16 to
+127 and falling back, then B3 four times at 20 and four at 40. Three presets
+were rendered, the three that pick: Jumbo Steel Pick, Palm Muted Steel Pick
+(without its CC2 mute) and Piezo Stage Steel. Each went through
+`acustra::Performer` at 48 kHz in 256-frame blocks with the same seeds. Each
+B was matched to its A by whole-file RMS, with trims of −0.04, −0.38 and
+−0.62 dB. The loud notes dominate that figure, so the soft notes stay louder
+in B, as the change makes them.
+
+- A: the shipping engine, `c4973bc` (1.9.1).
+- B: the plectrum keeps its fitted edge at every force. Finger and Thumb keep
+  their `1/v` edge scaling.
+
+In the phrase, B's notes at velocity 16 are 5.7 to 10.3 dB louder than A's,
+2.7 to 4.1 dB louder at 34, and within 1.5 dB from 50 up. On a fresh device at
+velocity 16, B stands 1.2 to 3.1 dB under the linear law (Jumbo Steel Pick),
+1.3 to 3.7 dB (default patch) and 0.7 to 4.3 dB (Palm Muted Steel Pick).
+The Rack wrapper's E2 velocity steps under Pick go from 14.5-14.9, 9.6-9.9
+and 6.8-6.9 dB per doubling to 7.3-7.4, 6.8-6.9 and 6.3-6.4 dB; a linear
+law gives 6.0 dB.
+
+Soft notes still darken. Over seven notes from E2 to E5, the median
+H5-H12 over H1-H4 rise from v16 to v112 goes from +4.5 to +3.3 dB on Jumbo
+Steel Pick, from +2.5 to +5.5 dB on the default patch, and stays at +4.1 dB
+on Palm Muted Steel Pick. Under A several notes grow brighter again below
+about v32 as they get softer, by up to 2.9, 5.0 and 4.1 dB on those
+patches. Under B that reversal is at most 0.9, 1.7 and 3.7 dB, the last on
+the one note where A has it too.
+
+**The owner did not choose a letter by ear.** Their standing rule is "in
+general, tend to accepting candidates - they are almost always better", and
+B was accepted under it. The set is kept in the project files, not in Git
+(`acustra/listening-tests/2026-10-28-pick-edge/`), so it can still be judged.
+
+**What it licensed.** B ships in 1.9.2. The edge keeps its by-ear 0.1162 mm,
+now read as the radius at every force.
+
+**What it did not license.** No plectrum edge or player's release speed was
+measured. The edge was not refitted under the linear force law, and the
+archtop corpus benchmark was not rerun. The model's soft-to-loud brightness
+rise remains about half the recordings'.
+
 ## 2026-10-28 — every pluck draws its own force and angle, 1.9.1
 
 **What was decided.** Whether Acustra takes Aculele 0.4.15's option D,

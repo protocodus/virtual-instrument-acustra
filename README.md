@@ -39,6 +39,17 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.2 — 2026-10-28 — soft picked notes keep their level
+
+- A soft picked note no longer loses most of its level. At velocity 16,
+  Pick sat 7 to 17 dB under the linear force law 1.6.3 introduced; it now
+  sits 1 to 4 dB under it. The plectrum keeps its fitted edge at every
+  force, so a soft stroke still leaves darker, but its release no longer
+  stretches over much of a string period. Finger and Thumb are unchanged.
+- The fault was found in Aculele. Here the fix was accepted without a
+  by-ear verdict
+  ([decision](Docs/decisions.md#2026-10-28--the-plectrum-keeps-its-edge-at-every-force-192)).
+
 ### 1.9.1 — 2026-10-28 — every pluck lands a little differently
 
 - Every single-note pluck now draws its own force within ±1 dB, not only a
