@@ -8188,9 +8188,12 @@ void testAPlectrumSlipsOffItsEdgeFasterWhenHarder()
         // +0.06/+0.04/+0.01/-0.21, the share's re-solve against the slipped
         // displacement taking back what the fast loud slip removes (with the
         // share at zero, loud -0.21/-0.21/-0.18/-1.07, soft 2.2-6.3 dB
-        // darker). The bound keeps the soft stroke darker than the instant
-        // release, the loud one within a tenth of a decibel of it or darker,
-        // and the soft at least 1.5 dB darker than the loud.
+        // darker). 1.9.1, whose edge also shrank by 1/v under the linear
+        // force: soft -10.1/-10.3/-10.3/-10.5, loud +0.07/+0.05/+0.01/-0.30.
+        // 1.9.2's fixed edge: soft -3.0/-3.5/-3.2/-6.7 and loud
+        // +0.07/+0.05/+0.01/-0.23. The bound keeps the soft stroke darker
+        // than the instant release, the loud one within a tenth of a decibel
+        // of it or darker, and the soft at least 1.5 dB darker than the loud.
         expect(drop[0] < 0.0 && drop[1] < 0.1 && drop[0] < drop[1] - 1.5,
                "a soft plectrum stroke was not released darker than a hard one");
     }
