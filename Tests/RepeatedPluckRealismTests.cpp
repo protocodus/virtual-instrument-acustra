@@ -49,11 +49,11 @@ struct AcustraEngineTestAccess
     static bool hasTail(const AcustraEngine& engine, int string = 0)
     { return engine.voices_[static_cast<std::size_t>(string)].tailActive; }
     static float gain(const AcustraEngine& engine)
-    { return engine.voices_[0].repeatedPluckGain; }
+    { return engine.voices_[0].pluckForceGain; }
     static std::uint32_t repeatState(const AcustraEngine& engine)
-    { return engine.voices_[0].repeatPluckState; }
+    { return engine.voices_[0].pluckForceState; }
     static void setRepeatState(AcustraEngine& engine, std::uint32_t state)
-    { engine.voices_[0].repeatPluckState = state; }
+    { engine.voices_[0].pluckForceState = state; }
     static void moveContactClock(AcustraEngine& engine, std::uint64_t elapsed)
     {
         // Isolate event-time force policy without rendering an old wave.
@@ -247,8 +247,12 @@ void testBoundsMeanAndForceTracking()
 {
     auto engine = fresh();
     engine->noteOn(40, 0.5f, 1);
-    expect(Access::gain(*engine) == 1.0f, "first pluck changed its nominal force");
-    const double nominal = Access::heldForce(*engine);
+    // The first pluck draws its own residual like every later one, so the
+    // nominal force is the force it holds without that draw.
+    const float first = Access::gain(*engine);
+    expect(first != 1.0f && first > 0.888f && first < 1.121f,
+           "first pluck did not draw its own bounded force");
+    const double nominal = Access::heldForce(*engine) / first;
     double sum = 0.0, square = 0.0;
     double worstForceError = 0.0;
     float minimum = 2.0f, maximum = 0.0f;
@@ -286,18 +290,23 @@ void testExplicitPerformanceAndResetBoundaries()
 {
     auto engine = fresh();
     engine->noteOn(40, 0.5f, 1);
+    const float first = Access::gain(*engine);
     const auto initialState = Access::repeatState(*engine);
     engine->noteOn(40, 0.5f, 1);
-    expect(Access::gain(*engine) == 1.0f,
+    expect(Access::gain(*engine) == first,
            "duplicate note-on on one sample acquired a second force draw");
     expect(Access::repeatState(*engine) == initialState,
            "duplicate note-on on one sample advanced the force stream");
     advance(*engine, 128);
+    // 128 samples after the last pluck, a force change past two dB leaves
+    // t^2 (3 - 2t) of the residual, t = 128 / (2 s * 48 kHz): 5.3e-6 of a
+    // draw within 0.121 of one, plus one float rounding.
     engine->noteOn(40, 0.85f, 1);
-    expect(Access::gain(*engine) == 1.0f, "explicit accent force changed");
+    expect(std::abs(Access::gain(*engine) - 1.0f) < 8.0e-7f, "explicit accent force changed");
     advance(*engine, 128);
     engine->noteOn(41, 0.85f, 1);
-    expect(Access::gain(*engine) == 1.0f, "new pitch acquired repeat variation");
+    expect(Access::gain(*engine) != 1.0f,
+           "a new pitch at the same force did not draw its own residual");
     advance(*engine, 128);
     engine->beginStrum();
     engine->noteOn(41, 0.85f, 1, 0, true);
@@ -305,13 +314,16 @@ void testExplicitPerformanceAndResetBoundaries()
            "strum acquired a second variation on top of its measured draw");
     advance(*engine, 96001);
     engine->noteOn(41, 0.85f, 1);
-    expect(Access::gain(*engine) == 1.0f, "rest beyond hand memory retained repeat variation");
+    expect(Access::gain(*engine) != 1.0f,
+           "a pluck after a rest beyond hand memory did not draw its own residual");
     advance(*engine, 128);
     engine->noteOn(41, 0.85f, 1);
     expect(Access::gain(*engine) != 1.0f, "recent single-note repetition stayed identical");
     engine->reset();
-    engine->noteOn(41, 0.85f, 1);
-    expect(Access::gain(*engine) == 1.0f, "reset retained stale pluck history");
+    // Stale memory of the 0.85 stroke would hold this softer one at its
+    // nominal force; without it, it draws in full.
+    engine->noteOn(41, 0.3f, 1);
+    expect(Access::gain(*engine) != 1.0f, "reset retained stale pluck history");
 }
 
 void testContinuousCommandForceAndMemory()
@@ -370,25 +382,36 @@ void testContinuousCommandForceAndMemory()
                    "repeat force did not converge at command equality or a fade endpoint");
             worstEndpointError = std::max(worstEndpointError, narrow);
         }
-        expect(probe(0.3f, 2400, seed).gain == 1.0f
-                   && probe(0.85f, 2400, seed).gain == 1.0f,
+        // 2400 samples after the preceding pluck, a force change past two dB
+        // leaves t^2 (3 - 2t) of the residual, t = 2400 / (2 s * 48 kHz).
+        const double recentShare = 0.025 * 0.025 * (3.0 - 2.0 * 0.025);
+        const double recentBound = 0.121 * recentShare + 1.2e-7;
+        expect(std::abs(probe(0.3f, 2400, seed).gain - 1.0f) <= recentBound
+                   && std::abs(probe(0.85f, 2400, seed).gain - 1.0f) <= recentBound,
                "a deliberate large force change retained repeat variation");
 
-        double previousDeviation = 1.0;
-        const auto expectedState = probe(0.5f, 1, seed).state;
+        // An equal command keeps its whole draw at every elapsed time; an
+        // accent's residual returns as the hand's memory of the last
+        // stroke fades, and is whole at its expiry.
+        double previousDeviation = 0.0;
+        const auto equal = probe(0.5f, 1, seed);
+        const auto expectedState = equal.state;
         for (const std::uint64_t elapsed : { 1u, 24000u, 48000u, 72000u,
                                              95999u, 96000u, 96001u, 192000u })
         {
             const auto current = probe(0.5f, elapsed, seed);
-            const double deviation = std::abs(double(current.gain) - 1.0);
-            expect(deviation <= previousDeviation,
-                   "elapsed hand memory increased repeat force variation");
+            expect(current.gain == equal.gain,
+                   "an equal command's residual depended on elapsed hand memory");
+            const auto accent = probe(0.85f, elapsed, seed);
+            const double deviation = std::abs(double(accent.gain) - 1.0);
+            expect(deviation >= previousDeviation,
+                   "elapsed hand memory reduced an accent's returning residual");
             previousDeviation = deviation;
-            expect(current.state == expectedState,
+            expect(current.state == expectedState && accent.state == expectedState,
                    "crossing hand-memory expiry switched the repeat random stream");
             if (elapsed >= 95999)
-                expect(deviation < 2.0e-7,
-                       "repeat force did not converge continuously at memory expiry");
+                expect(std::abs(accent.gain - equal.gain) < 2.0e-7,
+                       "an accent's residual did not return continuously at memory expiry");
         }
         for (const float velocity : { 0.1f, 0.499999f, 0.5f, 0.500001f, 0.85f, 1.0f })
             expect(probe(velocity, 2400, seed).state == expectedState,

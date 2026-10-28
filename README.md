@@ -39,6 +39,17 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.1 — 2026-10-28 — every pluck lands a little differently
+
+- Every single-note pluck now draws its own force within ±1 dB, not only a
+  note repeated on the same channel, so a melody at one velocity no longer
+  plucks every note alike. Each release also leaves at its own angle,
+  within about 2° of the Touch's. An accent keeps its force, and strums
+  keep their own variation.
+- Ported from Aculele 0.4.15, where the owner chose it by ear. Here it was
+  accepted without a by-ear verdict
+  ([decision](Docs/decisions.md#2026-10-28--every-pluck-draws-its-own-force-and-angle-191)).
+
 ### 1.9.0 — 2026-10-23 — less CPU during retuning, identical output
 
 - Reduce SDK complex-math overhead during continuous pitch bends, keeping

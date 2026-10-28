@@ -1320,11 +1320,11 @@ private:
         bool memberPitchBendFrozen { false };
         std::uint64_t startOrder { 0 };
         std::uint32_t randomState { 1 };
-        // A same-note repeat's small force residual fades continuously with
-        // elapsed hand memory and the change in commanded force.
+        // Every pluck's small force residual (initialisePluck), which fades
+        // with elapsed hand memory and the change in commanded force.
         // This separate stream never moves the position/angle/noise draws,
-        // and is advanced once per repeated pluck, independent of host rate.
-        std::uint32_t repeatPluckState { 1 };
+        // and is advanced once per pluck but a strum's, independent of host rate.
+        std::uint32_t pluckForceState { 1 };
         // A separate stream leaves picking/noise variation unchanged at zero.
         std::uint32_t noteDetuneState { 1 };
         // The contact's own pitch draw (frettingPitchCents), its own stream so
@@ -1336,7 +1336,7 @@ private:
         int lastPluckMidiChannel { 0 };
         float lastPluckVelocity { 0.0f };
         std::uint64_t lastPluckSample { 0 };
-        float repeatedPluckGain { 1.0f };
+        float pluckForceGain { 1.0f };
         float repluckForceGain { 1.0f };
         // The scheduled fresh release's sideways direction. Sources already
         // in flight keep their own signed gain until firePluck retains them.

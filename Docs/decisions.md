@@ -5,6 +5,50 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-28 — every pluck draws its own force and angle, 1.9.1
+
+**What was decided.** Whether Acustra takes Aculele 0.4.15's option D,
+which the owner chose by ear on the ukulele (that repository's
+`Docs/decisions.md`, 2026-10-28). Acustra drew its ±1 dB force residual only
+when the same note repeated on the same channel. A melody of different notes
+at one velocity therefore plucked every note at one force, and each release
+angle varied by under 1°.
+
+**The letters.** Each letter played 100 BPM eighth notes at velocity 88: a
+G-major line up and down the treble strings, then across the lower strings,
+then B4 four times and a held B4. Three presets were rendered: Dreadnought
+Steel, Mahogany Steel Thumb and Jumbo Steel Pick. Each went through
+`acustra::Performer` at 48 kHz in 256-frame blocks with the same seeds.
+Each B was matched to its A by whole-file RMS, with trims of 0.00, +0.09 and
+−0.03 dB.
+
+- A: the shipping engine, `a8ff0d5` (1.9.0).
+- B: every pluck but a strum's draws the mean-one ±1 dB residual. Within
+  the hand's two-second memory on the string, it fades out as the commanded
+  force changes. Each release angle turns by 2° SD about the share's own
+  angle.
+
+Each B note's 30-250 ms level differed from A's by an SD of 0.56, 0.65 and
+0.64 dB, over ranges of −0.99 to +1.06, −1.08 to +1.42 and −1.13 to +1.55 dB.
+
+**The owner did not choose a letter by ear.** Their standing rule, given the
+same day, is "in general, tend to accepting candidates - they are almost
+always better", and B was accepted under it. The set is kept in the project
+files, not in Git (`acustra/listening-tests/2026-10-28-pluck-variation/`),
+so it can still be judged.
+
+**What it licensed.** B ships in 1.9.1. The port differs from Aculele in one
+place. A second contact on the same sample keeps that stroke's draw and fades
+it the same way, rather than drawing again in full. Drawing again would make
+the residual jump between the same sample and the next one, which
+`ContactRelease`'s scheduled-versus-direct check caught.
+
+**What it did not license.** No guitarist's force or release angle was
+measured. The ±1 dB stays an authored figure under the Eastman takes' 1.09
+and 1.47 dB spread. The 2° is the harpists' reading (Chadefaux et al., JASA
+131 (2012), Table VI) that Aculele's owner chose by ear. Aculele's other
+0.4.15 change, releasing every string at one force, was not ported.
+
 ## 2026-10-22 — retain the candidate's decay with the newer dynamics
 
 After the eight-song comparison of the installed released 1.3.3 package

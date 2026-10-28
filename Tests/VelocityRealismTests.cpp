@@ -15,11 +15,11 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
-    static void clearRepeatMemory(AcustraEngine& engine)
+    static void redrawForce(AcustraEngine& engine)
     {
-        // Negative control for the original exact-velocity residual switch:
-        // suppressing repeat ownership removes its real force residual.
-        engine.voices_[0].lastPluckMidiNote = -1;
+        // Negative control: another draw of the hand's force residual is
+        // a real change of the contact the float allowance must not hide.
+        engine.voices_[0].pluckForceState = 0x2468ace1u;
     }
     struct Release
     {
@@ -76,6 +76,18 @@ struct AcustraEngineTestAccess
     }
     static void seed(AcustraEngine& engine, std::uint32_t seed)
     { engine.voices_[0].randomState = seed; }
+    static void holdNominalForce(AcustraEngine& engine, float velocity)
+    {
+        // Isolate the nominal force: a remembered stroke on this very
+        // sample, more than two dB softer, leaves the next contact none of
+        // the hand's force residual (initialisePluck), with no wave or draw.
+        for (auto& voice : engine.voices_)
+        {
+            voice.lastPluckMidiNote = voice.openMidi;
+            voice.lastPluckSample = engine.sampleClock_;
+            voice.lastPluckVelocity = 0.5f * velocity;
+        }
+    }
     static void primeRepeatForce(AcustraEngine& engine, float velocity,
                                  std::uint32_t forceSeed)
     {
@@ -87,7 +99,7 @@ struct AcustraEngineTestAccess
         voice.lastPluckMidiChannel = 1;
         voice.lastPluckVelocity = velocity;
         voice.lastPluckSample = 0;
-        voice.repeatPluckState = forceSeed;
+        voice.pluckForceState = forceSeed;
         engine.sampleClock_ = 1;
         engine.performanceRealism_.coherentHand = false;
     }
@@ -207,6 +219,7 @@ void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
                    && std::abs(state.pole - state.absolutePole) < 1.0e-6,
                "full-velocity Finger cancelled its absolute physical slip");
         auto thumb = fresh(rate, acustra::PickingTechnique::Thumb);
+        Access::holdNominalForce(*thumb, 1.0f);
         thumb->noteOn(note, 1.0f, string + 1);
         const auto thumbState = Access::inspect(*thumb, string);
         expect(thumbState.pole == 0.0 && thumbState.reference == 0.0,
@@ -343,7 +356,7 @@ void testRepeatedContactConvergesAcrossExactVelocity()
         std::array<float, 512> left {}, right {};
         engine->process(left.data(), right.data(), 512);
         if (witness == 2)
-            Access::clearRepeatMemory(*engine);
+            Access::redrawForce(*engine);
         engine->noteOn(40, velocity, 1);
         Probe result { Access::continuousContact(*engine), {} };
         engine->process(result.audio.data(), result.audio.data() + 512, 512);
@@ -378,7 +391,7 @@ void testRepeatedContactConvergesAcrossExactVelocity()
         const double negativeError = std::sqrt(negativeEnergy / std::max(referenceEnergy, 1.0e-30));
         const double precisionFloor = std::max(2.0e-5, resolutionFloor);
         expect(20.0 * resolutionFloor < negativeError,
-               "float-input resolution approached a real repeat-memory discontinuity");
+               "float-input resolution approached another force draw");
         for (const auto* adjacent : { &resolutionUp, &resolutionDown })
         {
             expect(std::abs(adjacent->contact.force / exact.contact.force - 1.0) < 2.0e-6,
@@ -391,7 +404,7 @@ void testRepeatedContactConvergesAcrossExactVelocity()
                   << ", one-ULP input RMS up/down " << std::sqrt(upEnergy / exact.audio.size())
                   << "/" << std::sqrt(downEnergy / exact.audio.size())
                   << ", relative floor " << resolutionFloor
-                  << ", repeat-memory negative control " << negativeError << '\n';
+                  << ", force-redraw negative control " << negativeError << '\n';
         for (const float direction : { -1.0f, 1.0f })
         {
             double coarseForce = 0.0, coarseAudio = 0.0, coarseCorner = 0.0;
@@ -430,7 +443,7 @@ void testRepeatedContactConvergesAcrossExactVelocity()
                     expect(audioError < 0.01 * coarseAudio + precisionFloor,
                            "repeat audio jumped at the exact preceding velocity");
                     expect(negativeError > 0.01 * coarseAudio + precisionFloor,
-                           "float-resolution allowance concealed the repeat-memory discontinuity");
+                           "float-resolution allowance concealed another force draw");
                     worstFineForce = std::max(worstFineForce, forceError);
                     worstFineAudio = std::max(worstFineAudio, audioError);
                 }

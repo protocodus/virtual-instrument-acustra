@@ -56,7 +56,7 @@ struct AcustraEngineTestAccess
             result.insert(result.end(), { double(finger.fret), double(finger.heldAt), double(finger.valid) });
         for (const auto& voice : engine.voices_)
         {
-            result.insert(result.end(), { double(voice.randomState), double(voice.repeatPluckState),
+            result.insert(result.end(), { double(voice.randomState), double(voice.pluckForceState),
                 double(voice.releaseNoiseState), double(voice.legatoFrictionState), double(voice.excitationNoiseState) });
             for (const auto* loop : { &voice.loops[0], &voice.loops[1], &voice.tailLoop, &voice.tailParallelLoop })
             {
