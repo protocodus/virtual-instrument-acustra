@@ -5,16 +5,18 @@ One phrase per preset in Source/DSP/AcustraPresets.h, written for what that
 preset is for. The .mid files are the committed sources the demo renderer
 reads; rerun this only to change a phrase on purpose, in its own commit.
 Each phrase's last event falls 5.5-9.5 s in, so with the renderer's 2.5 s
-tail every demo is 8-12 s long (G3c).
+tail every demo is 8-12 s long (G3c); writing fails otherwise.
 
 Acustra reads MIDI as a guitarist plays: notes that start on one sample are
 one strummed chord (a dotted eighth or less after the previous strum is the
 upstroke), single notes are plucked, a key-up damps the string, CC2 is the
 bridge hand (palm mute) and the RPN 0 range sets how far pitch bend slides.
 
-    python3 Tools/ComposePresetMidi.py [output-dir]
+    python3 Tools/write_preset_midi.py           # write Docs/audio/midi
+    python3 Tools/write_preset_midi.py --check   # the committed files match
 """
 
+import argparse
 import pathlib
 import re
 import struct
@@ -68,6 +70,9 @@ class Phrase:
         for step in range(steps + 1):
             self.bend(start + length * step / steps,
                       begin + (end - begin) * step / steps, bend_range, channel)
+
+    def seconds(self):
+        return max(tick for tick, _, _ in self.events) / PPQ * 60 / self.bpm
 
     def smf(self):
         tempo = round(60_000_000 / self.bpm)
@@ -237,16 +242,38 @@ def preset_slugs():
     return re.findall(r'\{ "[^"]+", "([a-z0-9-]+)",', header)
 
 
-def main():
-    out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "Docs/audio/midi"
+def files():
     slugs = preset_slugs()
     if sorted(slugs) != sorted(PHRASES):
         sys.exit(f"error: phrases {sorted(PHRASES)} do not match the bank {sorted(slugs)}")
-    out.mkdir(parents=True, exist_ok=True)
+    result = {}
     for number, slug in enumerate(slugs, 1):
-        path = out / f"{number:02d}-{slug}.mid"
-        path.write_bytes(PHRASES[slug]().smf())
-        print(path)
+        phrase = PHRASES[slug]()
+        if not 5.5 <= phrase.seconds() <= 9.5:
+            sys.exit(f"error: {slug}: last event at {phrase.seconds():.2f} s, outside 5.5-9.5 s")
+        result[f"{number:02d}-{slug}.mid"] = phrase.smf()
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--check", action="store_true", help="fail unless the committed files match")
+    args = parser.parse_args()
+    out = ROOT / "Docs/audio/midi"
+    expected = files()
+    found = {path.name: path.read_bytes() for path in out.glob("*.mid")}
+    if args.check:
+        stale = sorted(set(found) ^ set(expected) | {name for name in expected if found.get(name) != expected[name]})
+        if stale:
+            sys.exit(f"error: Docs/audio/midi differs from {pathlib.Path(__file__).name} in: {', '.join(stale)}")
+        print(f"{len(expected)} demo phrases match {pathlib.Path(__file__).name}")
+        return
+    out.mkdir(parents=True, exist_ok=True)
+    for name in set(found) - set(expected):
+        (out / name).unlink()
+    for name, data in expected.items():
+        (out / name).write_bytes(data)
+        print(out / name)
 
 
 if __name__ == "__main__":

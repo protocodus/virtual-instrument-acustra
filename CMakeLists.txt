@@ -752,6 +752,11 @@ if(BUILD_TESTING)
                              "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateGaussianAperture.py"
                              --check)
             set_tests_properties(Acustra.GaussianApertureData PROPERTIES TIMEOUT 30)
+            # The committed demo phrases are what the writer writes (G3a).
+            add_test(NAME Acustra.DemoMidiSources
+                     COMMAND "${Python3_EXECUTABLE}"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/Tools/write_preset_midi.py" --check)
+            set_tests_properties(Acustra.DemoMidiSources PROPERTIES TIMEOUT 30)
             add_test(NAME Acustra.CalibrationRenderer
                      COMMAND "${Python3_EXECUTABLE}"
                              "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CalibrationRendererTests.py"
