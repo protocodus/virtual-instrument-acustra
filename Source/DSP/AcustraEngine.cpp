@@ -7134,13 +7134,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // residual, not a fitted law. Every pluck but a strum's, which has its
     // own bounded variation, draws it: drawn only on a repeated note, a
     // melody of different notes at one velocity plucked every note alike and
-    // was heard as robotic (Aculele 0.4.15, chosen by ear there; this
-    // engine's listening test is pending). An accent stays the player's:
-    // within the hand's memory on this string the residual fades out as the
-    // commanded force changes, nominal beyond the residual's own two-dB span,
-    // so equal and nearly equal velocities are one continuing gesture rather
-    // than switching it on or off. This is an authored accent-preservation
-    // policy, not measured physiology.
+    // was heard as robotic (Aculele 0.4.15, chosen by ear there; accepted
+    // here without a by-ear verdict, Docs/decisions.md, 2026-10-28). An
+    // accent stays the player's: within the hand's memory on this string the
+    // residual fades out as the commanded force changes, nominal beyond the
+    // residual's own two-dB span, so equal and nearly equal velocities are
+    // one continuing gesture rather than switching it on or off. This is an
+    // authored accent-preservation policy, not measured physiology.
     // The independent draw is linear-mean normalised: E[exp(a*U)] = sinh(a)/a;
     // blending it toward one preserves both that mean and its bounds.
     const float previousForceGain = voice.pluckForceGain;
