@@ -122,6 +122,16 @@ if(MSVC)
     target_compile_options(AcustraReferenceBank PRIVATE /W4 /permissive-)
 else()
     target_compile_options(AcustraDSP PRIVATE -Wall -Wextra -Wpedantic)
+    # The engine is position-independent (it goes into the plug-in's shared
+    # object), and GCC then treats every external function in it as one the
+    # dynamic linker could replace, so it inlines none of them: the per-sample
+    # bridge-mode, derivative and delay-line helpers stay calls. Clang (and the
+    # Rack's SDK compiler) already assume no interposition. Nothing replaces
+    # these symbols, so the code is the same arithmetic, inlined; every demo
+    # and parity-matrix sample is bit-identical, at about 9% less CPU.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(AcustraDSP PRIVATE -fno-semantic-interposition)
+    endif()
     target_compile_options(AcustraReferenceBank PRIVATE
         -Wall -Wextra -Wpedantic)
 endif()
