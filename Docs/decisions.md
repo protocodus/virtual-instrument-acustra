@@ -5,6 +5,64 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-29 — the thumb lets go as the Finger's pad does, 1.9.5
+
+**What was decided.** Whether Acustra takes Aculele 0.4.27's thumb law
+(that repository's `Docs/decisions.md`, 2026-10-29). 1.6.3 scaled the
+release edge by `1/v` when the force went from `v²` to `v` (2026-10-22,
+below). The Finger also scales it by the force's power `0.6165625`, so its
+radius goes as `v^0.233` and its contact time as `v^-0.767`. The Thumb kept
+the `1/v` alone, and its contact time went as `1/v²`. On Mahogany Steel Thumb
+a velocity-16 A2 let go over 928 samples, two of its periods, against 13.6
+at velocity 127. The slip that follows is shifted so the line starts at
+rest, in a loop up to 13% longer than the line, and that shift put back the
+treble the slow release had taken. The A2's 2.5-6 kHz share over its first
+5-155 ms fell 8.5 dB from velocity 127 to 80, then rose 5.0 dB again to 48.
+Over E2-E5 on that preset, every note fell 4-11 dB to velocity 64-96 and
+came back to within 3 dB of its velocity-127 share at 16. A pad's contact
+grows with its force (Hertz: radius as `F^(1/3)`). Nothing says a thumb's
+shrinks, and the thumb is the same flesh as the Finger's pad.
+
+**The letters.** A thumb arpeggio, A2 E3 A3 C4, played five times at
+velocity 112, 80, 56, 36 and 22, on Mahogany Steel Thumb through
+`acustra::Performer` at 48 kHz in 256-frame blocks with the same seeds.
+Matched on whole-file RMS: A was moved by +0.02 dB and B by −0.02 dB.
+
+- A: the shipping engine, `fc43ff1` (1.9.4).
+- B: the Thumb's pad takes the Finger's force law.
+
+The 2.5-6 kHz share of each pass's first two seconds reads −31.8, −36.4,
+−33.7, −30.7 and −30.8 dB in A, and −30.8, −34.6, −37.6, −37.6 and
+−36.8 dB in B.
+
+**The owner did not choose a letter by ear.** B was accepted under their
+standing rule of 2026-10-28, "in general, tend to accepting candidates - they
+are almost always better". The page, beside Aculele's pair, stays up for
+them to judge: <https://claude.ai/artifact/4eBCYAhDu4t9QeFJkAszHh>.
+
+**What it licensed.** B ships in 1.9.5. That A2 lets go over 72 samples at
+velocity 16, a ratio of 5.3 to velocity 127 where it was 68, and its share
+falls at every step to velocity 48, 10.6 dB in all (`Acustra.ThumbDynamics`).
+Velocity 127 renders the same samples. Soft and medium thumb notes sit
+nearer the linear force law: an E2 at velocity 64 stood 8.1 dB under
+velocity 127 and now stands 6.7 dB under, against the law's 6.0.
+`PhysicalHandRealism`'s independent prediction of the Thumb's release time
+took the `1/v` edge, and takes the new law. `ChorusRegression`'s Thumb
+references were observed under the `1/v²` release; they now scale by the
+slip's one-pole gain at the partial under the new release time against the
+old (1.62 for E3's H5, 1.73 for G3's H8), and keep their six-decibel
+bracket. The construction loudness calibration's `--check` holds every
+Thumb cell within ±1 LU (−0.43 to +0.68 LU on the stereo microphones), so
+`ConstructionLoudnessData.h` was not re-pinned. The same check's Pick
+headroom rule fails on seven Pick cells, their hardest case peaking at
+−1.00 to −1.53 dBFS under cuts of 0.76-0.84 LU. Pick renders the same
+samples with this change, so that failure predates it and stays open.
+
+**What it did not license.** No thumb's contact was measured; the law is
+the Finger's authored keyboard response. Below velocity 32 a thumb note
+still brightens again by 1-5 dB at 2.5-6 kHz, and the Finger by up to 3 dB:
+the same shift, which this does not remove (README, Known gaps).
+
 ## 2026-10-28 — the plectrum keeps its edge at every force, 1.9.2
 
 **What was decided.** Whether Pick stops shrinking its edge radius as

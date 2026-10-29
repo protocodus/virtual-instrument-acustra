@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.9.4 LANGUAGES C CXX)
+project(Acustra VERSION 1.9.5 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -1038,6 +1038,10 @@ if(BUILD_TESTING)
     set_target_properties(AcustraVelocityRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     add_test(NAME Acustra.VelocityRealism COMMAND AcustraVelocityRealismTests)
     set_tests_properties(Acustra.VelocityRealism PROPERTIES TIMEOUT 60)
+    add_executable(AcustraThumbDynamicsTests Tests/ThumbDynamicsTests.cpp)
+    target_link_libraries(AcustraThumbDynamicsTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraThumbDynamicsTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.ThumbDynamics COMMAND AcustraThumbDynamicsTests)
 endif()
 
 # Recording-guided realism regression 2.

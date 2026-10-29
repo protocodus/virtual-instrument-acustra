@@ -196,8 +196,13 @@ void testThumbRoughnessHasAFinitePhysicalRelease()
                 const double releaseSpeed = 0.5 * contact.waveSpeed * contact.displacement
                     * (1.0 / a + 1.0 / (contact.length - a));
                 // The authored edge expands at softer MIDI velocities to
-                // retain their contact time under the linear force response.
-                const double radius = 0.2e-3 / velocity;
+                // retain their contact time under the linear force response,
+                // and since 1.9.5 grows with the contact force (v^2) as the
+                // Finger's pad does, so it goes as v^0.233. The 1/v alone
+                // this predicted before let a soft thumb go as 1/v^2 and
+                // brighten again below velocity 80 (Acustra.ThumbDynamics).
+                const double radius = 0.2e-3 / velocity
+                    * std::pow(double(velocity) * velocity, 0.6165625);
                 const double pole = std::exp(-releaseSpeed / (radius * rate));
                 // Two smoothing stages have mean time 2q/(1-q). Equate
                 // that to the independently predicted contact b/(1-b).

@@ -7305,10 +7305,21 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Raising soft-note force from v^2 to v also raises its release speed.
     // Finger and Thumb scale their effective edge by the same 1/v ratio to
     // preserve u/r and their established velocity-dependent release shape:
-    // Finger's resulting radius follows v^0.233125 and its contact time
+    // the pad's resulting radius follows v^0.233125 and its contact time
     // still follows v^-0.766875. These are keyboard-response choices, not
     // measured fingertip dimensions. The full-force reference and every
     // raw-velocity Touch/noise/style response remain unchanged.
+    // The thumb's pad took the 1/v alone until 1.9.5, so its edge shrank as
+    // it pressed harder and its contact time went as 1/v^2: on Mahogany
+    // Steel Thumb a velocity-16 A2 let go over 928 samples, two periods, and
+    // the slip (applyPlectrumSlip), shifted so the line starts at rest in a
+    // loop longer than the line, put back harmonics the slow release had
+    // taken. Its 2.5-6 kHz share fell 8.5 dB to velocity 80 and rose 5.0 dB
+    // again to 48. A soft pad presses less flesh onto the string, not more,
+    // as a fingertip's contact grows with force (Hertz: radius as F^(1/3)),
+    // so the thumb takes the Finger's law: that A2 lets go over 72 samples
+    // and darkens at every step to velocity 48 (Acustra.ThumbDynamics).
+    // Full velocity is unchanged.
     // The plectrum keeps its fitted edge (FittedPhysicalData.h) at every
     // force, so its slip takes r/u with u ~ v. Scaled by 1/v as well, it
     // took 1/v^2 and a soft stroke let go over much of a period: Jumbo
@@ -7341,8 +7352,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const double pole = plectrumSlipPole(voice, releasedAmplitude,
             heldDistance, soundingLength, scaleLength,
             fingerReleaseRadius * releaseTouch * gestureCompliance * releaseGestureScale
-                * (fullSoftSlip
-                    ? std::pow(contactForce, fingerContactForceExponent) : 1.0f));
+                * std::pow(contactForce, fingerContactForceExponent));
         if (referencePole > 0.0 && pole > 0.0)
         {
             const double referenceTau = -1.0 / std::log(referencePole);

@@ -39,6 +39,22 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.5 — 2026-10-29 — a softer thumb lets go as a fingertip does
+
+- A soft thumb note no longer comes back brighter than a firm one. The
+  thumb's pad took a release edge that shrank as the stroke grew harder, so
+  its release time went as 1/v²: on Mahogany Steel Thumb a velocity-16 A2 let
+  go over 928 samples, two of its periods. The slip that follows put back the
+  treble a slow release takes, so that A2's 2.5-6 kHz share fell 8.5 dB from
+  velocity 127 to 80 and rose 5.0 dB again to 48. The thumb now takes the
+  Finger's pad law, a contact that grows with force: the A2 lets go over 72
+  samples and darkens at every step to velocity 48, 10.6 dB in all.
+- Soft and medium thumb notes sit nearer the linear force law: an E2 at
+  velocity 64 stood 8.1 dB under velocity 127 and now stands 6.7 dB under,
+  against the law's 6.0. Velocity 127 renders the same samples.
+- Found in Aculele 0.4.27. Here it was accepted without a by-ear verdict
+  ([decision](Docs/decisions.md#2026-10-29--the-thumb-lets-go-as-the-fingers-pad-does-195)).
+
 ### 1.9.4 — 2026-10-29 — no flash when Tuning changes under a ringing chord
 
 - Changing Tuning, or the host's master tune, while strings rang flashed for
@@ -510,6 +526,13 @@ separates verified errors from accepted approximations.
   and 96 kHz.
 - Where the pluck nearly nulls a partial, the random release burst decides its
   level.
+- A slow release still keeps some of the treble it should lose. The released
+  wave is shifted so the string's line starts at rest, in a loop up to 13%
+  longer than the line, and the shift puts back harmonics the slow release
+  took. On Mahogany Steel Thumb, from velocity 32 to 16, each note from E2 to
+  E5 brightens again by 1-5 dB at 2.5-6 kHz, the A2 and E2 the most; the
+  Finger brightens by up to 3 dB. Filling the loop's filters from the
+  released wave would remove the shift.
 - Changing the host's master tune under a ringing chord still brightens it
   for a moment: at 48 kHz on the eight presets, the sound above 5 kHz in the
   20 ms after the change rises up to 8 dB over the 40 ms that follow, 48 dB
