@@ -2285,8 +2285,8 @@ private:
     float lastImpedanceInertia_ { 0.0f };
     bool bridgeDerivativesNeedPriming_ { true };
     bool bridgeDerivativesCrossRelease_ { false };
-    // A live construction change stepped the junction's wave variables on
-    // the next sample (FixedDerivative::processAcrossStep).
+    // A re-pluck merged into a ringing string stepped the junction's wave
+    // variables on the next sample (FixedDerivative::processAcrossStep).
     bool bridgeDerivativesCrossConfigure_ { false };
     bool prepared_ { false };
     bool suspended_ { false };

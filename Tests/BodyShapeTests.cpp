@@ -964,13 +964,16 @@ void testRetuneAndTailOwnership()
             largestRetune = std::max(largestRetune,
                 std::abs(double(after[i].loops[0].targetDelay-before[i].loops[0].targetDelay)));
         }
-        expect(Access::rebasePending(*e),"shape forgot the bridge derivative transition");
+        // The retuned strings' ports follow their new impedance and the
+        // rebuilt bridge fades its load, so nothing steps at the junction
+        // and the bridge derivatives are not carried across one: carried
+        // across anyway, they replaced a sample of the bridge's motion with
+        // a straight line, a tick of its own (1.9.3).
+        expect(!Access::rebasePending(*e),"shape carried the bridge derivatives across a step that is not there");
         process(*e,1);
-        expect(!Access::rebasePending(*e),"bridge derivative transition did not finish");
-        // A step at a newly established load is not instantaneous bridge
-        // motion: an omitted rebase emits the entire step as a force. Nor
-        // did the bridge stop: the rebase carries the force it had on, where
-        // it once reported none, a one-sample hole heard as a tick (F14).
+        // The load change is still not instantaneous bridge motion, nor did
+        // the bridge stop: the force carries on, where it once reported
+        // none, a one-sample hole heard as a tick (F14).
         expect(std::abs(e->getLastBridgeReactionForce())
                    <= 2.0f*std::abs(forceBefore)+1e-6f
                && (forceBefore == 0.0f || e->getLastBridgeReactionForce() != 0.0f),

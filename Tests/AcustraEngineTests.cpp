@@ -6727,11 +6727,10 @@ void testBodyChangesPreserveAnUnfinishedFade()
     // Wood and Shape move the bridge with the radiation, so the strings ring
     // against a rigid termination: this observes radiation-bank scheduling
     // against exactly the same continuously ringing string input. A body
-    // request still reconfigures the bridge at once, and the bridge
-    // derivatives that drive the body cross that as a step for one sample
-    // (processAcrossStep), so wherever one engine takes a request the other
-    // takes one at the same sample: a request queued behind a running fade
-    // and cancelled by returning to its target, which leaves the body alone.
+    // request still reconfigures the bridge at once, so wherever one engine
+    // takes a request the other takes one at the same sample: a request
+    // queued behind a running fade and cancelled by returning to its
+    // target, which leaves the body alone.
     for (auto* engine : { &reference, &changed })
     {
         engine->setParameters(parameters);

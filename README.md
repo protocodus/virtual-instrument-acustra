@@ -39,6 +39,21 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.3 — 2026-10-29 — no tick when Wood or Shape changes under a ringing chord
+
+- Changing Wood or Shape while strings rang carried the bridge's motion
+  across a step where the strings meet it, and nothing steps there: the
+  retuned strings' ports follow their new tension, and a rebuilt bridge fades
+  its load. That replaced one sample of the bridge's motion with a straight
+  line, a tick above 5 kHz up to 14 dB over the steady sound. Now the change
+  rises at most 4 dB there. A change of the host's master tune lost up to
+  5 dB of its tick. Playing is unchanged: the eight demos render to the same
+  bytes.
+- A Tuning change under a ringing chord still hisses for a moment
+  (Known gaps).
+- The fault was found in Aculele 0.4.23, where it stood 39-53 dB under a
+  nylon chord. Steel strings' brighter sound hides most of it here.
+
 ### 1.9.2 — 2026-10-28 — soft picked notes keep their level
 
 - A soft picked note no longer loses most of its level. At velocity 16,
@@ -480,6 +495,10 @@ separates verified errors from accepted approximations.
   and 96 kHz.
 - Where the pluck nearly nulls a partial, the random release burst decides its
   level.
+- Changing Tuning under a ringing chord hisses for a moment: the sound above
+  5 kHz in the 20 ms after the change rises about 21 dB over the 40 ms that
+  follow, 38-41 dB under the chord. A master tune change rises 8-12 dB. Both
+  come from restringing the ringing strings; the source has not been traced.
 
 **Bridge and body**
 
