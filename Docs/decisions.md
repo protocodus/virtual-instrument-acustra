@@ -43,8 +43,11 @@ them to judge: <https://claude.ai/artifact/4eBCYAhDu4t9QeFJkAszHh>.
 **What it licensed.** B ships in 1.9.5. That A2 lets go over 72 samples at
 velocity 16, a ratio of 5.3 to velocity 127 where it was 68, and its share
 falls at every step to velocity 48, 10.6 dB in all (`Acustra.ThumbDynamics`).
-Velocity 127 renders the same samples. Soft and medium thumb notes sit
-nearer the linear force law: an E2 at velocity 64 stood 8.1 dB under
+Velocity 127 renders the same samples. Between soft and full a thumb note
+darkens more gradually than before, so a medium stroke is brighter: the
+Mahogany Steel Thumb demo, at velocity 88-112, is 1.8 dB brighter at
+2.5-6 kHz, and the other seven demos render the same bytes. Soft and medium
+thumb notes sit nearer the linear force law: an E2 at velocity 64 stood 8.1 dB under
 velocity 127 and now stands 6.7 dB under, against the law's 6.0.
 `PhysicalHandRealism`'s independent prediction of the Thumb's release time
 took the `1/v` edge, and takes the new law. `ChorusRegression`'s Thumb

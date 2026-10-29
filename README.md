@@ -49,9 +49,13 @@ long per-version notes are in the
   velocity 127 to 80 and rose 5.0 dB again to 48. The thumb now takes the
   Finger's pad law, a contact that grows with force: the A2 lets go over 72
   samples and darkens at every step to velocity 48, 10.6 dB in all.
-- Soft and medium thumb notes sit nearer the linear force law: an E2 at
-  velocity 64 stood 8.1 dB under velocity 127 and now stands 6.7 dB under,
-  against the law's 6.0. Velocity 127 renders the same samples.
+- Between soft and full, a thumb note now darkens more gradually, so a
+  medium stroke is brighter than before: the Mahogany Steel Thumb demo,
+  played at velocity 88-112, is 1.8 dB brighter at 2.5-6 kHz. Soft and
+  medium notes also sit nearer the linear force law: an E2 at velocity 64
+  stood 8.1 dB under velocity 127 and now stands 6.7 dB under, against the
+  law's 6.0. Velocity 127 renders the same samples, and so do the other
+  seven demos.
 - Found in Aculele 0.4.27. Here it was accepted without a by-ear verdict
   ([decision](Docs/decisions.md#2026-10-29--the-thumb-lets-go-as-the-fingers-pad-does-195)).
 
