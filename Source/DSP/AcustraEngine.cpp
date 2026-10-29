@@ -39,6 +39,22 @@
 #define ACUSTRA_NOINLINE
 #endif
 
+// The definition of each ACUSTRA_ALWAYS_INLINE function. GCC forces it
+// inline here, not at the declaration, so only this file's calls (which
+// follow the definition) must inline it, and silences its warning that an
+// always_inline function not declared inline "might not be inlinable".
+// Clang and MSVC take the attribute from the declaration (AcustraEngine.h).
+#if defined(__GNUC__) && !defined(__clang__)
+#define ACUSTRA_FORCED_INLINE_BEGIN _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wattributes\"")
+#define ACUSTRA_FORCED_INLINE __attribute__((always_inline))
+#define ACUSTRA_FORCED_INLINE_END _Pragma("GCC diagnostic pop")
+#else
+#define ACUSTRA_FORCED_INLINE_BEGIN
+#define ACUSTRA_FORCED_INLINE
+#define ACUSTRA_FORCED_INLINE_END
+#endif
+
 namespace acustra
 {
 namespace
@@ -3440,7 +3456,8 @@ void AcustraEngine::StringLoop::setLoopGain(float gain, bool transition) noexcep
         loopGain = gain;
 }
 
-float AcustraEngine::StringLoop::bridgeVelocity(
+ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::bridgeVelocity(
     float incident, float sampleRateRatio) noexcept
 {
     if (derivativeNeedsPriming)
@@ -3468,8 +3485,10 @@ float AcustraEngine::StringLoop::bridgeVelocity(
     }
     return bridgeDerivative.process(incident, sampleRateRatio);
 }
+ACUSTRA_FORCED_INLINE_END
 
-float AcustraEngine::FixedDerivative::process(float input,
+ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE float AcustraEngine::FixedDerivative::process(float input,
                                               float sampleRateRatio) noexcept
 {
     history[static_cast<std::size_t>(index)] = input;
@@ -3498,6 +3517,7 @@ float AcustraEngine::FixedDerivative::process(float input,
     index = static_cast<int>((static_cast<unsigned>(index) + 1) & historyMask);
     return input - delayed;
 }
+ACUSTRA_FORCED_INLINE_END
 
 float AcustraEngine::FixedDerivative::processAcrossRelease(
     float input, float sampleRateRatio) noexcept
@@ -3660,7 +3680,8 @@ void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
     }
 }
 
-float AcustraEngine::StringLoop::advance(float delaySmoothing,
+ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                          float releaseGain) noexcept
 {
     if (loopGainTransitionSamples > 0)
@@ -3795,6 +3816,7 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                       appliedReleaseGain - releaseGainStep);
     return reflected * loopGain * appliedReleaseGain;
 }
+ACUSTRA_FORCED_INLINE_END
 
 void AcustraEngine::StringLoop::write(float value) noexcept
 {
