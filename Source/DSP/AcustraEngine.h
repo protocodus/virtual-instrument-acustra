@@ -1383,10 +1383,12 @@ private:
         // presents moves with it: Z = sqrt(T mu) = Z0 times the frequency
         // ratio (see configureVoice). The junction sums impedances every
         // sample, so the requested scale is followed at the delay's own 6 ms
-        // rate rather than stepping once per control period. Both are 1
-        // without a bend, and a scale of exactly 1 leaves every product
-        // bit-identical to the unbent engine.
+        // rate rather than stepping once per control period, through two
+        // stages (AcustraEngine::process). All three are 1 without a bend,
+        // and a scale of exactly 1 leaves every product bit-identical to the
+        // unbent engine.
         float bendImpedanceScale { 1.0f };
+        float bendImpedanceStage { 1.0f };
         float appliedBendImpedanceScale { 1.0f };
         // The string's tension now, in newtons, bend included. Kept so the
         // bend can be checked against Grimes' law rather than inferred.

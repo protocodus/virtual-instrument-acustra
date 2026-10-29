@@ -1007,12 +1007,18 @@ void testRetuneAndTailOwnership()
 // the louder of the two steady settings, or under -95 dBFS where both are
 // quieter than that. Rebuilding the bridge used to zero every mode and to
 // report no bridge motion for a sample, 20-48 dB over both (audit F14).
+// A second later the chord's own sound up there has faded, so a retune's
+// flash stands out: each retuned string's pull on the saddle set off at
+// full slope, a corner heard as a click 2.2-3.9 dB over both settings at
+// 44.1 and 48 kHz; eased in through two stages it stands at most 1.1 dB over
+// (AcustraEngine::process), and is held to 2.
 struct SwitchCase
 {
     const char* name;
     acustra::EngineParameters from;
     acustra::EngineParameters to;
     double allowedDb;
+    double seconds = 0.5;
 };
 
 std::vector<float> renderSwitch(const acustra::EngineParameters& from,
@@ -1090,13 +1096,15 @@ void testConstructionSwitchesDoNotTick()
         { "steel Shape", steel, with(steel, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "steel Wood", steel, with(steel, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
         { "steel Tuning", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 6.0 },
+        { "steel Tuning a second on", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 2.0, 1.0 },
+        { "steel Tuning back a second on", with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), steel, 2.0, 1.0 },
     };
     double worst = -1e9;
     const char* worstName = "";
     for (int rate : { 44100, 48000 })
         for (const auto& c : cases)
         {
-            const double at = std::ceil(0.5*rate/256)*256/rate;
+            const double at = std::ceil(c.seconds*rate/256)*256/rate;
             const auto a = renderSwitch(c.from, nullptr, rate, at, at + 0.11);
             const auto b = renderSwitch(c.to, nullptr, rate, at, at + 0.11);
             const auto switched = renderSwitch(c.from, &c.to, rate, at, at + 0.11);

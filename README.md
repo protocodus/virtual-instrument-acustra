@@ -39,6 +39,21 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.4 — 2026-10-29 — no flash when Tuning changes under a ringing chord
+
+- Changing Tuning, or the host's master tune, while strings rang flashed for
+  a moment above 5 kHz. Each retuned string's pull on the bridge follows its
+  new tension over the 6 ms its pitch takes, and that follow set off at full
+  speed: a corner in the force on the saddle, which the bridge and the piezo
+  hear as a click. It now eases in and out through two stages at the same
+  rate. At 48 kHz, a chord on each of the eight presets: changing back to a
+  preset's own tuning rose up to 25 dB over the 40 ms that follow, 38-49 dB
+  under the chord; it now rises at most 4.5 dB and stands 47-62 dB under. A
+  master tune change rose up to 14 dB and now rises at most 8.
+- Bends and re-plucks share the follower, so playing changes too, 78-90 dB
+  under each demo's level.
+- Found in Aculele 0.4.26, where it clicked through the piezo.
+
 ### 1.9.3 — 2026-10-29 — no tick when Wood or Shape changes under a ringing chord
 
 - Changing Wood or Shape while strings rang carried the bridge's motion
@@ -495,10 +510,10 @@ separates verified errors from accepted approximations.
   and 96 kHz.
 - Where the pluck nearly nulls a partial, the random release burst decides its
   level.
-- Changing Tuning under a ringing chord hisses for a moment: the sound above
-  5 kHz in the 20 ms after the change rises about 21 dB over the 40 ms that
-  follow, 38-41 dB under the chord. A master tune change rises 8-12 dB. Both
-  come from restringing the ringing strings; the source has not been traced.
+- Changing the host's master tune under a ringing chord still brightens it
+  for a moment: at 48 kHz on the eight presets, the sound above 5 kHz in the
+  20 ms after the change rises up to 8 dB over the 40 ms that follow, 48 dB
+  or more under the chord. A Tuning change rises at most 4.5 dB (1.9.4).
 
 **Bridge and body**
 

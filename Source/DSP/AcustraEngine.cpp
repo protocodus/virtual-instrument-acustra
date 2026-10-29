@@ -4478,14 +4478,16 @@ void AcustraEngine::setMasterTuneCents(float cents) noexcept
         {
             for (auto& loop : voice.loops)
                 loop.setCurrentDelay(loop.targetDelay);
-            voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
+            voice.appliedBendImpedanceScale = voice.bendImpedanceStage
+                = voice.bendImpedanceScale;
         }
         else if (previousImpedance > 0.0f && voice.characteristicImpedance > 0.0f)
         {
             // Preserve the junction's current port, then let its existing
             // 6 ms follower reach the retensioned string with the delay.
-            voice.appliedBendImpedanceScale *= previousImpedance
-                / voice.characteristicImpedance;
+            const float kept = previousImpedance / voice.characteristicImpedance;
+            voice.appliedBendImpedanceScale *= kept;
+            voice.bendImpedanceStage *= kept;
         }
     }
     // A captured refret tail keeps its original string and port, as it does
@@ -4677,6 +4679,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             // rate, as a bend's does, instead of stepping under its ringing
             // wave.
             voice.appliedBendImpedanceScale *= before / after;
+            voice.bendImpedanceStage *= before / after;
         }
 }
 
@@ -6640,7 +6643,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     voice.bendImpedanceScale = exact::sqrt((bentTension / tension)
                                          / stretchedMass);
     if (clearDelay)
-        voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
+        voice.appliedBendImpedanceScale = voice.bendImpedanceStage
+            = voice.bendImpedanceScale;
     if (voice.keyDown || voice.pedalHeld || voice.releaseJoinPending
         || voice.releaseAfterPluck || !voice.played)
         voice.releaseDamping = 1.0f;
@@ -12676,10 +12680,16 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             // moves with it. The junction sums impedances every sample and a
             // whole-tone bend moves this one by 12%; followed at the delay's
             // own rate rather than stepped once a control period, the sum
-            // never steps. A scale of exactly 1 leaves both arithmetic and
-            // output bit-identical to the unbent engine.
+            // never steps. Two stages at that rate, so it never turns a
+            // corner either: one stage set off at full slope, a corner in
+            // the string's force on the saddle (2 Z v) that the piezo and the
+            // body read as a click (Aculele 0.4.26 found it there).
+            // A scale of exactly 1 leaves both arithmetic and output
+            // bit-identical to the unbent engine.
+            voice.bendImpedanceStage += delaySmoothing_
+                * (voice.bendImpedanceScale - voice.bendImpedanceStage);
             voice.appliedBendImpedanceScale += delaySmoothing_
-                * (voice.bendImpedanceScale
+                * (voice.bendImpedanceStage
                    - voice.appliedBendImpedanceScale);
             excitation[static_cast<std::size_t>(string)]
                 = renderExcitation(voice);
