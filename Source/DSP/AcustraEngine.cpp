@@ -13442,6 +13442,17 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate,
                 gain = static_cast<float>(source.reflection * directDistance / distance
                     * (0.5 * (1.0 - dy / distance) / directivity));
             }
+        for (int index = 0; index < arrivalCount; ++index)
+        {
+            const auto& arrival = index < tapCount
+                ? arrivalsLeft[static_cast<std::size_t>(index)]
+                : arrivalsRight[static_cast<std::size_t>(index - tapCount)];
+            arrivalOldest[static_cast<std::size_t>(index)] = arrival.firstDelay + 3;
+            for (int weight = 0; weight < 4; ++weight)
+                arrivalWeightLanes[static_cast<std::size_t>(
+                    (index / 4 * 4 + weight) * 4 + index % 4)]
+                    = arrival.weights[static_cast<std::size_t>(weight)];
+        }
     }
     lateDelay = std::clamp(samples(roomLateMilliseconds) - conversionDelay,
                            1, earlyCapacity - 1);
@@ -13601,6 +13612,8 @@ void AcustraEngine::RoomAmbience::reset() noexcept
 void AcustraEngine::RoomAmbience::step(float input) noexcept
 {
     early[static_cast<std::size_t>(earlyHead)] = input;
+    if (earlyHead < 3)
+        early[static_cast<std::size_t>(earlyHead + earlyCapacity)] = input;
     const auto delayed = [this] (int delay)
     {
         // The power-of-two ring maps the same signed difference without a
@@ -13615,6 +13628,47 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
     float reflectedRight = 0.0f;
     if (directional)
     {
+#if defined(__clang__) || defined(__GNUC__)
+        // Four arrivals at a time, one per lane: each lane is its arrival's
+        // own scalar sum below, the same products added to zero in the same
+        // order, so every value is the scalar one bit for bit. Its four taps
+        // are one read, oldest first, turned into the four weights' columns.
+        typedef float Vector __attribute__((vector_size(16)));
+        std::array<float, arrivalCount> values;
+        for (int group = 0; group < arrivalCount; group += 4)
+        {
+            Vector rows[4];
+            for (int lane = 0; lane < 4; ++lane)
+            {
+                const auto index = static_cast<unsigned>(earlyHead
+                    - arrivalOldest[static_cast<std::size_t>(group + lane)])
+                    & static_cast<unsigned>(earlyCapacity - 1);
+                __builtin_memcpy(&rows[lane], early.data() + index, sizeof(Vector));
+            }
+            const auto column = [&rows] (int age)
+            {
+                return Vector { rows[0][3 - age], rows[1][3 - age],
+                                rows[2][3 - age], rows[3][3 - age] };
+            };
+            const auto weights = [this, group] (int age)
+            {
+                Vector value;
+                __builtin_memcpy(&value, arrivalWeightLanes.data() + (group + age) * 4,
+                                 sizeof(value));
+                return value;
+            };
+            Vector value = 0.0f + weights(0) * column(0);
+            value += weights(1) * column(1);
+            value += weights(2) * column(2);
+            value += weights(3) * column(3);
+            __builtin_memcpy(values.data() + group, &value, sizeof(value));
+        }
+        for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
+        {
+            reflectedLeft += tapLeft[tap] * values[tap];
+            reflectedRight += tapRight[tap] * values[tap + tapCount];
+        }
+#else
         const auto arrivalValue = [&delayed] (const Arrival& arrival)
         {
             float value = 0.0f;
@@ -13628,6 +13682,7 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
             reflectedLeft += tapLeft[tap] * arrivalValue(arrivalsLeft[tap]);
             reflectedRight += tapRight[tap] * arrivalValue(arrivalsRight[tap]);
         }
+#endif
     }
     else
         for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)

@@ -2144,7 +2144,9 @@ private:
         std::array<float, lineCount> absorptionState {};
         std::array<float, lineCount> absorptionGain {};
         std::array<float, lineCount> absorptionPole {};
-        std::array<float, earlyCapacity> early {};
+        // The ring's first three samples repeat past its end, so four
+        // consecutive taps are one contiguous read wherever they start.
+        std::array<float, earlyCapacity + 3> early {};
         int earlyHead { 0 };
         // Four Schroeder allpasses diffusing what enters the late field.
         static constexpr int diffuserCapacity = 512;
@@ -2162,6 +2164,12 @@ private:
             std::array<float, 4> weights {};
         };
         std::array<Arrival, tapCount> arrivalsLeft {}, arrivalsRight {};
+        // The same arrivals, left then right, four to a group: each one's
+        // oldest tap, and the weights lane by lane (step).
+        static constexpr int arrivalCount = 2 * tapCount;
+        static_assert(arrivalCount % 4 == 0, "arrivals are read four at a time");
+        std::array<int, arrivalCount> arrivalOldest {};
+        alignas(16) std::array<float, 4 * arrivalCount> arrivalWeightLanes {};
         bool directional { false };
         bool rateConversion { false };
         // Two 64-internal-sample Blackman-windowed sinc filters. The first
