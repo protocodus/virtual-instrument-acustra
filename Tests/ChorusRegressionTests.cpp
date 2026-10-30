@@ -86,21 +86,25 @@ int main()
     // Observed on unchanged 8ea51f9 with this exact protocol. A six-decibel
     // energy bracket prevents suppressing a harmonic to hide its beating,
     // while allowing the requested pitch correction to move its comb level.
-    constexpr double referenceAmplitude[2][3][2] {
-        { { 0.000861821, 0.000185553 }, { 0.000319559, 0.000317302 },
-          { 0.000739774, 0.0000667068 } },
-        { { 0.000816120, 0.000184121 }, { 0.000323796, 0.000343050 },
-          { 0.000718182, 0.0000865664 } }
+    // Open G's H8 was a second fixture until 1.9.9, when the owner chose by
+    // ear to part the planes by 0.75 cent (normalPlaneLagPeriods) so that
+    // partials swell and fade as the recordings' do: it beats there at
+    // 0.68 Hz, 8-11 dB across this window, by design. E3's H5 stays, because
+    // that split beats it at 0.36 Hz, which the window's straight decay
+    // absorbs, while the per-plane end-delay chorus this guards against
+    // beat it audibly.
+    constexpr double referenceAmplitude[2][3] {
+        { 0.000861821, 0.000319559, 0.000739774 },
+        { 0.000816120, 0.000323796, 0.000718182 }
     };
     for (const double rate : { 48000.0, 96000.0 })
     for (const auto technique : { acustra::PickingTechnique::Finger,
                                  acustra::PickingTechnique::Pick,
                                  acustra::PickingTechnique::Thumb })
-    for (const int fixture : { 0, 1 })
     {
-        const int string = fixture == 0 ? 0 : 3;
-        const int fret = fixture == 0 ? 12 : 0;
-        const int partial = fixture == 0 ? 5 : 8;
+        const int string = 0;
+        const int fret = 12;
+        const int partial = 5;
         auto engine = std::make_unique<acustra::AcustraEngine>();
         acustra::EngineParameters parameters;
         parameters.picking = technique;
@@ -138,7 +142,7 @@ int main()
         // and its slip, a one-pole on the periodic line, passes more of an
         // upper partial. Scale the Thumb's reference by that one-pole's gain
         // at the partial under its release time against the old one: 1.62
-        // for E3's H5 and 1.73 for G3's H8, which grew 1.07 and 1.96-2.20
+        // for E3's H5 and 1.73 for G3's retired H8, which grew 1.07 and 1.96-2.20
         // times from 1.9.4.
         double releaseScale = 1.0;
         if (technique == acustra::PickingTechnique::Thumb)
@@ -153,7 +157,7 @@ int main()
         }
         const double reference = linearForceScale * releaseScale
             * referenceAmplitude[rate == 48000.0 ? 0 : 1]
-                                [static_cast<int>(technique)][fixture];
+                                [static_cast<int>(technique)];
         if (!(envelope.meanAmplitude > 0.5 * reference
               && envelope.meanAmplitude < 2.0 * reference))
         {

@@ -92,7 +92,9 @@ struct AcustraEngineTestAccess
         {
             const auto& model = references[string];
             const auto& voice = engine.voices_[string];
-            const auto& loop = voice.loops[0];
+            // The resting model is the parallel plane's: the normal one
+            // carries the plane split on top (normalPlaneLagPeriods).
+            const auto& loop = voice.loops[1];
             const float uncorrected = loop.targetDelay / (1.0f + voice.polarisationDetune);
             const float ulp = std::nextafter(model.delay, INFINITY) - model.delay;
             if (std::abs(uncorrected - model.delay) > 3.0f * ulp

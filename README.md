@@ -39,6 +39,17 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.9 — 2026-10-30 — overtones that swell and fade
+
+- A string's two planes now sound 0.75 cent apart, so held notes' 2nd-4th
+  partials swell and fade as the reference bank's picked flat-top's do:
+  Dreadnought Steel's 3rd and 4th partials beat in 19% and 25% of notes,
+  against 0% before and 12-28% in the recordings. The pitch is still centred
+  on the request; the first second sits up to 0.75 cent under it. Chosen by
+  ear. Fingered notes brighten a little less with velocity (1.9 dB from
+  velocity 20 to 112, against 3.4). Details in
+  [the decision log](Docs/decisions.md).
+
 ### 1.9.8 — 2026-10-30 — Piezo Stage Steel half a decibel up
 
 - Piezo Stage Steel's Output moves from −6.5 to −6.0 dB. The Pick's wider
@@ -340,7 +351,9 @@ width, level and brightness. The Pick adds a fitted release velocity, and every
 technique lets the string slide off a rounded edge, so softer strokes are
 released darker. A short noise burst carries release detail. Most of a steel
 pluck goes into the plane parallel to the top, which reaches the body through
-the saddle's measured rocking and gives partials their beating doublets. A
+the saddle's measured rocking and gives partials their beating doublets; the
+normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
+2nd-4th partials swell and fade as a recorded guitar's do. A
 bounded Kirchhoff-Carrier surrogate sharpens the attack pitch.
 
 **References.** Laakso, Valimaki, Karjalainen and Laine, IEEE Signal
@@ -585,11 +598,11 @@ separates verified errors from accepted approximations.
   not a measured tangential admittance; the saddle's in-plane translation is
   unmeasured. Sharing the normal loop's bridge compensation leaves sustained
   pitch up to 9 cents off on a few Dreadnought notes, kept by ear for its
-  beating. Partials 2-4 still swell and fade less often than the reference
-  bank's picked flat-top's (0-6% of notes against 3-28%). Parting the two
-  planes by 0.75 cent closes it, but is held for the owner's ear: it trips
-  `ChorusRegression`'s guard against beating upper partials and the
-  tuning contracts (Docs/decisions.md, 2026-10-30).
+  beating. The 0.75-cent split between the planes is chosen by ear, not
+  derived: what parts a real string's planes (the saddle's or nut's
+  sideways hold, the string's own asymmetry) is not modelled. It costs
+  fingered notes about 1.5 dB of their brightening with velocity
+  (Docs/decisions.md, 2026-10-30).
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over

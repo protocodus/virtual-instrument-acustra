@@ -5,7 +5,7 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-10-30 — the string's two planes 0.75 cent apart: measured, held for the ear
+## 2026-10-30 — the string's two planes 0.75 cent apart, chosen by ear, 1.9.9
 
 **What was asked.** Aculele parted its strings' planes by 2 cents on
 2026-10-29, chosen by ear, because real ukuleles' partials 2-4 swell and
@@ -31,7 +31,7 @@ the same split through a comparison build. The parallel plane lasts and the
 tuning follows it, so the normal plane takes the split, and lower brings
 the onset glide toward the recordings'.
 
-**Why it did not ship.** The split at 0.75 cent fails unit suites written
+**Why it was held.** The split at 0.75 cent fails unit suites written
 to forbid what it does. `ChorusRegression` guards against an
 upper partial's beating envelope, from the pre-polish chorus defect.
 `ModalTuning`, `PitchGeometryCache` and the equal-tuning checks hold each
@@ -51,7 +51,44 @@ Steel and Jumbo Steel Pick with `AcustraRenderEventList`, 48 kHz in
 planes by 0.75 cent. B was matched to A on whole-file RMS, −0.19 dB
 (Dreadnought) and −1.20 dB (Jumbo). The set is in the project files
 (`acustra/listening-tests/2026-10-30-realism/2-string-planes/`), with
-its key. Nothing ships until the owner hears it.
+its key.
+
+**The verdict.** The owner chose B by ear ("B is better", 2026-10-30), which
+licensed reworking the guards that forbid the split. 1.9.9 ships it as a
+pure delay on the normal plane, 0.75 cent of its period on top of the tuned
+loop (`normalPlaneLagPeriods`), and the coupled pair's common tuning
+(`coupledPolarisationDetune`) now centres the pair with that lag in it.
+Through the same `--beating` reading, Jumbo Steel Pick's H2-H4 beat in
+0 / 12 / 31% of notes and Dreadnought Steel's in 0 / 19 / 25%, against the
+listened B's 0 / 6 / 31 and 6 / 19 / 25. What changed in the tests, each
+with its reason beside it:
+
+- `ChorusRegression` keeps E3's H5, which the split beats at 0.36 Hz, too
+  slowly to show in its window, so it still catches a per-plane end-delay
+  chorus. Open G's H8, beating at 0.68 Hz, 8-11 dB across the window, by
+  design, is retired.
+- `ModalTuning` checks the normal plane is the longer one in place of one
+  shared length, and seeds its root search at +-1 cent too: the fifth
+  fixture's fourth member sat between the old seeds. Every fixture's
+  centre stays within 2 cents.
+- `PitchGeometryCache` compares the resting reference with the parallel
+  plane, which carries no split.
+- `Engine`: the steady-pitch window reads the normal plane's early sustain,
+  0.73-0.75 cent flatter on every note, and is judged against the request
+  less the split. The A string's 5th fret joins open G as an unresolved pair
+  whose FFT peak (+4.2 cents) lies outside its poles (centre -1.9, strongest
+  -0.2), which `ModalTuning` checks. Finger velocity articulation at the
+  fixed observer keeps its 3 dB on six notes; C5 and F#5 fell to 2.10 and
+  0.79 dB and keep only their centroid rise.
+
+**What it cost.** That last one is audible. In unison the two planes' upper
+partials partly cancel at the microphones, more on soft strokes, and parted
+they drift out of it, so soft notes come out brighter. From velocity 20 to
+112 over the 16 roots, Parlor Steel Fingerstyle now brightens 1.9 dB against
+3.4 (1.5 against 2.3 from C5 up), and Jumbo Steel Pick 5.9 against 5.6. The
+listening set played velocity 84 only, so this was not part of what the
+owner heard. Velocity brightness was already short of the recordings (Known
+gaps).
 
 ## 2026-10-30 — a plectrum lands a little differently every time, 1.9.7
 

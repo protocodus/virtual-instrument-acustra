@@ -372,6 +372,23 @@ constexpr float twoPi = 2.0f * pi;
 // within 2.8 dB/s, though the two planes' beat reads up to 4.7 dB/s slower
 // (Docs/research/string-hf-loss-2026-10-10.md). It is still an authored value.
 constexpr float stringRoundTripGain = 0.99915f;
+// A string's two planes do not sound at quite one pitch. On the reference
+// bank's Shinyguitar notes (a picked flat-top, 16 roots from E2 to C6 in four
+// layers) partials 2-4 swell and fade by more than 6 dB within two seconds,
+// over a quadratic decay, in 3-9%, 12-22% and 9-28% of notes; with only the
+// bridge to part the planes, Jumbo Steel Pick's and Dreadnought Steel's did
+// in 0-6%. What sets real planes apart (the saddle's or the nut's sideways
+// hold, the string's own asymmetry) is not identified, so the split is not
+// derived: 0.5, 0.75 and 1 cent were measured, 0.75 brings H3-H4 into the
+// recordings' range, and the owner chose it over the unsplit string by ear.
+// The normal plane takes it, lower, so the parallel one, which lasts and
+// which the tuning follows, keeps its pitch, and the onset glide falls toward
+// the recordings' (1 cent higher instead raised it). Aculele splits its nylon
+// planes by the owner's ear too (its Docs/decisions.md, 2026-10-29).
+// Tools/compare_reference_takes.py --beating; Docs/decisions.md, 2026-10-30.
+// The lag is pure delay, a share of the period on top of the tuned loop, so
+// the loop's filters keep the compensation they were tuned with.
+constexpr float normalPlaneLagPeriods = 4.3331e-4f; // 2^(0.75/1200) - 1
 constexpr float noteDetuneRangeCents = 20.0f;
 // No two contacts on a string sound at quite the same pitch. A fretting
 // finger stops the string a little differently each time it presses: deeper
@@ -6007,7 +6024,10 @@ float AcustraEngine::coupledPolarisationDetune(
     // used when its delay is configured below.
     const double ownPhase = std::arg(exact::divide(unbentAdmittance - Complex(port.normal),
                                              unbentAdmittance + Complex(port.normal)));
-    const Complex gainNormal = std::polar(static_cast<double>(normalGain), -ownPhase);
+    // The normal plane's lag (normalPlaneLagPeriods) is in its loop, so the
+    // pair is centred with its split in it.
+    const Complex gainNormal = std::polar(static_cast<double>(normalGain),
+        -ownPhase - 2.0 * piDouble * static_cast<double>(normalPlaneLagPeriods));
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain), -ownPhase);
     const Complex a00 = gainNormal * r00;
     const Complex a01 = gainNormal * r01;
@@ -6571,7 +6591,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     for (int polarisation = 0; polarisation < 2; ++polarisation)
     {
         auto& loop = voice.loops[static_cast<std::size_t>(polarisation)];
-        const float planeDelay = rawDelay;
+        const float planeLag = polarisation == 0 ? normalPlaneLagPeriods / frequency : 0.0f;
+        const float planeDelay = rawDelay + planeLag * static_cast<float>(sampleRate_);
         const float planeBridgeDelay = measuredBridgeDelay;
         const float polarisationDelay = coupledDetune != 0.0f
             ? (planeDelay - planeBridgeDelay) * (1.0f + coupledDetune)
@@ -6589,8 +6610,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             const float referenceBridgeDelay = planeBridgeDelay
                 * static_cast<float>(48000.0 / sampleRate_);
             const float referenceDelay = coupledDetune != 0.0f
-                ? (referenceRawDelay - referenceBridgeDelay) * (1.0f + coupledDetune)
-                : referenceRawDelay - referenceBridgeDelay;
+                ? (referenceRawDelay + planeLag * 48000.0f - referenceBridgeDelay) * (1.0f + coupledDetune)
+                : referenceRawDelay + planeLag * 48000.0f - referenceBridgeDelay;
             voice.referencePickDelay[static_cast<std::size_t>(polarisation)] = clamp(
                 referenceDelay,
                 3.0f, static_cast<float>(activeDelaySamples() - 3));

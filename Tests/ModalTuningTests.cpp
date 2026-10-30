@@ -234,7 +234,9 @@ struct AcustraEngineTestAccess
         e.process(l.data(), r.data(), int(l.size()));
         double f = 440 * std::exp2((note - 69.) / 12), omega = 2 * pi * f / e.sampleRate_;
         std::vector<C> roots;
-        for (double cents : {-24., -12., -4., 4., 12., 24.})
+        // The +-1 cent seeds find the members the 0.75-cent plane split
+        // (1.9.9) leaves close together, which the wider seeds converged past.
+        for (double cents : {-24., -12., -4., -1., 1., 4., 12., 24.})
             for (double alpha : {.65, 3.5})
             {
                 C x(-alpha / e.sampleRate_, omega * std::exp2(cents / 1200.));
@@ -288,8 +290,13 @@ struct AcustraEngineTestAccess
         const double centre = sumCents / sumWeight;
         valid &= std::isfinite(centre) && sumWeight > 0. && std::abs(centre) < 2.;
         valid &= std::abs(dominantCents) < 2.;
-        valid &= e.voices_[st].loops[0].targetDelay == e.voices_[st].loops[1].targetDelay;
-        valid &= e.voices_[st].loops[0].currentDelay == e.voices_[st].loops[1].currentDelay;
+        // The planes once shared one speaking length to end the per-plane
+        // chorus; since 1.9.9 the normal plane is longer by the split the
+        // owner chose by ear (normalPlaneLagPeriods), and the roots above
+        // are its own and the parallel plane's, so the centre still holds.
+        const auto& planes = e.voices_[st].loops;
+        valid &= planes[0].targetDelay > planes[1].targetDelay;
+        valid &= planes[0].currentDelay > planes[1].currentDelay;
         std::cout << "Modal tuning rate=" << e.sampleRate_ << " shape=" << int(e.parameters_.shape)
                   << " string=" << st << " note=" << note << " modes=" << roots.size()
                   << " centre=" << centre << " cents, dominant=" << dominantCents << " cents\n";

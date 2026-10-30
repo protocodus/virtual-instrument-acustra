@@ -3069,7 +3069,11 @@ void testSteadyPitchIsCompensated()
         // deliberately stretched string. Search H1 itself instead.
         const double actual = spectralPeakFrequency(
             audio, expected, 25.0, 0.55, 0.92);
-        const double cents = 1200.0 * std::log2(actual / expected);
+        // This window reads the early sustain, which the normal plane leads,
+        // and since 1.9.9 that plane sits 0.75 cent under the parallel one
+        // the loop is compensated to (normalPlaneLagPeriods, chosen by ear):
+        // every note here read 0.73-0.75 cent flatter than without it.
+        const double cents = 1200.0 * std::log2(actual / expected) + 0.75;
         expect(std::abs(cents) < 1.5,
                "phase-compensated loop missed steady pitch for MIDI "
                    + std::to_string(midiNote) + " by "
@@ -3082,6 +3086,10 @@ void testEveryStringStaysOnEqualTemperedPitch()
     // Preserve the single-peak acoustic guard. Open G's unresolved pair is
     // independently covered by ModalTuning: its short-window FFT peak can
     // lie outside both physical poles when their complex residues cancel.
+    // Since the planes were parted by 0.75 cent (1.9.9) the A string's 5th
+    // fret is such a pair too: its peak reads +4.2 cents where its poles'
+    // weighted centre is -1.9 and its strongest pole -0.2, which ModalTuning
+    // checks as its Dreadnought A-string D3 fixture.
     double worst = 0.0;
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
         for (int string = 0; string < 6; ++string)
@@ -3103,7 +3111,7 @@ void testEveryStringStaysOnEqualTemperedPitch()
                     audio, expected, 18.0, 1.6, 2.7, rate);
                 const double cents = 1200.0 * std::log2(actual / expected);
                 worst = std::max(worst, std::abs(cents));
-                if (!(string == 3 && fret == 0))
+                if (!(string == 3 && fret == 0) && !(string == 1 && fret == 5))
                     expect(std::abs(cents) < 1.8,
                        "string " + std::to_string(string + 1) + " fret "
                            + std::to_string(fret) + " missed equal tuning by "
@@ -9262,9 +9270,22 @@ void testAFingerBrightensWithVelocity()
         const double nativeRise = 0.5 * (nativeContrasts[7] + nativeContrasts[8]);
         const double centroidRatio = 0.5 * (nativeCentroidRatios[7] + nativeCentroidRatios[8]);
         rises.push_back(rise);
-        expect(rise > 3.0,
-               "the Finger velocity ensemble lost its fixed-observer articulation on MIDI "
-                   + std::to_string(midi));
+        // C5 and F#5 rose 3.48 and 3.95 dB here with the planes in unison,
+        // and 2.10 and 0.79 dB once the owner chose by ear to part them by
+        // 0.75 cent (1.9.9); parting them 0.75 cent the other way reads the
+        // same. In unison the planes' upper partials partly cancel at this
+        // observer, more on soft strokes, and parted they drift out of it:
+        // the soft strokes' H5-H12 gained 3.8-6.4 dB, the loud ones' 2.4-3.4.
+        // The shipping path loses less of the contrast: from velocity 20 to
+        // 112 over sixteen roots (Tools/compare_reference_takes.py's
+        // brightness), Parlor Steel Fingerstyle brightens 1.9 dB against
+        // 3.4, and Jumbo Steel Pick 5.9 against 5.6. That loss is part of
+        // the chosen sound (README, Known gaps), so above B4 these two notes
+        // keep only the native centroid rise below.
+        if (midi < 72)
+            expect(rise > 3.0,
+                   "the Finger velocity ensemble lost its fixed-observer articulation on MIDI "
+                       + std::to_string(midi));
         expect(centroidRatio > 1.0,
                "the native Finger velocity ensemble did not brighten on MIDI "
                    + std::to_string(midi));
