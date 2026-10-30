@@ -13608,7 +13608,7 @@ void AcustraEngine::RoomAmbience::reset() noexcept
     previousLeft = previousRight = 0.0f;
     currentLeft = currentRight = 0.0f;
     sideHighpassState.fill(0.0);
-    converterInput.fill(0.0f);
+    converterInput.fill(0.0);
     for (auto& pair : converterStereo)
         pair = { 0.0, 0.0 };
     converterInputHead = converterOutputHead = 0;
@@ -13769,25 +13769,17 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
     active = true;
     if (rateConversion && decimation > 1)
     {
-        converterInput[static_cast<std::size_t>(converterInputHead)] = input;
+        converterInput[static_cast<std::size_t>(converterInputHead)]
+            = converterInput[static_cast<std::size_t>(converterInputHead + converterLength)]
+            = input;
         if (phase == 0)
         {
+            // The newest sample first: coefficient k takes the sample k old.
+            const double* samples = converterInput.data() + converterInputHead + converterLength;
             double filtered = 0.0;
-            int index = converterInputHead;
-            int coefficient = 0;
-            // Walk the two contiguous parts of the ring in the original
-            // coefficient order. Every product and addition stays unchanged;
-            // only the per-tap wrap test moves outside the inner loops.
-            for (; index >= 0; --index, ++coefficient)
-            {
+            for (int coefficient = 0; coefficient < converterLength; ++coefficient)
                 filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
-                    * converterInput[static_cast<std::size_t>(index)];
-            }
-            for (index = converterLength - 1; coefficient < converterLength; --index, ++coefficient)
-            {
-                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
-                    * converterInput[static_cast<std::size_t>(index)];
-            }
+                    * samples[-coefficient];
             inputState += inputCoefficient * (static_cast<float>(filtered) - inputState);
             if (exact::abs(inputState) < 1.0e-20f)
                 inputState = 0.0f;
@@ -13795,46 +13787,35 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
             converterOutputHead = converterOutputHead == converterOrder
                 ? 0 : converterOutputHead + 1;
             converterStereo[static_cast<std::size_t>(converterOutputHead)]
+                = converterStereo[static_cast<std::size_t>(converterOutputHead
+                                                           + converterOrder + 1)]
                 = { currentLeft, currentRight };
         }
         converterInputHead = converterInputHead + 1 == converterLength
             ? 0 : converterInputHead + 1;
         const auto& coefficients = converterPhases[static_cast<std::size_t>(phase)];
-        int index = converterOutputHead;
-        std::size_t coefficient = 0;
+        // The newest pair first: coefficient k takes the pair k samples old.
+        const auto* pairs = converterStereo[static_cast<std::size_t>(
+            converterOutputHead + converterOrder + 1)].data();
 #if defined(__clang__) || defined(__GNUC__)
         // Left and right in the two lanes: each lane is its own sum below,
         // the same products in the same order.
         typedef double Vector __attribute__((vector_size(16)));
         Vector sum = { 0.0, 0.0 };
-        const auto add = [&] ()
+        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
         {
             Vector pair;
-            __builtin_memcpy(&pair, converterStereo[static_cast<std::size_t>(index)].data(),
-                             sizeof(pair));
+            __builtin_memcpy(&pair, pairs - 2 * coefficient, sizeof(pair));
             sum += coefficients[coefficient] * pair;
-        };
-        for (; index >= 0; --index, ++coefficient)
-            add();
-        for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
-            add();
+        }
         left = static_cast<float>(sum[0]);
         right = static_cast<float>(sum[1]);
 #else
         double sumLeft = 0.0, sumRight = 0.0;
-        for (; index >= 0; --index, ++coefficient)
+        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
         {
-            sumLeft += coefficients[coefficient]
-                * converterStereo[static_cast<std::size_t>(index)][0];
-            sumRight += coefficients[coefficient]
-                * converterStereo[static_cast<std::size_t>(index)][1];
-        }
-        for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
-        {
-            sumLeft += coefficients[coefficient]
-                * converterStereo[static_cast<std::size_t>(index)][0];
-            sumRight += coefficients[coefficient]
-                * converterStereo[static_cast<std::size_t>(index)][1];
+            sumLeft += coefficients[coefficient] * pairs[-2 * static_cast<std::ptrdiff_t>(coefficient)];
+            sumRight += coefficients[coefficient] * pairs[1 - 2 * static_cast<std::ptrdiff_t>(coefficient)];
         }
         left = static_cast<float>(sumLeft);
         right = static_cast<float>(sumRight);

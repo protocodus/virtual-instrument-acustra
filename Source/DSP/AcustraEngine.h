@@ -2178,13 +2178,18 @@ private:
         static constexpr int converterOrder = 64;
         static constexpr int maximumDecimation = 12; // through 768 kHz
         static constexpr int converterCapacity = converterOrder * maximumDecimation + 1;
-        std::array<float, converterCapacity> converterCoefficients {}, converterInput {};
+        std::array<float, converterCapacity> converterCoefficients {};
+        // The room's input as doubles, written twice, converterLength apart,
+        // so the newest converterLength samples are one run of memory.
+        std::array<double, 2 * converterCapacity> converterInput {};
         // Each phase's float coefficients, held as doubles (exactly) to
         // multiply both outputs' doubles.
         std::array<std::array<double, converterOrder + 1>, maximumDecimation>
             converterPhases {};
-        // The room's outputs, left and right side by side, as doubles.
-        alignas(16) std::array<std::array<double, 2>, converterOrder + 1> converterStereo {};
+        // The room's outputs, left and right side by side, as doubles. The
+        // ring is written twice, a ring's length apart, so its newest
+        // converterOrder + 1 pairs are always one run of memory.
+        alignas(16) std::array<std::array<double, 2>, 2 * (converterOrder + 1)> converterStereo {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };
