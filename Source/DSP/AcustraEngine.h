@@ -2179,9 +2179,12 @@ private:
         static constexpr int maximumDecimation = 12; // through 768 kHz
         static constexpr int converterCapacity = converterOrder * maximumDecimation + 1;
         std::array<float, converterCapacity> converterCoefficients {}, converterInput {};
-        std::array<std::array<float, converterOrder + 1>, maximumDecimation>
+        // Each phase's float coefficients, held as doubles (exactly) to
+        // multiply both outputs' doubles.
+        std::array<std::array<double, converterOrder + 1>, maximumDecimation>
             converterPhases {};
-        std::array<float, converterOrder + 1> converterLeft {}, converterRight {};
+        // The room's outputs, left and right side by side, as doubles.
+        alignas(16) std::array<std::array<double, 2>, converterOrder + 1> converterStereo {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };

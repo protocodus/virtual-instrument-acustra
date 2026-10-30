@@ -13365,7 +13365,7 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate,
         for (int part = 0; part < decimation; ++part)
         {
             auto& coefficients = converterPhases[static_cast<std::size_t>(part)];
-            coefficients.fill(0.0f);
+            coefficients.fill(0.0);
             double phaseSum = 0.0;
             for (int index = part; index <= order; index += decimation)
                 phaseSum += converterCoefficients[static_cast<std::size_t>(index)];
@@ -13602,8 +13602,8 @@ void AcustraEngine::RoomAmbience::reset() noexcept
     currentLeft = currentRight = 0.0f;
     sideHighpassState.fill(0.0);
     converterInput.fill(0.0f);
-    converterLeft.fill(0.0f);
-    converterRight.fill(0.0f);
+    for (auto& pair : converterStereo)
+        pair = { 0.0, 0.0 };
     converterInputHead = converterOutputHead = 0;
     quietSamples = 0;
     active = false;
@@ -13787,31 +13787,51 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
             step(inputState);
             converterOutputHead = converterOutputHead == converterOrder
                 ? 0 : converterOutputHead + 1;
-            converterLeft[static_cast<std::size_t>(converterOutputHead)] = currentLeft;
-            converterRight[static_cast<std::size_t>(converterOutputHead)] = currentRight;
+            converterStereo[static_cast<std::size_t>(converterOutputHead)]
+                = { currentLeft, currentRight };
         }
         converterInputHead = converterInputHead + 1 == converterLength
             ? 0 : converterInputHead + 1;
         const auto& coefficients = converterPhases[static_cast<std::size_t>(phase)];
-        double sumLeft = 0.0, sumRight = 0.0;
         int index = converterOutputHead;
         std::size_t coefficient = 0;
+#if defined(__clang__) || defined(__GNUC__)
+        // Left and right in the two lanes: each lane is its own sum below,
+        // the same products in the same order.
+        typedef double Vector __attribute__((vector_size(16)));
+        Vector sum = { 0.0, 0.0 };
+        const auto add = [&] ()
+        {
+            Vector pair;
+            __builtin_memcpy(&pair, converterStereo[static_cast<std::size_t>(index)].data(),
+                             sizeof(pair));
+            sum += coefficients[coefficient] * pair;
+        };
+        for (; index >= 0; --index, ++coefficient)
+            add();
+        for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
+            add();
+        left = static_cast<float>(sum[0]);
+        right = static_cast<float>(sum[1]);
+#else
+        double sumLeft = 0.0, sumRight = 0.0;
         for (; index >= 0; --index, ++coefficient)
         {
-            sumLeft += static_cast<double>(coefficients[coefficient])
-                * converterLeft[static_cast<std::size_t>(index)];
-            sumRight += static_cast<double>(coefficients[coefficient])
-                * converterRight[static_cast<std::size_t>(index)];
+            sumLeft += coefficients[coefficient]
+                * converterStereo[static_cast<std::size_t>(index)][0];
+            sumRight += coefficients[coefficient]
+                * converterStereo[static_cast<std::size_t>(index)][1];
         }
         for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
         {
-            sumLeft += static_cast<double>(coefficients[coefficient])
-                * converterLeft[static_cast<std::size_t>(index)];
-            sumRight += static_cast<double>(coefficients[coefficient])
-                * converterRight[static_cast<std::size_t>(index)];
+            sumLeft += coefficients[coefficient]
+                * converterStereo[static_cast<std::size_t>(index)][0];
+            sumRight += coefficients[coefficient]
+                * converterStereo[static_cast<std::size_t>(index)][1];
         }
         left = static_cast<float>(sumLeft);
         right = static_cast<float>(sumRight);
+#endif
         phase = phase + 1 == decimation ? 0 : phase + 1;
         return;
     }
