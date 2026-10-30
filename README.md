@@ -533,7 +533,11 @@ separates verified errors from accepted approximations.
 - The strings are linear apart from the bounded attack-pitch surrogate; the
   geometrically exact nonlinear string, which supplies up to about 58% of the
   recordings' loud-layer brightness rise, is not built. Velocity brightens a
-  Pick stroke about half as much as the recordings show.
+  Pick stroke about half as much as the archtop recordings show, and about a
+  third as much as the reference bank's picked flat-top: from its softest
+  layer to its hardest, the share above 2.5 kHz over a note's first 30-330 ms
+  rises 15.5 dB while the level rises 4.4 dB; Jumbo Steel Pick's rises 5.7 dB
+  from velocity 20 to 112 (Tools/compare_reference_takes.py's measure).
 - The recordings snap and then mellow; the engine's upper partials die at
   about 35% of the recorded rate and the attack transient those partials stood
   for is missing. The Finger's attack stays brighter than the finger-plucked
@@ -574,7 +578,11 @@ separates verified errors from accepted approximations.
   not a measured tangential admittance; the saddle's in-plane translation is
   unmeasured. Sharing the normal loop's bridge compensation leaves sustained
   pitch up to 9 cents off on a few Dreadnought notes, kept by ear for its
-  beating.
+  beating. Partials 2-4 still swell and fade less often than the reference
+  bank's picked flat-top's (0-6% of notes against 3-28%). Parting the two
+  planes by 0.75 cent closes it, but is held for the owner's ear: it trips
+  `ChorusRegression`'s guard against beating upper partials and the
+  tuning contracts (Docs/decisions.md, 2026-10-30).
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over

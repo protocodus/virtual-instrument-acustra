@@ -5,6 +5,54 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-30 — the string's two planes 0.75 cent apart: measured, held for the ear
+
+**What was asked.** Aculele parted its strings' planes by 2 cents on
+2026-10-29, chosen by ear, because real ukuleles' partials 2-4 swell and
+fade more often than the model's. The same reading of the reference bank's
+Shinyguitar (`Tools/compare_reference_takes.py --beating`, 16 roots E2 to
+C6 in four layers) finds partials 2-4 spanning more than 6 dB over a
+quadratic decay in 3-9%, 12-22% and 9-28% of notes. Jumbo Steel Pick and
+Dreadnought Steel (1.9.7, velocity 80) do in 0%, 0% and 0-6%: in Acustra
+only the bridge parts the planes.
+
+| Normal plane | Jumbo Steel Pick H2/H3/H4 | Dreadnought Steel H2/H3/H4 | Jumbo onset glide |
+| --- | --- | --- | --- |
+| Shinyguitar, four layers | 3-9 / 12-22 / 9-28 | | +0.3 to +3.1 cents |
+| 1.9.7, unsplit | 0 / 0 / 6 | 0 / 0 / 0 | +3.5 |
+| 0.5 cent lower | 0 / 0 / 6 | 0 / 6 / 6 | +2.9 |
+| 0.75 cent lower | 0 / 6 / 31 | 6 / 19 / 25 | +3.2 |
+| 1 cent lower | 12 / 25 / 31 | 19 / 19 / 44 | +2.8 |
+| 1 cent higher | 0 / 6 / 31 | | +4.4 |
+
+Each row is one render of the 16 roots; one note is 6%. The 0.75 cent
+and 1 cent lower rows are the engine with the split built in, the others
+the same split through a comparison build. The parallel plane lasts and the
+tuning follows it, so the normal plane takes the split, and lower brings
+the onset glide toward the recordings'.
+
+**Why it did not ship.** The split at 0.75 cent fails unit suites written
+to forbid what it does. `ChorusRegression` guards against an
+upper partial's beating envelope, from the pre-polish chorus defect.
+`ModalTuning`, `PitchGeometryCache` and the equal-tuning checks hold each
+plane to the requested pitch: the split put the loaded E2's late mode
+1.7 cents and the D string's 5th fret 3.4 cents off. A blind listener
+heard the 2026-09-30 per-plane retuning as detuned (above). It also lifts
+Jumbo Steel Pick's notes from C4 up by 2-4 dB over their first seconds:
+at one pitch the two planes' paths partly cancel at the microphone, and
+the split turns that into a slow beat. The A-Z limit lets a listening test
+choose between defensible candidates. It does not let one loosen those
+contracts. Retiring them is the owner's call.
+
+**The letters, for that call.** E3, A3, D4, G4 and B4 held 2.3 s each at
+velocity 84, then an open E major chord held 4.5 s, through Dreadnought
+Steel and Jumbo Steel Pick with `AcustraRenderEventList`, 48 kHz in
+256-frame blocks with the same seeds. A is 1.9.7 (`99d19a8`); B parts the
+planes by 0.75 cent. B was matched to A on whole-file RMS, −0.19 dB
+(Dreadnought) and −1.20 dB (Jumbo). The set is in the project files
+(`acustra/listening-tests/2026-10-30-realism/2-string-planes/`), with
+its key. Nothing ships until the owner hears it.
+
 ## 2026-10-30 — a plectrum lands a little differently every time, 1.9.7
 
 **What was decided.** How far the Pick lands from its place from one pluck
