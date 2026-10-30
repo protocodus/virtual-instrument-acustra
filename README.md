@@ -28,7 +28,7 @@ rewrites this table. Longer technique and repertoire renders are described in
 | 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -3.4 dBFS |
 | 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.wav](Docs/audio/06-dadgad-mono-mic.wav) | 11.2 s | -12.0 dBFS |
 | 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -7.2 dBFS |
-| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -7.8 dBFS |
+| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -7.3 dBFS |
 
 <!-- audio-demos-end -->
 
@@ -263,7 +263,7 @@ later builds to exceed.
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 49](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/41002818900/artifacts/12955324683)**, built from [`64ce931306a0`](https://github.com/protocodus/virtual-instrument-acustra/commit/64ce931306a0e4ded9e719bbc425306cb2e46069). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 50](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/41007726123/artifacts/12957111375)**, built from [`48ec798c1d89`](https://github.com/protocodus/virtual-instrument-acustra/commit/48ec798c1d89ac5490430096c31b692b194f3fff). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
