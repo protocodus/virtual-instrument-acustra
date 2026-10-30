@@ -70,7 +70,7 @@ inline constexpr std::array<FactoryPreset, 8> factoryPresets {{
     { "Piezo Stage Steel", "piezo-stage-steel",
       BodyShape::Dreadnought, BodyMaterial::Spruce, Tuning::Standard,
       PickingTechnique::Pick, CaptureType::Piezo,
-      0.15f, 0.24f, 0.62f, 0.60f, 0.62f, 0.0f, 0.10f, 0.10f, -6.5f },
+      0.15f, 0.24f, 0.62f, 0.60f, 0.62f, 0.0f, 0.10f, 0.10f, -6.0f },
 }};
 
 inline EngineParameters engineParameters(const FactoryPreset& preset) noexcept

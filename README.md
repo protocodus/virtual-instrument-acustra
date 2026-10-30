@@ -39,6 +39,13 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.8 — 2026-10-30 — Piezo Stage Steel half a decibel up
+
+- Piezo Stage Steel's Output moves from −6.5 to −6.0 dB. The Pick's wider
+  spread (1.9.7) lowered its full-velocity open E strum to −28.14 dBFS RMS
+  in the Rack device's patch check, under that bank's −28 dBFS floor; it
+  now reads −27.6. No other preset changes.
+
 ### 1.9.7 — 2026-10-30 — a plectrum lands a little differently every time
 
 - Repeated picked notes vary more in colour from one to the next: the Pick's
