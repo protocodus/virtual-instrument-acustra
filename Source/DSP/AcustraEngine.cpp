@@ -3708,15 +3708,22 @@ float AcustraEngine::StringLoop::advance(float delaySmoothing,
     // instead of snapping that whole difference on one sample. Explicit
     // prescription/reset/switch writes to the published delay start here;
     // copies retain the precise progress of an already moving string.
-    if (exact::bits(currentDelay) != delayProgressBits)
-        delayProgress = currentDelay;
-    const double nextDelay = delayProgress + static_cast<double>(delaySmoothing)
-        * (static_cast<double>(targetDelay) - delayProgress);
-    delayProgress = nextDelay == delayProgress
-        || std::abs(static_cast<double>(targetDelay) - nextDelay) < 1.0e-4
-        ? static_cast<double>(targetDelay) : nextDelay;
-    currentDelay = static_cast<float>(delayProgress);
-    delayProgressBits = exact::bits(currentDelay);
+    // A delay already at its target stays there: the follower below would
+    // add zero and store the same values, so it is not run.
+    const auto currentBits = exact::bits(currentDelay);
+    if (currentBits != delayProgressBits || currentBits != exact::bits(targetDelay)
+        || delayProgress != static_cast<double>(targetDelay))
+    {
+        if (currentBits != delayProgressBits)
+            delayProgress = currentDelay;
+        const double nextDelay = delayProgress + static_cast<double>(delaySmoothing)
+            * (static_cast<double>(targetDelay) - delayProgress);
+        delayProgress = nextDelay == delayProgress
+            || std::abs(static_cast<double>(targetDelay) - nextDelay) < 1.0e-4
+            ? static_cast<double>(targetDelay) : nextDelay;
+        currentDelay = static_cast<float>(delayProgress);
+        delayProgressBits = exact::bits(currentDelay);
+    }
     float delayed = readDelay(currentDelay);
     if (secondDispersionActive)
         delayed = secondDispersion.process(delayed, secondDispersionA1,
