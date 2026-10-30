@@ -6991,8 +6991,19 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // No two plucks land in the same place. The archtop's three takes of each
     // note put their pluck points a median 0.02 of the string length apart
     // (Traube-Smith comb on the soft rows, where the estimate is clean),
-    // which for three draws from a uniform spread is the spread's half-width;
-    // each pluck draws its own offset within it.
+    // which for three draws from a uniform spread is the spread's half-width.
+    // Once the coherent hand holds the string only 0.30 of it is the
+    // pluck's own draw; the rest is the hand's slow drift, and both scale
+    // with the spread. A plectrum lands further about its place. On the
+    // embedded Shinyguitar round robins (a picked flat-top, four takes of
+    // each note in four layers) a note's partials scatter 1.70-2.93 dB from
+    // take to take once each take's level and tilt are taken out, which a
+    // moving pluck point leaves and a force or an angle does not. Jumbo
+    // Steel Pick's renders scattered 1.56 dB at 0.02, where the Pick meets
+    // the string close to the bridge and a shift moves the comb least, and
+    // scatter 1.93 dB at 0.03; Dreadnought Steel's Finger already scattered
+    // 2.03 dB and keeps 0.02 (Tools/compare_reference_takes.py;
+    // Docs/decisions.md, 2026-10-30).
     const float positionDraw = nextNoise(voice);
     // MPE Timbre, CC74, on this note's own member channel says directly
     // where the string was met (0-1 across the same 0.05-0.46 band the
@@ -7007,11 +7018,14 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         && mpeTimbre_[channelIndex] >= 0.0f;
     constexpr float lowestPoint = 0.05f;
     constexpr float handLimit = 0.36f;
-    float takeOffset = 0.02f * positionDraw;
+    // An explicit CC74 point is the player's own, whatever the technique.
+    const float takeSpread
+        = parameters_.picking == PickingTechnique::Pick && !hasTimbre ? 0.03f : 0.02f;
+    float takeOffset = takeSpread * positionDraw;
     if (gesture.active && !hasTimbre)
     {
         // One hand moves the same physical distance across a fretted chord.
-        // Keep the established open-string travel (0.02 * 0.70 * 648 mm),
+        // Keep the established open-string travel (takeSpread * 0.70 * 648 mm),
         // then express it in each string's actual speaking length. Scaling
         // that shared motion by the stopped length made an octave-fretted
         // string's hand move only half as far. The independent take spread
@@ -7022,13 +7036,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // travel. Approach the available position band smoothly there,
         // reserving the independent draw's 0.30 share. Ordinary playable
         // frets remain below this knee and keep exact physical travel.
-        constexpr float sharedLimit = (handLimit - lowestPoint) / 0.02f - 0.30f;
-        constexpr float sharedKnee = 0.5f * sharedLimit;
+        const float sharedLimit = (handLimit - lowestPoint) / takeSpread - 0.30f;
+        const float sharedKnee = 0.5f * sharedLimit;
         const float travel = exact::abs(sharedOffset);
         if (travel > sharedKnee)
             sharedOffset = std::copysign(sharedLimit
                 - sharedKnee * sharedKnee / travel, sharedOffset);
-        takeOffset = 0.02f * (sharedOffset + 0.30f * positionDraw);
+        takeOffset = takeSpread * (sharedOffset + 0.30f * positionDraw);
     }
     float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]

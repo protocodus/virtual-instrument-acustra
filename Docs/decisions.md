@@ -5,6 +5,68 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-30 — a plectrum lands a little differently every time, 1.9.7
+
+**What was decided.** How far the Pick lands from its place from one pluck
+to the next. Acustra's ±0.02 of the string came from the archtop's three
+takes per note (2026-09-30 and before). Once the coherent hand holds the
+string, 0.30 of it is the pluck's own draw and 0.70 the hand's slow drift.
+The embedded reference bank holds Karoryfer's Shinyguitar, a picked
+flat-top with four round robins of every third semitone in four velocity
+layers. `Tools/compare_reference_takes.py` reads it as Aculele's
+`compare_sample_packs.py --takes` reads the ukulele packs (Aculele's
+decision log, 2026-10-29): once each take's level and tilt are taken out, a
+note's partials scatter 1.70, 1.92, 1.85 and 2.93 dB from take to take in
+the four layers, E2 to C6. A force or a release angle moves every partial
+together; only a moving pluck point scatters them one by one. The same
+notes through Jumbo Steel Pick (velocity 80, four takes, 4 s apart)
+scattered 1.56 dB, through Dreadnought Steel's Finger 2.03 dB. A pick meets
+the string near the bridge, where a shift moves the comb least.
+
+| Jumbo Steel Pick | level SD | brightness SD | tilt SD | comb scatter |
+| --- | --- | --- | --- | --- |
+| Shinyguitar, four layers | 0.48-0.92 | 1.24-1.86 | 0.51-0.83 | 1.70-2.93 |
+| 1.9.6, ±0.02 | 0.92 | 1.04 | 0.67 | 1.56 |
+| ±0.03 | 1.00 | 1.40 | 0.84 | 1.93 |
+| ±0.04 | 1.18 | 1.64 | 0.95 | 2.24 |
+| ±0.06 | 1.28 | 1.18 | 1.07 | 2.46 |
+
+Halving the ±1 dB force residual, or removing it, changed none of these by
+more than 0.06 dB: the level spread is the pluck point's too.
+
+**The letters.** A phrase of notes 300 ms apart, velocity 88: B3 eight times,
+E4 E4 G4 G4 A4 A4 B4 B4 twice, E2 four times and E3 four times, through
+Jumbo Steel Pick and through Piezo Stage Steel, each rendered with
+`AcustraRenderEventList` at 48 kHz in 256-frame blocks with the same seeds.
+B was matched to A on whole-file RMS: −0.02 dB (Jumbo) and −0.01 dB (Piezo
+Stage).
+
+- A: the shipping engine, `2244ae8` (1.9.6).
+- B: the Pick's spread ±0.03.
+
+**What was chosen.** B, under the owner's standing rule to accept
+candidates over the baseline, and because it is the spread whose scatter
+lies inside every layer's. The owner has not heard the set; the key is
+kept with it in the project files (`acustra/listening-tests/2026-10-30-realism/`).
+
+**What it licensed.** `takeSpread` = 0.03 under Pick in
+`AcustraEngine::initialisePluck`; Finger and Thumb keep 0.02. The suite
+caught one defect on the way: an explicit MPE CC74 point took the Pick's
+spread, so CC74 no longer named one point under every technique; the
+explicit point keeps 0.02. Two fixtures that read one seed's draw were
+rewritten as what they meant. `PickingChangesTheContact` compared held
+displacements, which sat 0.01% apart at velocity 0.9 once the draw moved;
+it now compares held force, displacement over `p (1 - p)`, the engine's own
+compliance law. `PiezoClipAliasing` drove the full chain at fixed
+multiples chosen above the 1.9.6 strum's first clip; the wider draw lowered
+that strum's peak and put its 44.1 kHz threshold at 1.354, over the list's
+1.35, so the drives are now the same 27-43% and 36-56% past the measured
+threshold. `PhysicalHandGeometry` reads the Pick's drift from 0.03.
+
+**What it did not close.** Nothing measures a finger's or a thumb's spread
+on a steel string, and the bank's centroid spread (README, Known gaps) is
+not this measure.
+
 ## 2026-10-29 — the thumb lets go as the Finger's pad does, 1.9.5
 
 **What was decided.** Whether Acustra takes Aculele 0.4.27's thumb law

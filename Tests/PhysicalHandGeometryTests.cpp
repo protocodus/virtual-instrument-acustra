@@ -119,7 +119,8 @@ std::vector<float> render(Engine& engine, int frames, int block = 127)
 void sameHandMovesEqualMillimetresAcrossFrets()
 {
     constexpr std::array<int, 6> open { 40, 45, 50, 55, 59, 64 };
-    constexpr double physicalTravel = -0.5 * 0.70 * 0.02 * 0.648;
+    // The hand drifts 0.70 of the take spread, 0.03 of the open string for
+    // the Pick since 1.9.7 and 0.02 otherwise (AcustraEngine::initialisePluck).
     double worstTravelError = 0.0, worstForceError = 0.0;
     for (double rate : { 44100.0, 48000.0, 96000.0 })
         for (auto picking : { Picking::Finger, Picking::Pick, Picking::Thumb })
@@ -133,6 +134,8 @@ void sameHandMovesEqualMillimetresAcrossFrets()
                     moved->noteOn(note, 0.72f, string + 1);
                     const auto a = Access::contact(*still, string);
                     const auto b = Access::contact(*moved, string);
+                    const double physicalTravel = -0.5 * 0.70
+                        * (picking == Picking::Pick ? 0.03 : 0.02) * 0.648;
                     const double travel = (b.point - a.point) * a.length;
                     const double travelError = std::abs(travel - physicalTravel);
                     const double forceError = std::abs(b.force / a.force - 1.0);

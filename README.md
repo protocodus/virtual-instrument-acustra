@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.7 — 2026-10-30 — a plectrum lands a little differently every time
+
+- Repeated picked notes vary more in colour from one to the next: the Pick's
+  hand spread is 0.03 of the string, up from 0.02. Measured on the picked
+  flat-top round robins in the reference bank, a note's partials scatter
+  1.70-2.93 dB from take to take; Jumbo Steel Pick's scattered 1.56 dB and
+  now 1.93. Finger and Thumb keep 0.02 (Finger already scatters 2.03 dB).
+  An explicit MPE CC74 point keeps 0.02 under every technique. Details in
+  [the decision log](Docs/decisions.md).
+
 ### 1.9.6 — 2026-10-30 — about a tenth less CPU, the same sound
 
 - The engine takes about 11% less CPU at the Rack's 2x rate and at 48 kHz
@@ -531,7 +541,9 @@ separates verified errors from accepted approximations.
   and an attack transient a listener accepts, would settle both.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
-  real spread is not measured.
+  real spread is not measured. A picked note's partials and brightness now
+  vary from take to take as the reference bank's picked round robins do;
+  Finger's and Thumb's spreads have no round robins of their own to check.
 - Pick and Thumb dimensions are authored and the plectrum's values are fitted
   to one picked archtop; no beam/friction plectrum solver is available.
 - The pluck is a propagated ideal shape, not a finger-loaded rest state;

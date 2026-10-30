@@ -5375,7 +5375,17 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         // Compare what the hand held, before the different release contacts
         // redistribute the line. A weak Pick's slow slip can lower its line
         // peak below Thumb even though its held displacement is greater.
-        expect(pick.heldDisplacement > thumb.heldDisplacement
+        // The held force is the displacement over p (1 - p) of the string
+        // it was held at. Comparing displacements alone stood in for it
+        // while the two strokes drew offsets of one size; the Pick's wider
+        // spread (1.9.7) moves its point, and at velocity 0.9 the two
+        // displacements then sat 0.01% apart in either order.
+        const auto heldForce = [] (const auto& stroke)
+        {
+            return stroke.heldDisplacement
+                / (stroke.pluckPoint * (1.0 - stroke.pluckPoint));
+        };
+        expect(heldForce(pick) > heldForce(thumb)
                    && pick.peakDisplacement > 0.0 && thumb.peakDisplacement > 0.0,
                "pick/thumb did not retain their held force and released waves");
         // The legacy Pick shares Finger's independently observed force/noise
