@@ -1628,9 +1628,9 @@ private:
         alignas(16) Lanes leftMomentReal {}, leftMomentImaginary {};
         alignas(16) Lanes rightMomentReal {}, rightMomentImaginary {};
         int count { 0 };
-        // The first `ordered` modes (a bank's own) are summed in index order;
-        // the rest (the steel blend's parallel parts, starting on a group of
-        // four) in vector accumulators.
+        // The first `ordered` modes are a bank's own; the rest are the steel
+        // blend's parallel parts, starting on a group of four. render sums
+        // them alike.
         int ordered { 0 };
         CaptureFilter captureFilter {};
 
@@ -1648,9 +1648,8 @@ private:
         }
         // Every mode's two-pole state advanced by the force and moment and
         // summed into the left and right residues, then a flush of tiny
-        // states. The ordered modes' sums accumulate in index order, as ever;
-        // with vector extensions the modes after them gather four lanes
-        // across their parts and are added to those sums once per sample.
+        // states. The sums gather in four lanes, every fourth mode in each,
+        // added across lanes once per sample.
         BodyOutput render(float force, float moment) noexcept;
     };
 

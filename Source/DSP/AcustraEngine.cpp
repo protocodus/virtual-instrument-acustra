@@ -1413,8 +1413,8 @@ constexpr std::size_t steelBlendBodyModeCount
 constexpr std::size_t steelBlendBridgeModeCount
     = detail::measuredSteelBridgeModes.size()
     + (steelBlendJointShare > 0.0f ? steelJointBridgeCount : 0);
-// The in-order sum of g21's bank ends on a whole group of four, so the parts
-// after it start on one (BodyBank::render).
+// g21's bank ends on a whole group of four, so the parts after it start on
+// one (BodyBank::ordered).
 static_assert(detail::measuredSteelBodyModes.size() % 4 == 0,
               "g21's bank no longer ends on a group of four: pad it in configureBody");
 static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
@@ -11999,12 +11999,12 @@ void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& mo
 // Each mode's two-pole step and the flush of tiny states, four modes at a time.
 // Each lane is the scalar expression's own sequence of IEEE operations (the
 // same products, sums and order), so each mode's states and contributions
-// are the scalar ones bit for bit; the two sums then take the ordered modes'
-// contributions one mode at a time in index order, as the scalar loop did.
-// The modes after them (the steel blend's parallel parts) gather in four
-// vector accumulators, added across lanes and to the sums once per sample
-// (about 1.03 against 1.33 ns per mode-sample). Only modes below count are
-// summed; lanes past it are zero padding.
+// are the scalar ones bit for bit. The contributions gather in four lane
+// accumulators per side, added across lanes once per sample: summed one mode
+// at a time instead, each of some 150 additions waited on the one before.
+// That order differs from a single running sum by float rounding only, under
+// -119 dBFS on every preset demo; the scalar path below keeps the same lanes.
+// Only modes below count are summed; lanes past it are zero padding.
 AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float moment) noexcept
 {
     BodyOutput output;
@@ -12035,27 +12035,9 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
     };
     const Vector forceLanes = { force, force, force, force };
     const Vector momentLanes = { moment, moment, moment, moment };
-    // L/R are independent accumulators, advanced in the original mode order.
-    // The SDK vector contract requires 16 bytes; the upper sums are not returned.
-    Vector stereo = { output.left, output.right, 0.0f, 0.0f };
-    const auto addStereo = [&] (Vector pair)
-    {
-#if defined(__clang__)
-#pragma clang fp contract(off)
-#pragma clang fp reassociate(off)
-#endif
-        stereo += 2.0f * pair;
-    };
-    const auto addScaledStereo = [&] (Vector pair)
-    {
-#if defined(__clang__)
-#pragma clang fp contract(off)
-#pragma clang fp reassociate(off)
-#endif
-        stereo += pair;
-    };
-    // One group of four lanes advanced; its contributions to the two sums.
-    const auto advance = [&] (int index, Vector& leftPart, Vector& rightPart)
+    Vector leftSum = { 0.0f, 0.0f, 0.0f, 0.0f };
+    Vector rightSum = { 0.0f, 0.0f, 0.0f, 0.0f };
+    for (int index = 0; index < count; index += lanes)
     {
         const Vector pr = load(poleReal, index);
         const Vector pim = load(poleImaginary, index);
@@ -12069,11 +12051,11 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
                                     - pim * mi;
         const Vector nextMomentImaginary = pim * mr
                                          + pr * mi;
-        leftPart = load(leftReal, index) * nextReal
+        Vector leftPart = load(leftReal, index) * nextReal
             - load(leftImaginary, index) * nextImaginary
             + load(leftMomentReal, index) * nextMomentReal
             - load(leftMomentImaginary, index) * nextMomentImaginary;
-        rightPart = load(rightReal, index) * nextReal
+        Vector rightPart = load(rightReal, index) * nextReal
             - load(rightImaginary, index) * nextImaginary
             + load(rightMomentReal, index) * nextMomentReal
             - load(rightMomentImaginary, index) * nextMomentImaginary;
@@ -12081,76 +12063,20 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
         store(imaginary, index, flush(nextImaginary));
         store(momentReal, index, flush(nextMomentReal));
         store(momentImaginary, index, flush(nextMomentImaginary));
-    };
-    // One ordered group, the first valid of its lanes summed in order. A
-    // constant valid lets the full groups keep their products in vector
-    // registers.
-    const auto group = [&] (int index, int valid)
-    {
-        Vector leftPart, rightPart;
-        advance(index, leftPart, rightPart);
-        if (valid == lanes)
+        if (index + lanes > count)
         {
-#if defined(__clang__)
-#pragma clang fp contract(off)
-#pragma clang fp reassociate(off)
-#endif
-            // Scale each unchanged contribution exactly once, then interleave
-            // constant lane pairs. Only the lower L/R sums become output.
-            const Vector leftScaled = 2.0f * leftPart;
-            const Vector rightScaled = 2.0f * rightPart;
-            const Vector zip01 = { leftScaled[0], rightScaled[0], leftScaled[1], rightScaled[1] };
-            const Vector zip23 = { leftScaled[2], rightScaled[2], leftScaled[3], rightScaled[3] };
-            const Vector swap01 = { zip01[2], zip01[3], zip01[0], zip01[1] };
-            const Vector swap23 = { zip23[2], zip23[3], zip23[0], zip23[1] };
-            addScaledStereo(zip01);
-            addScaledStereo(swap01);
-            addScaledStereo(zip23);
-            addScaledStereo(swap23);
+            const Mask lane = { 0, 1, 2, 3 };
+            const Mask summed = lane < (count - index);
+            leftPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(leftPart) & summed);
+            rightPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(rightPart) & summed);
         }
-        else
-        {
-            for (int lane = 0; lane < valid; ++lane)
-            {
-                const Vector pair = { leftPart[lane], rightPart[lane], 0.0f, 0.0f };
-                addStereo(pair);
-            }
-        }
-    };
-    int index = 0;
-    for (; index + lanes <= ordered; index += lanes)
-        group(index, lanes);
-    if (index < ordered)
-    {
-        group(index, ordered - index);
-        index += lanes;
+        leftSum += leftPart;
+        rightSum += rightPart;
     }
-    if (index < count)
-    {
-        Vector leftSum = { 0.0f, 0.0f, 0.0f, 0.0f };
-        Vector rightSum = { 0.0f, 0.0f, 0.0f, 0.0f };
-        for (; index < count; index += lanes)
-        {
-            Vector leftPart, rightPart;
-            advance(index, leftPart, rightPart);
-            if (index + lanes > count)
-            {
-                const Mask lane = { 0, 1, 2, 3 };
-                const Mask summed = lane < (count - index);
-                leftPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(leftPart) & summed);
-                rightPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(rightPart) & summed);
-            }
-            leftSum += leftPart;
-            rightSum += rightPart;
-        }
-        const float leftTail = (leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]);
-        const float rightTail = (rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]);
-        const Vector pair = { leftTail, rightTail, 0.0f, 0.0f };
-        addStereo(pair);
-    }
-    output.left = stereo[0];
-    output.right = stereo[1];
+    output.left = 2.0f * ((leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]));
+    output.right = 2.0f * ((rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]));
 #else
+    std::array<float, lanes> leftSum {}, rightSum {};
     for (int index = 0; index < count; ++index)
     {
         const auto i = static_cast<std::size_t>(index);
@@ -12160,16 +12086,18 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
                                    - poleImaginary[i] * momentImaginary[i];
         const float nextMomentImaginary = poleImaginary[i] * momentReal[i]
                                         + poleReal[i] * momentImaginary[i];
-        output.left += 2.0f * (leftReal[i] * nextReal - leftImaginary[i] * nextImaginary
-            + leftMomentReal[i] * nextMomentReal - leftMomentImaginary[i] * nextMomentImaginary);
-        output.right += 2.0f * (rightReal[i] * nextReal - rightImaginary[i] * nextImaginary
-            + rightMomentReal[i] * nextMomentReal - rightMomentImaginary[i] * nextMomentImaginary);
+        leftSum[i % lanes] += leftReal[i] * nextReal - leftImaginary[i] * nextImaginary
+            + leftMomentReal[i] * nextMomentReal - leftMomentImaginary[i] * nextMomentImaginary;
+        rightSum[i % lanes] += rightReal[i] * nextReal - rightImaginary[i] * nextImaginary
+            + rightMomentReal[i] * nextMomentReal - rightMomentImaginary[i] * nextMomentImaginary;
         real[i] = exact::abs(nextReal) < 1.0e-30f ? 0.0f : nextReal;
         imaginary[i] = exact::abs(nextImaginary) < 1.0e-30f ? 0.0f : nextImaginary;
         momentReal[i] = exact::abs(nextMomentReal) < 1.0e-30f ? 0.0f : nextMomentReal;
         momentImaginary[i] = exact::abs(nextMomentImaginary) < 1.0e-30f
             ? 0.0f : nextMomentImaginary;
     }
+    output.left = 2.0f * ((leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]));
+    output.right = 2.0f * ((rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]));
 #endif
     captureFilter.render(output);
     // The mono microphone's sum is the right channel's: configureBody gives
