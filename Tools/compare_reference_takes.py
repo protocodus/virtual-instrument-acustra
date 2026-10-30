@@ -9,6 +9,7 @@
     compare_reference_takes.py --write-events notes.txt --once
     AcustraRenderEventList 3 notes.txt jumbo-once.wav 65
     compare_reference_takes.py --beating bank/ jumbo=jumbo-once.wav [...]
+    compare_reference_takes.py --decay bank/ jumbo=jumbo-once.wav [...]
 
 The bank's SteelPicked zones are Karoryfer's Shinyguitar: a picked steel
 flat-top, four round robins of every third semitone in four velocity
@@ -35,6 +36,12 @@ onset each take gives:
 2 s while it stays 20 dB above the file's floor, less a quadratic fit, and
 prints the share of notes whose residual spans more than 6 dB, with the
 onset glide (the fundamental over 15-115 ms against 0.8-1.6 s, in cents).
+
+--decay measures each note's partials 1-12 over its first 2 s, each
+envelope's slope in dB/s fitted over 30-300 ms (early) and 0.3-1.5 s (late)
+while it stays 15 dB above the file's floor, and prints the median over notes
+for H1, H2-4, H5-8 and H9-12. A string whose planes drain alike decays in one
+stage; a recorded one snaps first (early faster than late).
 
 The measures are Aculele's Tools/compare_sample_packs.py (2026-10-29), so
 the guitar and the ukulele are read the same way. Needs NumPy, SciPy and
@@ -141,6 +148,28 @@ def beating(x, rate, midi):
     return spans, 1200 * math.log2(pitch(0.015, 0.115) / pitch(0.8, 1.6))
 
 
+def decay(x, rate, midi):
+    x = x[onset(x, rate):][:int(2.0 * rate)]
+    nominal = 440 * 2 ** ((midi - 69) / 12)
+    magnitude, bins = spectrum(x[int(0.08 * rate):int(1.0 * rate)], rate, 1 << 20)
+    f1 = peak_near(magnitude, bins, nominal, 60)[0]
+    slopes = np.full((12, 2), np.nan)
+    if len(x) < int(1.6 * rate):
+        return slopes
+    for n in range(1, 13):
+        fn = peak_near(magnitude, bins, n * f1 * math.sqrt(1 + 2e-5 * n * n), 40)[0]
+        if fn > 0.4 * rate:
+            break
+        db = partial_envelope_db(x, rate, fn, n, 0.01)
+        times = np.arange(len(db)) * 0.01
+        floor = np.percentile(db, 5)
+        for k, (start, stop) in enumerate(((0.03, 0.3), (0.3, 1.5))):
+            use = (times >= start) & (times < stop) & (db > floor + 15)
+            if use.sum() > 8:
+                slopes[n - 1, k] = -np.polyfit(times[use], db[use], 1)[0]
+    return slopes
+
+
 def bank_notes(directory, layer):
     notes = []
     for line in open(f"{directory}/index.tsv"):
@@ -186,12 +215,21 @@ def report_beating(label, notes):
           + " ".join(f"{s:3.0f}" for s in shares))
 
 
+def report_decay(label, notes):
+    slopes = np.array([decay(x, rate, midi) for midi, x, rate in notes])
+    cells = []
+    for group in (slice(0, 1), slice(1, 4), slice(4, 8), slice(8, 12)):
+        early, late = (np.nanmedian(slopes[:, group, k]) for k in (0, 1))
+        cells.append(f"{early:5.1f} {late:5.1f}")
+    print(f"{label:14s} {len(notes):5d} | " + " | ".join(cells))
+
+
 def main():
     arguments = sys.argv[1:]
     if arguments[:1] == ["--write-events"]:
         write_events(arguments[1], 1 if "--once" in arguments else TAKES)
         return
-    mode = "--beating" in arguments
+    mode = "--beating" if "--beating" in arguments else "--decay" if "--decay" in arguments else None
     layers = [1, 33, 65, 97]
     if "--layer" in arguments:
         at = arguments.index("--layer")
@@ -201,7 +239,13 @@ def main():
     if not arguments:
         sys.exit(__doc__)
     directory, renders = arguments[0], [a.split("=", 1) for a in arguments[1:]]
-    if mode:
+    if mode == "--decay":
+        print(f"{'':14s} notes | dB/s early late: H1 | H2-4 | H5-8 | H9-12")
+        for layer in layers:
+            report_decay(f"shinyguitar {layer}", bank_notes(directory, layer))
+        for label, path in renders:
+            report_decay(label, render_notes(path, 1))
+    elif mode:
         print(f"{'':14s} notes | glide | beating % H1 H2 H3 H4")
         for layer in layers:
             report_beating(f"shinyguitar {layer}", bank_notes(directory, layer))

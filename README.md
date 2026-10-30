@@ -560,7 +560,13 @@ separates verified errors from accepted approximations.
   from velocity 20 to 112 (Tools/compare_reference_takes.py's measure).
 - The recordings snap and then mellow; the engine's upper partials die at
   about 35% of the recorded rate and the attack transient those partials stood
-  for is missing. The Finger's attack stays brighter than the finger-plucked
+  for is missing. On the reference bank's picked flat-top
+  (`compare_reference_takes.py --decay`) partials 9-12 fall 61-72 dB/s over
+  a note's first 0.3 s and 19-24 after it; Jumbo Steel Pick's fall 34, then
+  22, and neither of its planes alone snaps (the normal 30 then 28, the
+  parallel 32 then 22), so the snap is not one plane draining faster.
+  Raising the bridge's high-frequency conductance from 0.011 to 0.025 moves
+  them only to 41 then 24. The Finger's attack stays brighter than the finger-plucked
   recordings'. A noise-free or floor-documented finger-plucked steel corpus,
   and an attack transient a listener accepts, would settle both.
 - Attack colour varies less between repeated takes than real round robins
@@ -568,6 +574,16 @@ separates verified errors from accepted approximations.
   real spread is not measured. A picked note's partials and brightness now
   vary from take to take as the reference bank's picked round robins do;
   Finger's and Thumb's spreads have no round robins of their own to check.
+- A hard picked note's attack starts sharper than picked strings': 7.3 cents
+  at velocity 112 on Jumbo Steel Pick (6.4 under Pick on Dreadnought Steel,
+  2.8 under Finger and Thumb), where the reference bank's picked flat-top
+  rises 3.1 in its loudest layer and the archtop recordings 4.1
+  (`compare_reference_takes.py --beating`). The excursion scale was fitted
+  with the Finger's stroke; read at 0.69 of it for the Pick, the glide
+  matches, but the glide's tension also sets how much the Pick's release
+  velocity brightens a loud note, and that rise (`Acustra.Engine`'s
+  plectrum check, 2.0 dB over the release from rest) vanishes. Settling it
+  needs the glide's tension and the release's brightening separated.
 - Pick and Thumb dimensions are authored and the plectrum's values are fitted
   to one picked archtop; no beam/friction plectrum solver is available.
 - The pluck is a propagated ideal shape, not a finger-loaded rest state;
