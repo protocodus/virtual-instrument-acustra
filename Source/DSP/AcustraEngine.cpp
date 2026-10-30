@@ -6777,7 +6777,16 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
     const float tension = voice.tensionNewtons > 0.0f
         ? voice.tensionNewtons : voice.characteristicImpedance * openWaveSpeed;
     const float lengthSquared = soundingLength * soundingLength;
-    const float displacement = physicalCalibration_.steelDisplacementScaleMetres;
+    // The excursion scale was fitted with the Finger's stroke. A plectrum
+    // lets go at a smaller excursion: at 1.0 a velocity-112 note on Jumbo
+    // Steel Pick started 7.3 cents sharp, against 3.1 in the reference
+    // bank's loudest picked flat-top layer and 4.1 in the archtop recordings
+    // (compare_reference_takes.py --beating); at 0.69 it starts 3.4 sharp.
+    // The release speed keeps the full scale: the Pick release's share was
+    // fitted on it.
+    constexpr float pickExcursionScale = 0.69f;
+    const float displacement = physicalCalibration_.steelDisplacementScaleMetres
+        * (voice.excitationSoft ? 1.0f : pickExcursionScale);
     const float tensionIncrease = youngsModulus * area
         * displacement * displacement * voice.attackSlopeEnergy
         / (2.0f * lengthSquared);
@@ -7826,6 +7835,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     voice.attackSlopeEnergy = exact::isfinite(slopeEnergy)
         ? static_cast<float>(std::max(slopeEnergy, 0.0)) : 0.0f;
     voice.observedSlopeEnergy = voice.attackSlopeEnergy;
+    voice.excitationSoft = parameters_.picking != PickingTechnique::Pick;
     updateAttackPitch(voice, stringIndex);
 
     voice.velocity = v;
@@ -7862,8 +7872,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // burst's one-pole-plus-white spectrum gave them. The soft contacts'
     // burst is the same noise through the same corner twice, with no white
     // share: -12 dB per octave above the corner instead of -6 and a flat
-    // floor. The plectrum keeps its law.
-    voice.excitationSoft = parameters_.picking != PickingTechnique::Pick;
+    // floor. The plectrum keeps its law (excitationSoft, set before the
+    // attack pitch above, which reads it too).
     // Contact roughness cannot shed force faster than the contact releases
     // it. The soft contacts' existing two-stage burst therefore has at least the
     // actual release's sampled mean time. A one-pole at b has mean b/(1-b);

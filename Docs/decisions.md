@@ -5,6 +5,39 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-30 — a plectrum lets go at a smaller excursion, 1.9.10
+
+**What was measured.** A hard picked note started sharper than picked
+strings do. Through `Tools/compare_reference_takes.py --beating`, a
+velocity-112 note on Jumbo Steel Pick rose 7.3 cents at its onset (6.4
+under Pick on Dreadnought Steel, 2.8 under Finger and Thumb), where the
+reference bank's picked flat-top rises 0.3, 1.2, 1.8 and 3.1 cents in its
+four layers and the archtop recordings 4.1. The attack glide's excursion
+scale was fitted with the Finger's stroke; the plectrum releases the string
+at a smaller excursion. Read at 0.69 of it for the Pick, the same note
+starts 3.4 cents sharp, and velocities 50 and 80 rise 0.3 and 1.0. The
+release speed keeps the full scale, because the Pick release's share was
+fitted on it. This is a measurement match, not a choice by ear; an A/B
+pair (A 1.9.9, B 1.9.10, Jumbo Steel Pick at velocity 118) went to the
+owner with its key.
+
+**Why it was held once.** Two checks failed at 0.69, and both were
+readings, not the mechanism. `Acustra.Engine`'s plectrum check read each
+partial with one coherent DFT across 80-250 ms. A gliding partial's phase
+runs through that window, so the release's brightening over a release from
+rest read +2.45, -0.13, -0.52 and +0.93 dB at excursion scales 1.0, 0.85,
+0.69 and 0.5. Power summed over 2048-sample Hann frames reads +0.61,
++0.51, +0.42 and +0.42: the glide barely touches the release's
+brightening, and the 2 dB margin the check held belonged to the coherent
+reading. The check now sums frames and asks that the release add
+brightness, which its comment always said. `Acustra.PickRoughness` took
+`changes[6]` of twelve as the median; that is the seventh value, which
+moved from -0.54 to -0.50 dB against a -0.5 bound. The median of twelve,
+the mean of the sixth and seventh, moves from -0.76 to -0.73.
+
+**What it licensed.** The Pick's attack pitch only. Finger and Thumb
+renders are bit-identical to 1.9.9.
+
 ## 2026-10-30 — the string's two planes 0.75 cent apart, chosen by ear, 1.9.9
 
 **What was asked.** Aculele parted its strings' planes by 2 cents on

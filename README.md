@@ -39,6 +39,15 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.10 — 2026-10-30 — a hard pick starts closer to pitch
+
+- A hard picked note's attack starts 3.4 cents sharp instead of 7.3
+  (velocity 112, Jumbo Steel Pick), against 3.1 in the reference bank's
+  loudest picked flat-top layer and 4.1 in the archtop recordings. The
+  plectrum's attack glide now reads 0.69 of the excursion fitted with the
+  finger's stroke. Finger and Thumb are unchanged. Details in
+  [the decision log](Docs/decisions.md).
+
 ### 1.9.9 — 2026-10-30 — overtones that swell and fade
 
 - A string's two planes now sound 0.75 cent apart, so held notes' 2nd-4th
@@ -354,7 +363,9 @@ pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
 2nd-4th partials swell and fade as a recorded guitar's do. A
-bounded Kirchhoff-Carrier surrogate sharpens the attack pitch.
+bounded Kirchhoff-Carrier surrogate sharpens the attack pitch; a plectrum
+lets go at 0.69 of the finger's excursion, so a hard pick starts as sharp as
+the reference bank's picked flat-top.
 
 **References.** Laakso, Valimaki, Karjalainen and Laine, IEEE Signal
 Processing Magazine 13(1), 1996; Woodhouse, Acta Acustica 90, 2004 (the
@@ -574,16 +585,6 @@ separates verified errors from accepted approximations.
   real spread is not measured. A picked note's partials and brightness now
   vary from take to take as the reference bank's picked round robins do;
   Finger's and Thumb's spreads have no round robins of their own to check.
-- A hard picked note's attack starts sharper than picked strings': 7.3 cents
-  at velocity 112 on Jumbo Steel Pick (6.4 under Pick on Dreadnought Steel,
-  2.8 under Finger and Thumb), where the reference bank's picked flat-top
-  rises 3.1 in its loudest layer and the archtop recordings 4.1
-  (`compare_reference_takes.py --beating`). The excursion scale was fitted
-  with the Finger's stroke; read at 0.69 of it for the Pick, the glide
-  matches, but the glide's tension also sets how much the Pick's release
-  velocity brightens a loud note, and that rise (`Acustra.Engine`'s
-  plectrum check, 2.0 dB over the release from rest) vanishes. Settling it
-  needs the glide's tension and the release's brightening separated.
 - Pick and Thumb dimensions are authored and the plectrum's values are fitted
   to one picked archtop; no beam/friction plectrum solver is available.
 - The pluck is a propagated ideal shape, not a finger-loaded rest state;
