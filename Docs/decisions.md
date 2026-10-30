@@ -5,6 +5,65 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-30 — a pad lets go smoothly, 1.9.11 (measured; adopted under the owner's standing rule, not yet heard)
+
+**What was measured.** Soft Finger and Thumb notes were nearly as bright as
+loud ones. From velocity 12 to 127 the brightness of C4-A5
+(`Tools/compare_reference_takes.py`'s measure, median of 13 notes) rose
+2.0 dB on Dreadnought Steel with Finger, 5.3 dB with Thumb and 0.6 dB on
+Mahogany Steel Thumb, where the reference bank's picked flat-top rises
+14.5 dB. On Mahogany Steel Thumb a velocity-16 note's 2.5-6 kHz share over
+its first 30-330 ms stood 1.5-5.1 dB over velocity 32's from E2 to E5
+(README, Known gaps).
+
+**What changed.** Two things, both for the pad only; the plectrum keeps its
+one-pass slip, which its fitted release share was built on.
+
+- The release runs up the line's period and back down at the pole for
+  tau/sqrt(2) (`applyPadRelease`): zero phase, the same half-power point as
+  the one-pass slip and a second-order fall above it, for flesh that
+  unloads smoothly rather than an edge that slips.
+- The bridge sample is brought back to rest by a raised cosine with the
+  slip kernel's own variance (half-width 3.9 tau), not by shifting the
+  whole line. With the shift, the second-order release darkened C4-A5 only
+  to 4.2, 8.0 and 5.0 dB and made soft low Finger notes brighter in
+  H5-H12: `Acustra.Engine`'s velocity-16 to 112 rise fell from 3.6 and
+  6.1 dB to 2.9 and 2.3 on E2 and A2, under its 3 dB floor. With the
+  cosine it reads 4.3 and 5.0, and every other probed note rises more than
+  under 1.9.10 (C5 6.3 against 2.1, F#5 7.0 against 0.8). A cusp-shaped
+  correction, the slip's own two-sided kernel, filled the pluck's nulls
+  instead (A2's H6 +21 dB at velocity 12) and was dropped.
+
+| Velocity 12 to 127 | C4-A5, 1.9.10 | C4-A5, 1.9.11 | E2-B3, 1.9.10 | E2-B3, 1.9.11 |
+| --- | --- | --- | --- | --- |
+| Dreadnought Steel, Finger | 2.0 dB | 6.9 dB | 5.9 dB | 9.7 dB |
+| Dreadnought Steel, Thumb | 5.3 dB | 9.9 dB | 6.4 dB | 11.0 dB |
+| Mahogany Steel Thumb | 0.6 dB | 7.9 dB | 2.9 dB | 10.2 dB |
+
+Velocity-12 notes darken by 2.5-8.7 dB and fall at most 0.4 dB in level;
+velocity-127 notes move under 1 dB. Each probed note's share above 5 kHz
+over its first 10-90 ms still falls as velocity falls. The returning treble
+mostly goes: from velocity 32 to 16 on Mahogany Steel Thumb, E2's 2.5-6 kHz
+share now rises 2.4 dB and A2 to E5's falls 0.8-2.1 dB.
+
+**What was rejected.** Aculele 0.4.35's form: the release smoothed over the
+loop's whole period, past the line's end, with the loop's sections warmed
+to carry their part. It darkened soft notes over C4-A5 further (16.7, 19.9
+and 19.2 dB), but the released string then moved at the bridge on the first
+sample. The bridge, never loaded by the held string, took that as a blow:
+soft E2-D3 rang 12-26 dB brighter above 5 kHz than 1.9.10 and brighter than
+loud ones, on Finger and Thumb alike. Without a held load on the bridge
+before release, that form does not ship.
+
+**Chosen.** B, under the owner's standing rule that the candidate wins
+unless they say otherwise; the owner has not listened yet. The A/B set is in
+the project files under
+`acustra/listening-tests/2026-10-30-soft-high-notes/`.
+
+**What it licensed.** The second-order pad release over the line and the
+rest restored over the slip's own width. It does not license tuning the
+pad's release time toward the bank's rise, which is a plectrum's.
+
 ## 2026-10-30 — a plectrum lets go at a smaller excursion, 1.9.10
 
 **What was measured.** A hard picked note started sharper than picked

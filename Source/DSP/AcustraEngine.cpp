@@ -7740,24 +7740,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                 return sum;
             };
             const double before = spread();
-            applyPlectrumSlip(loop, length, slipPole);
-            if (!fullSoftSlip)
-            {
-                // Original Thumb retains its reference slip's periodic inverse,
-                // re-zeroed at the bridge sample as the slip itself is.
-                const double b = unslipPole;
-                double previous = lineAt(length - 1);
-                double first = 0.0;
-                for (int sample = 0; sample < length; ++sample)
-                {
-                    const double current = lineAt(sample);
-                    const double value = (current - b * previous) / (1.0 - b);
-                    previous = current;
-                    if (sample == 0)
-                        first = value;
-                    lineAt(sample) = static_cast<float>(value - first);
-                }
-            }
+            // Original Thumb retains its reference slip's inverse.
+            applyPadRelease(loop, length, slipPole,
+                            fullSoftSlip ? 0.0 : unslipPole);
             const double after = spread();
             if (before > 0.0 && after > 0.0)
             {
@@ -7766,8 +7751,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                     lineAt(sample) *= scale;
             }
         }
-        else
+        else if (pick)
             applyPlectrumSlip(loop, length, slipPole);
+        else
+            applyPadRelease(loop, length, slipPole, 0.0);
     }
 
     if (merge)
@@ -8885,6 +8872,94 @@ void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
         return loop.delay[static_cast<std::size_t>(
             maximumDelaySamples - sample - 1)];
     }, length, slipPole);
+}
+
+// A pad lets go as its flesh rolls off the string, a smooth unloading
+// rather than the plectrum's edge, so its slip runs once up the period and
+// once back down at the pole for tau/sqrt(2): zero phase, the same
+// half-power point and a second-order fall above it. The one-pass slip left
+// soft Finger and Thumb notes nearly as bright as loud ones over C4-A5
+// (1.9.11, Docs/decisions.md). Each pass is exact per loop harmonic, so the
+// order is free; the Thumb's inverse runs first on the line as written.
+// The period is the line's.
+// Smoothed over the loop's whole period, with the sections started out
+// carrying their part, the released string already moves at the bridge on
+// the first sample; the bridge, never loaded by the held string, takes that
+// as a blow, and soft E2-D3 rang 12-26 dB brighter above 5 kHz.
+namespace
+{
+template <typename At>
+void padPass(const At& at, int length, double b, bool inverse) noexcept
+{
+    for (int pass = 0; pass < 2; ++pass)
+    {
+        const auto x = [&] (int k) -> float&
+        {
+            return at(pass == 0 ? k : length - 1 - k);
+        };
+        if (inverse)
+        {
+            double previous = x(length - 1);
+            for (int k = 0; k < length; ++k)
+            {
+                const double current = x(k);
+                x(k) = static_cast<float>((current - b * previous) / (1.0 - b));
+                previous = current;
+            }
+            continue;
+        }
+        double state = 0.0;
+        double weight = 1.0;
+        for (int k = 0; k < length; ++k)
+        {
+            state += weight * static_cast<double>(x(length - 1 - k));
+            weight *= b;
+        }
+        state *= (1.0 - b) / (1.0 - weight);
+        for (int k = 0; k < length; ++k)
+        {
+            state = (1.0 - b) * static_cast<double>(x(k)) + b * state;
+            x(k) = static_cast<float>(state);
+        }
+    }
+}
+} // namespace
+
+void AcustraEngine::applyPadRelease(StringLoop& loop, int length,
+                                    double slipPole, double unslipPole) noexcept
+{
+    if (!(slipPole > 0.0))
+        return;
+    const auto lineAt = [&loop] (int sample) -> float&
+    {
+        return loop.delay[static_cast<std::size_t>(
+            maximumDelaySamples - sample - 1)];
+    };
+    if (unslipPole > 0.0)
+        padPass(lineAt, length, std::pow(unslipPole, std::sqrt(2.0)), true);
+    const double c = std::pow(slipPole, std::sqrt(2.0));
+    padPass(lineAt, length, c, false);
+    // The bridge sample is brought back to rest by a raised cosine as wide
+    // as the slip's own kernel (equal variance: c^|k| has 2 tau^2, the
+    // cosine over +/-W has W^2 (1/3 - 2/pi^2)). Shifting the whole line, as
+    // the plectrum's slip does, put back much of the treble this slip takes
+    // from soft low notes: a velocity-16 Finger E2 and A2 brightened to 112
+    // by 2.9 and 2.3 dB in H5-H12 (Acustra.Engine), against 3.6 and 6.1
+    // under the one-pass slip and 4.3 and 5.0 here.
+    const double first = lineAt(0);
+    const double tau = -1.0 / std::log(c);
+    constexpr double halfTurn = 3.14159265358979323846;
+    const double halfWidth = std::min(0.5 * length, tau
+        * std::sqrt(2.0 / (1.0 / 3.0 - 2.0 / (halfTurn * halfTurn))));
+    const int reach = static_cast<int>(std::ceil(halfWidth));
+    for (int sample = 0; sample < reach; ++sample)
+    {
+        const double share = 0.5 * (1.0 + std::cos(halfTurn * sample / halfWidth));
+        lineAt(sample) = static_cast<float>(lineAt(sample) - first * share);
+        if (sample > 0)
+            lineAt(length - sample) = static_cast<float>(
+                lineAt(length - sample) - first * share);
+    }
 }
 
 double AcustraEngine::gaussianReleaseStep(double argument,

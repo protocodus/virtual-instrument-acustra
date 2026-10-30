@@ -39,6 +39,18 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.11 — 2026-10-30 — soft fingered notes are darker
+
+- A fingertip or thumb now lets the string go smoothly, so soft Finger and
+  Thumb notes come out darker against loud ones. From velocity 12 to 127,
+  the brightness over C4-A5 now rises 6.9 dB on Dreadnought Steel with
+  Finger (2.0 before), 9.9 dB with Thumb (5.3) and 7.9 dB on Mahogany Steel
+  Thumb (0.6), against 14.5 dB in the reference bank's picked flat-top; over
+  E2-B3, 9.7, 11.0 and 10.2 dB (5.9, 6.4 and 2.9). A velocity-16 thumb note
+  no longer comes back brighter than a velocity-32 one, except by 2.4 dB on
+  the low E. Loud notes and the Pick are unchanged. Details in
+  [the decision log](Docs/decisions.md).
+
 ### 1.9.10 — 2026-10-30 — a hard pick starts closer to pitch
 
 - A hard picked note's attack starts 3.4 cents sharp instead of 7.3
@@ -358,7 +370,8 @@ a triangular release rounded by a Gaussian contact, at a displacement set by
 the force the hand holds; Pluck Position, Touch and velocity move its point,
 width, level and brightness. The Pick adds a fitted release velocity, and every
 technique lets the string slide off a rounded edge, so softer strokes are
-released darker. A short noise burst carries release detail. Most of a steel
+released darker; a fingertip or thumb, unloading smoothly, releases at zero
+phase with a second-order fall above its half-power point. A short noise burst carries release detail. Most of a steel
 pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
@@ -593,13 +606,15 @@ separates verified errors from accepted approximations.
   and 96 kHz.
 - Where the pluck nearly nulls a partial, the random release burst decides its
   level.
-- A slow release still keeps some of the treble it should lose. The released
-  wave is shifted so the string's line starts at rest, in a loop up to 13%
-  longer than the line, and the shift puts back harmonics the slow release
-  took. On Mahogany Steel Thumb, from velocity 32 to 16, each note from E2 to
-  E5 brightens again by 1-5 dB at 2.5-6 kHz, the A2 and E2 the most; the
-  Finger brightens by up to 3 dB. Filling the loop's filters from the
-  released wave would remove the shift.
+- A slow release still keeps a little of the treble it should lose on the
+  low E. On Mahogany Steel Thumb, from velocity 32 to 16, E2 brightens again
+  by 2.4 dB at 2.5-6 kHz while A2 to E5 darken by 0.8-2.1 dB (all brightened
+  by 1.5-5.1 dB before 1.9.11); the Finger's E2 by 0.8 dB. The line is
+  shorter than the loop by the samples its filters hold. Filling those
+  filters from the released wave instead moves the string at the bridge on
+  the first sample, which the bridge, never loaded by the held string, takes
+  as a blow (Docs/decisions.md, 2026-10-30); a bridge that starts under the
+  held string's load would let it ship.
 - Changing the host's master tune under a ringing chord still brightens it
   for a moment: at 48 kHz on the eight presets, the sound above 5 kHz in the
   20 ms after the change rises up to 8 dB over the 40 ms that follow, 48 dB

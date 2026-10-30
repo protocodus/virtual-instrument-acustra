@@ -1848,6 +1848,8 @@ private:
                             float scaleLength, float edgeRadius) const noexcept;
     static void applyPlectrumSlip(StringLoop& loop, int length,
                                   double slipPole) noexcept;
+    static void applyPadRelease(StringLoop& loop, int length, double slipPole,
+                                double unslipPole) noexcept;
     void resetSoundState() noexcept;
     struct VoiceBend
     {

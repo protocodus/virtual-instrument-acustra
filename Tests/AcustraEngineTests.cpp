@@ -5049,40 +5049,74 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
            "bridge mobility did not reach speaking-string phase delay");
 }
 
-// A Finger or Thumb release (initialisePluck) runs the contact's line
-// through the stroke's slip, y[s] = (1 - b) x[s] + b y[s - 1] over the
-// period. Thumb also applies the full-velocity slip's periodic inverse.
-// Both retain the line's spread about its mean and re-zero the bridge sample.
-// On DFT bin n of an N-sample line that is this response times one real scale;
-// the re-zeroing moves only DC. A zero actual pole is the contact alone;
-// a positive actual pole without a reference is Finger's absolute slip.
-std::complex<double> releaseSlipRatio(double slipPole, double referencePole,
-                                      int harmonic, int length)
+// A Finger or Thumb release (applyPadRelease) runs the contact's line
+// through the stroke's slip, y[s] = (1 - c) x[s] + c y[s - 1], up the period
+// and back down, with c = b^sqrt(2). Thumb also applies the full-velocity
+// slip's inverse the same way. On DFT bin n of an N-sample line each pair of
+// passes is the squared magnitude of its one-pass response, so the slip is
+// this real response. A zero actual pole is the contact alone; a positive
+// actual pole without a reference is Finger's absolute slip.
+double releaseSlipRatio(double slipPole, double referencePole, int harmonic, int length)
 {
     if (!(slipPole > 0.0))
         return 1.0;
     const auto delay = std::polar(1.0, -2.0 * std::numbers::pi * harmonic / length);
-    const auto slip = (1.0 - slipPole) / (1.0 - slipPole * delay);
-    return referencePole > 0.0
-        ? slip * (1.0 - referencePole * delay) / (1.0 - referencePole) : slip;
+    const double c = std::pow(slipPole, std::sqrt(2.0));
+    const double slip = std::norm((1.0 - c) / (1.0 - c * delay));
+    if (!(referencePole > 0.0))
+        return slip;
+    const double u = std::pow(referencePole, std::sqrt(2.0));
+    return slip * std::norm((1.0 - u * delay) / (1.0 - u));
 }
 
-// The rescale that keeps the released line's spread: by Parseval the spread
-// about the mean is the sum of |X_n|^2 over the bins other than DC.
-double releaseSlipScale(double slipPole, double referencePole,
-                        const std::vector<std::complex<double>>& bins)
+// The released line's DFT coefficients, x[s] = sum_n Y_n exp(2 pi i n s / N),
+// from the contact's bins 1..N-1. The contact starts at rest at the bridge,
+// so its DC is minus the rest. After the slip, the bridge sample y[0] is
+// brought back to rest by a raised cosine over +/-W about it, W = tau
+// sqrt(2 / (1/3 - 2/pi^2)) with c = exp(-1/tau), at most N/2; then the
+// line's spread about its mean is restored, which by Parseval is the sum of
+// |Y_n|^2 over the bins other than DC.
+std::vector<std::complex<double>> releasedLine(double slipPole, double referencePole,
+                                               const std::vector<std::complex<double>>& bins)
 {
-    if (!(slipPole > 0.0))
-        return 1.0;
-    double before = 0.0, after = 0.0;
     const int length = static_cast<int>(bins.size());
+    std::vector<std::complex<double>> line(bins.size());
     for (int n = 1; n < length; ++n)
     {
-        const auto& bin = bins[static_cast<std::size_t>(n)];
-        before += std::norm(bin);
-        after += std::norm(bin * releaseSlipRatio(slipPole, referencePole, n, length));
+        line[0] -= bins[static_cast<std::size_t>(n)];
+        line[static_cast<std::size_t>(n)] = bins[static_cast<std::size_t>(n)]
+            * releaseSlipRatio(slipPole, referencePole, n, length);
     }
-    return after > 0.0 ? std::sqrt(before / after) : 1.0;
+    if (!(slipPole > 0.0))
+        return line;
+    double first = 0.0;
+    for (const auto& bin : line)
+        first += bin.real();
+    const double tau = -1.0 / (std::sqrt(2.0) * std::log(slipPole));
+    const double halfWidth = std::min(0.5 * length, tau * std::sqrt(
+        2.0 / (1.0 / 3.0 - 2.0 / (std::numbers::pi * std::numbers::pi))));
+    const int reach = static_cast<int>(std::ceil(halfWidth));
+    for (int sample = 0; sample < reach; ++sample)
+    {
+        const double share = 0.5 * (1.0 + std::cos(std::numbers::pi * sample / halfWidth));
+        for (int n = 0; n < length; ++n)
+        {
+            const double phase = 2.0 * std::numbers::pi * n * sample / length;
+            // Both sides of the bridge, a real even pair; the bridge once.
+            const double weight = sample == 0 ? 1.0 : 2.0 * std::cos(phase);
+            line[static_cast<std::size_t>(n)] -= first * share * weight / length;
+        }
+    }
+    double before = 0.0, after = 0.0;
+    for (int n = 1; n < length; ++n)
+    {
+        before += std::norm(bins[static_cast<std::size_t>(n)]);
+        after += std::norm(line[static_cast<std::size_t>(n)]);
+    }
+    const double scale = after > 0.0 ? std::sqrt(before / after) : 1.0;
+    for (auto& bin : line)
+        bin *= scale;
+    return line;
 }
 
 void testReleasedContactPreservesTheLinearFilterSpectrum()
@@ -5146,15 +5180,34 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
             std::vector<std::complex<double>> bins(static_cast<std::size_t>(length));
             for (int n = 1; n < length; ++n)
                 bins[static_cast<std::size_t>(n)] = contact(n);
-            const double scale = releaseSlipScale(state.slipPole, state.referencePole, bins);
+            const auto released = releasedLine(state.slipPole, state.referencePole, bins);
+            double before = 0.0, after = 0.0;
+            for (int n = 1; n < length; ++n)
+            {
+                before += std::norm(bins[static_cast<std::size_t>(n)]);
+                after += std::norm(bins[static_cast<std::size_t>(n)]
+                    * releaseSlipRatio(state.slipPole, state.referencePole, n, length));
+            }
+            // The rest restored at the bridge takes the rest of every bin,
+            // so its error collects their tails, spread over the cosine's
+            // 2W + 1 samples.
+            const double reach = state.slipPole > 0.0 ? 2.0 * std::min(0.5 * length,
+                -1.0 / (std::sqrt(2.0) * std::log(state.slipPole)) * std::sqrt(2.0
+                    / (1.0 / 3.0 - 2.0 / (std::numbers::pi * std::numbers::pi))))
+                + 1.0 : 0.0;
+            const double scale = after > 0.0 ? 2.0 * std::sqrt(before / after) : 1.0;
             // |T_m| <= 1/(2*pi^2*p*(1-p)*m^2). For n<N/2 the
             // omitted +/- alias tails are bounded by this integral; the
-            // slip ratio's gain, at most (1 + u)/(1 - u) times the slip's
-            // unit gain, and the scale carry it.
-            const double ratioBound = scale * (1.0 + state.referencePole)
-                / (1.0 - state.referencePole);
-            const double tailBound = ratioBound / (std::numbers::pi * std::numbers::pi
-                * p * (1.0 - p) * length * length * (aliases - 0.5));
+            // slip ratio's gain, at most ((1 + u)/(1 - u))^2 times the
+            // slip's unit gain, and the scale carry it, here taken at twice
+            // the slip's own as a margin for the spread the rest removes.
+            const double u = state.referencePole > 0.0
+                ? std::pow(state.referencePole, std::sqrt(2.0)) : 0.0;
+            const double ratioBound = scale * ((1.0 + u) / (1.0 - u))
+                * ((1.0 + u) / (1.0 - u));
+            const double tailBound = (1.0 + reach) * ratioBound
+                / (std::numbers::pi * std::numbers::pi
+                   * p * (1.0 - p) * length * length * (aliases - 0.5));
             // Float phase rounding is amplified by a triangle slope of
             // at most 1/min(p,1-p). Corner interpolation (unit error
             // <6.20e-11) and image sums use double; final float storage
@@ -5171,8 +5224,7 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
             {
                 if (harmonic <= 0 || 2 * harmonic >= length)
                     continue;
-                const auto expected = bins[static_cast<std::size_t>(harmonic)] * scale
-                    * releaseSlipRatio(state.slipPole, state.referencePole, harmonic, length);
+                const auto expected = released[static_cast<std::size_t>(harmonic)];
                 std::complex<double> observed {};
                 for (int sample = 0; sample < length; ++sample)
                     observed += state.history[static_cast<std::size_t>(sample)]
@@ -5265,18 +5317,14 @@ void testBroadContactWrapsAndReachesItsUniformLimit()
                         += std::conj(coefficient);
                 }
                 bins[0] = 0.0;
-                const double scale = releaseSlipScale(state.slipPole, state.referencePole, bins);
-                for (int n = 1; n <= terms; ++n)
-                    coefficients[static_cast<std::size_t>(n - 1)] *= scale
-                        * releaseSlipRatio(state.slipPole, state.referencePole, n, length);
+                const auto released = releasedLine(state.slipPole, state.referencePole, bins);
                 bool negativeBeforeWrap = false;
                 for (int sample = 0; sample < length; ++sample)
                 {
                     double expected = 0.0;
-                    const double phase = static_cast<double>(sample) / length;
-                    for (int n = 1; n <= terms; ++n)
-                        expected += 2.0 * std::real(coefficients[static_cast<std::size_t>(n - 1)]
-                            * (std::polar(1.0, 2.0 * std::numbers::pi * n * phase) - 1.0));
+                    for (int n = 0; n < length; ++n)
+                        expected += std::real(released[static_cast<std::size_t>(n)]
+                            * std::polar(1.0, 2.0 * std::numbers::pi * n * sample / length));
                     const double observed = state.history[static_cast<std::size_t>(sample)] / state.gain;
                     const double error = std::abs(observed - expected);
                     worstError = std::max(worstError, error);
