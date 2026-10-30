@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.6 — 2026-10-30 — about a tenth less CPU, the same sound
+
+- The engine takes about 11% less CPU at the Rack's 2x rate and at 48 kHz
+  (8% fewer instructions): the room's reflections and rate converter, the
+  strings' delay followers and the body's radiation sum do the same
+  arithmetic with less waiting. The sound is unchanged: every preset demo
+  renders the same bytes except for the body's regrouped sum, which differs
+  by float rounding, at most −119 dBFS. Details in
+  [the CPU report](Docs/benchmarks/cpu-optimization-2026-10-30.md).
+
 ### 1.9.5 — 2026-10-29 — a softer thumb lets go as a fingertip does
 
 - A soft thumb note no longer comes back brighter than a firm one. The
