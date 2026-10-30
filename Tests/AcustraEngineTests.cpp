@@ -5375,7 +5375,17 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         // Compare what the hand held, before the different release contacts
         // redistribute the line. A weak Pick's slow slip can lower its line
         // peak below Thumb even though its held displacement is greater.
-        expect(pick.heldDisplacement > thumb.heldDisplacement
+        // The held force is the displacement over p (1 - p) of the string
+        // it was held at. Comparing displacements alone stood in for it
+        // while the two strokes drew offsets of one size; the Pick's wider
+        // spread (1.9.7) moves its point, and at velocity 0.9 the two
+        // displacements then sat 0.01% apart in either order.
+        const auto heldForce = [] (const auto& stroke)
+        {
+            return stroke.heldDisplacement
+                / (stroke.pluckPoint * (1.0 - stroke.pluckPoint));
+        };
+        expect(heldForce(pick) > heldForce(thumb)
                    && pick.peakDisplacement > 0.0 && thumb.peakDisplacement > 0.0,
                "pick/thumb did not retain their held force and released waves");
         // The legacy Pick shares Finger's independently observed force/noise
@@ -6727,11 +6737,10 @@ void testBodyChangesPreserveAnUnfinishedFade()
     // Wood and Shape move the bridge with the radiation, so the strings ring
     // against a rigid termination: this observes radiation-bank scheduling
     // against exactly the same continuously ringing string input. A body
-    // request still reconfigures the bridge at once, and the bridge
-    // derivatives that drive the body cross that as a step for one sample
-    // (processAcrossStep), so wherever one engine takes a request the other
-    // takes one at the same sample: a request queued behind a running fade
-    // and cancelled by returning to its target, which leaves the body alone.
+    // request still reconfigures the bridge at once, so wherever one engine
+    // takes a request the other takes one at the same sample: a request
+    // queued behind a running fade and cancelled by returning to its
+    // target, which leaves the body alone.
     for (auto* engine : { &reference, &changed })
     {
         engine->setParameters(parameters);

@@ -8,6 +8,17 @@
 #include <memory>
 #include <vector>
 
+namespace acustra
+{
+struct AcustraEngineTestAccess
+{
+    static double releaseSlipPole(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].releaseSlipPole;
+    }
+};
+} // namespace acustra
+
 namespace
 {
 constexpr double pi = 3.14159265358979323846;
@@ -102,6 +113,7 @@ int main()
         engine->setStringPerChannelMode(true);
         const int note = engine->openNotes(parameters.tuning)[string] + fret;
         engine->noteOn(note, 0.6f, string + 1);
+        const double releasePole = acustra::AcustraEngineTestAccess::releaseSlipPole(*engine, string);
         std::vector<float> left(static_cast<std::size_t>(2.0 * rate)), right(left.size());
         engine->process(left.data(), right.data(), static_cast<int>(left.size()));
         const double frequency = 440.0 * std::exp2((note - 69.0) / 12.0) * partial;
@@ -120,7 +132,26 @@ int main()
         // of 0.36, and its release-edge scaling keeps the contact shape, so
         // every partial scales by that ratio (1.66-1.68x on 1.6.2's output).
         constexpr double linearForceScale = 0.6 / 0.36;
-        const double reference = linearForceScale
+        // Since 1.9.5 the Thumb's release time follows the Finger's
+        // v^-0.766875 rather than 1/v^2, so at velocity 0.6 it lets go
+        // 0.6^-1.233125 = 1.88 times sooner than when these were observed,
+        // and its slip, a one-pole on the periodic line, passes more of an
+        // upper partial. Scale the Thumb's reference by that one-pole's gain
+        // at the partial under its release time against the old one: 1.62
+        // for E3's H5 and 1.73 for G3's H8, which grew 1.07 and 1.96-2.20
+        // times from 1.9.4.
+        double releaseScale = 1.0;
+        if (technique == acustra::PickingTechnique::Thumb)
+        {
+            const double w = 2.0 * pi * frequency / rate;
+            const auto gain = [w](double pole) {
+                return (1.0 - pole) / std::sqrt(1.0 - 2.0 * pole * std::cos(w) + pole * pole);
+            };
+            const double oldPole = std::pow(releasePole, std::pow(0.6, 1.233125));
+            releaseScale = releasePole > 0.0 ? gain(releasePole) / gain(oldPole) : 0.0;
+            std::cout << "  Thumb release scale " << releaseScale << '\n';
+        }
+        const double reference = linearForceScale * releaseScale
             * referenceAmplitude[rate == 48000.0 ? 0 : 1]
                                 [static_cast<int>(technique)][fixture];
         if (!(envelope.meanAmplitude > 0.5 * reference

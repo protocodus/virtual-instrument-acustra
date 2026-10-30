@@ -1390,10 +1390,12 @@ private:
         // presents moves with it: Z = sqrt(T mu) = Z0 times the frequency
         // ratio (see configureVoice). The junction sums impedances every
         // sample, so the requested scale is followed at the delay's own 6 ms
-        // rate rather than stepping once per control period. Both are 1
-        // without a bend, and a scale of exactly 1 leaves every product
-        // bit-identical to the unbent engine.
+        // rate rather than stepping once per control period, through two
+        // stages (AcustraEngine::process). All three are 1 without a bend,
+        // and a scale of exactly 1 leaves every product bit-identical to the
+        // unbent engine.
         float bendImpedanceScale { 1.0f };
+        float bendImpedanceStage { 1.0f };
         float appliedBendImpedanceScale { 1.0f };
         // The string's tension now, in newtons, bend included. Kept so the
         // bend can be checked against Grimes' law rather than inferred.
@@ -1633,9 +1635,9 @@ private:
         alignas(16) Lanes leftMomentReal {}, leftMomentImaginary {};
         alignas(16) Lanes rightMomentReal {}, rightMomentImaginary {};
         int count { 0 };
-        // The first `ordered` modes (a bank's own) are summed in index order;
-        // the rest (the steel blend's parallel parts, starting on a group of
-        // four) in vector accumulators.
+        // The first `ordered` modes are a bank's own; the rest are the steel
+        // blend's parallel parts, starting on a group of four. render sums
+        // them alike.
         int ordered { 0 };
         CaptureFilter captureFilter {};
 
@@ -1653,9 +1655,8 @@ private:
         }
         // Every mode's two-pole state advanced by the force and moment and
         // summed into the left and right residues, then a flush of tiny
-        // states. The ordered modes' sums accumulate in index order, as ever;
-        // with vector extensions the modes after them gather four lanes
-        // across their parts and are added to those sums once per sample.
+        // states. The sums gather in four lanes, every fourth mode in each,
+        // added across lanes once per sample.
         BodyOutput render(float force, float moment) noexcept;
     };
 
@@ -2149,7 +2150,9 @@ private:
         std::array<float, lineCount> absorptionState {};
         std::array<float, lineCount> absorptionGain {};
         std::array<float, lineCount> absorptionPole {};
-        std::array<float, earlyCapacity> early {};
+        // The ring's first three samples repeat past its end, so four
+        // consecutive taps are one contiguous read wherever they start.
+        std::array<float, earlyCapacity + 3> early {};
         int earlyHead { 0 };
         // Four Schroeder allpasses diffusing what enters the late field.
         static constexpr int diffuserCapacity = 512;
@@ -2167,6 +2170,12 @@ private:
             std::array<float, 4> weights {};
         };
         std::array<Arrival, tapCount> arrivalsLeft {}, arrivalsRight {};
+        // The same arrivals, left then right, four to a group: each one's
+        // oldest tap, and the weights lane by lane (step).
+        static constexpr int arrivalCount = 2 * tapCount;
+        static_assert(arrivalCount % 4 == 0, "arrivals are read four at a time");
+        std::array<int, arrivalCount> arrivalOldest {};
+        alignas(16) std::array<float, 4 * arrivalCount> arrivalWeightLanes {};
         bool directional { false };
         bool rateConversion { false };
         // Two 64-internal-sample Blackman-windowed sinc filters. The first
@@ -2175,10 +2184,18 @@ private:
         static constexpr int converterOrder = 64;
         static constexpr int maximumDecimation = 12; // through 768 kHz
         static constexpr int converterCapacity = converterOrder * maximumDecimation + 1;
-        std::array<float, converterCapacity> converterCoefficients {}, converterInput {};
-        std::array<std::array<float, converterOrder + 1>, maximumDecimation>
+        std::array<float, converterCapacity> converterCoefficients {};
+        // The room's input as doubles, written twice, converterLength apart,
+        // so the newest converterLength samples are one run of memory.
+        std::array<double, 2 * converterCapacity> converterInput {};
+        // Each phase's float coefficients, held as doubles (exactly) to
+        // multiply both outputs' doubles.
+        std::array<std::array<double, converterOrder + 1>, maximumDecimation>
             converterPhases {};
-        std::array<float, converterOrder + 1> converterLeft {}, converterRight {};
+        // The room's outputs, left and right side by side, as doubles. The
+        // ring is written twice, a ring's length apart, so its newest
+        // converterOrder + 1 pairs are always one run of memory.
+        alignas(16) std::array<std::array<double, 2>, 2 * (converterOrder + 1)> converterStereo {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };
@@ -2292,8 +2309,8 @@ private:
     float lastImpedanceInertia_ { 0.0f };
     bool bridgeDerivativesNeedPriming_ { true };
     bool bridgeDerivativesCrossRelease_ { false };
-    // A live construction change stepped the junction's wave variables on
-    // the next sample (FixedDerivative::processAcrossStep).
+    // A re-pluck merged into a ringing string stepped the junction's wave
+    // variables on the next sample (FixedDerivative::processAcrossStep).
     bool bridgeDerivativesCrossConfigure_ { false };
     bool prepared_ { false };
     bool suspended_ { false };

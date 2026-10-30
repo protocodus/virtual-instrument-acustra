@@ -1145,9 +1145,17 @@ void testPiezoClipAliasing()
     double chainSum = 0.0, bareSum = 0.0;
     double fullChainSum = 0.0, fullBareSum = 0.0;
     int drives = 0;
-    std::array<float, 5> overdrives = touch == 1.0f
-        ? std::array<float, 5> { 1.35f, 1.39f, 1.43f, 1.47f, 1.51f }
-        : std::array<float, 5> { 1.40f, 1.45f, 1.50f, 1.55f, 1.60f };
+    // The full chain is driven 27-43% (Touch 1) or 36-56% (Touch 0.58)
+    // past this strum's own first clip. These were fixed drives, chosen
+    // above the 1.9.6 thresholds (1.03-1.11); the strum's peak depends on
+    // where each string's pluck draw lands, and the Pick's wider spread
+    // (1.9.7) put the 44.1 kHz Touch 1 threshold at 1.354, over the 1.35
+    // the list began at.
+    std::array<float, 5> overdrives {};
+    for (std::size_t i = 0; i < overdrives.size(); ++i)
+        overdrives[i] = static_cast<float>(firstClip * (touch == 1.0f
+            ? 1.27 + 0.04 * static_cast<double>(i)
+            : 1.36 + 0.05 * static_cast<double>(i)));
     if (isolated)
         for (std::size_t i = 0; i < overdrives.size(); ++i)
             overdrives[i] = static_cast<float>(firstClip + (firstInput - firstClip)

@@ -1429,8 +1429,8 @@ constexpr std::size_t steelBlendBodyModeCount
 constexpr std::size_t steelBlendBridgeModeCount
     = detail::measuredSteelBridgeModes.size()
     + (steelBlendJointShare > 0.0f ? steelJointBridgeCount : 0);
-// The in-order sum of g21's bank ends on a whole group of four, so the parts
-// after it start on one (BodyBank::render).
+// g21's bank ends on a whole group of four, so the parts after it start on
+// one (BodyBank::ordered).
 static_assert(detail::measuredSteelBodyModes.size() % 4 == 0,
               "g21's bank no longer ends on a group of four: pad it in configureBody");
 static_assert(steelBlendBodyModeCount <= ACUSTRA_BODY_MODE_COUNT,
@@ -3729,15 +3729,22 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
     // instead of snapping that whole difference on one sample. Explicit
     // prescription/reset/switch writes to the published delay start here;
     // copies retain the precise progress of an already moving string.
-    if (exact::bits(currentDelay) != delayProgressBits)
-        delayProgress = currentDelay;
-    const double nextDelay = delayProgress + static_cast<double>(delaySmoothing)
-        * (static_cast<double>(targetDelay) - delayProgress);
-    delayProgress = nextDelay == delayProgress
-        || std::abs(static_cast<double>(targetDelay) - nextDelay) < 1.0e-4
-        ? static_cast<double>(targetDelay) : nextDelay;
-    currentDelay = static_cast<float>(delayProgress);
-    delayProgressBits = exact::bits(currentDelay);
+    // A delay already at its target stays there: the follower below would
+    // add zero and store the same values, so it is not run.
+    const auto currentBits = exact::bits(currentDelay);
+    if (currentBits != delayProgressBits || currentBits != exact::bits(targetDelay)
+        || delayProgress != static_cast<double>(targetDelay))
+    {
+        if (currentBits != delayProgressBits)
+            delayProgress = currentDelay;
+        const double nextDelay = delayProgress + static_cast<double>(delaySmoothing)
+            * (static_cast<double>(targetDelay) - delayProgress);
+        delayProgress = nextDelay == delayProgress
+            || std::abs(static_cast<double>(targetDelay) - nextDelay) < 1.0e-4
+            ? static_cast<double>(targetDelay) : nextDelay;
+        currentDelay = static_cast<float>(delayProgress);
+        delayProgressBits = exact::bits(currentDelay);
+    }
     float delayed = readDelay(currentDelay);
     if (secondDispersionActive)
         delayed = secondDispersion.process(delayed, secondDispersionA1,
@@ -4500,20 +4507,22 @@ void AcustraEngine::setMasterTuneCents(float cents) noexcept
         {
             for (auto& loop : voice.loops)
                 loop.setCurrentDelay(loop.targetDelay);
-            voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
+            voice.appliedBendImpedanceScale = voice.bendImpedanceStage
+                = voice.bendImpedanceScale;
         }
         else if (previousImpedance > 0.0f && voice.characteristicImpedance > 0.0f)
         {
             // Preserve the junction's current port, then let its existing
             // 6 ms follower reach the retensioned string with the delay.
-            voice.appliedBendImpedanceScale *= previousImpedance
-                / voice.characteristicImpedance;
+            const float kept = previousImpedance / voice.characteristicImpedance;
+            voice.appliedBendImpedanceScale *= kept;
+            voice.bendImpedanceStage *= kept;
         }
     }
     // A captured refret tail keeps its original string and port, as it does
     // under playing-wheel changes. No contact, emitted packet or random draw
-    // belongs to a reference-tuning notification.
-    bridgeDerivativesCrossConfigure_ = !atRest;
+    // belongs to a reference-tuning notification. The ports follow, so the
+    // junction does not step (applyDiscreteParameters).
 }
 
 void AcustraEngine::setPhysicalCalibration(
@@ -4644,16 +4653,13 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             configureVoice(voice, string, voice.midiNote, false, false,
                            tuningChanged && !force, ageChanged && !force);
     }
-    // Switching the tuning under a ringing chord changes every string's
-    // impedance at once, so the junction's wave variables step with the
-    // port. That is the strings being retuned, not the bridge moving, and
-    // differencing it made a click 26 times the chord it landed on. A bridge
-    // rebuild can step them too. The derivatives carry the
-    // bridge's own motion across that sample (processAcrossStep); reading it
-    // as no motion at all, as a released shape is read, left a one-sample
-    // hole in every bridge force.
-    if (bodyChanged || tuningChanged)
-        bridgeDerivativesCrossConfigure_ = true;
+    // Nothing steps at the junction here, so the bridge derivatives are not
+    // carried across a step (processAcrossStep): a retuned string's port
+    // follows its new impedance at the delay's rate (below), and a live
+    // bridge rebuild fades its load. Carrying them across anyway replaced
+    // one sample of the bridge's motion with a straight line, a tick above
+    // 5 kHz up to 14 dB over the steady sound when Wood or Shape changed
+    // under a ringing chord.
 
     // A tail belongs to the string tuning it was taken from, and its loop is
     // not redesigned below. Shape changes the body attached to that string,
@@ -4702,6 +4708,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             // rate, as a bend's does, instead of stepping under its ringing
             // wave.
             voice.appliedBendImpedanceScale *= before / after;
+            voice.bendImpedanceStage *= before / after;
         }
 }
 
@@ -5539,7 +5546,6 @@ void AcustraEngine::applyPendingBridge(bool fade) noexcept
         fadingBridgeShape_ = configuredBridgeShape_;
         fadingBridgeMaterial_ = configuredBridgeMaterial_;
         bridgeLoadFade_ = 0.0f;
-        bridgeDerivativesCrossConfigure_ = true;
     }
     configureBridge(true);
 }
@@ -6666,7 +6672,8 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     voice.bendImpedanceScale = exact::sqrt((bentTension / tension)
                                          / stretchedMass);
     if (clearDelay)
-        voice.appliedBendImpedanceScale = voice.bendImpedanceScale;
+        voice.appliedBendImpedanceScale = voice.bendImpedanceStage
+            = voice.bendImpedanceScale;
     if (voice.keyDown || voice.pedalHeld || voice.releaseJoinPending
         || voice.releaseAfterPluck || !voice.played)
         voice.releaseDamping = 1.0f;
@@ -7006,8 +7013,19 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // No two plucks land in the same place. The archtop's three takes of each
     // note put their pluck points a median 0.02 of the string length apart
     // (Traube-Smith comb on the soft rows, where the estimate is clean),
-    // which for three draws from a uniform spread is the spread's half-width;
-    // each pluck draws its own offset within it.
+    // which for three draws from a uniform spread is the spread's half-width.
+    // Once the coherent hand holds the string only 0.30 of it is the
+    // pluck's own draw; the rest is the hand's slow drift, and both scale
+    // with the spread. A plectrum lands further about its place. On the
+    // embedded Shinyguitar round robins (a picked flat-top, four takes of
+    // each note in four layers) a note's partials scatter 1.70-2.93 dB from
+    // take to take once each take's level and tilt are taken out, which a
+    // moving pluck point leaves and a force or an angle does not. Jumbo
+    // Steel Pick's renders scattered 1.56 dB at 0.02, where the Pick meets
+    // the string close to the bridge and a shift moves the comb least, and
+    // scatter 1.93 dB at 0.03; Dreadnought Steel's Finger already scattered
+    // 2.03 dB and keeps 0.02 (Tools/compare_reference_takes.py;
+    // Docs/decisions.md, 2026-10-30).
     const float positionDraw = nextNoise(voice);
     // MPE Timbre, CC74, on this note's own member channel says directly
     // where the string was met (0-1 across the same 0.05-0.46 band the
@@ -7022,11 +7040,14 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         && mpeTimbre_[channelIndex] >= 0.0f;
     constexpr float lowestPoint = 0.05f;
     constexpr float handLimit = 0.36f;
-    float takeOffset = 0.02f * positionDraw;
+    // An explicit CC74 point is the player's own, whatever the technique.
+    const float takeSpread
+        = parameters_.picking == PickingTechnique::Pick && !hasTimbre ? 0.03f : 0.02f;
+    float takeOffset = takeSpread * positionDraw;
     if (gesture.active && !hasTimbre)
     {
         // One hand moves the same physical distance across a fretted chord.
-        // Keep the established open-string travel (0.02 * 0.70 * 648 mm),
+        // Keep the established open-string travel (takeSpread * 0.70 * 648 mm),
         // then express it in each string's actual speaking length. Scaling
         // that shared motion by the stopped length made an octave-fretted
         // string's hand move only half as far. The independent take spread
@@ -7037,13 +7058,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // travel. Approach the available position band smoothly there,
         // reserving the independent draw's 0.30 share. Ordinary playable
         // frets remain below this knee and keep exact physical travel.
-        constexpr float sharedLimit = (handLimit - lowestPoint) / 0.02f - 0.30f;
-        constexpr float sharedKnee = 0.5f * sharedLimit;
+        const float sharedLimit = (handLimit - lowestPoint) / takeSpread - 0.30f;
+        const float sharedKnee = 0.5f * sharedLimit;
         const float travel = exact::abs(sharedOffset);
         if (travel > sharedKnee)
             sharedOffset = std::copysign(sharedLimit
                 - sharedKnee * sharedKnee / travel, sharedOffset);
-        takeOffset = 0.02f * (sharedOffset + 0.30f * positionDraw);
+        takeOffset = takeSpread * (sharedOffset + 0.30f * positionDraw);
     }
     float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
@@ -7327,10 +7348,21 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Raising soft-note force from v^2 to v also raises its release speed.
     // Finger and Thumb scale their effective edge by the same 1/v ratio to
     // preserve u/r and their established velocity-dependent release shape:
-    // Finger's resulting radius follows v^0.233125 and its contact time
+    // the pad's resulting radius follows v^0.233125 and its contact time
     // still follows v^-0.766875. These are keyboard-response choices, not
     // measured fingertip dimensions. The full-force reference and every
     // raw-velocity Touch/noise/style response remain unchanged.
+    // The thumb's pad took the 1/v alone until 1.9.5, so its edge shrank as
+    // it pressed harder and its contact time went as 1/v^2: on Mahogany
+    // Steel Thumb a velocity-16 A2 let go over 928 samples, two periods, and
+    // the slip (applyPlectrumSlip), shifted so the line starts at rest in a
+    // loop longer than the line, put back harmonics the slow release had
+    // taken. Its 2.5-6 kHz share fell 8.5 dB to velocity 80 and rose 5.0 dB
+    // again to 48. A soft pad presses less flesh onto the string, not more,
+    // as a fingertip's contact grows with force (Hertz: radius as F^(1/3)),
+    // so the thumb takes the Finger's law: that A2 lets go over 72 samples
+    // and darkens at every step to velocity 48 (Acustra.ThumbDynamics).
+    // Full velocity is unchanged.
     // The plectrum keeps its fitted edge (FittedPhysicalData.h) at every
     // force, so its slip takes r/u with u ~ v. Scaled by 1/v as well, it
     // took 1/v^2 and a soft stroke let go over much of a period: Jumbo
@@ -7363,8 +7395,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         const double pole = plectrumSlipPole(voice, releasedAmplitude,
             heldDistance, soundingLength, scaleLength,
             fingerReleaseRadius * releaseTouch * gestureCompliance * releaseGestureScale
-                * (fullSoftSlip
-                    ? std::pow(contactForce, fingerContactForceExponent) : 1.0f));
+                * std::pow(contactForce, fingerContactForceExponent));
         if (referencePole > 0.0 && pole > 0.0)
         {
             const double referenceTau = -1.0 / std::log(referencePole);
@@ -12004,12 +12035,12 @@ void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& mo
 // Each mode's two-pole step and the flush of tiny states, four modes at a time.
 // Each lane is the scalar expression's own sequence of IEEE operations (the
 // same products, sums and order), so each mode's states and contributions
-// are the scalar ones bit for bit; the two sums then take the ordered modes'
-// contributions one mode at a time in index order, as the scalar loop did.
-// The modes after them (the steel blend's parallel parts) gather in four
-// vector accumulators, added across lanes and to the sums once per sample
-// (about 1.03 against 1.33 ns per mode-sample). Only modes below count are
-// summed; lanes past it are zero padding.
+// are the scalar ones bit for bit. The contributions gather in four lane
+// accumulators per side, added across lanes once per sample: summed one mode
+// at a time instead, each of some 150 additions waited on the one before.
+// That order differs from a single running sum by float rounding only, under
+// -119 dBFS on every preset demo; the scalar path below keeps the same lanes.
+// Only modes below count are summed; lanes past it are zero padding.
 AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float moment) noexcept
 {
     BodyOutput output;
@@ -12040,27 +12071,9 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
     };
     const Vector forceLanes = { force, force, force, force };
     const Vector momentLanes = { moment, moment, moment, moment };
-    // L/R are independent accumulators, advanced in the original mode order.
-    // The SDK vector contract requires 16 bytes; the upper sums are not returned.
-    Vector stereo = { output.left, output.right, 0.0f, 0.0f };
-    const auto addStereo = [&] (Vector pair)
-    {
-#if defined(__clang__)
-#pragma clang fp contract(off)
-#pragma clang fp reassociate(off)
-#endif
-        stereo += 2.0f * pair;
-    };
-    const auto addScaledStereo = [&] (Vector pair)
-    {
-#if defined(__clang__)
-#pragma clang fp contract(off)
-#pragma clang fp reassociate(off)
-#endif
-        stereo += pair;
-    };
-    // One group of four lanes advanced; its contributions to the two sums.
-    const auto advance = [&] (int index, Vector& leftPart, Vector& rightPart)
+    Vector leftSum = { 0.0f, 0.0f, 0.0f, 0.0f };
+    Vector rightSum = { 0.0f, 0.0f, 0.0f, 0.0f };
+    for (int index = 0; index < count; index += lanes)
     {
         const Vector pr = load(poleReal, index);
         const Vector pim = load(poleImaginary, index);
@@ -12074,11 +12087,11 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
                                     - pim * mi;
         const Vector nextMomentImaginary = pim * mr
                                          + pr * mi;
-        leftPart = load(leftReal, index) * nextReal
+        Vector leftPart = load(leftReal, index) * nextReal
             - load(leftImaginary, index) * nextImaginary
             + load(leftMomentReal, index) * nextMomentReal
             - load(leftMomentImaginary, index) * nextMomentImaginary;
-        rightPart = load(rightReal, index) * nextReal
+        Vector rightPart = load(rightReal, index) * nextReal
             - load(rightImaginary, index) * nextImaginary
             + load(rightMomentReal, index) * nextMomentReal
             - load(rightMomentImaginary, index) * nextMomentImaginary;
@@ -12086,76 +12099,20 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
         store(imaginary, index, flush(nextImaginary));
         store(momentReal, index, flush(nextMomentReal));
         store(momentImaginary, index, flush(nextMomentImaginary));
-    };
-    // One ordered group, the first valid of its lanes summed in order. A
-    // constant valid lets the full groups keep their products in vector
-    // registers.
-    const auto group = [&] (int index, int valid)
-    {
-        Vector leftPart, rightPart;
-        advance(index, leftPart, rightPart);
-        if (valid == lanes)
+        if (index + lanes > count)
         {
-#if defined(__clang__)
-#pragma clang fp contract(off)
-#pragma clang fp reassociate(off)
-#endif
-            // Scale each unchanged contribution exactly once, then interleave
-            // constant lane pairs. Only the lower L/R sums become output.
-            const Vector leftScaled = 2.0f * leftPart;
-            const Vector rightScaled = 2.0f * rightPart;
-            const Vector zip01 = { leftScaled[0], rightScaled[0], leftScaled[1], rightScaled[1] };
-            const Vector zip23 = { leftScaled[2], rightScaled[2], leftScaled[3], rightScaled[3] };
-            const Vector swap01 = { zip01[2], zip01[3], zip01[0], zip01[1] };
-            const Vector swap23 = { zip23[2], zip23[3], zip23[0], zip23[1] };
-            addScaledStereo(zip01);
-            addScaledStereo(swap01);
-            addScaledStereo(zip23);
-            addScaledStereo(swap23);
+            const Mask lane = { 0, 1, 2, 3 };
+            const Mask summed = lane < (count - index);
+            leftPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(leftPart) & summed);
+            rightPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(rightPart) & summed);
         }
-        else
-        {
-            for (int lane = 0; lane < valid; ++lane)
-            {
-                const Vector pair = { leftPart[lane], rightPart[lane], 0.0f, 0.0f };
-                addStereo(pair);
-            }
-        }
-    };
-    int index = 0;
-    for (; index + lanes <= ordered; index += lanes)
-        group(index, lanes);
-    if (index < ordered)
-    {
-        group(index, ordered - index);
-        index += lanes;
+        leftSum += leftPart;
+        rightSum += rightPart;
     }
-    if (index < count)
-    {
-        Vector leftSum = { 0.0f, 0.0f, 0.0f, 0.0f };
-        Vector rightSum = { 0.0f, 0.0f, 0.0f, 0.0f };
-        for (; index < count; index += lanes)
-        {
-            Vector leftPart, rightPart;
-            advance(index, leftPart, rightPart);
-            if (index + lanes > count)
-            {
-                const Mask lane = { 0, 1, 2, 3 };
-                const Mask summed = lane < (count - index);
-                leftPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(leftPart) & summed);
-                rightPart = reinterpret_cast<Vector>(reinterpret_cast<Mask>(rightPart) & summed);
-            }
-            leftSum += leftPart;
-            rightSum += rightPart;
-        }
-        const float leftTail = (leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]);
-        const float rightTail = (rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]);
-        const Vector pair = { leftTail, rightTail, 0.0f, 0.0f };
-        addStereo(pair);
-    }
-    output.left = stereo[0];
-    output.right = stereo[1];
+    output.left = 2.0f * ((leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]));
+    output.right = 2.0f * ((rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]));
 #else
+    std::array<float, lanes> leftSum {}, rightSum {};
     for (int index = 0; index < count; ++index)
     {
         const auto i = static_cast<std::size_t>(index);
@@ -12165,16 +12122,18 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
                                    - poleImaginary[i] * momentImaginary[i];
         const float nextMomentImaginary = poleImaginary[i] * momentReal[i]
                                         + poleReal[i] * momentImaginary[i];
-        output.left += 2.0f * (leftReal[i] * nextReal - leftImaginary[i] * nextImaginary
-            + leftMomentReal[i] * nextMomentReal - leftMomentImaginary[i] * nextMomentImaginary);
-        output.right += 2.0f * (rightReal[i] * nextReal - rightImaginary[i] * nextImaginary
-            + rightMomentReal[i] * nextMomentReal - rightMomentImaginary[i] * nextMomentImaginary);
+        leftSum[i % lanes] += leftReal[i] * nextReal - leftImaginary[i] * nextImaginary
+            + leftMomentReal[i] * nextMomentReal - leftMomentImaginary[i] * nextMomentImaginary;
+        rightSum[i % lanes] += rightReal[i] * nextReal - rightImaginary[i] * nextImaginary
+            + rightMomentReal[i] * nextMomentReal - rightMomentImaginary[i] * nextMomentImaginary;
         real[i] = exact::abs(nextReal) < 1.0e-30f ? 0.0f : nextReal;
         imaginary[i] = exact::abs(nextImaginary) < 1.0e-30f ? 0.0f : nextImaginary;
         momentReal[i] = exact::abs(nextMomentReal) < 1.0e-30f ? 0.0f : nextMomentReal;
         momentImaginary[i] = exact::abs(nextMomentImaginary) < 1.0e-30f
             ? 0.0f : nextMomentImaginary;
     }
+    output.left = 2.0f * ((leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]));
+    output.right = 2.0f * ((rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]));
 #endif
     captureFilter.render(output);
     // The mono microphone's sum is the right channel's: configureBody gives
@@ -12702,10 +12661,16 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             // moves with it. The junction sums impedances every sample and a
             // whole-tone bend moves this one by 12%; followed at the delay's
             // own rate rather than stepped once a control period, the sum
-            // never steps. A scale of exactly 1 leaves both arithmetic and
-            // output bit-identical to the unbent engine.
+            // never steps. Two stages at that rate, so it never turns a
+            // corner either: one stage set off at full slope, a corner in
+            // the string's force on the saddle (2 Z v) that the piezo and the
+            // body read as a click (Aculele 0.4.26 found it there).
+            // A scale of exactly 1 leaves both arithmetic and output
+            // bit-identical to the unbent engine.
+            voice.bendImpedanceStage += delaySmoothing_
+                * (voice.bendImpedanceScale - voice.bendImpedanceStage);
             voice.appliedBendImpedanceScale += delaySmoothing_
-                * (voice.bendImpedanceScale
+                * (voice.bendImpedanceStage
                    - voice.appliedBendImpedanceScale);
             excitation[static_cast<std::size_t>(string)]
                 = renderExcitation(voice);
@@ -13371,7 +13336,7 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate,
         for (int part = 0; part < decimation; ++part)
         {
             auto& coefficients = converterPhases[static_cast<std::size_t>(part)];
-            coefficients.fill(0.0f);
+            coefficients.fill(0.0);
             double phaseSum = 0.0;
             for (int index = part; index <= order; index += decimation)
                 phaseSum += converterCoefficients[static_cast<std::size_t>(index)];
@@ -13448,6 +13413,17 @@ void AcustraEngine::RoomAmbience::prepare(double hostRate,
                 gain = static_cast<float>(source.reflection * directDistance / distance
                     * (0.5 * (1.0 - dy / distance) / directivity));
             }
+        for (int index = 0; index < arrivalCount; ++index)
+        {
+            const auto& arrival = index < tapCount
+                ? arrivalsLeft[static_cast<std::size_t>(index)]
+                : arrivalsRight[static_cast<std::size_t>(index - tapCount)];
+            arrivalOldest[static_cast<std::size_t>(index)] = arrival.firstDelay + 3;
+            for (int weight = 0; weight < 4; ++weight)
+                arrivalWeightLanes[static_cast<std::size_t>(
+                    (index / 4 * 4 + weight) * 4 + index % 4)]
+                    = arrival.weights[static_cast<std::size_t>(weight)];
+        }
     }
     lateDelay = std::clamp(samples(roomLateMilliseconds) - conversionDelay,
                            1, earlyCapacity - 1);
@@ -13596,9 +13572,9 @@ void AcustraEngine::RoomAmbience::reset() noexcept
     previousLeft = previousRight = 0.0f;
     currentLeft = currentRight = 0.0f;
     sideHighpassState.fill(0.0);
-    converterInput.fill(0.0f);
-    converterLeft.fill(0.0f);
-    converterRight.fill(0.0f);
+    converterInput.fill(0.0);
+    for (auto& pair : converterStereo)
+        pair = { 0.0, 0.0 };
     converterInputHead = converterOutputHead = 0;
     quietSamples = 0;
     active = false;
@@ -13607,6 +13583,8 @@ void AcustraEngine::RoomAmbience::reset() noexcept
 void AcustraEngine::RoomAmbience::step(float input) noexcept
 {
     early[static_cast<std::size_t>(earlyHead)] = input;
+    if (earlyHead < 3)
+        early[static_cast<std::size_t>(earlyHead + earlyCapacity)] = input;
     const auto delayed = [this] (int delay)
     {
         // The power-of-two ring maps the same signed difference without a
@@ -13621,6 +13599,47 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
     float reflectedRight = 0.0f;
     if (directional)
     {
+#if defined(__clang__) || defined(__GNUC__)
+        // Four arrivals at a time, one per lane: each lane is its arrival's
+        // own scalar sum below, the same products added to zero in the same
+        // order, so every value is the scalar one bit for bit. Its four taps
+        // are one read, oldest first, turned into the four weights' columns.
+        typedef float Vector __attribute__((vector_size(16)));
+        std::array<float, arrivalCount> values;
+        for (int group = 0; group < arrivalCount; group += 4)
+        {
+            Vector rows[4];
+            for (int lane = 0; lane < 4; ++lane)
+            {
+                const auto index = static_cast<unsigned>(earlyHead
+                    - arrivalOldest[static_cast<std::size_t>(group + lane)])
+                    & static_cast<unsigned>(earlyCapacity - 1);
+                __builtin_memcpy(&rows[lane], early.data() + index, sizeof(Vector));
+            }
+            const auto column = [&rows] (int age)
+            {
+                return Vector { rows[0][3 - age], rows[1][3 - age],
+                                rows[2][3 - age], rows[3][3 - age] };
+            };
+            const auto weights = [this, group] (int age)
+            {
+                Vector value;
+                __builtin_memcpy(&value, arrivalWeightLanes.data() + (group + age) * 4,
+                                 sizeof(value));
+                return value;
+            };
+            Vector value = 0.0f + weights(0) * column(0);
+            value += weights(1) * column(1);
+            value += weights(2) * column(2);
+            value += weights(3) * column(3);
+            __builtin_memcpy(values.data() + group, &value, sizeof(value));
+        }
+        for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
+        {
+            reflectedLeft += tapLeft[tap] * values[tap];
+            reflectedRight += tapRight[tap] * values[tap + tapCount];
+        }
+#else
         const auto arrivalValue = [&delayed] (const Arrival& arrival)
         {
             float value = 0.0f;
@@ -13634,6 +13653,7 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
             reflectedLeft += tapLeft[tap] * arrivalValue(arrivalsLeft[tap]);
             reflectedRight += tapRight[tap] * arrivalValue(arrivalsRight[tap]);
         }
+#endif
     }
     else
         for (std::size_t tap = 0; tap < tapDelays.size(); ++tap)
@@ -13713,56 +13733,86 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
     active = true;
     if (rateConversion && decimation > 1)
     {
-        converterInput[static_cast<std::size_t>(converterInputHead)] = input;
+        converterInput[static_cast<std::size_t>(converterInputHead)]
+            = converterInput[static_cast<std::size_t>(converterInputHead + converterLength)]
+            = input;
         if (phase == 0)
         {
-            double filtered = 0.0;
-            int index = converterInputHead;
+            // The newest sample first: coefficient k takes the sample k old.
+            const double* samples = converterInput.data() + converterInputHead + converterLength;
+            // Four running sums taking the taps in turn: one sum waited on
+            // each of its 129 or more additions before the next. Each product
+            // of two floats is exact in double; only the order of the double
+            // additions changes, by about 1e-16 of the sum, which the float
+            // below almost always rounds away.
+            const auto tap = [&] (int coefficient)
+            {
+                return static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
+                    * samples[-coefficient];
+            };
+            double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
             int coefficient = 0;
-            // Walk the two contiguous parts of the ring in the original
-            // coefficient order. Every product and addition stays unchanged;
-            // only the per-tap wrap test moves outside the inner loops.
-            for (; index >= 0; --index, ++coefficient)
+            for (; coefficient + 3 < converterLength; coefficient += 4)
             {
-                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
-                    * converterInput[static_cast<std::size_t>(index)];
+                sum0 += tap(coefficient);
+                sum1 += tap(coefficient + 1);
+                sum2 += tap(coefficient + 2);
+                sum3 += tap(coefficient + 3);
             }
-            for (index = converterLength - 1; coefficient < converterLength; --index, ++coefficient)
-            {
-                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
-                    * converterInput[static_cast<std::size_t>(index)];
-            }
+            for (; coefficient < converterLength; ++coefficient)
+                sum0 += tap(coefficient);
+            const double filtered = (sum0 + sum1) + (sum2 + sum3);
             inputState += inputCoefficient * (static_cast<float>(filtered) - inputState);
             if (exact::abs(inputState) < 1.0e-20f)
                 inputState = 0.0f;
             step(inputState);
             converterOutputHead = converterOutputHead == converterOrder
                 ? 0 : converterOutputHead + 1;
-            converterLeft[static_cast<std::size_t>(converterOutputHead)] = currentLeft;
-            converterRight[static_cast<std::size_t>(converterOutputHead)] = currentRight;
+            converterStereo[static_cast<std::size_t>(converterOutputHead)]
+                = converterStereo[static_cast<std::size_t>(converterOutputHead
+                                                           + converterOrder + 1)]
+                = { currentLeft, currentRight };
         }
         converterInputHead = converterInputHead + 1 == converterLength
             ? 0 : converterInputHead + 1;
         const auto& coefficients = converterPhases[static_cast<std::size_t>(phase)];
-        double sumLeft = 0.0, sumRight = 0.0;
-        int index = converterOutputHead;
+        // The newest pair first: coefficient k takes the pair k samples old.
+        const auto* pairs = converterStereo[static_cast<std::size_t>(
+            converterOutputHead + converterOrder + 1)].data();
+        // Even and odd taps in two running sums, as the input's above.
+#if defined(__clang__) || defined(__GNUC__)
+        // Left and right in the two lanes, each lane its own pair of sums.
+        typedef double Vector __attribute__((vector_size(16)));
+        const auto tap = [&] (std::size_t coefficient)
+        {
+            Vector pair;
+            __builtin_memcpy(&pair, pairs - 2 * coefficient, sizeof(pair));
+            return coefficients[coefficient] * pair;
+        };
+        Vector even = { 0.0, 0.0 }, odd = { 0.0, 0.0 };
         std::size_t coefficient = 0;
-        for (; index >= 0; --index, ++coefficient)
+        for (; coefficient + 1 < coefficients.size(); coefficient += 2)
         {
-            sumLeft += static_cast<double>(coefficients[coefficient])
-                * converterLeft[static_cast<std::size_t>(index)];
-            sumRight += static_cast<double>(coefficients[coefficient])
-                * converterRight[static_cast<std::size_t>(index)];
+            even += tap(coefficient);
+            odd += tap(coefficient + 1);
         }
-        for (index = converterOrder; coefficient < coefficients.size(); --index, ++coefficient)
+        for (; coefficient < coefficients.size(); ++coefficient)
+            even += tap(coefficient);
+        const Vector sum = even + odd;
+        left = static_cast<float>(sum[0]);
+        right = static_cast<float>(sum[1]);
+#else
+        double evenLeft = 0.0, evenRight = 0.0, oddLeft = 0.0, oddRight = 0.0;
+        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
         {
-            sumLeft += static_cast<double>(coefficients[coefficient])
-                * converterLeft[static_cast<std::size_t>(index)];
-            sumRight += static_cast<double>(coefficients[coefficient])
-                * converterRight[static_cast<std::size_t>(index)];
+            const double weight = coefficients[coefficient];
+            const auto at = -2 * static_cast<std::ptrdiff_t>(coefficient);
+            (coefficient % 2 == 0 ? evenLeft : oddLeft) += weight * pairs[at];
+            (coefficient % 2 == 0 ? evenRight : oddRight) += weight * pairs[at + 1];
         }
-        left = static_cast<float>(sumLeft);
-        right = static_cast<float>(sumRight);
+        left = static_cast<float>(evenLeft + oddLeft);
+        right = static_cast<float>(evenRight + oddRight);
+#endif
         phase = phase + 1 == decimation ? 0 : phase + 1;
         return;
     }

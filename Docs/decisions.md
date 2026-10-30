@@ -5,6 +5,177 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-30 — the string's two planes 0.75 cent apart: measured, held for the ear
+
+**What was asked.** Aculele parted its strings' planes by 2 cents on
+2026-10-29, chosen by ear, because real ukuleles' partials 2-4 swell and
+fade more often than the model's. The same reading of the reference bank's
+Shinyguitar (`Tools/compare_reference_takes.py --beating`, 16 roots E2 to
+C6 in four layers) finds partials 2-4 spanning more than 6 dB over a
+quadratic decay in 3-9%, 12-22% and 9-28% of notes. Jumbo Steel Pick and
+Dreadnought Steel (1.9.7, velocity 80) do in 0%, 0% and 0-6%: in Acustra
+only the bridge parts the planes.
+
+| Normal plane | Jumbo Steel Pick H2/H3/H4 | Dreadnought Steel H2/H3/H4 | Jumbo onset glide |
+| --- | --- | --- | --- |
+| Shinyguitar, four layers | 3-9 / 12-22 / 9-28 | | +0.3 to +3.1 cents |
+| 1.9.7, unsplit | 0 / 0 / 6 | 0 / 0 / 0 | +3.5 |
+| 0.5 cent lower | 0 / 0 / 6 | 0 / 6 / 6 | +2.9 |
+| 0.75 cent lower | 0 / 6 / 31 | 6 / 19 / 25 | +3.2 |
+| 1 cent lower | 12 / 25 / 31 | 19 / 19 / 44 | +2.8 |
+| 1 cent higher | 0 / 6 / 31 | | +4.4 |
+
+Each row is one render of the 16 roots; one note is 6%. The 0.75 cent
+and 1 cent lower rows are the engine with the split built in, the others
+the same split through a comparison build. The parallel plane lasts and the
+tuning follows it, so the normal plane takes the split, and lower brings
+the onset glide toward the recordings'.
+
+**Why it did not ship.** The split at 0.75 cent fails unit suites written
+to forbid what it does. `ChorusRegression` guards against an
+upper partial's beating envelope, from the pre-polish chorus defect.
+`ModalTuning`, `PitchGeometryCache` and the equal-tuning checks hold each
+plane to the requested pitch: the split put the loaded E2's late mode
+1.7 cents and the D string's 5th fret 3.4 cents off. A blind listener
+heard the 2026-09-30 per-plane retuning as detuned (above). It also lifts
+Jumbo Steel Pick's notes from C4 up by 2-4 dB over their first seconds:
+at one pitch the two planes' paths partly cancel at the microphone, and
+the split turns that into a slow beat. The A-Z limit lets a listening test
+choose between defensible candidates. It does not let one loosen those
+contracts. Retiring them is the owner's call.
+
+**The letters, for that call.** E3, A3, D4, G4 and B4 held 2.3 s each at
+velocity 84, then an open E major chord held 4.5 s, through Dreadnought
+Steel and Jumbo Steel Pick with `AcustraRenderEventList`, 48 kHz in
+256-frame blocks with the same seeds. A is 1.9.7 (`99d19a8`); B parts the
+planes by 0.75 cent. B was matched to A on whole-file RMS, −0.19 dB
+(Dreadnought) and −1.20 dB (Jumbo). The set is in the project files
+(`acustra/listening-tests/2026-10-30-realism/2-string-planes/`), with
+its key. Nothing ships until the owner hears it.
+
+## 2026-10-30 — a plectrum lands a little differently every time, 1.9.7
+
+**What was decided.** How far the Pick lands from its place from one pluck
+to the next. Acustra's ±0.02 of the string came from the archtop's three
+takes per note (2026-09-30 and before). Once the coherent hand holds the
+string, 0.30 of it is the pluck's own draw and 0.70 the hand's slow drift.
+The embedded reference bank holds Karoryfer's Shinyguitar, a picked
+flat-top with four round robins of every third semitone in four velocity
+layers. `Tools/compare_reference_takes.py` reads it as Aculele's
+`compare_sample_packs.py --takes` reads the ukulele packs (Aculele's
+decision log, 2026-10-29): once each take's level and tilt are taken out, a
+note's partials scatter 1.70, 1.92, 1.85 and 2.93 dB from take to take in
+the four layers, E2 to C6. A force or a release angle moves every partial
+together; only a moving pluck point scatters them one by one. The same
+notes through Jumbo Steel Pick (velocity 80, four takes, 4 s apart)
+scattered 1.56 dB, through Dreadnought Steel's Finger 2.03 dB. A pick meets
+the string near the bridge, where a shift moves the comb least.
+
+| Jumbo Steel Pick | level SD | brightness SD | tilt SD | comb scatter |
+| --- | --- | --- | --- | --- |
+| Shinyguitar, four layers | 0.48-0.92 | 1.24-1.86 | 0.51-0.83 | 1.70-2.93 |
+| 1.9.6, ±0.02 | 0.92 | 1.04 | 0.67 | 1.56 |
+| ±0.03 | 1.00 | 1.40 | 0.84 | 1.93 |
+| ±0.04 | 1.18 | 1.64 | 0.95 | 2.24 |
+| ±0.06 | 1.28 | 1.18 | 1.07 | 2.46 |
+
+Halving the ±1 dB force residual, or removing it, changed none of these by
+more than 0.06 dB: the level spread is the pluck point's too.
+
+**The letters.** A phrase of notes 300 ms apart, velocity 88: B3 eight times,
+E4 E4 G4 G4 A4 A4 B4 B4 twice, E2 four times and E3 four times, through
+Jumbo Steel Pick and through Piezo Stage Steel, each rendered with
+`AcustraRenderEventList` at 48 kHz in 256-frame blocks with the same seeds.
+B was matched to A on whole-file RMS: −0.02 dB (Jumbo) and −0.01 dB (Piezo
+Stage).
+
+- A: the shipping engine, `2244ae8` (1.9.6).
+- B: the Pick's spread ±0.03.
+
+**What was chosen.** B, under the owner's standing rule to accept
+candidates over the baseline, and because it is the spread whose scatter
+lies inside every layer's. The owner has not heard the set; the key is
+kept with it in the project files (`acustra/listening-tests/2026-10-30-realism/`).
+
+**What it licensed.** `takeSpread` = 0.03 under Pick in
+`AcustraEngine::initialisePluck`; Finger and Thumb keep 0.02. The suite
+caught one defect on the way: an explicit MPE CC74 point took the Pick's
+spread, so CC74 no longer named one point under every technique; the
+explicit point keeps 0.02. Two fixtures that read one seed's draw were
+rewritten as what they meant. `PickingChangesTheContact` compared held
+displacements, which sat 0.01% apart at velocity 0.9 once the draw moved;
+it now compares held force, displacement over `p (1 - p)`, the engine's own
+compliance law. `PiezoClipAliasing` drove the full chain at fixed
+multiples chosen above the 1.9.6 strum's first clip; the wider draw lowered
+that strum's peak and put its 44.1 kHz threshold at 1.354, over the list's
+1.35, so the drives are now the same 27-43% and 36-56% past the measured
+threshold. `PhysicalHandGeometry` reads the Pick's drift from 0.03.
+
+**What it did not close.** Nothing measures a finger's or a thumb's spread
+on a steel string, and the bank's centroid spread (README, Known gaps) is
+not this measure.
+
+## 2026-10-29 — the thumb lets go as the Finger's pad does, 1.9.5
+
+**What was decided.** Whether Acustra takes Aculele 0.4.27's thumb law
+(that repository's `Docs/decisions.md`, 2026-10-29). 1.6.3 scaled the
+release edge by `1/v` when the force went from `v²` to `v` (2026-10-22,
+below). The Finger also scales it by the force's power `0.6165625`, so its
+radius goes as `v^0.233` and its contact time as `v^-0.767`. The Thumb kept
+the `1/v` alone, and its contact time went as `1/v²`. On Mahogany Steel Thumb
+a velocity-16 A2 let go over 928 samples, two of its periods, against 13.6
+at velocity 127. The slip that follows is shifted so the line starts at
+rest, in a loop up to 13% longer than the line, and that shift put back the
+treble the slow release had taken. The A2's 2.5-6 kHz share over its first
+5-155 ms fell 8.5 dB from velocity 127 to 80, then rose 5.0 dB again to 48.
+Over E2-E5 on that preset, every note fell 4-11 dB to velocity 64-96 and
+came back to within 3 dB of its velocity-127 share at 16. A pad's contact
+grows with its force (Hertz: radius as `F^(1/3)`). Nothing says a thumb's
+shrinks, and the thumb is the same flesh as the Finger's pad.
+
+**The letters.** A thumb arpeggio, A2 E3 A3 C4, played five times at
+velocity 112, 80, 56, 36 and 22, on Mahogany Steel Thumb through
+`acustra::Performer` at 48 kHz in 256-frame blocks with the same seeds.
+Matched on whole-file RMS: A was moved by +0.02 dB and B by −0.02 dB.
+
+- A: the shipping engine, `fc43ff1` (1.9.4).
+- B: the Thumb's pad takes the Finger's force law.
+
+The 2.5-6 kHz share of each pass's first two seconds reads −31.8, −36.4,
+−33.7, −30.7 and −30.8 dB in A, and −30.8, −34.6, −37.6, −37.6 and
+−36.8 dB in B.
+
+**The owner did not choose a letter by ear.** B was accepted under their
+standing rule of 2026-10-28, "in general, tend to accepting candidates - they
+are almost always better". The page, beside Aculele's pair, stays up for
+them to judge: <https://claude.ai/artifact/4eBCYAhDu4t9QeFJkAszHh>.
+
+**What it licensed.** B ships in 1.9.5. That A2 lets go over 72 samples at
+velocity 16, a ratio of 5.3 to velocity 127 where it was 68, and its share
+falls at every step to velocity 48, 10.6 dB in all (`Acustra.ThumbDynamics`).
+Velocity 127 renders the same samples. Between soft and full a thumb note
+darkens more gradually than before, so a medium stroke is brighter: the
+Mahogany Steel Thumb demo, at velocity 88-112, is 1.8 dB brighter at
+2.5-6 kHz, and the other seven demos render the same bytes. Soft and medium
+thumb notes sit nearer the linear force law: an E2 at velocity 64 stood 8.1 dB under
+velocity 127 and now stands 6.7 dB under, against the law's 6.0.
+`PhysicalHandRealism`'s independent prediction of the Thumb's release time
+took the `1/v` edge, and takes the new law. `ChorusRegression`'s Thumb
+references were observed under the `1/v²` release; they now scale by the
+slip's one-pole gain at the partial under the new release time against the
+old (1.62 for E3's H5, 1.73 for G3's H8), and keep their six-decibel
+bracket. The construction loudness calibration's `--check` holds every
+Thumb cell within ±1 LU (−0.43 to +0.68 LU on the stereo microphones), so
+`ConstructionLoudnessData.h` was not re-pinned. The same check's Pick
+headroom rule fails on seven Pick cells, their hardest case peaking at
+−1.00 to −1.53 dBFS under cuts of 0.76-0.84 LU. Pick renders the same
+samples with this change, so that failure predates it and stays open.
+
+**What it did not license.** No thumb's contact was measured; the law is
+the Finger's authored keyboard response. Below velocity 32 a thumb note
+still brightens again by 1-5 dB at 2.5-6 kHz, and the Finger by up to 3 dB:
+the same shift, which this does not remove (README, Known gaps).
+
 ## 2026-10-28 — the plectrum keeps its edge at every force, 1.9.2
 
 **What was decided.** Whether Pick stops shrinking its edge radius as

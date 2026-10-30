@@ -964,13 +964,16 @@ void testRetuneAndTailOwnership()
             largestRetune = std::max(largestRetune,
                 std::abs(double(after[i].loops[0].targetDelay-before[i].loops[0].targetDelay)));
         }
-        expect(Access::rebasePending(*e),"shape forgot the bridge derivative transition");
+        // The retuned strings' ports follow their new impedance and the
+        // rebuilt bridge fades its load, so nothing steps at the junction
+        // and the bridge derivatives are not carried across one: carried
+        // across anyway, they replaced a sample of the bridge's motion with
+        // a straight line, a tick of its own (1.9.3).
+        expect(!Access::rebasePending(*e),"shape carried the bridge derivatives across a step that is not there");
         process(*e,1);
-        expect(!Access::rebasePending(*e),"bridge derivative transition did not finish");
-        // A step at a newly established load is not instantaneous bridge
-        // motion: an omitted rebase emits the entire step as a force. Nor
-        // did the bridge stop: the rebase carries the force it had on, where
-        // it once reported none, a one-sample hole heard as a tick (F14).
+        // The load change is still not instantaneous bridge motion, nor did
+        // the bridge stop: the force carries on, where it once reported
+        // none, a one-sample hole heard as a tick (F14).
         expect(std::abs(e->getLastBridgeReactionForce())
                    <= 2.0f*std::abs(forceBefore)+1e-6f
                && (forceBefore == 0.0f || e->getLastBridgeReactionForce() != 0.0f),
@@ -1004,12 +1007,18 @@ void testRetuneAndTailOwnership()
 // the louder of the two steady settings, or under -95 dBFS where both are
 // quieter than that. Rebuilding the bridge used to zero every mode and to
 // report no bridge motion for a sample, 20-48 dB over both (audit F14).
+// A second later the chord's own sound up there has faded, so a retune's
+// flash stands out: each retuned string's pull on the saddle set off at
+// full slope, a corner heard as a click 2.2-3.9 dB over both settings at
+// 44.1 and 48 kHz; eased in through two stages it stands at most 1.1 dB over
+// (AcustraEngine::process), and is held to 2.
 struct SwitchCase
 {
     const char* name;
     acustra::EngineParameters from;
     acustra::EngineParameters to;
     double allowedDb;
+    double seconds = 0.5;
 };
 
 std::vector<float> renderSwitch(const acustra::EngineParameters& from,
@@ -1087,13 +1096,15 @@ void testConstructionSwitchesDoNotTick()
         { "steel Shape", steel, with(steel, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "steel Wood", steel, with(steel, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
         { "steel Tuning", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 6.0 },
+        { "steel Tuning a second on", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 2.0, 1.0 },
+        { "steel Tuning back a second on", with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), steel, 2.0, 1.0 },
     };
     double worst = -1e9;
     const char* worstName = "";
     for (int rate : { 44100, 48000 })
         for (const auto& c : cases)
         {
-            const double at = std::ceil(0.5*rate/256)*256/rate;
+            const double at = std::ceil(c.seconds*rate/256)*256/rate;
             const auto a = renderSwitch(c.from, nullptr, rate, at, at + 0.11);
             const auto b = renderSwitch(c.to, nullptr, rate, at, at + 0.11);
             const auto switched = renderSwitch(c.from, &c.to, rate, at, at + 0.11);

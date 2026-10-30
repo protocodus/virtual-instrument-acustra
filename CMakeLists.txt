@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.9.2 LANGUAGES C CXX)
+project(Acustra VERSION 1.9.8 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -299,6 +299,14 @@ if(ACUSTRA_BUILD_TOOLS)
     add_executable(AcustraExternalCorpusRenderer Tools/ExternalCorpusRenderer.cpp)
     target_link_libraries(AcustraExternalCorpusRenderer PRIVATE AcustraDSP)
     target_compile_features(AcustraExternalCorpusRenderer PRIVATE cxx_std_20)
+
+    add_executable(AcustraRenderEventList Tools/RenderEventList.cpp)
+    target_link_libraries(AcustraRenderEventList PRIVATE AcustraDSP)
+    target_compile_features(AcustraRenderEventList PRIVATE cxx_std_20)
+
+    add_executable(AcustraExportReferenceBank EXCLUDE_FROM_ALL Tools/ExportReferenceBank.cpp)
+    target_link_libraries(AcustraExportReferenceBank PRIVATE AcustraReferenceBank)
+    target_compile_features(AcustraExportReferenceBank PRIVATE cxx_std_20)
 
     add_executable(AcustraBridgeProbe Tools/BridgeProbe.cpp)
     target_link_libraries(AcustraBridgeProbe PRIVATE AcustraDSP)
@@ -1048,6 +1056,10 @@ if(BUILD_TESTING)
     set_target_properties(AcustraVelocityRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     add_test(NAME Acustra.VelocityRealism COMMAND AcustraVelocityRealismTests)
     set_tests_properties(Acustra.VelocityRealism PROPERTIES TIMEOUT 60)
+    add_executable(AcustraThumbDynamicsTests Tests/ThumbDynamicsTests.cpp)
+    target_link_libraries(AcustraThumbDynamicsTests PRIVATE AcustraDSP)
+    set_target_properties(AcustraThumbDynamicsTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+    add_test(NAME Acustra.ThumbDynamics COMMAND AcustraThumbDynamicsTests)
 endif()
 
 # Recording-guided realism regression 2.

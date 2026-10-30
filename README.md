@@ -23,12 +23,12 @@ rewrites this table. Longer technique and repertoire renders are described in
 | --- | --- | --- | --- | --- |
 | 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -1.6 dBFS |
 | 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -7.7 dBFS |
-| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -9.9 dBFS |
-| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -4.0 dBFS |
-| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -3.7 dBFS |
+| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -9.5 dBFS |
+| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -3.6 dBFS |
+| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -3.4 dBFS |
 | 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.wav](Docs/audio/06-dadgad-mono-mic.wav) | 11.2 s | -12.0 dBFS |
 | 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -7.2 dBFS |
-| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -8.0 dBFS |
+| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -7.8 dBFS |
 
 <!-- audio-demos-end -->
 
@@ -38,6 +38,83 @@ Each entry is a source version in this repository; none has been published
 as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
+
+### 1.9.8 — 2026-10-30 — Piezo Stage Steel half a decibel up
+
+- Piezo Stage Steel's Output moves from −6.5 to −6.0 dB. The Pick's wider
+  spread (1.9.7) lowered its full-velocity open E strum to −28.14 dBFS RMS
+  in the Rack device's patch check, under that bank's −28 dBFS floor; it
+  now reads −27.6. No other preset changes.
+
+### 1.9.7 — 2026-10-30 — a plectrum lands a little differently every time
+
+- Repeated picked notes vary more in colour from one to the next: the Pick's
+  hand spread is 0.03 of the string, up from 0.02. Measured on the picked
+  flat-top round robins in the reference bank, a note's partials scatter
+  1.70-2.93 dB from take to take; Jumbo Steel Pick's scattered 1.56 dB and
+  now 1.93. Finger and Thumb keep 0.02 (Finger already scatters 2.03 dB).
+  An explicit MPE CC74 point keeps 0.02 under every technique. Details in
+  [the decision log](Docs/decisions.md).
+
+### 1.9.6 — 2026-10-30 — about a tenth less CPU, the same sound
+
+- The engine takes about 11% less CPU at the Rack's 2x rate and at 48 kHz
+  (8% fewer instructions): the room's reflections and rate converter, the
+  strings' delay followers and the body's radiation sum do the same
+  arithmetic with less waiting. The sound is unchanged: every preset demo
+  renders the same bytes except for the body's regrouped sum, which differs
+  by float rounding, at most −119 dBFS. Details in
+  [the CPU report](Docs/benchmarks/cpu-optimization-2026-10-30.md).
+
+### 1.9.5 — 2026-10-29 — a softer thumb lets go as a fingertip does
+
+- A soft thumb note no longer comes back brighter than a firm one. The
+  thumb's pad took a release edge that shrank as the stroke grew harder, so
+  its release time went as 1/v²: on Mahogany Steel Thumb a velocity-16 A2 let
+  go over 928 samples, two of its periods. The slip that follows put back the
+  treble a slow release takes, so that A2's 2.5-6 kHz share fell 8.5 dB from
+  velocity 127 to 80 and rose 5.0 dB again to 48. The thumb now takes the
+  Finger's pad law, a contact that grows with force: the A2 lets go over 72
+  samples and darkens at every step to velocity 48, 10.6 dB in all.
+- Between soft and full, a thumb note now darkens more gradually, so a
+  medium stroke is brighter than before: the Mahogany Steel Thumb demo,
+  played at velocity 88-112, is 1.8 dB brighter at 2.5-6 kHz. Soft and
+  medium notes also sit nearer the linear force law: an E2 at velocity 64
+  stood 8.1 dB under velocity 127 and now stands 6.7 dB under, against the
+  law's 6.0. Velocity 127 renders the same samples, and so do the other
+  seven demos.
+- Found in Aculele 0.4.27. Here it was accepted without a by-ear verdict
+  ([decision](Docs/decisions.md#2026-10-29--the-thumb-lets-go-as-the-fingers-pad-does-195)).
+
+### 1.9.4 — 2026-10-29 — no flash when Tuning changes under a ringing chord
+
+- Changing Tuning, or the host's master tune, while strings rang flashed for
+  a moment above 5 kHz. Each retuned string's pull on the bridge follows its
+  new tension over the 6 ms its pitch takes, and that follow set off at full
+  speed: a corner in the force on the saddle, which the bridge and the piezo
+  hear as a click. It now eases in and out through two stages at the same
+  rate. At 48 kHz, a chord on each of the eight presets: changing back to a
+  preset's own tuning rose up to 25 dB over the 40 ms that follow, 38-49 dB
+  under the chord; it now rises at most 4.5 dB and stands 47-62 dB under. A
+  master tune change rose up to 14 dB and now rises at most 8.
+- Bends and re-plucks share the follower, so playing changes too, 78-90 dB
+  under each demo's level.
+- Found in Aculele 0.4.26, where it clicked through the piezo.
+
+### 1.9.3 — 2026-10-29 — no tick when Wood or Shape changes under a ringing chord
+
+- Changing Wood or Shape while strings rang carried the bridge's motion
+  across a step where the strings meet it, and nothing steps there: the
+  retuned strings' ports follow their new tension, and a rebuilt bridge fades
+  its load. That replaced one sample of the bridge's motion with a straight
+  line, a tick above 5 kHz up to 14 dB over the steady sound. Now the change
+  rises at most 4 dB there. A change of the host's master tune lost up to
+  5 dB of its tick. Playing is unchanged: the eight demos render to the same
+  bytes.
+- A Tuning change under a ringing chord still hisses for a moment
+  (Known gaps).
+- The fault was found in Aculele 0.4.23, where it stood 39-53 dB under a
+  nylon chord. Steel strings' brighter sound hides most of it here.
 
 ### 1.9.2 — 2026-10-28 — soft picked notes keep their level
 
@@ -186,7 +263,7 @@ later builds to exceed.
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 35](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/40781515842/artifacts/12859360915)**, built from [`61a0ca5a0abd`](https://github.com/protocodus/virtual-instrument-acustra/commit/61a0ca5a0abdd55b947814da5037338cc5212c3a). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 49](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/41002818900/artifacts/12955324683)**, built from [`64ce931306a0`](https://github.com/protocodus/virtual-instrument-acustra/commit/64ce931306a0e4ded9e719bbc425306cb2e46069). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
@@ -463,7 +540,11 @@ separates verified errors from accepted approximations.
 - The strings are linear apart from the bounded attack-pitch surrogate; the
   geometrically exact nonlinear string, which supplies up to about 58% of the
   recordings' loud-layer brightness rise, is not built. Velocity brightens a
-  Pick stroke about half as much as the recordings show.
+  Pick stroke about half as much as the archtop recordings show, and about a
+  third as much as the reference bank's picked flat-top: from its softest
+  layer to its hardest, the share above 2.5 kHz over a note's first 30-330 ms
+  rises 15.5 dB while the level rises 4.4 dB; Jumbo Steel Pick's rises 5.7 dB
+  from velocity 20 to 112 (Tools/compare_reference_takes.py's measure).
 - The recordings snap and then mellow; the engine's upper partials die at
   about 35% of the recorded rate and the attack transient those partials stood
   for is missing. The Finger's attack stays brighter than the finger-plucked
@@ -471,7 +552,9 @@ separates verified errors from accepted approximations.
   and an attack transient a listener accepts, would settle both.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
-  real spread is not measured.
+  real spread is not measured. A picked note's partials and brightness now
+  vary from take to take as the reference bank's picked round robins do;
+  Finger's and Thumb's spreads have no round robins of their own to check.
 - Pick and Thumb dimensions are authored and the plectrum's values are fitted
   to one picked archtop; no beam/friction plectrum solver is available.
 - The pluck is a propagated ideal shape, not a finger-loaded rest state;
@@ -480,6 +563,17 @@ separates verified errors from accepted approximations.
   and 96 kHz.
 - Where the pluck nearly nulls a partial, the random release burst decides its
   level.
+- A slow release still keeps some of the treble it should lose. The released
+  wave is shifted so the string's line starts at rest, in a loop up to 13%
+  longer than the line, and the shift puts back harmonics the slow release
+  took. On Mahogany Steel Thumb, from velocity 32 to 16, each note from E2 to
+  E5 brightens again by 1-5 dB at 2.5-6 kHz, the A2 and E2 the most; the
+  Finger brightens by up to 3 dB. Filling the loop's filters from the
+  released wave would remove the shift.
+- Changing the host's master tune under a ringing chord still brightens it
+  for a moment: at 48 kHz on the eight presets, the sound above 5 kHz in the
+  20 ms after the change rises up to 8 dB over the 40 ms that follow, 48 dB
+  or more under the chord. A Tuning change rises at most 4.5 dB (1.9.4).
 
 **Bridge and body**
 
@@ -491,7 +585,11 @@ separates verified errors from accepted approximations.
   not a measured tangential admittance; the saddle's in-plane translation is
   unmeasured. Sharing the normal loop's bridge compensation leaves sustained
   pitch up to 9 cents off on a few Dreadnought notes, kept by ear for its
-  beating.
+  beating. Partials 2-4 still swell and fade less often than the reference
+  bank's picked flat-top's (0-6% of notes against 3-28%). Parting the two
+  planes by 0.75 cent closes it, but is held for the owner's ear: it trips
+  `ChorusRegression`'s guard against beating upper partials and the
+  tuning contracts (Docs/decisions.md, 2026-10-30).
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over
