@@ -13776,10 +13776,28 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         {
             // The newest sample first: coefficient k takes the sample k old.
             const double* samples = converterInput.data() + converterInputHead + converterLength;
-            double filtered = 0.0;
-            for (int coefficient = 0; coefficient < converterLength; ++coefficient)
-                filtered += static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
+            // Four running sums taking the taps in turn: one sum waited on
+            // each of its 129 or more additions before the next. Each product
+            // of two floats is exact in double; only the order of the double
+            // additions changes, by about 1e-16 of the sum, which the float
+            // below almost always rounds away.
+            const auto tap = [&] (int coefficient)
+            {
+                return static_cast<double>(converterCoefficients[static_cast<std::size_t>(coefficient)])
                     * samples[-coefficient];
+            };
+            double sum0 = 0.0, sum1 = 0.0, sum2 = 0.0, sum3 = 0.0;
+            int coefficient = 0;
+            for (; coefficient + 3 < converterLength; coefficient += 4)
+            {
+                sum0 += tap(coefficient);
+                sum1 += tap(coefficient + 1);
+                sum2 += tap(coefficient + 2);
+                sum3 += tap(coefficient + 3);
+            }
+            for (; coefficient < converterLength; ++coefficient)
+                sum0 += tap(coefficient);
+            const double filtered = (sum0 + sum1) + (sum2 + sum3);
             inputState += inputCoefficient * (static_cast<float>(filtered) - inputState);
             if (exact::abs(inputState) < 1.0e-20f)
                 inputState = 0.0f;
@@ -13797,28 +13815,39 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         // The newest pair first: coefficient k takes the pair k samples old.
         const auto* pairs = converterStereo[static_cast<std::size_t>(
             converterOutputHead + converterOrder + 1)].data();
+        // Even and odd taps in two running sums, as the input's above.
 #if defined(__clang__) || defined(__GNUC__)
-        // Left and right in the two lanes: each lane is its own sum below,
-        // the same products in the same order.
+        // Left and right in the two lanes, each lane its own pair of sums.
         typedef double Vector __attribute__((vector_size(16)));
-        Vector sum = { 0.0, 0.0 };
-        for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
+        const auto tap = [&] (std::size_t coefficient)
         {
             Vector pair;
             __builtin_memcpy(&pair, pairs - 2 * coefficient, sizeof(pair));
-            sum += coefficients[coefficient] * pair;
+            return coefficients[coefficient] * pair;
+        };
+        Vector even = { 0.0, 0.0 }, odd = { 0.0, 0.0 };
+        std::size_t coefficient = 0;
+        for (; coefficient + 1 < coefficients.size(); coefficient += 2)
+        {
+            even += tap(coefficient);
+            odd += tap(coefficient + 1);
         }
+        for (; coefficient < coefficients.size(); ++coefficient)
+            even += tap(coefficient);
+        const Vector sum = even + odd;
         left = static_cast<float>(sum[0]);
         right = static_cast<float>(sum[1]);
 #else
-        double sumLeft = 0.0, sumRight = 0.0;
+        double evenLeft = 0.0, evenRight = 0.0, oddLeft = 0.0, oddRight = 0.0;
         for (std::size_t coefficient = 0; coefficient < coefficients.size(); ++coefficient)
         {
-            sumLeft += coefficients[coefficient] * pairs[-2 * static_cast<std::ptrdiff_t>(coefficient)];
-            sumRight += coefficients[coefficient] * pairs[1 - 2 * static_cast<std::ptrdiff_t>(coefficient)];
+            const double weight = coefficients[coefficient];
+            const auto at = -2 * static_cast<std::ptrdiff_t>(coefficient);
+            (coefficient % 2 == 0 ? evenLeft : oddLeft) += weight * pairs[at];
+            (coefficient % 2 == 0 ? evenRight : oddRight) += weight * pairs[at + 1];
         }
-        left = static_cast<float>(sumLeft);
-        right = static_cast<float>(sumRight);
+        left = static_cast<float>(evenLeft + oddLeft);
+        right = static_cast<float>(evenRight + oddRight);
 #endif
         phase = phase + 1 == decimation ? 0 : phase + 1;
         return;
