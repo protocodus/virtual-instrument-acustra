@@ -4,14 +4,13 @@ How to run the offline fit, the recording benchmarks, the audits and the
 table generators. Moved unchanged from the README's **Build** section on
 2026-10-17; build the JUCE-free tools first ([README: Build](../../README.md#build)).
 
-To run the bounded offline fit after building the JUCE-free tools:
-
-```sh
-python3 Tools/OptimizePhysicalModel.py \
-  ./build-dsp/AcustraPhysicalFitRenderer /tmp/acustra-physical-fit
-```
-
-The output directory must not already exist. NumPy and SciPy are required.
+The bounded offline fit (`Tools/OptimizePhysicalModel.py`) rendered the
+embedded reference bank through `AcustraPhysicalFitRenderer`. Both the bank
+and that renderer were removed on 2026-10-31, when the repository stopped
+holding recordings, so the fit cannot be rerun as it was; its `NAMES`,
+`SHIPPING` and `FROZEN` remain the calibration contract the renderers and
+tests check. Fits against external corpora use `AcustraExternalCorpusRenderer`
+through `Tools/BenchmarkOpenCorpora.py`.
 
 To reproduce the fixed performance benchmark with the published GuitarSet
 `annotation.zip` and `audio_mono-mic.zip` archives in one directory:
@@ -25,7 +24,7 @@ python3 Tools/BenchmarkPerformances.py \
 
 The output directory must be new. `--capture` and `--picking` can evaluate
 explicit alternatives, and `--room 0..1` renders with the Room (default 0;
-`Tools/BenchmarkOpenCorpora.py`, `AcustraPhysicalFitRenderer`,
+`Tools/BenchmarkOpenCorpora.py`,
 `AcustraExternalCorpusRenderer` and `AcustraPerformanceRenderer` take it
 too, and `AcustraRenderRepertoire` reads `room=` on a part's line). To compare with the simultaneous
 magnetic recording, download `audio_mono-pickup_mix.zip` instead of the microphone
@@ -36,17 +35,12 @@ records both the reference transducer and model capture. Scores against a
 microphone recording cannot validate a pickup's response.
 `--self-test --renderer ./build-dsp/AcustraPerformanceRenderer`
 checks the scoring, string scheduling and renderer without downloading audio.
-For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the optional
-`--models-only`/`--smoke` mode, then `--shape`, `--body-material` and
-`--archtop-picking`, the output directory and the 25 calibration arguments in
-`OptimizePhysicalModel.NAMES` order (the obsolete 37-value and nylon-era
-48-value vectors are refused). The selected shape, wood and archtop picking
-tool are recorded in each model manifest, with `guitar_model` fixed at
-`original` so new runs still pair with earlier ones; without them every row
-renders at the default Dreadnought and the archtop rows with Finger.
-`AcustraExternalCorpusRenderer` accepts the same `--shape` and
-`--body-material` options; `BenchmarkOpenCorpora.py` forwards them and
-records the returned controls.
+For dry-note comparisons, `AcustraExternalCorpusRenderer` takes optional
+`--shape`, `--body-material` and `--room`, a job file, the output directory
+and the 25 calibration arguments in `OptimizePhysicalModel.NAMES` order (the
+obsolete 37-value and nylon-era 48-value vectors are refused).
+`BenchmarkOpenCorpora.py` forwards those options and records the returned
+controls.
 For an explicit performance event file, `AcustraPerformanceRenderer` also
 accepts a trailing `--tuning standard|drop_d|dadgad|open_g|half_step_down`
 option (the plug-in's five tunings). String/fret validation uses the selected
@@ -125,16 +119,15 @@ python3 Tools/AnalyzeBridgeProbe.py --midi 64 \
 ```
 
 To refit the Original's capture voicing after a change that moves its
-radiation, render the three sources with the new build and fit twice
+radiation, render the two sources with the new build and fit twice
 (rebuilding between), then re-level the Original's constructions:
 
 ```sh
-./build-dsp/AcustraPhysicalFitRenderer /tmp/bank <25 shipping values>
 python3 Tools/BenchmarkOpenCorpora.py --renderer ./build-dsp/AcustraExternalCorpusRenderer \
   --output /tmp/open --keep eastman/rows.json martin-hd28/rows.json
 python3 Tools/BenchmarkPerformances.py --dataset /path/to/guitarset \
   --renderer ./build-dsp/AcustraPerformanceRenderer --output /tmp/guitarset
-python3 Tools/FitCaptureVoicing.py --bank /tmp/bank --open /tmp/open \
+python3 Tools/FitCaptureVoicing.py --open /tmp/open \
   --guitarset /tmp/guitarset --write-header [--level-db DB]
 python3 Tools/CalibrateConstructionLoudness.py \
   --renderer ./build-dsp/AcustraPerformanceRenderer --write-header
@@ -144,15 +137,6 @@ python3 Tools/CalibrateConstructionLoudness.py \
 (`CalibrateConstructionLoudness.py --json` reports it before and after);
 `python3 Tools/FitCaptureVoicing.py --self-test` recovers a known voicing
 from a synthetic corpus and downloads nothing.
-
-To regenerate the offline reference bank from separately downloaded source
-archives:
-
-```sh
-python3 Tools/GenerateSampleBank.py \
-  --eastman /path/to/acoustic-guitar-eastman-e1d \
-  --shiny /path/to/karoryfer.shinyguitar
-```
 
 To reproduce the measured g21 coefficient tables from the separately
 downloaded CC BY 4.0 Mores archive, including the passive bridge and force-pair

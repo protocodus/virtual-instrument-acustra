@@ -111,7 +111,7 @@ def package_desktop(build, platform, config="Release"):
     files={f.relative_to(artifacts).as_posix(): f for f in (artifacts/"VST3"/(PRODUCT+".vst3")).rglob("*") if f.is_file()}
     for relative in required[1:]: files[relative]=artifacts/relative
     docs=["LICENSE","THIRD_PARTY_NOTICES.md","ThirdParty/JUCE-LICENSE.md","ThirdParty/CLAP-LICENSE.md",
-          "ThirdParty/JUCE-DEPENDENCY-LICENSES.txt","ThirdParty/CC0-1.0.txt","ThirdParty/Eastman-E1D-README.md","ThirdParty/Shinyguitar-README.txt","Assets/SampleBank/manifest.json"]
+          "ThirdParty/JUCE-DEPENDENCY-LICENSES.txt"]
     files["USER_GUIDE.md"]=PROJECT/"Docs/guide/user-guide.md"
     for doc in docs: files[doc]=PROJECT/doc
     for f in files.values():

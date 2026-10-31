@@ -9337,7 +9337,7 @@ void testAFingerBrightensWithVelocity()
         // observer, more on soft strokes, and parted they drift out of it:
         // the soft strokes' H5-H12 gained 3.8-6.4 dB, the loud ones' 2.4-3.4.
         // The shipping path loses less of the contrast: from velocity 20 to
-        // 112 over sixteen roots (Tools/compare_reference_takes.py's
+        // 112 over sixteen roots (the since-removed compare_reference_takes.py's
         // brightness), Parlor Steel Fingerstyle brightens 1.9 dB against
         // 3.4, and Jumbo Steel Pick 5.9 against 5.6. That loss is part of
         // the chosen sound (README, Known gaps), so above B4 these two notes

@@ -524,11 +524,12 @@ reference for a string held before release, after
 
 ### Recordings are calibration references only
 
-The separate `AcustraReferenceBank` holds 280 CC0 regions (272 Shinyguitar
-steel regions and 8 Eastman E1D finger-plucked anchors). Only the offline
-fit renderer and reference-bank tests link it; the plug-in contains no recorded
-audio. The fitter renders the engine deterministically and scores it against
-those references on seven robust terms (attack spectra, harmonic envelopes,
+Neither the plug-in nor the repository holds recorded audio. Until
+2026-10-31 an offline reference bank embedded 280 CC0 regions (272 Shinyguitar
+steel regions and 8 Eastman E1D finger-plucked anchors) for the fitter; it was
+removed with its renderer and tests, and recordings are now fetched for each
+measurement and never committed. The fitter renders the engine
+deterministically and scores it against recordings on seven robust terms (attack spectra, harmonic envelopes,
 tuning and inharmonicity, early pitch trajectory, decay, body spectrum and
 velocity dynamics), with training, development-validation, a reported-only
 flat-top split and a frozen test split. The calibration stores 25 bounded
@@ -581,11 +582,12 @@ separates verified errors from accepted approximations.
   third as much as the reference bank's picked flat-top: from its softest
   layer to its hardest, the share above 2.5 kHz over a note's first 30-330 ms
   rises 15.5 dB while the level rises 4.4 dB; Jumbo Steel Pick's rises 5.7 dB
-  from velocity 20 to 112 (Tools/compare_reference_takes.py's measure).
+  from velocity 20 to 112 (measured with `compare_reference_takes.py`, removed with the bank on
+  2026-10-31).
 - The recordings snap and then mellow; the engine's upper partials die at
   about 35% of the recorded rate and the attack transient those partials stood
   for is missing. On the reference bank's picked flat-top
-  (`compare_reference_takes.py --decay`) partials 9-12 fall 61-72 dB/s over
+  (`compare_reference_takes.py --decay`, since removed) partials 9-12 fall 61-72 dB/s over
   a note's first 0.3 s and 19-24 after it; Jumbo Steel Pick's fall 34, then
   22, and neither of its planes alone snaps (the normal 30 then 28, the
   parallel 32 then 22), so the snap is not one plane draining faster.
@@ -729,8 +731,8 @@ a notarytool profile. Rack builds also need the current Rack panel source
 (selector layout at Rack revision `d6b6dbf`); the JUCE editor is not part of
 a Rack build.
 
-For dry-note comparisons, `AcustraPhysicalFitRenderer` takes the output
-directory and the 25 calibration arguments in `OptimizePhysicalModel.NAMES`
+For dry-note comparisons, `AcustraExternalCorpusRenderer` takes a job file,
+the output directory and the 25 calibration arguments in `OptimizePhysicalModel.NAMES`
 order. The offline fit, recording benchmarks, audits, reference host and
 table generators are described in
 [offline measurement tools](Docs/research/offline-measurement-tools.md).
@@ -894,8 +896,8 @@ purpose, but not sell it or use it commercially. Official Protocodus builds
 carry an additional permission in the same file to use them for any purpose,
 including making music commercially. Commits made before this licence change
 were published under MIT and remain so. The Shinyguitar and Eastman E1D
-recordings in the offline reference bank are dedicated under CC0 1.0 and are not
-linked into the plug-in. The measured bridge/body coefficient tables are adapted
+recordings the offline tools measure are CC0 1.0, fetched for analysis and not
+in this repository. The measured bridge/body coefficient tables are adapted
 from Robert Mores' archive under CC BY 4.0, and two derived level constants and
 the piezo's bridge conductance from Carcagno et al.'s Fylde measurement, also CC
 BY 4.0. GuitarSet, CC BY 4.0, is one of the recording sets the capture voicing

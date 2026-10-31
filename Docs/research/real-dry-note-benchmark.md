@@ -117,7 +117,7 @@ Run `python3 Tools/SummarizePhysicalBenchmark.py` to print the compact split
 table, historical sample-player control and five retained realism paths from
 the committed
 [`physical-fit-report.json`](https://github.com/protocodus/virtual-instrument-acustra/blob/1023937601cc7973785dd912addec3f5481273d9/Docs/research/physical-fit-report.json). The full renderer
-and scoring protocol remain in [`PhysicalFitRenderer.cpp`](../../Tools/PhysicalFitRenderer.cpp)
+and scoring protocol are in [`PhysicalFitRenderer.cpp`](https://github.com/protocodus/virtual-instrument-acustra/blob/59a8442a0a7eb719c358f1101d23f0377073f99b/Tools/PhysicalFitRenderer.cpp) (removed 2026-10-31)
 and [`FitPhysicalModel.py`](../../Tools/FitPhysicalModel.py).
 
 For a new engine build, `FitPhysicalModel.py candidate.json --compare baseline.json`

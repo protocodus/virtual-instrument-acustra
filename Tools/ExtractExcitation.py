@@ -61,8 +61,8 @@ deviation as the spread. A take that reaches digital full scale is left out of
 every ratio: it is not a linear reading of its pluck.
 
 Sources. The archive is sfzinstruments/karoryfer.shinyguitar at the commit
-pinned in ThirdParty/Shinyguitar-README.txt (CC0 1.0): Samples/acoustic holds
-the microphone takes ("..._1.wav") that Acustra's sample bank embeds, and
+pinned in THIRD_PARTY_NOTICES.md (CC0 1.0), checked out locally: Samples/acoustic
+holds the microphone takes ("..._1.wav"), and
 Samples/electric the magnetic-pickup signal captured at the same instant
 ("..._2.wav", identical frame counts, referenced by electric_*.sfz). The pickup
 is a near-direct string sensor, so its layer ratio and the microphone's are two

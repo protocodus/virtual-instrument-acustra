@@ -12,7 +12,8 @@ refer to the historical Git revision rather than the current tool inventory.
 
 - `Source/DSP/AcustraEngine.*`: six steel strings, excitation, retained tails,
   shared bridge/body, capture, piezo and room. The production instrument has
-  no recorded-note player; `Source/DSP/SampleBank/` supplies offline references.
+  no recorded-note player, and the repository holds no recordings: reference
+  corpora are fetched for measurement and never committed.
 - `Source/DSP/AcustraPerformer.*`: front-end-neutral MIDI, ownership, strums,
   Gather, MPE and sample-accurate scheduling. Front ends play through Performer.
 - `Source/PluginProcessor.*`: JUCE parameters, state migration, host tempo,
@@ -219,8 +220,7 @@ Acustra's suites by tier: `unit`, `audio` (the demo render checks), `render`
 (the editor screenshot), `fuzz` (the parameter-extremes matrix
 `Acustra.ParameterMatrix` in plug-in builds; `Acustra.DspFuzz` with
 `-DACUSTRA_BUILD_FUZZER=ON` and Clang) and `perf` (`Acustra.CpuBudget`, the
-engine's 0.25x gate `Acustra.EnginePerformance` and the reference sampler's
-real-time gate `Acustra.SampleBankRealtime`, Release builds without
+engine's 0.25x gate `Acustra.EnginePerformance`, Release builds without
 sanitizers); CI selects tiers with `ctest -L`. `-DACUSTRA_ENABLE_SANITIZERS=ON`
 (Clang or GCC) builds everything under ASan + UBSan, as the `sanitizers` and
 `parameter-matrix` jobs do. `scripts/validate-plugins.sh build-plugin Acustra

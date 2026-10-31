@@ -38,8 +38,8 @@ lists it in summary.json.
 Nothing is trimmed, aligned, equalised, denoised or level-matched here.
 
 Model side: Tools/ExternalCorpusRenderer.cpp (CMake target
-AcustraExternalCorpusRenderer), which is PhysicalFitRenderer's renderModel and
-calibration mapping with the schedule read from a job file: a fresh
+AcustraExternalCorpusRenderer), which is the removed PhysicalFitRenderer's
+renderModel and calibration mapping with the schedule read from a job file: a fresh
 AcustraEngine per unique (picking, midi, velocity), 48 kHz, 127-sample blocks,
 4.2 s of stereo from a note-on at frame zero, default public controls, and
 the default Dreadnought unless --shape is given; the wood is Spruce unless

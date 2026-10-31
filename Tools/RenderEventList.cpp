@@ -5,8 +5,7 @@
 //                          [--picking 0|1|2] [--room 0-1]
 //
 // Each line of events.txt is "seconds status data1 data2". The preset loads
-// as a fresh plug-in instance does. Used by compare_reference_takes.py and
-// for listening tests.
+// as a fresh plug-in instance does. Used for listening tests.
 
 #include "DSP/AcustraPerformer.h"
 #include "DSP/AcustraPresets.h"

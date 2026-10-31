@@ -11,8 +11,10 @@ filter to the summed microphone pressure, preserving modal cancellation.
 Protocol (deterministic; no audio is committed or downloaded):
 
 1. Sources, each a render of the build under test beside its recordings:
-   - ``--bank DIR``: an AcustraPhysicalFitRenderer output; its ``flattop.json``
-     (the reference bank's eight finger-plucked flat-top notes) is read.
+   - ``--bank DIR`` (optional): a physical-fit corpus render holding
+     ``flattop.json``. The embedded reference bank and its renderer were
+     removed on 2026-10-31, so this source now comes only from a corpus you
+     prepare yourself; without it the fit uses the other sources.
    - ``--open DIR``: a Tools/BenchmarkOpenCorpora.py ``--keep`` output over the
      prepared Eastman E1D (Tools/PrepareEastmanCorpus.py) and Martin HD28
      (Tools/PrepareMartinCorpus.py) rows: ``eastman.flattop-pick.json``,
@@ -521,15 +523,16 @@ def _fit_report(differences: dict[str, tuple[np.ndarray, float]], current: list,
     }
 
 
-def collect(bank: Path, open_dir: Path, guitarset: Path,
+def collect(bank: Path | None, open_dir: Path, guitarset: Path,
             guitarset_mono: Path | None = None) -> tuple[list[Spectra], dict]:
     sources = [note_spectra((open_dir if where == "open" else bank) / manifest, name, weight)
-               for name, where, manifest, weight in NOTE_SOURCES]
+               for name, where, manifest, weight in NOTE_SOURCES
+               if where == "open" or bank is not None]
     guitar, checks = guitarset_spectra(guitarset, guitarset_mono)
     return sources + [guitar], checks
 
 
-def run(bank: Path, open_dir: Path, guitarset: Path, *,
+def run(bank: Path | None, open_dir: Path, guitarset: Path, *,
         balance_header: Path | None = BALANCE_HEADER,
         observation: str = DEFAULT_OBSERVATION,
         guitarset_mono: Path | None = None) -> dict:
@@ -926,8 +929,8 @@ def main() -> int:
     if arguments.self_test:
         self_test()
         return 0
-    if not (arguments.bank and arguments.open_dir and arguments.guitarset):
-        parser.error("--bank, --open and --guitarset are required")
+    if not (arguments.open_dir and arguments.guitarset):
+        parser.error("--open and --guitarset are required")
     report = run(arguments.bank, arguments.open_dir, arguments.guitarset,
                  observation=arguments.observation, guitarset_mono=arguments.guitarset_mono)
     print(f"observation: {arguments.observation} (version {OBSERVATIONS[arguments.observation]})")

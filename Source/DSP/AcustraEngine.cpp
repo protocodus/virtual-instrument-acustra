@@ -385,7 +385,8 @@ constexpr float stringRoundTripGain = 0.99915f;
 // which the tuning follows, keeps its pitch, and the onset glide falls toward
 // the recordings' (1 cent higher instead raised it). Aculele splits its nylon
 // planes by the owner's ear too (its Docs/decisions.md, 2026-10-29).
-// Tools/compare_reference_takes.py --beating; Docs/decisions.md, 2026-10-30.
+// Tools/compare_reference_takes.py --beating (removed 2026-10-31 with the
+// reference bank; in Git history); Docs/decisions.md, 2026-10-30.
 // The lag is pure delay, a share of the period on top of the tuned loop, so
 // the loop's filters keep the compensation they were tuned with.
 constexpr float normalPlaneLagPeriods = 4.3331e-4f; // 2^(0.75/1200) - 1
@@ -6781,7 +6782,8 @@ void AcustraEngine::updateAttackPitch(Voice& voice, int stringIndex) noexcept
     // lets go at a smaller excursion: at 1.0 a velocity-112 note on Jumbo
     // Steel Pick started 7.3 cents sharp, against 3.1 in the reference
     // bank's loudest picked flat-top layer and 4.1 in the archtop recordings
-    // (compare_reference_takes.py --beating); at 0.69 it starts 3.4 sharp.
+    // (compare_reference_takes.py --beating, since removed); at 0.69 it
+    // starts 3.4 sharp.
     // The release speed keeps the full scale: the Pick release's share was
     // fitted on it.
     constexpr float pickExcursionScale = 0.69f;
@@ -7054,7 +7056,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Steel Pick's renders scattered 1.56 dB at 0.02, where the Pick meets
     // the string close to the bridge and a shift moves the comb least, and
     // scatter 1.93 dB at 0.03; Dreadnought Steel's Finger already scattered
-    // 2.03 dB and keeps 0.02 (Tools/compare_reference_takes.py;
+    // 2.03 dB and keeps 0.02 (Tools/compare_reference_takes.py, since removed;
     // Docs/decisions.md, 2026-10-30).
     const float positionDraw = nextNoise(voice);
     // MPE Timbre, CC74, on this note's own member channel says directly

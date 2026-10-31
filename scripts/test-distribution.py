@@ -72,7 +72,7 @@ class DesktopPackageTests:
         self.artifacts=self.build/(PRODUCT+'_artefacts')/'Release'
         for name,value in self.payload.items():
             p=self.artifacts/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(value);p.chmod(0o755)
-        self.documents=['LICENSE','THIRD_PARTY_NOTICES.md','ThirdParty/JUCE-LICENSE.md','ThirdParty/CLAP-LICENSE.md','Docs/guide/user-guide.md','ThirdParty/JUCE-DEPENDENCY-LICENSES.txt','ThirdParty/CC0-1.0.txt','ThirdParty/Eastman-E1D-README.md','ThirdParty/Shinyguitar-README.txt','Assets/SampleBank/manifest.json']
+        self.documents=['LICENSE','THIRD_PARTY_NOTICES.md','ThirdParty/JUCE-LICENSE.md','ThirdParty/CLAP-LICENSE.md','Docs/guide/user-guide.md','ThirdParty/JUCE-DEPENDENCY-LICENSES.txt']
         for name in self.documents:
             p=self.project/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(name)
         self.env=os.environ.copy()

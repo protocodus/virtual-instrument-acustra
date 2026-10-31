@@ -65,9 +65,6 @@ endif()
 
 include(CTest)
 
-file(GLOB ACUSTRA_BANK_PARTS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/Source/DSP/SampleBank/BankData-*.cpp")
-
 add_library(AcustraDSP STATIC
     Source/DSP/AcustraEngine.cpp
     Source/DSP/AcustraEngine.h
@@ -101,25 +98,13 @@ if(NOT MSVC)
     endif()
 endif()
 
-add_library(AcustraReferenceBank STATIC EXCLUDE_FROM_ALL
-    Source/DSP/SampleBank/EmbeddedGuitarBank.cpp
-    Source/DSP/SampleBank/EmbeddedGuitarBank.h
-    Source/DSP/SampleBank/GeneratedBankData.h
-    Source/DSP/SampleBank/BankData.cpp
-    ${ACUSTRA_BANK_PARTS})
-
 target_include_directories(AcustraDSP
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
 target_compile_features(AcustraDSP PUBLIC cxx_std_20)
 set_target_properties(AcustraDSP PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_include_directories(AcustraReferenceBank
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
-target_compile_features(AcustraReferenceBank PUBLIC cxx_std_20)
-
 if(MSVC)
     target_compile_options(AcustraDSP PRIVATE /W4 /permissive-)
-    target_compile_options(AcustraReferenceBank PRIVATE /W4 /permissive-)
 else()
     target_compile_options(AcustraDSP PRIVATE -Wall -Wextra -Wpedantic)
     # The engine is position-independent (it goes into the plug-in's shared
@@ -132,8 +117,6 @@ else()
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_compile_options(AcustraDSP PRIVATE -fno-semantic-interposition)
     endif()
-    target_compile_options(AcustraReferenceBank PRIVATE
-        -Wall -Wextra -Wpedantic)
 endif()
 
 if(ACUSTRA_BUILD_PLUGIN)
@@ -289,13 +272,8 @@ if(ACUSTRA_BUILD_TOOLS)
     target_link_libraries(AcustraRenderRealismSongs PRIVATE AcustraDSP)
     target_compile_features(AcustraRenderRealismSongs PRIVATE cxx_std_20)
 
-    add_executable(AcustraPhysicalFitRenderer Tools/PhysicalFitRenderer.cpp)
-    target_link_libraries(AcustraPhysicalFitRenderer
-        PRIVATE AcustraDSP AcustraReferenceBank)
-    target_compile_features(AcustraPhysicalFitRenderer PRIVATE cxx_std_20)
-
-    # PhysicalFitRenderer's model half for corpora outside the embedded bank;
-    # driven by Tools/BenchmarkOpenCorpora.py.
+    # Renders the model beside external recorded corpora, which are fetched
+    # and never committed; driven by Tools/BenchmarkOpenCorpora.py.
     add_executable(AcustraExternalCorpusRenderer Tools/ExternalCorpusRenderer.cpp)
     target_link_libraries(AcustraExternalCorpusRenderer PRIVATE AcustraDSP)
     target_compile_features(AcustraExternalCorpusRenderer PRIVATE cxx_std_20)
@@ -303,10 +281,6 @@ if(ACUSTRA_BUILD_TOOLS)
     add_executable(AcustraRenderEventList Tools/RenderEventList.cpp)
     target_link_libraries(AcustraRenderEventList PRIVATE AcustraDSP)
     target_compile_features(AcustraRenderEventList PRIVATE cxx_std_20)
-
-    add_executable(AcustraExportReferenceBank EXCLUDE_FROM_ALL Tools/ExportReferenceBank.cpp)
-    target_link_libraries(AcustraExportReferenceBank PRIVATE AcustraReferenceBank)
-    target_compile_features(AcustraExportReferenceBank PRIVATE cxx_std_20)
 
     add_executable(AcustraBridgeProbe Tools/BridgeProbe.cpp)
     target_link_libraries(AcustraBridgeProbe PRIVATE AcustraDSP)
@@ -342,8 +316,6 @@ if(ACUSTRA_BUILD_TOOLS)
     if(MSVC)
         target_compile_options(AcustraRenderDemos PRIVATE /W4 /permissive-)
         target_compile_options(AcustraRenderRepertoire PRIVATE /W4 /permissive-)
-        target_compile_options(AcustraPhysicalFitRenderer
-            PRIVATE /W4 /permissive-)
         target_compile_options(AcustraExternalCorpusRenderer
             PRIVATE /W4 /permissive-)
         target_compile_options(AcustraBridgeProbe PRIVATE /W4 /permissive-)
@@ -352,8 +324,6 @@ if(ACUSTRA_BUILD_TOOLS)
         target_compile_options(AcustraRenderDemos PRIVATE
             -Wall -Wextra -Wpedantic)
         target_compile_options(AcustraRenderRepertoire PRIVATE
-            -Wall -Wextra -Wpedantic)
-        target_compile_options(AcustraPhysicalFitRenderer PRIVATE
             -Wall -Wextra -Wpedantic)
         target_compile_options(AcustraExternalCorpusRenderer PRIVATE
             -Wall -Wextra -Wpedantic)
@@ -380,24 +350,6 @@ if(BUILD_TESTING)
                              "$<TARGET_FILE:${target}>" ${ARGN})
         endif()
     endfunction()
-
-    add_executable(AcustraSampleBankTests Tests/SampleBankTests.cpp)
-    target_link_libraries(AcustraSampleBankTests PRIVATE AcustraReferenceBank)
-    target_compile_features(AcustraSampleBankTests PRIVATE cxx_std_20)
-
-    if(MSVC)
-        target_compile_options(AcustraSampleBankTests PRIVATE /W4 /permissive-)
-    else()
-        target_compile_options(AcustraSampleBankTests PRIVATE
-            -Wall -Wextra -Wpedantic)
-    endif()
-
-    acustra_add_suite(Acustra.SampleBank AcustraSampleBankTests)
-    set_tests_properties(Acustra.SampleBank PROPERTIES TIMEOUT 90)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ACUSTRA_ENABLE_SANITIZERS AND NOT ACUSTRA_BUILD_FUZZER)
-        acustra_add_suite(Acustra.SampleBankRealtime AcustraSampleBankTests --timing)
-        set_tests_properties(Acustra.SampleBankRealtime PROPERTIES LABELS perf RUN_SERIAL TRUE TIMEOUT 90)
-    endif()
 
     add_executable(AcustraEngineTests Tests/AcustraEngineTests.cpp)
     target_link_libraries(AcustraEngineTests PRIVATE AcustraDSP)
@@ -732,16 +684,6 @@ if(BUILD_TESTING)
                          -P "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CheckDemoCount.cmake")
         set_tests_properties(Acustra.DemoCount PROPERTIES TIMEOUT 30)
 
-        add_test(NAME Acustra.PhysicalFitRenderer
-                 COMMAND AcustraPhysicalFitRenderer --smoke
-                         "${CMAKE_CURRENT_BINARY_DIR}/physical-fit-smoke"
-                         1 1 1 0 1 1
-                         1 1 1 1 0 1
-                         1 .0061 -.030 1.3 .001 1000
-                         .02 0 2 .0001162109375 .000225 .002334375
-                         .0175)
-        set_tests_properties(Acustra.PhysicalFitRenderer PROPERTIES TIMEOUT 120)
-
         add_test(NAME Acustra.BridgeProbe
                  COMMAND AcustraBridgeProbe
                          "${CMAKE_CURRENT_BINARY_DIR}/bridge-probe-smoke.f32"
@@ -794,7 +736,6 @@ if(BUILD_TESTING)
                 add_test(NAME Acustra.CalibrationVector
                          COMMAND "${Python3_EXECUTABLE}"
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tests/CalibrationVectorTests.py"
-                                 "$<TARGET_FILE:AcustraPhysicalFitRenderer>"
                                  "$<TARGET_FILE:AcustraExternalCorpusRenderer>")
                 set_tests_properties(Acustra.CalibrationVector PROPERTIES TIMEOUT 120)
                 # No stage may refit a value a listener chose.

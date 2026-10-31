@@ -10,15 +10,13 @@
 // leaves them out and says so); a job line still naming a material is
 // rejected, not guessed at.
 //
-// This is PhysicalFitRenderer's model half with the schedule read from a file
-// instead of the embedded bank, so a score on an external corpus is a score of
-// the same renders: the options, the 25-value calibration vector, its bounds
-// and makeCalibration, and renderModel (a fresh engine per note, 48 kHz,
-// 127-sample blocks, default public controls, the default Dreadnought unless
-// --shape is given) are copied from Tools/PhysicalFitRenderer.cpp and must be
-// kept identical to it. The one difference is that the picking tool comes
-// from each job row rather than being Finger for the bank's plucked rows and
-// --archtop-picking for its picked ones.
+// This was PhysicalFitRenderer's model half with the schedule read from a
+// file instead of the embedded bank; both were removed on 2026-10-31, so it is
+// now the only fit renderer. The options, the 25-value calibration vector, its
+// bounds and makeCalibration, and renderModel (a fresh engine per note,
+// 48 kHz, 127-sample blocks, default public controls, the default Dreadnought
+// unless --shape is given) are what every earlier fit rendered. The picking
+// tool comes from each job row.
 //
 // Tools/BenchmarkOpenCorpora.py writes the job files, splits them across
 // several processes, and scores the renders. On success one JSON line naming
@@ -80,7 +78,7 @@ using CalibrationValues = std::array<float, calibrationValueCount>;
 
 // Reject rather than silently clamp so the caller's CLI vector is the
 // calibration that was actually rendered. These mirror AcustraEngine's bounds
-// and PhysicalFitRenderer's copy of them.
+// and the removed PhysicalFitRenderer's copy of them.
 constexpr CalibrationValues calibrationMinimums {{
     0.96f, 0.05f, 0.25f, -6.0f, 0.25f, 0.4f,
     0.35f, 0.35f, 0.0f, 0.7f, 0.0f, -1.0f,
@@ -149,7 +147,7 @@ void writeF32(const std::filesystem::path& path,
         throw std::runtime_error("could not write " + path.string());
 }
 
-// Copied from PhysicalFitRenderer.cpp; keep the two identical.
+// Copied from the removed PhysicalFitRenderer.cpp; earlier fits used it.
 PhysicalCalibration makeCalibration(const CalibrationValues& values)
 {
     PhysicalCalibration calibration = fittedPhysicalCalibration;
