@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.12 — 2026-10-31 — a re-plucked string's old wave lets go sooner
+
+- When a string is plucked again, the wave it was still carrying now stops
+  being computed 80 ms after anything last fed it, as Aculele's does. The
+  bridge's own motion used to keep that wave alive for as long as anything
+  else sounded, so in continuous playing each string ran a second string
+  model. About 6% less CPU over the eight demos (instructions, 48 kHz);
+  the demos' levels move under 0.1 dB and their difference sits 34-49 dB
+  under them. Adopted under the owner's standing rule; not yet heard.
+
 ### 1.9.11 — 2026-10-30 — soft fingered notes are darker
 
 - A fingertip or thumb now lets the string go smoothly, so soft Finger and

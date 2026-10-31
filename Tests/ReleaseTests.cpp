@@ -123,6 +123,13 @@ struct AcustraEngineTestAccess
             voice.loops[0].loopGain, voice.loops[0].highLossMix };
     }
 
+    // Stands in for a contact or re-pluck arrival feeding the retained wave,
+    // which otherwise retires 80 ms after its last feed (finishVoice).
+    static void feedTail(AcustraEngine& engine, int string)
+    {
+        engine.voices_[static_cast<std::size_t>(string)].tailUnfedSamples = 0;
+    }
+
     struct DrivenTail { double returnEnergy, suppliedEnergy; };
     // A fixed bridge-motion probe drives the old branch even after its
     // initial wave has gone, just as another held string backdrives it. The
@@ -847,12 +854,15 @@ void testBridgeHandFollowsRetainedTails()
         auto& engine = performer->engine();
         engine.setStringPerChannelMode(true);
         std::array<float, 64> left {}, right {};
+        bool keepTailFed = false;
         const auto run = [&] (double seconds, int controller = -1, int value = 0)
         {
             const int frames = static_cast<int>(seconds * rate);
             for (int at = 0; at < frames; at += 64)
             {
                 const int count = std::min(64, frames - at);
+                if (keepTailFed)
+                    acustra::AcustraEngineTestAccess::feedTail(engine, 5);
                 performer->beginBlock(left.data(), right.data(), count);
                 if (at == 0 && controller >= 0)
                     performer->controlChange(0, 1, controller, value);
@@ -891,11 +901,16 @@ void testBridgeHandFollowsRetainedTails()
                       << ": CC2 return " << 10.0 * std::log10(
                           after.returnEnergy / before.returnEnergy) << " dB\n";
         }
+        // The 15 ms hand follower takes about 0.2 s to settle exactly, longer
+        // than an unfed retained wave lives, so the wave is held fed here as
+        // a contact would hold it. A fresh bass note keeps moving the bridge
+        // while the hand lifts; without a driver the already damped old
+        // branch can fall quiet and retire first.
+        keepTailFed = true;
         run(0.06, 2, 0);
-        // A fresh bass note keeps moving the bridge while the hand lifts;
-        // without a driver the already damped old branch can retire first.
         engine.noteOn(40, 0.9f, 1);
         run(0.19);
+        keepTailFed = false;
         const auto lifted = acustra::AcustraEngineTestAccess::tailHandState(engine, 5);
         expect(lifted.active && lifted.gain == captured.gain
                    && lifted.highLoss == captured.highLoss

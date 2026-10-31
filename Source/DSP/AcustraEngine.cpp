@@ -4700,6 +4700,7 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             voice.tailCharacteristicImpedance = 0.0f;
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
+            voice.tailUnfedSamples = 0;
             voice.tailLoop.reset();
             voice.tailParallelLoop.reset();
         }
@@ -8005,6 +8006,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
         voice.tailCharacteristicImpedance = 0.0f;
         voice.tailLevel = 0.0f;
         voice.tailQuietSamples = 0;
+        voice.tailUnfedSamples = 0;
         voice.tailLoop.reset();
         voice.tailParallelLoop.reset();
         voice.tailRepluckArrivals.clear();
@@ -8323,6 +8325,12 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
     }
 }
 
+namespace
+{
+// The retained wave's nominal post-release T60 (captureTail).
+constexpr float tailT60Seconds = 0.010f;
+} // namespace
+
 void AcustraEngine::captureTail(Voice& voice) noexcept
 {
     // Fractional release responses are already emitted string packets too.
@@ -8387,7 +8395,6 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
         voice.tailContactTravel.active = false;
     voice.tailCharacteristicImpedance = voice.characteristicImpedance
         * voice.appliedBendImpedanceScale;
-    constexpr float tailT60Seconds = 0.010f;
     voice.tailDamping = handDamping(tailT60Seconds, loopFundamental(voice));
     // Keep the old pitch and intrinsic loss when the main string is retuned
     // or aged. Only the heel of the bridge hand is common to both branches:
@@ -8418,6 +8425,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     }
     voice.tailLevel = voice.level;
     voice.tailQuietSamples = 0;
+    voice.tailUnfedSamples = 0;
     voice.tailActive = true;
     voice.tailRetiring = false;
 }
@@ -11945,10 +11953,21 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             ++voice.tailQuietSamples;
         else
             voice.tailQuietSamples = 0;
-        if (voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
-            && !voice.tailContactTravel.active
-            && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0
-            && voice.tailRepluckArrivals.remaining == 0)
+        const bool tailFed = voice.tailContactTravel.active
+            || voice.tailLegatoContactTravel.active || voice.tailLegatoContactSamples != 0
+            || voice.tailRepluckArrivals.remaining != 0;
+        voice.tailUnfedSamples = tailFed ? 0 : voice.tailUnfedSamples + 1;
+        // The branch is the string's retained wave, and that wave is gone
+        // eight of its T60s after anything last fed it (480 dB down). What
+        // its reaction force still reads then is the bridge moving under a
+        // second port for one string, which kept it above the quiet
+        // threshold for as long as anything sounded, so in continuous
+        // playing tails ran on 21-49% of string-samples (Aculele 0.4.31
+        // retires them the same way).
+        if ((voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
+             || voice.tailUnfedSamples > static_cast<int>(
+                    8.0f * tailT60Seconds * static_cast<float>(sampleRate_)))
+            && !tailFed)
             voice.tailRetiring = true;
         // A retiring tail's port leaves the junction on the delay's own
         // 6 ms time constant, as a bend's impedance moves (the junction sums
@@ -11974,6 +11993,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
             voice.tailCharacteristicImpedance = 0.0f;
             voice.tailLevel = 0.0f;
             voice.tailQuietSamples = 0;
+            voice.tailUnfedSamples = 0;
             voice.tailLoop.reset();
             voice.tailParallelLoop.reset();
             voice.tailRepluckArrivals.clear();

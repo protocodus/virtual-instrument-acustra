@@ -1300,6 +1300,9 @@ private:
         float tailCharacteristicImpedance { 0.0f };
         float tailLevel { 0.0f };
         int tailQuietSamples { 0 };
+        // Samples since a contact, legato or re-pluck arrival last fed the
+        // retained wave.
+        int tailUnfedSamples { 0 };
         bool tailActive { false };
         // A tail being let go: its port fades out of the junction on the
         // delay's time constant before the branch is dropped (finishVoice).

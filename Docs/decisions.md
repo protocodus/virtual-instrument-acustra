@@ -5,6 +5,31 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-10-31 — a re-plucked string's old wave retires once it is gone, 1.9.12 (A–Z set; adopted under the owner's standing rule, not yet heard)
+
+**What was decided.** Whether to retire the retained tail, the old wave a
+re-pluck leaves on the string, by a rule that does not depend on the bridge.
+It carries a 10 ms T60 from its capture, so 80 ms after a contact, legato or
+re-pluck arrival last fed it, it is 480 dB down; what kept it above the quiet
+threshold (2e-7 for 80 ms) was the bridge moving under its port. In
+continuous playing no tail retired, and tails ran on 21-49% of
+string-samples (`Docs/benchmarks/cpu-optimization-2026-10-30.md`, Not done).
+
+**Letters.** A: 1.9.11 shipping. B: the tail also retires eight of its T60s
+after it was last fed, Aculele 0.4.31's rule (`finishVoice`). The
+`01-dreadnought-steel` and `05-palm-muted-steel-pick` demos at 48 kHz;
+whole-file RMS match, B trimmed by -0.050 and -0.071 dB. Null A-B -37.1 and
+-33.6 dB re A's RMS; over all eight demos -34 to -49 dB.
+
+**Chosen.** B, under the owner's standing rule that the candidate wins; the
+owner has not heard it. The set is outside the repository
+(`acustra/listening-tests/2026-10-31-tail-retirement/` in the project files).
+
+**What it licensed.** The rule only. 71.83 G to 67.49 G instructions
+(callgrind, all eight demos at 48 kHz, -6.0%). `Acustra.Release`'s CC2
+hand-back check now holds the tail fed while the 15 ms hand follower settles
+(about 0.2 s, longer than an unfed tail lives), as a contact would.
+
 ## 2026-10-30 — a pad lets go smoothly, 1.9.11 (measured; adopted under the owner's standing rule, not yet heard)
 
 **What was measured.** Soft Finger and Thumb notes were nearly as bright as
