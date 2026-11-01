@@ -93,16 +93,37 @@ public:
     // makes every stroke a downstroke, C#0 an upstroke, D0 returns to automatic. D#0
     // toggles global sustain independently of the panel switch and pedals.
     // They never sound and take no string; their key-ups are consumed.
-    enum class StrokeMode { Automatic, Down, Up };
+    //
+    // The strum keys F0 and F#0 are the picking hand on a key of its own, as
+    // a keyboard player strums: each strums every key held on its channel,
+    // F0 down and F#0 up, at the strum key's velocity, whatever the
+    // technique. The first one latches Keys mode, in which a key only
+    // frets its string (the fretting hand forms the chord) and sounds at
+    // the next strum key; a key held from before is struck again where it
+    // is. A played chord's keys never land together, so without this a live
+    // chord is plucked note by note, and gathering it costs latency (Gather
+    // Chords), which the Rack Extension cannot offer. C0, C#0 or D0 leaves
+    // Keys mode; a key it left silent stays silent until its key-up.
+    enum class StrokeMode { Automatic, Down, Up, Keys };
     static constexpr double strumAlternationBeats = 0.75;
     static constexpr double strumRestSeconds = 2.0;
     static constexpr int keyswitchDownstroke = 24; // C0
     static constexpr int keyswitchUpstroke = 25;   // C#0
     static constexpr int keyswitchAutomatic = 26;  // D0
     static constexpr int keyswitchSustain = 27;    // D#0
+    // E0 (28) is left out: the Rack Extension's hammer-on cue is that key.
+    static constexpr int keyswitchStrumDown = 29;  // F0
+    static constexpr int keyswitchStrumUp = 30;    // F#0
+    // A keyswitch that sounds: a front end that sleeps while silent must
+    // wake for it, as for a key.
+    [[nodiscard]] static constexpr bool isStrumKey(int note) noexcept
+    {
+        return note == keyswitchStrumDown || note == keyswitchStrumUp;
+    }
     [[nodiscard]] static constexpr bool isKeyswitch(int note) noexcept
     {
-        return note >= keyswitchDownstroke && note <= keyswitchSustain;
+        return (note >= keyswitchDownstroke && note <= keyswitchSustain)
+            || isStrumKey(note);
     }
     // The keyswitches' effect, for a front end's own control; it takes
     // effect at once, like setSustainHold.
@@ -259,6 +280,9 @@ private:
         int channel { 1 };
         float velocity { 0.0f };
         int pluckDelay { 0 };
+        // A key a strum key strikes again while its string already sounds
+        // it: one owner, so the extra one the strike takes is handed back.
+        bool restruck { false };
     };
 
     struct PendingNoteOff
@@ -302,6 +326,8 @@ private:
     bool handleEvent(int eventSample, const std::uint8_t* data, int size) noexcept;
     void handleTempoEvent(int eventSample, double bpm) noexcept;
     void flushNoteGroup() noexcept;
+    void collectStrum() noexcept;
+    void clearKeys(int midiChannel) noexcept;
     void gatherChord(int first) noexcept;
     void renderTo(int sample) noexcept;
     void dispatchMidiData(const std::uint8_t* data, int size) noexcept;
@@ -338,6 +364,16 @@ private:
     bool pickTechnique_ { false };
     bool fingerTechnique_ { true };
     StrokeMode strokeMode_ { StrokeMode::Automatic };
+    // Keys down per channel, a bit per note, and those of them Keys mode
+    // left silent (fretted, not yet struck).
+    using KeyBits = std::array<std::uint32_t, 4>;
+    std::array<KeyBits, 16> keysDown_ {};
+    std::array<KeyBits, 16> silentKeys_ {};
+    // A strum key on the sample being grouped: its direction (Automatic for
+    // none), channel and velocity.
+    StrokeMode strumRequest_ { StrokeMode::Automatic };
+    int strumChannel_ { 1 };
+    float strumVelocity_ { 0.0f };
     double tempoBpm_ { 120.0 };
     bool gatherChords_ { false };
     bool panelSustainHold_ { false };

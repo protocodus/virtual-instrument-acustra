@@ -244,13 +244,16 @@ void testFixedFretExpressionsAndPriming()
         expect(voice.fretMotionNoiseState != random && voice.fretMotion.speed < 0.0f,
                "conventional or manager slide did not move a held finger");
     }
+    // A refret to another fret is no longer silent (1.9.13): the finger
+    // slides into it (startShiftArrival), checked in testShiftArrival.
     for (int action = 0; action < 5; ++action)
     {
+        if (action == 1)
+            continue;
         auto engine = fresh();
         auto& voice = Access::voice(*engine, 0);
         const auto random = voice.fretMotionNoiseState;
         if (action == 0) engine->noteOn(45, 0.7f, 1);
-        if (action == 1) engine->noteOn(48, 0.7f, 1);
         if (action == 2)
             expect(engine->transitionNote(45, 48, 0.7f, 1), "connected priming fixture failed");
         if (action >= 3)
@@ -382,9 +385,13 @@ void testPacketsAndSourceLifetimes()
         expect(retained.readIndex == packets->readIndex && retained.remaining == packets->remaining
                    && retained.wave == packets->wave && !retained.overflow,
                "repluck/refret dropped, duplicated or retimed emitted movement packets");
+        // The refret's own finger arrives along the string from the old fret
+        // (startShiftArrival): a new motion, not the old one carried over.
         if (refret)
             expect(voice.repluckArrivals.remaining == 0
-                       && voice.fretMotion.length == voice.speakingLengthMetres
+                       && voice.fretMotion.arriving
+                       && voice.fretMotion.length > voice.speakingLengthMetres
+                       && voice.fretMotion.length < priorLength
                        && voice.fretMotion.sourceWave == 0.0f,
                    "refret kept the old source or duplicated its arrivals in the new string");
         else
@@ -555,6 +562,36 @@ void testSampleTimedMidi()
 }
 }
 
+// A finger that changes fret on a wound string within a quarter second of
+// leaving the old one slides along it into the new fret; an open target, a
+// plain string, a finger long lifted and Release Noise 0 do not.
+void testShiftArrival()
+{
+    const auto shifted = [](int string, int toFret, double liftedSeconds, float amount)
+    {
+        auto engine = fresh(48000.0, string, 5, amount);
+        const int channel = string + 1;
+        const int from = openNotes[static_cast<std::size_t>(string)] + 5;
+        if (liftedSeconds >= 0.0)
+        {
+            engine->noteOff(from, channel);
+            advance(*engine, static_cast<int>(liftedSeconds * 48000.0));
+        }
+        auto& voice = Access::voice(*engine, string);
+        const auto random = voice.fretMotionNoiseState;
+        engine->noteOn(openNotes[static_cast<std::size_t>(string)] + toFret, 0.7f, channel);
+        const bool arriving = voice.fretMotion.arriving;
+        advance(*engine, 480);
+        return arriving && voice.fretMotionNoiseState != random;
+    };
+    expect(shifted(0, 8, -1.0, 0.7f), "a held finger moving up the low E did not slide");
+    expect(shifted(1, 3, 0.1, 0.7f), "a finger lifted 0.1 s ago moving down did not slide");
+    expect(!shifted(1, 3, 0.4, 0.7f), "a finger lifted 0.4 s ago still slid");
+    expect(!shifted(1, 0, 0.1, 0.7f), "an open string took a sliding finger");
+    expect(!shifted(4, 8, 0.1, 0.7f), "a plain string took a winding slide");
+    expect(!shifted(0, 8, 0.1, 0.0f), "Release Noise 0 still slid");
+}
+
 int main()
 {
     testPhysicalTrajectoryAndInactiveCases();
@@ -565,5 +602,6 @@ int main()
     testPacketsAndSourceLifetimes();
     testResetAndScopedPanic();
     testSampleTimedMidi();
+    testShiftArrival();
     return failures == 0 ? 0 : 1;
 }

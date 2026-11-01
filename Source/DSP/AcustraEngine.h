@@ -1215,6 +1215,15 @@ private:
         struct FretMotion
         {
             double length { 0.648 };
+            // A finger arriving along the string from the fret it held
+            // before (startShiftArrival): it glides at its own rate and
+            // touches the winding before the new note's pick does.
+            bool arriving { false };
+            float arrivalCoefficient { 0.0f };
+            // Where the arriving finger starts, set at the note-on and begun
+            // at the pick's contact (firePluck), which re-primes the motion;
+            // zero for none.
+            double arrivalFrom { 0.0 };
             float speed { 0.0f };
             float emittedForce { 0.0f };
             float sourceWave { 0.0f };
@@ -1937,6 +1946,9 @@ private:
     void muteVacatedString(Voice& voice, int stringIndex) noexcept;
     void rememberFinger(int stringIndex) noexcept;
     void releaseFinger(int stringIndex) noexcept;
+    void planShiftArrival(Voice& voice, int stringIndex, const HandFinger& previous,
+                          bool previousKeyDown) noexcept;
+    void startShiftArrival(Voice& voice) noexcept;
     float renderExcitation(Voice& voice) noexcept;
     // The key-up's sound (EngineParameters::releaseNoise): started by
     // beginRelease and muteVacatedString, rendered and launched from the

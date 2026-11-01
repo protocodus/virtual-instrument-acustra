@@ -222,6 +222,16 @@ downstroke, 25 an upstroke and 26 returns to automatic. They never sound. The pa
 **C0**, **C#0** and **D0**, counting middle C as C3; with middle C as C4,
 as in the rest of this guide, they are C1, C#1 and D1.
 
+**Strum keys.** To strum from a keyboard, hold a chord with one hand and
+play the rhythm on two keys with the other: MIDI 29 (**F0** on the panel)
+strums every key held on its channel downward, 30 (**F#0**) upward, at the
+strum key's own velocity, under Finger, Thumb or Pick. The first strum key
+switches on Keys mode: from then on a key only frets its string and sounds
+at the next strum key, so a chord can be changed ahead of the beat. C0, C#0
+or D0 switches Keys mode off; PANIC does too. A strum key with nothing held
+plays nothing. Strum keys need no CHORDS and add no latency, and work the
+same in the Rack Extension.
+
 **Sustain switch and sustain pedal.** CC64 holds released notes on its
 channel until pedal-up; SUSTAIN does the same on every channel. They hold
 independently, so a note stays held while either holds it. Neither catches
@@ -256,6 +266,8 @@ whichever channel sends them.
 | --- | --- |
 | Note On / Off | Pluck, with velocity as force; release velocity sets the damping |
 | Notes 24-26 | Stroke-direction keyswitches (strums, and picked notes under Pick): C0, C#0, D0 as the panel names them (C1-D1 with middle C as C4) |
+| Note 27 | Sustain latch (D#0) |
+| Notes 29-30 | Strum keys: F0 strums the held keys down, F#0 up; the first latches Keys mode |
 | Pitch bend | Slide; 2 semitones by default (RPN 0 sets 0-96) |
 | CC1 | Vibrato |
 | CC2 | Mute: picking-hand damping at the saddle |

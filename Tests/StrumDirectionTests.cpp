@@ -382,12 +382,80 @@ std::vector<float> phrase(double rate, int block)
     return left;
 }
 }
+// The strum keys strum the keys held on their channel, E0 down and F0 up,
+// whatever the technique and however apart the keys arrived. In Keys mode
+// the keys alone sound nothing; a re-strum keeps one owner per key.
+void testStrumKeys()
+{
+    using P = acustra::Performer;
+    auto p = std::make_unique<P>();
+    p->prepare(48000.0, 127); p->setGatherChords(false);
+    // Finger plucks a four-string chord together; the strum key sweeps it.
+    constexpr std::array<int, 4> top { 50, 55, 59, 64 };
+    const auto key = [&](int note, bool on) { keyswitch(*p, note, on); };
+    // The pick enters at the stroke's first string; GuitarSet's scatter
+    // (strumScatterSamples) may reorder the strings between.
+    const auto swept = [&](bool upstroke, const char* message)
+    {
+        for (int string = 2; string < 6; ++string)
+            expect(Access::sign(p->engine(), string) == (upstroke ? -1.0f : 1.0f), message);
+        const int first = Access::delay(p->engine(), upstroke ? 5 : 2);
+        const int last = Access::delay(p->engine(), upstroke ? 2 : 5);
+        expect(first == 0 && last > 0, message);
+    };
+    key(P::keyswitchStrumDown, true);
+    expect(p->strokeMode() == P::StrokeMode::Keys, "E0 did not latch Keys mode");
+    expect(p->engine().getActiveVoiceCount() == 0, "a strum key with no keys held sounded");
+    for (const int note : top) { key(note, true); advance(*p, 200); }
+    advance(*p, 2000);
+    expect(p->engine().getActiveVoiceCount() == 0, "a key sounded on its own in Keys mode");
+    key(P::keyswitchStrumDown, true);
+    swept(false, "E0 did not sweep the held keys low to high as a downstroke");
+    advance(*p, 6000);
+    std::array<int, 4> strings {};
+    for (std::size_t i = 0; i < top.size(); ++i)
+        strings[i] = p->engine().heldString(top[i], 1);
+    key(P::keyswitchStrumUp, true);
+    swept(true, "F0 did not sweep the held keys high to low as an upstroke");
+    for (std::size_t i = 0; i < top.size(); ++i)
+        expect(p->engine().heldString(top[i], 1) == strings[i], "a re-strum moved a held key");
+    advance(*p, 6000);
+    // One key-up each releases every key: a re-strum took no extra owner.
+    for (const int note : top) key(note, false);
+    for (const int note : top)
+        expect(p->engine().heldString(note, 1) < 0, "a re-strummed key stayed down after its key-up");
+    // A strum key on its chord's own sample strums it once.
+    {
+        std::array<float, 127> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 1);
+        for (const int note : top) p->noteOn(0, 1, note, 60);
+        p->noteOn(0, 1, P::keyswitchStrumUp, 100);
+        p->endBlock();
+    }
+    swept(true, "a strum key on its chord's sample did not strum it");
+    for (const int note : top) key(note, false);
+    // D0 leaves Keys mode: a chord sounds as it is played again.
+    key(P::keyswitchAutomatic, true);
+    advance(*p, 96001);
+    for (const int note : top) key(note, true);
+    expect(p->engine().getActiveVoiceCount() == 4, "keys stayed silent after D0");
+    // A panic forgets Keys mode and every silent key.
+    key(P::keyswitchStrumDown, true);
+    key(40, true);
+    p->reset();
+    expect(p->strokeMode() == P::StrokeMode::Automatic, "reset kept Keys mode");
+    key(40, false);
+    key(40, true);
+    expect(p->engine().heldString(40, 1) == 0, "a key silent before reset stayed silent after it");
+}
+
 int main()
 {
     testFreshReleaseAndDefaultPaths();
     testScheduledDirectionsAndRetainedSources();
     testPerformerAlternationRestAndReset();
     testKeyswitches();
+    testStrumKeys();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto reference = phrase(rate, 17);
@@ -395,6 +463,6 @@ int main()
                "alternating stroke audio changed with host block partition");
     }
     if (failures == 0)
-        std::cout << "Strum direction: fresh energy, scheduled releases, retained arrivals/tails, the dotted-eighth alternation window, keyswitches, wrist reset and block invariance passed\n";
+        std::cout << "Strum direction: fresh energy, scheduled releases, retained arrivals/tails, the dotted-eighth alternation window, keyswitches, strum keys, wrist reset and block invariance passed\n";
     return failures == 0 ? 0 : 1;
 }

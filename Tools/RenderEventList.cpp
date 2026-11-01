@@ -2,7 +2,7 @@
 // preset, at 48 kHz in 256-frame blocks, into a 32-bit float stereo WAV:
 //
 //   AcustraRenderEventList <preset 0-7> <events.txt> <out.wav> <seconds>
-//                          [--picking 0|1|2] [--room 0-1]
+//                          [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]
 //
 // Each line of events.txt is "seconds status data1 data2". The preset loads
 // as a fresh plug-in instance does. Used for listening tests.
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     if (argc < 5)
     {
         std::puts("usage: AcustraRenderEventList <preset> <events.txt> <out.wav> <seconds>"
-                  " [--picking 0|1|2] [--room 0-1]");
+                  " [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]");
         return 1;
     }
     constexpr double rate = 48000.0;
@@ -56,6 +56,8 @@ int main(int argc, char** argv)
             parameters.picking = static_cast<acustra::PickingTechnique>(std::atoi(argv[i + 1]));
         else if (option == "--room")
             parameters.room = static_cast<float>(std::atof(argv[i + 1]));
+        else if (option == "--release-noise")
+            parameters.releaseNoise = static_cast<float>(std::atof(argv[i + 1]));
     }
     std::vector<Event> events;
     std::ifstream list(argv[2]);

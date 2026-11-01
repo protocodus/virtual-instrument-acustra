@@ -5,6 +5,75 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-01 — strum keys F0 and F#0, and Keys mode, 1.9.13
+
+**Why.** A user reported that strumming did not work. It did, but only for
+notes that land on one sample (a sequencer's chord) or that CHORDS gathers
+at 30 ms of latency, which the Rack Extension cannot offer; and under Finger
+a three- or four-note chord is plucked together by design. A chord played
+on a keyboard arrives a few milliseconds apart, so it was plucked note by
+note, which reads as strumming that does not work.
+
+**What was decided.** Two keyswitches above the existing four: F0 (29)
+strums every key held on its channel downward, F#0 (30) upward, at the strum
+key's velocity, through the same planned-shape, sweep, scatter and muted-
+string path a sequenced chord takes, with the direction forced as C0/C#0
+force it, so Finger strums too. E0 (28) is skipped: it is the Rack
+Extension's hammer-on cue. The first strum key latches Keys mode
+(`Performer::StrokeMode::Keys`), in which a key only frets its string and
+sounds at the next strum key: without it a live chord would sound once when
+pressed and again at the strum. A key still sounding is struck again where
+it is and keeps one owner. C0, C#0, D0, reset and prepare leave Keys mode;
+All Notes Off and All Sound Off forget the held keys. No parameter and no
+saved state, as with the other keyswitches. `Acustra.StrumDirection` checks
+direction, silence in Keys mode, ownership after re-strums, a strum key on
+its chord's own sample, D0 and reset.
+
+Considered and not done: Gather Chords on by default (30 ms of latency on
+every note, and still nothing in Reason); reading a spread chord's arrival
+order as a direction (rejected 2026-10-12).
+
+## 2026-11-01 — a finger slides along the winding into a new fret, 1.9.13 (A–Z set; C adopted under the owner's standing rule, not yet heard)
+
+**What was decided.** The same user found chord changes sterile without
+finger-slide sound. The engine had the sliding-finger contact (2026-10-11),
+but only for a held note's continuous slide. Now a note that takes a wound
+string at a different fret from the one a finger held there, still down or
+released under 0.25 s ago, starts the finger the last stretch short of its
+fret and lets it decelerate in (15 ms time constant) at the speed of a
+0.12 s shift (0.15-1.2 m/s), through the same contact law. It begins at
+the pick's contact: the note-on is the first the engine knows of where the
+hand goes, and the contact re-primes the string. All three figures are
+authored, not measured.
+
+**Letters.** A: 1.9.12 shipping. B: the arrival at the restrained slide's
+force (8% of the key-up brush). C: the arrival at the key-up brush's own
+force share, 0.0005, the same pad on the same wraps; the held slide keeps
+its restrained level. Barre chords F-G-A-G-F and a shifting line on the A
+and D strings, Dreadnought Steel, Release Noise 50% on every letter (the
+presets load at 10%), 48 kHz, whole-file RMS match (trims 0.000 dB). Null
+against A: B -61.3 dB, C -39.3 dB; over the chord changes B sits about 57 dB
+and C about 34 dB under the chord.
+
+**Chosen.** C, under the owner's standing rule that the candidate wins; the
+owner has not heard it. The set is outside the repository
+(`acustra/listening-tests/2026-11-01-finger-shift/` in the project files).
+
+**What it licensed.** The arrival and its force share only. Release Noise's
+10% preset level and the held slide's level are unchanged.
+
+## 2026-11-01 — high notes "a bit plastic": nothing shipped
+
+The same user heard the higher register as less natural than the lower,
+helped by reverb. That matches the measured gap in README Known gaps: the
+recordings snap and then mellow, while the engine's upper partials die at
+about 35% of the recorded rate, and the attack transient (2.3-12 kHz energy
+between the harmonics, 10-25 dB over the engine's in the first 15 ms on mid
+and high notes) is missing. The bending loss that would close the decay
+was rejected on 2026-09-28 because the attack lacks that transient (see
+"snap then mellow" below),
+so under the A–Z limit neither half ships alone. No change was made.
+
 ## 2026-10-31 — a re-plucked string's old wave retires once it is gone, 1.9.12 (A–Z set; adopted under the owner's standing rule, not yet heard)
 
 **What was decided.** Whether to retire the retained tail, the old wave a

@@ -459,12 +459,12 @@ private:
         g.setFont (displayFont (16.0f, juce::Font::bold));
         g.drawText ("STRINGS", 18, 9, 116, 22,
                     juce::Justification::centredLeft, false);
-        // The performance legend: the stroke keyswitches below the guitar's
-        // range (Performer::StrokeMode) and the two wheels.
+        // The performance legend: the stroke keyswitches and strum keys
+        // below the guitar's range (Performer::StrokeMode) and the two wheels.
         g.setFont (displayFont (10.5f));
         g.setColour (mutedText);
-        g.drawText ("KEYSWITCHES  C0 DOWN  C#0 UP  D0 AUTO     MOD WHEEL  VIBRATO"
-                    "     PITCH BEND  TO BEND RANGE",
+        g.drawText ("KEYS  C0 DOWN  C#0 UP  D0 AUTO  F0/F#0 STRUM    MOD WHEEL  VIBRATO"
+                    "    PITCH BEND  BEND RANGE",
                     150, 8, 510, 22, juce::Justification::centredLeft, false);
         g.setFont (displayFont (11.5f));
         g.setColour (brass);

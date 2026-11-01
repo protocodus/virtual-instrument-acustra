@@ -39,6 +39,23 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.13 — 2026-11-01 — strum keys, and fingers that slide between frets
+
+- Strum keys: F0 strums every held key downward and F#0 upward, at the strum
+  key's velocity, under any technique. The first one switches to Keys mode,
+  where chord keys only fret their strings and sound at the next strum key,
+  so a chord played live strums without the latency of Gather Chords (and in
+  Reason, which has none). C0, C#0 or D0 returns to playing keys as pressed.
+  Before, only notes landing on one sample strummed: a live chord was plucked
+  note by note, and under Finger a three- or four-note chord is plucked
+  together, not strummed.
+- A finger that changes fret on a wound string within a quarter second of
+  leaving the old one now slides along the winding into the new fret, heard
+  with the new note. At Release Noise 50% it sits about 34 dB under a barre
+  chord change; it scales with Release Noise (10% on the presets). Adopted
+  under the owner's standing rule; not yet heard. Details in
+  [the decision log](Docs/decisions.md).
+
 ### 1.9.12 — 2026-10-31 — a re-plucked string's old wave lets go sooner
 
 - When a string is plucked again, the wave it was still carrying now stops
@@ -345,7 +362,10 @@ one chord shape and, with a pick, swept as a strum whose string timing,
 scatter, lighter entry and exit strings and upstroke balance are measured on
 GuitarSet; under Finger three or four strings are plucked together. Strums
 alternate within a dotted eighth; keyswitches C0, C#0 and D0 latch down, up or
-automatic. Gather Chords (CHORDS) groups keys within 30 ms into one shape at
+automatic. The strum keys F0 (down) and F#0 (up) strum whatever keys are held
+on their channel at their own velocity; the first one latches Keys mode, in
+which a key frets its string silently until the next strum key, and C0, C#0
+or D0 leaves it. Gather Chords (CHORDS) groups keys within 30 ms into one shape at
 30 ms of reported latency. A key-up waits one 1/32 note, so a re-struck note
 joins its ringing string, then the hand damps it, adds its own touch (Release
 Noise) and lets a fretted note's pitch fall as GuitarSet's note ends do.
@@ -460,7 +480,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Picking** | Finger, Pick (sharper, nearer the bridge, darker when soft) or Thumb (rounder, nearer the neck). |
 | **Capture** | Stereo mic, a single measured mono mic, or the under-saddle piezo through its preamp. |
 | **Piezo Mix** | The piezo beneath the microphones on Main; 20% for a new instance, 0% for an older session. |
-| **Release Noise** | The damping hand's touch as a note ends, and faint friction on held wound-string slides; 0% adds nothing. |
+| **Release Noise** | The damping hand's touch as a note ends, faint friction on held wound-string slides, and a finger sliding along a wound string into a new fret; 0% adds nothing. |
 | **Room** | Small-studio reflections around the microphones, 0-100% (10% for a new instance); the piezo stays dry. |
 | **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
 | **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |

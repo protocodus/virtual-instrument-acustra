@@ -10085,6 +10085,8 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
         voice.legatoContactSamples = 0;
         voice.legatoContactAmplitude = 0.0f;
     }
+    const HandFinger previousFinger = hand_[static_cast<std::size_t>(string)];
+    const bool previousKeyDown = voice.played && voice.keyDown;
     voice.harmonic = harmonic;
     voice.played = true;
     voice.keyDown = true;
@@ -10105,6 +10107,8 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     voice.mutedStroke = false;
     configureVoice(voice, string, midiNote, !continuing);
     voice.onsetSample = sampleClock_;
+    if (!continuing)
+        planShiftArrival(voice, string, previousFinger, previousKeyDown);
     rememberFinger(string);
     voice.strumming = strumMember;
     // A forming chord may move an unfired string while another stroke has
@@ -10564,6 +10568,7 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
     else
         bridgeDerivativesCrossRelease_ = true;
     configureVoice(voice, stringIndex, voice.midiNote, false);
+    startShiftArrival(voice);
     if (voice.mutedStroke)
     {
         // The pluck's own release state is the finger's from the start.
@@ -11531,8 +11536,57 @@ float woundContactBand(float cyclesPerSample) noexcept
 
 void AcustraEngine::primeFretMotion(Voice& voice) noexcept
 {
+    // A planned shift survives the pick's own re-priming (firePluck).
+    const double arrivalFrom = voice.fretMotion.arrivalFrom;
     voice.fretMotion = {};
     voice.fretMotion.length = voice.speakingLengthMetres;
+    voice.fretMotion.arrivalFrom = arrivalFrom;
+}
+
+// A position shift on a wound string: the finger that held another fret on
+// it a moment ago slides along the winding to the new one, as a guitarist's
+// does between chords and positions, and its last stretch is heard with the
+// new note (renderFretMotion sounds it by the slide's contact law). It cannot
+// come before the note-on that says where the hand goes, and the pick's
+// contact re-primes the string, so it begins there. Authored, not measured:
+// the shift's 0.12 s duration (so its speed, held to 0.15-1.2 m/s), the
+// finger's 15 ms deceleration into the fret, and the 0.25 s after a key-up
+// beyond which the finger has left the string. Open strings, harmonics and
+// plain strings have no finger on a winding to slide.
+void AcustraEngine::planShiftArrival(Voice& voice, int stringIndex,
+                                     const HandFinger& previous,
+                                     bool previousKeyDown) noexcept
+{
+    constexpr double liftedSeconds = 0.25;
+    voice.fretMotion.arrivalFrom = 0.0;
+    if (stringIndex >= 4 || voice.harmonic != 1 || voice.fret < 1 || !previous.valid
+        || previous.fret == voice.fret)
+        return;
+    if (!previousKeyDown
+        && static_cast<double>(sampleClock_ - previous.heldAt) > liftedSeconds * sampleRate_)
+        return;
+    voice.fretMotion.arrivalFrom = voice.speakingLengthMetres * std::exp2(
+        static_cast<double>(voice.fret - previous.fret) / 12.0);
+}
+
+void AcustraEngine::startShiftArrival(Voice& voice) noexcept
+{
+    constexpr double shiftSeconds = 0.12;
+    constexpr double arrivalSeconds = 0.015;
+    auto& motion = voice.fretMotion;
+    const double from = motion.arrivalFrom;
+    motion.arrivalFrom = 0.0;
+    if (!(from > 0.0) || !(targetParameters_.releaseNoise > 0.0f))
+        return;
+    const double target = voice.speakingLengthMetres;
+    const double distance = exact::abs(from - target);
+    const double speed = std::clamp(distance / shiftSeconds, 0.15, 1.2);
+    // An exponential approach covers speed * time constant before it rests.
+    const double travel = std::min(distance, speed * arrivalSeconds);
+    motion.length = target + (from > target ? travel : -travel);
+    motion.arriving = true;
+    motion.arrivalCoefficient = static_cast<float>(
+        1.0 - std::exp(-1.0 / (arrivalSeconds * sampleRate_)));
 }
 
 void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
@@ -11546,11 +11600,17 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
     // Never differentiate pitch: member bends, vibrato and attack tension
     // change frequency while the finger stays at the same fret. The tiny
     // terminal snap is a numerical rest condition, not a MIDI motion layer.
+    const double glide = motion.arriving ? motion.arrivalCoefficient : delaySmoothing_;
     motion.length = touching
-        ? previous + static_cast<double>(delaySmoothing_) * (target - previous)
+        ? previous + glide * (target - previous)
         : (motion.remaining > 0 ? previous : target);
     if (touching && exact::abs(target - motion.length) < 1.0e-10)
+    {
         motion.length = target;
+        motion.arriving = false;
+    }
+    if (!touching)
+        motion.arriving = false;
     motion.speed = touching
         ? static_cast<float>((motion.length - previous) * sampleRate_) : 0.0f;
     motion.emittedForce = 0.0f;
@@ -11601,7 +11661,14 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
         // Finger contact supplies energy, so a held but quiet string may
         // still scrape; peakLevel is the preceding stroke's bounded scale.
         const float speedLevel = 2.0f * speed / (speed + 0.25f);
-        const float rms = 0.00004f * voice.peakLevel * (amount / 0.5f)
+        // A finger shifting to a new fret (startShiftArrival) is the
+        // key-up's brush carried along the winding: the same pad on the
+        // same wraps, so it takes the brush's own force share (brushShare in
+        // startReleaseNoise) rather than the restrained slide's.
+        constexpr float slideShare = 0.00004f;
+        constexpr float arrivalShare = 0.0005f;
+        const float rms = (motion.arriving ? arrivalShare : slideShare)
+            * voice.peakLevel * (amount / 0.5f)
             * contact * speedLevel;
         motion.forceGain = rms * static_cast<float>(exact::sqrt(3.0 / energy));
         motion.forceRms = rms;

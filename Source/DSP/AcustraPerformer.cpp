@@ -118,6 +118,7 @@ void Performer::prepare(double sampleRate, int maximumBlockSize)
     nextUpstroke_ = false;
     lastStrokeUpstroke_ = false;
     strokeMode_ = StrokeMode::Automatic;
+    clearKeys(0);
     heldCount_ = 0;
     droppedEvents_ = 0;
     gatherWindow_ = gatherWindowSamples(sampleRate_);
@@ -224,6 +225,7 @@ void Performer::reset() noexcept
     nextUpstroke_ = false;
     lastStrokeUpstroke_ = false;
     strokeMode_ = StrokeMode::Automatic;
+    clearKeys(0);
     for (int channel = 1; channel <= 16; ++channel)
         refreshPitchBend(channel);
     heldCount_ = 0;
@@ -393,6 +395,14 @@ void Performer::renderTo(int sample) noexcept
 // same MIDI chord can land on different strings in different hosts.
 void Performer::flushNoteGroup() noexcept
 {
+    const bool strumKey = strumRequest_ != StrokeMode::Automatic;
+    if (strumKey)
+        collectStrum();
+    // A strum key's direction holds for its own stroke; Keys mode itself
+    // latches none.
+    const StrokeMode strokeMode = strumKey ? strumRequest_
+        : strokeMode_ == StrokeMode::Keys ? StrokeMode::Automatic : strokeMode_;
+    strumRequest_ = StrokeMode::Automatic;
     std::sort(pendingNoteOns_.begin(),
               pendingNoteOns_.begin() + pendingNoteOnCount_,
               [](const PendingNoteOn& left, const PendingNoteOn& right)
@@ -462,9 +472,9 @@ void Performer::flushNoteGroup() noexcept
     // This group is simultaneous MIDI or a chord explicitly owned by Gather
     // Chords. With gathering off, distinct event timestamps never join it.
     const bool fingerPair = soundingNotes == 2 && fingerTechnique_
-        && strokeMode_ == StrokeMode::Automatic
+        && strokeMode == StrokeMode::Automatic
         && engine_.performanceRealism().fingerPairs;
-    bool strum = soundingNotes >= 3 || fingerPair
+    bool strum = soundingNotes >= 3 || fingerPair || (strumKey && soundingNotes == 2)
         || (soundingNotes == 2 && pickTechnique_
             && engine_.performanceRealism().twoStringStrokes);
     // The rest is measured between the strokes' own samples, so no block
@@ -533,7 +543,7 @@ void Performer::flushNoteGroup() noexcept
             meanVelocity /= static_cast<float>(sounding);
         const auto chordStrings = static_cast<int>(
             std::count(onString.begin(), onString.end(), true));
-        pinch = fingerTechnique_ && strokeMode_ == StrokeMode::Automatic && completePlan
+        pinch = fingerTechnique_ && strokeMode == StrokeMode::Automatic && completePlan
             && ((engine_.performanceRealism().fingerChords
                  && chordStrings >= 3 && chordStrings <= 4)
                 || (fingerPair && chordStrings == 2));
@@ -568,8 +578,8 @@ void Performer::flushNoteGroup() noexcept
                 nextUpstroke_ = lastStrokeUpstroke_;
             else if (restarted)
                 nextUpstroke_ = false;
-            if (strokeMode_ != StrokeMode::Automatic)
-                nextUpstroke_ = strokeMode_ == StrokeMode::Up;
+            if (strokeMode != StrokeMode::Automatic)
+                nextUpstroke_ = strokeMode == StrokeMode::Up;
             lastStrokeSample_ = strokeSample;
             // A complete fretted shape gives the physical string indices. A
             // larger group or a controller-owned layout has no complete plan:
@@ -677,8 +687,8 @@ void Performer::flushNoteGroup() noexcept
     const bool pickedStroke = !strum && pickHand && pendingNoteOnCount_ > 0;
     bool pickedUpstroke = continuedStroke ? lastStrokeUpstroke_
                         : !restarted && nextUpstroke_;
-    if (strokeMode_ != StrokeMode::Automatic)
-        pickedUpstroke = strokeMode_ == StrokeMode::Up;
+    if (strokeMode != StrokeMode::Automatic)
+        pickedUpstroke = strokeMode == StrokeMode::Up;
     bool plucked = false;
     for (int index = 0; index < pendingNoteOnCount_; ++index)
     {
@@ -689,6 +699,8 @@ void Performer::flushNoteGroup() noexcept
         plucked |= playNote(note.note, note.velocity, note.channel,
                             strum ? note.pluckDelay : 0, strum && !pinch, unambiguous,
                             pickedStroke && pickedUpstroke);
+        if (note.restruck)
+            engine_.noteOff(note.note, note.channel);
     }
     for (int string = 0; string < AcustraEngine::stringCount; ++string)
         if (mutedDelay[static_cast<std::size_t>(string)] >= 0)
@@ -730,6 +742,39 @@ void Performer::flushNoteGroup() noexcept
     pendingNoteOffCount_ = 0;
 }
 
+// A strum key strikes every key held on its channel, at its own velocity.
+void Performer::collectStrum() noexcept
+{
+    const int channel = strumChannel_;
+    auto& down = keysDown_[static_cast<std::size_t>(channel - 1)];
+    auto& silent = silentKeys_[static_cast<std::size_t>(channel - 1)];
+    for (int note = 0; note < 128; ++note)
+    {
+        const auto word = static_cast<std::size_t>(note / 32);
+        const auto bit = 1u << (note % 32);
+        if ((down[word] & bit) == 0u || pendingNoteOnCount_ == sampleGroupCapacity)
+            continue;
+        const bool wasSilent = (silent[word] & bit) != 0u;
+        silent[word] &= ~bit;
+        pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
+            = { note, channel, strumVelocity_, 0,
+                !wasSilent && engine_.heldString(note, channel) >= 0 };
+    }
+}
+
+// Zero clears every channel.
+void Performer::clearKeys(int midiChannel) noexcept
+{
+    for (int channel = 1; channel <= 16; ++channel)
+        if (midiChannel == 0 || channel == midiChannel)
+        {
+            keysDown_[static_cast<std::size_t>(channel - 1)] = {};
+            silentKeys_[static_cast<std::size_t>(channel - 1)] = {};
+        }
+    if (midiChannel == 0)
+        strumRequest_ = StrokeMode::Automatic;
+}
+
 // Renders up to the event, then groups it with the other Note Ons and Offs
 // of its sample or dispatches it. Returns true when a Note On joined the
 // group at its sample.
@@ -758,12 +803,50 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
             const int note = static_cast<int>(data[1] & 0x7fu);
             if (note == keyswitchSustain)
                 setKeyswitchSustain(!keyswitchSustain_);
+            else if (isStrumKey(note))
+            {
+                strokeMode_ = StrokeMode::Keys;
+                strumRequest_ = note == keyswitchStrumDown ? StrokeMode::Down
+                                                           : StrokeMode::Up;
+                strumChannel_ = midiChannel;
+                strumVelocity_ = static_cast<float>(data[2] & 0x7fu) / 127.0f;
+                // Keys of this sample that came before it are struck by it
+                // (collectStrum), not plucked on their own as well.
+                pendingNoteOnCount_ = static_cast<int>(std::remove_if(
+                    pendingNoteOns_.begin(), pendingNoteOns_.begin() + pendingNoteOnCount_,
+                    [midiChannel](const PendingNoteOn& pending)
+                    { return pending.channel == midiChannel; })
+                    - pendingNoteOns_.begin());
+            }
             else
                 strokeMode_ = note == keyswitchDownstroke ? StrokeMode::Down
                             : note == keyswitchUpstroke ? StrokeMode::Up
                                                         : StrokeMode::Automatic;
         }
         return false;
+    }
+    const int key = size >= 2 ? static_cast<int>(data[1] & 0x7fu) : 0;
+    const auto keyWord = static_cast<std::size_t>(key / 32);
+    const auto keyBit = 1u << (key % 32);
+    auto& down = keysDown_[static_cast<std::size_t>(midiChannel - 1)][keyWord];
+    auto& silent = silentKeys_[static_cast<std::size_t>(midiChannel - 1)][keyWord];
+    if (positiveNoteOn)
+        down |= keyBit;
+    if (positiveNoteOn && (strokeMode_ == StrokeMode::Keys || (silent & keyBit) != 0u))
+    {
+        // Keys mode: the key frets its string and waits for a strum key.
+        silent |= keyBit;
+        return false;
+    }
+    if (noteOff)
+    {
+        down &= ~keyBit;
+        if ((silent & keyBit) != 0u)
+        {
+            // Never struck, so nothing sounds to release.
+            silent &= ~keyBit;
+            return false;
+        }
     }
     if (positiveNoteOn)
     {
@@ -1007,14 +1090,20 @@ void Performer::dispatchMidiData(const std::uint8_t* data, int size) noexcept
             engine_.allNotesOff(midiChannel);
             for (int channel = 1; channel <= 16; ++channel)
                 if (channelIsInControllerScope(midiChannel, channel))
+                {
                     portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
+                    clearKeys(channel);
+                }
         }
         else if (controller == 120u)
         {
             engine_.allSoundOff(midiChannel);
             for (int channel = 1; channel <= 16; ++channel)
                 if (channelIsInControllerScope(midiChannel, channel))
+                {
                     portamentoSources_[static_cast<std::size_t>(channel - 1)] = -1;
+                    clearKeys(channel);
+                }
         }
         else if (controller == 121u)
         {
