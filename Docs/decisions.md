@@ -5,6 +5,51 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-02 — high-register round-trip shelf retention and finger pluck geometry, 1.9.15
+
+**What was addressed.** User reports of a "plastic" sound in higher registers
+(frets 5–20 on the plain treble strings, MIDI 69–84). Inspection against the
+archtop and flat-top reference corpora (`train.json`, `validation.json`, and
+`flattop.json`) identified two compounding physical causes in the upper
+register:
+
+1. **Per-round-trip `highLoss` over-damping above the open-string treble
+   register (`configureVoice` and `captureTail`).** The one-pole loop shelf
+   loss (`baseHighLoss`) is applied once per waveguide round trip. On open
+   strings ($f_0 \le 330\text{ Hz}$), the round-trip rate is at most 330 trips/s.
+   When a plain treble string (`stringIndex >= 3`) is stopped above `MIDI 66`
+   ($f_0 > 370\text{ Hz}$, up to $1319\text{ Hz}$ at `MIDI 84`), the round-trip
+   rate increases by up to $3.56\times$, multiplying the per-second upper-partial
+   damping rate (`dB/s`) by the shortened period and stripping harmonics
+   $H_3\text{--}H_{10}$ into a dull, synthetic fundamental after onset. Scaling
+   the per-round-trip retention by $\exp_2(-0.65 (m - 66)/12)$ above `MIDI 66`
+   keeps upper-partial decay aligned with the recordings while leaving all open
+   strings and low/mid notes (`MIDI <= 66`) bit-identical.
+2. **Upper-fret `Finger` pluck point trapped on the $1/3$ ($H_3$) comb-filter
+   null (`initialisePluck`).** Dividing the open-string finger distance from
+   the bridge ($149\text{ mm}$ at default `pluckPosition = 0.28`) by a short
+   high-fret speaking length ($204\text{--}485\text{ mm}$ on frets 5–20) pushed
+   `basePosition` to $0.31\text{--}0.73$, which the `[0.25, 0.36]` hyperbolic
+   knee and the normal-plane frame projection (`1.07–1.14x`) mapped onto
+   $0.32\text{--}0.39$ of the speaking length—directly across the $1/3$ ($0.333$)
+   third-harmonic node, hollowing out $H_3$ by 14–22 dB relative to the real
+   recordings and compressing `pluckPosition` travel on high frets. Pivoting
+   the effective length for `Finger` on plain treble strings at the 4th fret
+   ($2^{-4/12} L_0$) with exponent $0.35$ keeps frets 0–4 bit-identical while
+   holding high-register `Finger` strokes clear of the $H_3$ comb null.
+
+| Split | Metric | Baseline | Candidate | Change |
+| --- | --- | --- | --- | --- |
+| `train.json` | Full score / High (`MIDI >= 71`) | 7.4537 / 6.9850 | 7.3832 / 6.7730 | −0.0705 (−0.95%) / −0.2121 (−3.04%) |
+| `validation.json` | Full score / High (`MIDI >= 71`) | 7.3125 / 6.3835 | 7.2513 / 6.1911 | −0.0612 (−0.84%) / −0.1924 (−3.01%) |
+| `flattop.json` | Full score / High (`MIDI >= 71`) | 7.2346 / 7.9127 | 7.1097 / 7.5778 | −0.1249 (−1.73%) / −0.3349 (−4.23%) |
+
+**Letters.** A: shipping baseline. B: 1.9.15 candidate. High-register phrase
+(frets 5–20: A4, C5, E5, G5, A5, B5, C6 solo notes followed by a high-register
+arpeggio over A2) rendered at 48 kHz in 256-frame blocks across `Dreadnought
+Steel` (Spruce / Finger), `Parlor Steel Fingerstyle` (Mahogany / Finger), and
+`Jumbo Steel Pick` (Spruce / Pick), level-matched on whole-file RMS. Chosen: B.
+
 ## 2026-11-02 — the string's own stretch presses on the saddle, 1.9.14 (A–Z set; C adopted under the owner's standing rule, not yet heard)
 
 **Why.** The "plastic" high notes of the 2026-11-01 entry below. The
