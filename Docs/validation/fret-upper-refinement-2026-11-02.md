@@ -46,6 +46,62 @@ the letter key live beside the set. No listener preference is asserted.
 
 ## Verification status
 
-The final test record is completed after the broad native and Rack-adapter
-suites finish. This source iteration does not claim an installed Reason
-test, a translated U45 package, a plug-in build or a portal release.
+All targets in the JUCE-free Release build compile, including normal and
+extended-rate C++17 DSP. The full engine contract, FretMotion, WoundSlide,
+PadReleaseCorner and ShiftArrivalAudibility pass. The review analyzer's
+independent synthetic checks and self-test registry pass.
+
+All 115 registered native gates were exercised. Their final formal status
+is **113 passed, two timed out: BodyShape (90 s) and VelocityRealism (60 s)**.
+This is not an all-green result. No deadline or numeric tolerance was raised.
+The initial concurrent non-perf run completed 108 cases: 100 passes and eight
+timeouts. Six of those timed-out cases pass in the subsequent serial runs:
+ConstructionHistory (198.45 s), StringPitchRealism (38.87 s), PalmMutePitch
+(40.42 s), StrummingRealism (42.55 s), ReleaseRealism (33.90 s), and
+PhysicalHandRealism (43.90 s).
+
+The retained serial controls show why wall time and model correctness must
+remain separate. The old BodyShape baseline completes in 81.48 s, with
+45.22 s of child CPU; the candidate's CTest attempt reaches 90 s with only
+30.56 s of child CPU accumulated. PalmMutePitch's baseline times out at 60 s,
+while its candidate completes in 40.42 s; its changed DSP paths do not execute
+in that fixture. ReleaseRealism completes on both, baseline/candidate
+34.21/33.90 s and child CPU 21.92/21.79 s. VelocityRealism's old baseline also
+reaches its 60 s limit. These are separate measured controls, not a proof
+that every earlier timeout was scheduling interference.
+
+Additional full-run diagnostics collect the remaining signal assertions and
+CPU time with a separate safety watchdog. They explicitly grant **no CTest
+gate credit** and do not replace the failed 90/60 s gates. BodyShape completes
+with zero assertion failures at 97.81 s wall / 45.89 s child CPU.
+VelocityRealism completes all assertions on both versions: baseline
+157.72 s wall / 96.33 s child CPU; candidate 99.21 s wall / 89.36 s child CPU.
+Even the baseline's measured CPU time exceeds its 60 s formal limit on this
+machine. These are completion diagnostics, not a claimed optimization
+benchmark or a passing replacement for the failed time gates.
+
+Both perf-tier gates pass with other task builds and renders idle. On the
+Apple M1 Max at 48 kHz, the six-string engine ratio is 0.0987x realtime
+(gate 0.25x). The eight-preset benchmark uses 256-frame callbacks, three
+repetitions, and a 0.28x median budget: every preset passes at 0.1023–0.1146x.
+The maximum observed block uses 1.266 times its 5.33 ms deadline, so this is
+not evidence of zero deadline misses. These are native development-machine
+figures, not Reason scheduling or translated-target CPU measurements.
+
+The separate Rack integration's complete eight-stage SDK 5 suite passes:
+declarations, all eight patches, pinned panel geometry, C++17 compilation,
+demo renders, output-rate handling, wrapper host contracts, and all-patch
+render/release/silence at 44.1/48/88.2/96/192 kHz. The task-scoped canonical
+pin/version/source-ownership check also passes. All 15 host-rate/quality
+combinations retain their declared event and output contracts.
+
+Raw evidence is retained in the workspace's
+`diagnostics/acustra-fret-upper-20261102/`: original failed runs, serial
+comparisons, child CPU measurements, completion diagnostics, both perf
+results, all Rack checks, source/tool/binary hashes and 234-case comparisons.
+`final-check-summary.json` preserves each formal gate's result history and
+does not turn diagnostic completions into passes.
+
+This source iteration does not claim an installed Reason test, a translated
+U45 package, a plug-in build or a portal release. The two formal timeout
+gates remain open; no PR is merged.
