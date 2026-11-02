@@ -48,8 +48,11 @@ soft-contact filter, rather than claiming to complete high-register realism.
 
 ## Reproducible comparison
 
-`Tools/RenderFretUpperReview.cpp` renders the shipping path with fixed events,
-seeds and 64-frame blocks. Its 234 cases cover 44.1/48/96 kHz; B/high-E frets
+`Tools/RenderFretUpperReview.cpp` renders the canonical Performer/engine path
+at each stated native rate, with fixed events, seeds and 64-frame blocks.
+It does not include a front end's output-rate adapter or host scheduling.
+Output is unity and mixed Piezo is 20%; individual high-note cases are dry,
+while the fret phrases use Room 10%. Its 234 cases cover 44.1/48/96 kHz; B/high-E frets
 9, 12, 13, 14, 16, 19, 20 at velocity 100; soft velocity 40 at frets 12, 16,
 20; Finger/Pick/Thumb; wound lines and allocated barre-chord shifts at Release
 Noise 0/0.1/0.5; plain/open/same-fret and fixed-fret member-bend controls.

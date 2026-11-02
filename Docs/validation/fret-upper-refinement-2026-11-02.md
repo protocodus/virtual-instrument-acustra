@@ -1,5 +1,10 @@
 # Fret and upper-register validation — 2026-11-02
 
+Follow-up: both timeout gates were subsequently resolved without changing
+their limits, cases or tolerances. [The goal follow-up](fret-upper-goal-2026-11-02.md)
+records the final 115/115 passing coverage. The initial results below remain
+as the original evidence, including its failed runs and diagnostic caveats.
+
 Baseline: canonical `73665a810f17a07a2dff0bc6cb4adbc2b54284b1`, Acustra 1.9.13.
 Candidate: Acustra 1.9.14 on `codex/fret-upper-20261102`.
 Native JUCE-free Release build, AppleClang 21.0.0, C++17 DSP compatibility,

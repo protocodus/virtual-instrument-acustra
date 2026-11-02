@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <numbers>
@@ -117,6 +118,15 @@ using Access = acustra::AcustraEngineTestAccess;
 using Complex = std::complex<double>;
 using Matrix = std::array<Complex, 3>;
 constexpr double pi = std::numbers::pi;
+
+std::unique_ptr<Engine> freshPrepared(const acustra::EngineParameters& parameters,
+                                     double rate, int block)
+{
+    auto engine = std::make_unique<Engine>();
+    engine->setParameters(parameters);
+    engine->prepare(rate, block);
+    return engine;
+}
 
 // The A0 extension belongs to the Original's 90.8 Hz radiation mode and
 // its 90.3 Hz joint-body companion. Read their actual digital decay, rather
@@ -470,6 +480,10 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
     for (const auto twin : twins) paired += twin >= 0;
     expect(paired == 18, "steel's own bridge does not twin its 18 resolved modes");
     double worst = 0;
+    // The live transition starts on the same silent Spruce guitar for each
+    // target Wood. Copy its pristine prepared value, including caches, clocks
+    // and RNG; do not replace the distinct fresh construction under test.
+    std::array<std::unique_ptr<Engine>, 4> liveStarts;
     for (const double rate : {8000.0, 44100.0, 48000.0, 96000.0})
       for (const float qScale : {.05f, 1.0f, 1.8f})
        for (int shape = 0; shape < 4; ++shape)
@@ -511,9 +525,13 @@ void testSteelOwnBridgeSharesTheRadiationPoles()
             }
             if (rate != 48000.0 || qScale != 1.0f) continue;
             // Changing Wood live reaches the bridge as a fresh engine does.
-            auto live = std::make_unique<Engine>();
-            auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
-            live->setParameters(first); live->prepare(48000, 64);
+            auto& start = liveStarts[std::size_t(shape)];
+            if (!start)
+            {
+                auto first = p; first.bodyMaterial = acustra::BodyMaterial::Spruce;
+                start = freshPrepared(first, 48000, 64);
+            }
+            auto live = std::make_unique<Engine>(*start);
             live->setParameters(p); process(*live, 64);
             const auto liveBridge = Access::bridge(*live);
             bool same = true;
@@ -835,6 +853,7 @@ void testSteelBlendJointBridgeRingsOnItsRadiation()
     expect(pairs.size() == 8, "the retained joint body no longer drains through 8 bridge modes");
     double worstCents = 0.0, worstQ = 0.0, worstDefinite = 0.0;
     int liveMismatches = 0;
+    std::unique_ptr<Engine> liveStart;
     for (int rate : { 44100, 48000, 96000 })
         for (int shape = 0; shape < 4; ++shape)
             for (int wood = 0; wood < 3; ++wood)
@@ -868,9 +887,9 @@ void testSteelBlendJointBridgeRingsOnItsRadiation()
                 }
                 if (rate != 48000) continue;
                 // Live: from the default Dreadnought/Spruce to this Shape and Wood.
-                auto live = std::make_unique<Engine>();
-                live->setParameters(acustra::EngineParameters {});
-                live->prepare(rate, 64);
+                if (!liveStart)
+                    liveStart = freshPrepared(acustra::EngineParameters {}, rate, 64);
+                auto live = std::make_unique<Engine>(*liveStart);
                 live->setParameters(p); process(*live, 64);
                 const auto liveBridge = Access::bridge(*live);
                 for (const auto& pair : pairs)
@@ -1120,6 +1139,100 @@ void testConstructionSwitchesDoNotTick()
               << " dB (" << worstName << ")\n";
 }
 
+// Independent windowed Fourier observer. The original pitch search evaluated
+// the same Hann weights and a transcendental oscillator for every sample of
+// every trial frequency. Keep the identical samples, window, frequencies and
+// search, but prepare the window once and advance exp(-j*w*n) by a unit-circle
+// recurrence. Re-anchor every 256 samples to bound accumulated roundoff.
+// testPitchProbeMatchesDirectFourierSum checks the original direct formula.
+class HannPitchProbe
+{
+public:
+    HannPitchProbe(const std::vector<double>& signal, int first, int last, double rate)
+        : first_(first), rate_(rate), weighted_(std::size_t(last-first))
+    {
+        for (int index = first; index < last; ++index)
+        {
+            const double weight = 0.5 - 0.5*std::cos(2*pi*(index-first)/(last-first));
+            weighted_[std::size_t(index-first)] = weight * signal[std::size_t(index)];
+        }
+    }
+
+    Complex coefficient(double frequency) const
+    {
+        const double angle = -2*pi*frequency/rate_;
+        const Complex step = std::polar(1.0, angle);
+        Complex sum {};
+        for (std::size_t first = 0; first < weighted_.size(); first += 256)
+        {
+            auto oscillator = std::polar(1.0, angle*(first_+double(first)));
+            const std::size_t last = std::min(first+256, weighted_.size());
+            for (std::size_t index = first; index < last; ++index)
+            {
+                sum += weighted_[index] * oscillator;
+                oscillator *= step;
+            }
+        }
+        return sum;
+    }
+
+    double power(double frequency) const { return std::norm(coefficient(frequency)); }
+
+private:
+    int first_;
+    double rate_;
+    std::vector<double> weighted_;
+};
+
+void testPitchProbeMatchesDirectFourierSum()
+{
+    struct Case { double rate; int first, count; double frequency; };
+    // Include the production one-second / one-second-offset window, a
+    // near-Nyquist oscillator, a partial last re-anchor block and a low tone.
+    constexpr std::array cases {
+        Case { 48000, 48000, 48000, 196.37 },
+        Case { 48000, 48000, 48000, 23999.25 },
+        Case { 44100, 137, 1001, 1.125 },
+        Case { 96000, 50000, 8192, 3147.25 }
+    };
+    double worst = 0.0;
+    for (const auto& c : cases)
+    {
+        const int last = c.first+c.count;
+        std::vector<double> signal(std::size_t(last), 0.0);
+        for (int i = c.first; i < last; ++i)
+        {
+            const double t = double(i-c.first)/c.rate;
+            // Incommensurate tones, decay and a deterministic broad-band
+            // component expose phase, indexing, window and cancellation errors.
+            const unsigned bits = static_cast<unsigned>(i)*1664525u+1013904223u;
+            const double noise = double(bits & 65535u)/32768.0-1.0;
+            signal[std::size_t(i)] = std::exp(-2.7*t)
+                * (0.41*std::sin(2*pi*196.37*t+0.3)
+                   + 0.23*std::cos(2*pi*3147.25*t-0.7)) + 0.013*noise;
+        }
+        const HannPitchProbe probe(signal, c.first, last, c.rate);
+        Complex direct {};
+        double scale = 0.0;
+        for (int i = c.first; i < last; ++i)
+        {
+            // Deliberately retain the old expression and multiplication order
+            // here rather than borrowing the recurrence or its stored window.
+            const double w = 0.5-0.5*std::cos(2*pi*(i-c.first)/c.count);
+            const double value = w*signal[std::size_t(i)];
+            direct += value*std::polar(1.0, -2*pi*c.frequency*i/c.rate);
+            scale += std::abs(value);
+        }
+        const double error = std::abs(probe.coefficient(c.frequency)-direct)
+            / std::max(scale, 1e-30);
+        worst = std::max(worst, error);
+        // L1 normalization remains meaningful at spectral nulls, unlike a
+        // relative error divided by a nearly zero Fourier coefficient.
+        expect(error < 1e-10, "pitch observer differs from the direct Fourier sum");
+    }
+    std::cout << "pitch observer recurrence vs direct sum, normalized error " << worst << '\n';
+}
+
 // A note near a strong, lossy low bridge or body mode is pulled a few cents
 // from its request (README, Known gaps; audit F15): the loop is tuned to
 // the bridge's reflection phase at the note, not to the damped pole. Keep
@@ -1142,16 +1255,8 @@ double sustainedPitchHz(const acustra::EngineParameters& p, int note, bool coupl
                 + right[static_cast<std::size_t>(i)];
     }
     const int a = 48000, b = n;
-    const auto power = [&] (double f)
-    {
-        Complex sum {};
-        for (int i = a; i < b; ++i)
-        {
-            const double w = 0.5 - 0.5*std::cos(2*pi*(i-a)/(b-a));
-            sum += w * x[static_cast<std::size_t>(i)] * std::polar(1.0, -2*pi*f*i/48000.0);
-        }
-        return std::norm(sum);
-    };
+    const HannPitchProbe probe(x, a, b, 48000.0);
+    const auto power = [&] (double f) { return probe.power(f); };
     const double nominal = 440*std::exp2((note-69)/12.0);
     double best = nominal, bestPower = -1;
     for (int cents = -20; cents <= 20; ++cents)
@@ -1211,14 +1316,45 @@ void testNoteToNoteLevelSpreadIsBounded()
     {
         acustra::EngineParameters p;
         p.shape = c.shape; p.bodyMaterial = c.wood;
+        // All 45 notes begin at the identical silent prepared state. A value
+        // copy avoids solving that same setup 45 times while retaining each
+        // note's fresh clocks, controllers, RNG and empty wave histories.
+        const auto pristine = freshPrepared(p, 48000, 256);
         std::array<double, 45> level {};
+        int paritySamples = 0;
         for (int note = 40; note <= 84; ++note)
         {
-            auto e = std::make_unique<Engine>();
-            e->setParameters(p); e->prepare(48000, 256);
+            auto e = std::make_unique<Engine>(*pristine);
             e->noteOn(note, c.velocity);
             double energy = 0;
-            process(*e, 48000, &energy);
+            if (note == 40 || note == 64 || note == 84)
+            {
+                // A genuinely constructed and prepared reference guards the
+                // fixture optimization at both register ends and the open E.
+                // Compare the complete one-second stereo render byte for byte.
+                auto fresh = freshPrepared(p, 48000, 256);
+                fresh->noteOn(note, c.velocity);
+                std::array<float, 64> left {}, right {}, freshLeft {}, freshRight {};
+                bool exact = true;
+                for (int done = 0; done < 48000; done += 64)
+                {
+                    e->process(left.data(), right.data(), 64);
+                    fresh->process(freshLeft.data(), freshRight.data(), 64);
+                    exact &= std::memcmp(left.data(), freshLeft.data(), sizeof(left)) == 0
+                        && std::memcmp(right.data(), freshRight.data(), sizeof(right)) == 0;
+                    for (int i = 0; i < 64; ++i)
+                    {
+                        expect(std::isfinite(left[std::size_t(i)]) && std::isfinite(right[std::size_t(i)]),
+                               "shape transition produced nonfinite audio");
+                        energy += double(left[std::size_t(i)])*left[std::size_t(i)]
+                            + double(right[std::size_t(i)])*right[std::size_t(i)];
+                    }
+                    paritySamples += 64;
+                }
+                expect(exact, "a pristine copied note fixture differs from fresh preparation");
+            }
+            else
+                process(*e, 48000, &energy);
             level[static_cast<std::size_t>(note-40)] = 10*std::log10(energy/48000);
         }
         double squares = 0; int count = 0; double hole = 0;
@@ -1235,6 +1371,8 @@ void testNoteToNoteLevelSpreadIsBounded()
         const double rough = std::sqrt(squares/count);
         std::cout << "note-to-note level, " << c.name << ": rough " << rough
                   << " dB, deepest hole " << hole << " dB\n";
+        std::cout << "pristine note fixtures vs fresh preparation: " << paritySamples
+                  << " stereo frames byte-identical\n";
         expect(rough < 3.2, "note-to-note level grew rougher than 3.2 dB");
         expect(hole < 8.0, "a single note fell 8 dB or more under its neighbours");
     }
@@ -1607,6 +1745,7 @@ int main()
     testRetuneAndTailOwnership();
     testStaticWorkAndRapidChanges();
     testConstructionSwitchesDoNotTick();
+    testPitchProbeMatchesDirectFourierSum();
     testCoupledPitchPullIsBounded();
     testNoteToNoteLevelSpreadIsBounded();
     std::cout << "Body shape failures=" << failures << '\n';
