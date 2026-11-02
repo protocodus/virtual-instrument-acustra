@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.9.19 LANGUAGES C CXX)
+project(Acustra VERSION 1.9.20 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -863,6 +863,11 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AnalyzeRingingTrace.py"
                                  --self-test)
                 set_tests_properties(Acustra.RingingTraceAnalysis PROPERTIES TIMEOUT 60)
+                add_test(NAME Acustra.FretUpperReviewAnalysis
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/AnalyzeFretUpperReview.py"
+                                 --self-test)
+                set_tests_properties(Acustra.FretUpperReviewAnalysis PROPERTIES TIMEOUT 60)
                 # Every tool with a self-test is one of the above.
                 add_test(NAME Acustra.SelfTestRegistry
                          COMMAND "${Python3_EXECUTABLE}"
@@ -1145,7 +1150,7 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.PhysicalHandRealism COMMAND AcustraPhysicalHandRealismTests)
     set_tests_properties(Acustra.PhysicalHandRealism PROPERTIES TIMEOUT 120)
 
-    foreach(contract MaterialStiffness PhysicalHandGeometry ReleaseBrushTrajectory FractionalContact PhysicalStopping PhysicalVibratoStopping WoodMaterial FretMotion MasterTuning BodyConfigurationCache RepluckContactParity StringAxialForce)
+    foreach(contract MaterialStiffness PhysicalHandGeometry ReleaseBrushTrajectory FractionalContact PhysicalStopping PhysicalVibratoStopping WoodMaterial FretMotion MasterTuning BodyConfigurationCache RepluckContactParity StringAxialForce PadReleaseCorner ShiftArrivalAudibility)
         add_executable(Acustra${contract}Tests Tests/${contract}Tests.cpp)
         target_link_libraries(Acustra${contract}Tests PRIVATE AcustraDSP)
         set_target_properties(Acustra${contract}Tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
@@ -1163,6 +1168,8 @@ if(ACUSTRA_BUILD_TOOLS)
     target_link_libraries(AcustraRenderMaterialGestureReview PRIVATE AcustraDSP)
     add_executable(AcustraRenderFretMotionReview Tools/RenderFretMotionReview.cpp)
     target_link_libraries(AcustraRenderFretMotionReview PRIVATE AcustraDSP)
+    add_executable(AcustraRenderFretUpperReview Tools/RenderFretUpperReview.cpp)
+    target_link_libraries(AcustraRenderFretUpperReview PRIVATE AcustraDSP)
     add_executable(AcustraRenderStrokeReleaseReview Tools/RenderStrokeReleaseReview.cpp)
     target_link_libraries(AcustraRenderStrokeReleaseReview PRIVATE AcustraDSP)
     target_compile_definitions(AcustraRenderStrokeReleaseReview PRIVATE ACUSTRA_REVIEW_SWITCHES=1)

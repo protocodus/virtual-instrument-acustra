@@ -7797,7 +7797,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             const double before = spread();
             // Original Thumb retains its reference slip's inverse.
             applyPadRelease(loop, length, slipPole,
-                            fullSoftSlip ? 0.0 : unslipPole);
+                            fullSoftSlip ? 0.0 : unslipPole,
+                            performanceRealism_.matchedPadRelease);
             const double after = spread();
             if (before > 0.0 && after > 0.0)
             {
@@ -7809,7 +7810,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         else if (pick)
             applyPlectrumSlip(loop, length, slipPole);
         else
-            applyPadRelease(loop, length, slipPole, 0.0);
+            applyPadRelease(loop, length, slipPole, 0.0,
+                            performanceRealism_.matchedPadRelease);
     }
 
     if (merge)
@@ -8946,8 +8948,10 @@ void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
 
 // A pad lets go as its flesh rolls off the string, a smooth unloading
 // rather than the plectrum's edge, so its slip runs once up the period and
-// once back down at the pole for tau/sqrt(2): zero phase, the same
-// half-power point and a second-order fall above it. The one-pass slip left
+// once back down: zero phase, the same half-power point and a second-order
+// fall above it. Forward/backward filtering squares the one-pass magnitude
+// (see https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.filtfilt.html).
+// The one-pass slip left
 // soft Finger and Thumb notes nearly as bright as loud ones over C4-A5
 // (1.9.11, Docs/decisions.md). Each pass is exact per loop harmonic, so the
 // order is free; the Thumb's inverse runs first on the line as written.
@@ -8958,6 +8962,27 @@ void AcustraEngine::applyPlectrumSlip(StringLoop& loop, int length,
 // as a blow, and soft E2-D3 rang 12-26 dB brighter above 5 kHz.
 namespace
 {
+double padReleasePole(double b, bool matchHalfPower) noexcept
+{
+    if (!matchHalfPower)
+        return std::pow(b, std::sqrt(2.0));
+    if (!(b > 0.0))
+        return 0.0;
+    // For H_b(z)=(1-b)/(1-b z^-1), its half-power frequency satisfies
+    // 2(1-cos(w_c))=(1-b)^2/b. Two passes at q have magnitude |H_q|^2;
+    // setting that to 1/sqrt(2) at w_c gives
+    // (1-q)^2/q = (1-b)^2/[b(sqrt(2)-1)]. The reciprocal form of the
+    // quadratic root avoids subtracting almost equal numbers near q=1.
+    // The former q=b^sqrt(2) did not preserve that corner and introduced
+    // a rate-dependent error, especially as it approached the sampled band.
+    // This also defines a stable continuation if w_c is above Nyquist;
+    // there is no new release time, contact width or fitted constant.
+    const double difference = 1.0 - b;
+    const double t = difference * difference
+        / (2.0 * b * (std::sqrt(2.0) - 1.0));
+    return 1.0 / (1.0 + t + std::sqrt(t) * std::sqrt(2.0 + t));
+}
+
 template <typename At>
 void padPass(const At& at, int length, double b, bool inverse) noexcept
 {
@@ -8996,7 +9021,8 @@ void padPass(const At& at, int length, double b, bool inverse) noexcept
 } // namespace
 
 void AcustraEngine::applyPadRelease(StringLoop& loop, int length,
-                                    double slipPole, double unslipPole) noexcept
+                                    double slipPole, double unslipPole,
+                                    bool matchHalfPower) noexcept
 {
     if (!(slipPole > 0.0))
         return;
@@ -9006,11 +9032,12 @@ void AcustraEngine::applyPadRelease(StringLoop& loop, int length,
             maximumDelaySamples - sample - 1)];
     };
     if (unslipPole > 0.0)
-        padPass(lineAt, length, std::pow(unslipPole, std::sqrt(2.0)), true);
-    const double c = std::pow(slipPole, std::sqrt(2.0));
+        padPass(lineAt, length, padReleasePole(unslipPole, matchHalfPower), true);
+    const double c = padReleasePole(slipPole, matchHalfPower);
     padPass(lineAt, length, c, false);
     // The bridge sample is brought back to rest by a raised cosine as wide
-    // as the slip's own kernel (equal variance: c^|k| has 2 tau^2, the
+    // as the slip's own kernel (continuous-time variance: exp(-|k|/tau)
+    // has 2 tau^2, the
     // cosine over +/-W has W^2 (1/3 - 2/pi^2)). Shifting the whole line, as
     // the plectrum's slip does, put back much of the treble this slip takes
     // from soft low notes: a velocity-16 Finger E2 and A2 brightened to 112
@@ -11723,11 +11750,18 @@ void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
         // still scrape; peakLevel is the preceding stroke's bounded scale.
         const float speedLevel = 2.0f * speed / (speed + 0.25f);
         // A finger shifting to a new fret (startShiftArrival) is the
-        // key-up's brush carried along the winding: the same pad on the
-        // same wraps, so it takes the brush's own force share (brushShare in
-        // startReleaseNoise) rather than the restrained slide's.
+        // key-up's brush carried along the winding. At the presets' 10%
+        // Release Noise the brush's force share left these shifts buried
+        // roughly 48 dB under a chord. Give this brief arrival four times
+        // that force (+12 dB), an authored audibility choice for position
+        // changes, not a measured friction coefficient. The continuous
+        // slide, key-up brush, and linear Release Noise law stay separate.
+        // Pakarinen/Penttinen/Bank, JASA 122 (2007), EL197-EL202,
+        // doi:10.1121/1.2786607 supports the speed law and winding spectrum,
+        // but does not supply this guitar's absolute handling-noise level.
         constexpr float slideShare = 0.00004f;
-        constexpr float arrivalShare = 0.0005f;
+        const float arrivalShare = performanceRealism_.audibleShiftArrivals
+            ? 0.002f : 0.0005f;
         const float rms = (motion.arriving ? arrivalShare : slideShare)
             * voice.peakLevel * (amount / 0.5f)
             * contact * speedLevel;

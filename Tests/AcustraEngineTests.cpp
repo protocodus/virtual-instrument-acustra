@@ -5073,21 +5073,42 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
 
 // A Finger or Thumb release (applyPadRelease) runs the contact's line
 // through the stroke's slip, y[s] = (1 - c) x[s] + c y[s - 1], up the period
-// and back down, with c = b^sqrt(2). Thumb also applies the full-velocity
+// and back down, with its pole chosen to retain b's half-power corner.
+// Thumb also applies the full-velocity
 // slip's inverse the same way. On DFT bin n of an N-sample line each pair of
 // passes is the squared magnitude of its one-pass response, so the slip is
 // this real response. A zero actual pole is the contact alone; a positive
 // actual pole without a reference is Finger's absolute slip.
+double independentPadPole(double b)
+{
+    // Solve the magnitude criterion by bisection rather than repeating
+    // production's closed-form pole conversion. At b's half-power corner,
+    // the zero-phase pair must have amplitude 1/sqrt(2).
+    const double cornerCosine = 1.0 - (1.0 - b) * (1.0 - b) / (2.0 * b);
+    double low = 0.0, high = 1.0;
+    for (int step = 0; step < 80; ++step)
+    {
+        const double c = 0.5 * (low + high);
+        const double magnitude = (1.0 - c) * (1.0 - c)
+            / (1.0 + c * c - 2.0 * c * cornerCosine);
+        if (magnitude > std::sqrt(0.5))
+            low = c;
+        else
+            high = c;
+    }
+    return 0.5 * (low + high);
+}
+
 double releaseSlipRatio(double slipPole, double referencePole, int harmonic, int length)
 {
     if (!(slipPole > 0.0))
         return 1.0;
     const auto delay = std::polar(1.0, -2.0 * std::numbers::pi * harmonic / length);
-    const double c = std::pow(slipPole, std::sqrt(2.0));
+    const double c = independentPadPole(slipPole);
     const double slip = std::norm((1.0 - c) / (1.0 - c * delay));
     if (!(referencePole > 0.0))
         return slip;
-    const double u = std::pow(referencePole, std::sqrt(2.0));
+    const double u = independentPadPole(referencePole);
     return slip * std::norm((1.0 - u * delay) / (1.0 - u));
 }
 
@@ -5114,7 +5135,7 @@ std::vector<std::complex<double>> releasedLine(double slipPole, double reference
     double first = 0.0;
     for (const auto& bin : line)
         first += bin.real();
-    const double tau = -1.0 / (std::sqrt(2.0) * std::log(slipPole));
+    const double tau = -1.0 / std::log(independentPadPole(slipPole));
     const double halfWidth = std::min(0.5 * length, tau * std::sqrt(
         2.0 / (1.0 / 3.0 - 2.0 / (std::numbers::pi * std::numbers::pi))));
     const int reach = static_cast<int>(std::ceil(halfWidth));

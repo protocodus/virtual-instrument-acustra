@@ -95,6 +95,12 @@ struct PerformanceRealism
     // resonances. Off, the stretch acts at once along the whole string, a
     // uniform tension with no longitudinal resonance.
     bool axialWaves { true };
+    // Match the pad's zero-phase release to the one-pass half-power corner
+    // exactly, rather than by the former continuous-time approximation.
+    bool matchedPadRelease { true };
+    // Make position-shift arrivals audible at the presets' 10% Release
+    // Noise setting. Continuous slides and key-up noise keep their levels.
+    bool audibleShiftArrivals { true };
 };
 
 } // namespace acustra
