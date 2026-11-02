@@ -6336,10 +6336,23 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         -twoPi * clamp(cutoff, 1200.0f,
                        0.44f * 48000.0f)
         * (1.0f / 48000.0f));
-    const float highLoss = clamp((0.035f
+    const float baseHighLoss = clamp((0.035f
         + 0.42f * age
         + 0.018f * static_cast<float>(stringCount - 1 - stringIndex))
         * physical.frequencyLossScale, 0.0f, 0.95f);
+    // Above the open-string treble register (open E4 = MIDI 64, pivot at
+    // MIDI 66 / F#4), the waveguide round-trip rate scales up to 4x faster
+    // than on open strings. Scale per-round-trip high-loss retention by the
+    // register period ratio so per-second upper-partial damping does not
+    // over-damp high fretted notes into a dead, plastic transient.
+    const float highRegisterSemitones = (stringIndex >= 3 && voice.speakingFret > 0.0f)
+        ? clamp(static_cast<float>(voice.openMidi) + voice.speakingFret - 66.0f,
+                0.0f, 24.0f)
+        : 0.0f;
+    const float highLoss = highRegisterSemitones > 0.0f
+        ? clamp(1.0f - std::pow(1.0f - baseHighLoss,
+            std::exp2(-0.65f * highRegisterSemitones / 12.0f)), 0.0f, 0.95f)
+        : baseHighLoss;
     // The heel of the picking hand resting by the saddle is a soft lossy
     // absorber in parallel with the string's own loss, so the rates add:
     // 1/T60 = 1/T60_string + 1/T60_hand. The hand's mapped time and the 0.62
@@ -7128,9 +7141,16 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                 - sharedKnee * sharedKnee / travel, sharedOffset);
         takeOffset = takeSpread * (sharedOffset + 0.30f * positionDraw);
     }
+    constexpr float highRegisterFretPivot = 0.793700526f; // 2^(-4/12), 4th fret
+    const float highRegisterLength = highRegisterFretPivot * scaleLength;
+    const float effectivePluckLength = (stringIndex >= 3
+        && parameters_.picking == PickingTechnique::Finger
+        && soundingLength < highRegisterLength)
+        ? highRegisterLength * std::pow(soundingLength / highRegisterLength, 0.35f)
+        : soundingLength;
     float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
-        : distanceFromBridge / soundingLength;
+        : distanceFromBridge / effectivePluckLength;
     // A hand held at its distance from the bridge meets a short (stopped
     // high on the neck) string ever further toward its middle, and a Thumb
     // meets even the open strings there. No player lets a note sound from
@@ -8437,13 +8457,21 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     const float fretT60Factor = clamp(1.0f
         - physicalCalibration_.steelFretT60Slope * voice.speakingFret,
         0.10f, 2.0f);
+    const float baseHighLoss = clamp((0.035f + 0.42f * age
+        + 0.018f * static_cast<float>(stringCount - 1 - stringIndex))
+        * physical.frequencyLossScale, 0.0f, 0.95f);
+    const float highRegisterSemitones = (stringIndex >= 3 && voice.speakingFret > 0.0f)
+        ? clamp(static_cast<float>(voice.openMidi) + voice.speakingFret - 66.0f,
+                0.0f, 24.0f)
+        : 0.0f;
     voice.tailHandFrequency = static_cast<float>(sampleRate_)
                             / voice.contactPeriodSamples;
     voice.tailHandIntrinsicT60 = 5.4f * (1.0f - 0.12f * age)
                               * fretT60Factor * physical.fundamentalT60Scale;
-    voice.tailHandIntrinsicHighLoss = clamp((0.035f + 0.42f * age
-        + 0.018f * static_cast<float>(stringCount - 1 - stringIndex))
-        * physical.frequencyLossScale, 0.0f, 0.95f);
+    voice.tailHandIntrinsicHighLoss = highRegisterSemitones > 0.0f
+        ? clamp(1.0f - std::pow(1.0f - baseHighLoss,
+            std::exp2(-0.65f * highRegisterSemitones / 12.0f)), 0.0f, 0.95f)
+        : baseHighLoss;
     voice.tailHandPressure = voice.tailCapturedHandPressure = palmMute_;
     for (int plane = 0; plane < 2; ++plane)
     {

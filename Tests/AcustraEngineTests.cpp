@@ -1633,6 +1633,19 @@ struct AcustraEngineTestAccess
         return { static_cast<double>(voice.pluckPoint), line };
     }
 
+    static double highLossMixAtFret(int string, int fret)
+    {
+        auto engineOwner = std::make_unique<AcustraEngine>();
+        auto& engine = *engineOwner;
+        EngineParameters parameters;
+        engine.setParameters(parameters);
+        engine.prepare(48000.0, 64);
+        engine.setStringPerChannelMode(true);
+        auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        engine.noteOn(voice.openMidi + fret, 0.8f, string + 1);
+        return static_cast<double>(voice.loops[0].highLossMix);
+    }
+
     static std::vector<float> radiationHistory(const AcustraEngine& engine)
     {
         std::vector<float> state;
@@ -9122,6 +9135,29 @@ void testPluckPositionChangesEveryFret()
               << " of the string, highest pluck point " << highestPoint << '\n';
 }
 
+void testHighRegisterFingerAvoidsThirdPartialNullAndScalesRoundTripLoss()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using acustra::PickingTechnique;
+    for (const int fret : { 8, 12, 16, 20 })
+    {
+        const auto nearBridge = Access::pluckAtFret(PickingTechnique::Finger, 0.0f, 5, fret);
+        const auto midPosition = Access::pluckAtFret(PickingTechnique::Finger, 0.28f, 5, fret);
+        const auto nearNeck = Access::pluckAtFret(PickingTechnique::Finger, 1.0f, 5, fret);
+        expect(midPosition.first < 0.335
+                   && (nearNeck.first - nearBridge.first) > 0.08,
+               "high-register Finger stroke landed on the H3 comb null or lost Pluck Position travel at fret "
+                   + std::to_string(fret));
+    }
+    const double openMix = Access::highLossMixAtFret(5, 0);
+    const double fret5Mix = Access::highLossMixAtFret(5, 5);
+    const double fret12Mix = Access::highLossMixAtFret(5, 12);
+    const double fret20Mix = Access::highLossMixAtFret(5, 20);
+    expect(openMix > fret5Mix && fret5Mix > fret12Mix && fret12Mix > fret20Mix
+               && fret20Mix > 0.35 * openMix,
+           "high-register per-round-trip highLossMix did not scale with speaking period");
+}
+
 // One note on its own string at 48 kHz, as the strings' A/B probes played
 // it: the engine settled over 40 blocks, then one stroke, read in mono.
 std::vector<double> renderOnString(acustra::EngineParameters parameters, int midiNote,
@@ -9615,6 +9651,7 @@ int main(int argc, char** argv)
     testControlGlidesSettleExactly();
     testThePluckKinkLandsAtThePluckPoint();
     testPluckPositionChangesEveryFret();
+    testHighRegisterFingerAvoidsThirdPartialNullAndScalesRoundTripLoss();
     testAFingerBrightensWithVelocity();
     testSoftContactsCarryLessAttackHiss();
     testEachReleaseGivesBackTheForceItHeld();
