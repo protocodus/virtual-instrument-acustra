@@ -87,6 +87,12 @@ struct PerformanceRealism
     // including while strings are held and after release. A bounded authored
     // posture, not string palm muting or a MIDI note-off envelope.
     bool playerBodyLoading { true };
+    // Match the pad's zero-phase release to the one-pass half-power corner
+    // exactly, rather than by the former continuous-time approximation.
+    bool matchedPadRelease { true };
+    // Make position-shift arrivals audible at the presets' 10% Release
+    // Noise setting. Continuous slides and key-up noise keep their levels.
+    bool audibleShiftArrivals { true };
 };
 
 } // namespace acustra

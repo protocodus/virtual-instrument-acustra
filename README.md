@@ -39,6 +39,18 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.14 — 2026-11-02 — clearer soft contacts and audible fret shifts
+
+- A finger or thumb's two-pass release now keeps the intended half-power
+  corner exactly. The previous conversion introduced a rate-dependent
+  cutoff error and usually darkened the release more than intended. The
+  contact geometry, string losses and Pick release keep their existing laws.
+- Brief wound-string shifts have 12 dB more source level, making them easier
+  to hear at the presets' 10% Release Noise. This is an authored balance,
+  not a measured handling-noise level; zero still bypasses the source.
+  [Research and validation](Docs/research/fret-upper-refinement-2026-11-02.md)
+  separates this correction from the remaining high-register realism gaps.
+
 ### 1.9.13 — 2026-11-01 — strum keys, and fingers that slide between frets
 
 - Strum keys: F0 strums every held key downward and F#0 upward, at the strum

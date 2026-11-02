@@ -5,6 +5,33 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-02 — exact pad corner and a clearer winding arrival, 1.9.14
+
+The user requested another researched iteration with fret noise and an
+upper-register improvement. The soft-contact investigation found a numerical
+error: two zero-phase passes at `b^sqrt(2)` do not retain the original
+one-pass half-power corner. The new pole solves that sampled response exactly,
+including Thumb's inverse reference. This is a mathematical correction, not
+a listening verdict. It leaves the fitted contact geometry and string losses
+alone. In the paired review, soft upper Finger/Thumb notes gain a median
+0.38/0.34 dB in H2–H6/H1; Pick notes are byte-identical. This does not close
+the documented snap/mellow gap.
+
+Only the brief position-shift arrival gains four times its former force
+(+12.04 dB), an authored balance for the existing 10% Release Noise preset
+setting. No absolute squeak level is claimed from the literature. In the
+48 kHz Pick barre review the arrival-window null rises from -52.65 to
+-40.60 dB relative to the phrase; continuous slides, key-up brushes and
+ineligible contacts keep their existing behavior. The candidate follows
+the user's requested direction and the recorded standing rule; nobody has
+reported listening to this iteration. Its native and RMS-matched A/B
+renders are retained outside Git, with a separate unread-by-design letter key.
+
+[Research and protocol](research/fret-upper-refinement-2026-11-02.md) and
+[validation](validation/fret-upper-refinement-2026-11-02.md) record the exact
+scope, remaining limits and checks. Neither blanket treble EQ nor extra
+constant damping was adopted.
+
 ## 2026-11-01 — strum keys F0 and F#0, and Keys mode, 1.9.13
 
 **Why.** A user reported that strumming did not work. It did, but only for
