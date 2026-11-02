@@ -3502,11 +3502,20 @@ void testTheFractionalDelayReadIsLossless()
     // before that weak tail (4.77% macOS / 4.97% Linux maximum rate spread).
     // Keep the 6% bound and the original H1 observation. This is still a
     // finite approximation, not perfect sample-rate independence.
+    // The string's own stretch (renderStringAxialForce) is a second source
+    // at the saddle that never acts on the loop, so it is left out as the
+    // bridge and the sympathetic strings are: on MIDI 80-84 its difference
+    // tones beside H1 sit 46 dB under it at 0.2-0.6 s with a phase against
+    // H1 that differed by up to 20 degrees between rates, which moved H1's
+    // decay reading by up to 0.20% while the loop alone stays within 0.012%.
     struct Reading { double perSecond; double perPass; };
     const auto decay = [] (int midiNote, double rate, int partial)
     {
         auto engineOwner = std::make_unique<acustra::AcustraEngine>();
         auto& engine = *engineOwner;
+        acustra::PerformanceRealism loopOnly;
+        loopOnly.stringAxialForce = false;
+        engine.setPerformanceRealism(loopOnly);
         acustra::EngineParameters parameters;
         parameters.capture = acustra::CaptureType::SaddlePiezo;
         // Select before prepare so the capture fade never includes the mic.

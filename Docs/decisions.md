@@ -5,6 +5,109 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-02 — the string's own stretch presses on the saddle, 1.9.14 (A–Z set; C adopted under the owner's standing rule, not yet heard)
+
+**Why.** The "plastic" high notes of the 2026-11-01 entry below. The
+research for it (the project document "Acustra high notes: research for the
+fix") found the string's longitudinal motion the strongest lead: it puts
+energy between the partials in a loud note's first milliseconds, where the
+engine is 10-25 dB short, and its lines fall between the plain strings'
+partials. The owner asked to implement it and test the options by ear.
+
+**What was decided.** Bank's one-way axial force (Bank and Sujbert, JASA
+117, 2005; Bank's thesis, 2006, Sec. 3.3). The tension is
+tau = EA xi_x + beta y_x^2, beta = (EA - T)/2, and the force at the saddle
+is a ring of the longitudinal round trip driven by (beta / c_l) dF/dt, F the
+integral of y_x^2 over both planes and the unfolded round trip at retarded
+times (each point's direct path to the saddle and its path by way of the
+nut). The ring's delay comes from the engine's own E, A and mu; it loses the
+string's loss angle per trip (Pate's dislocation loss plus the bending
+loss, without winding friction, after Woodhouse 2017). It reaches the
+measured body's normal force, the saddle's rocking and the piezo through the
+12-degree break angle the squeak observer already used; the strings do not
+feel it, and the attack-pitch surrogate stays as it was. F is sampled four
+times per period of 5 kHz or of the first longitudinal mode, whichever is
+lower (a convention after DAFx-26), on cells a sample stride wide, and
+re-referenced whenever a pluck or reset writes a new shape into the line, so
+a shape the hand held still launches nothing, and whenever a new fret or
+excursion scale rescales the whole stretch at once. The force leaves through
+an eighth-order Butterworth at twice that cut-off, the sums of two partials
+under it, so the strided read's images, the strongest an octave above, fall
+48 dB down.
+
+**Checks.** `Acustra.StringAxialForce`: in the slow limit the stretch is
+the Kirchhoff-Carrier tension computed independently from displacementAt at
+100 points per sample (mean 3.5% under it, swing 3.2% under, correlation
+0.977); at 2 f0 and 4 f0 the waves keep the uniform tension within 0.2 dB
+and 10 degrees, and at 11 f0 and 12 f0, beside the first longitudinal mode,
+they stand 22-24 dB over it; the ring's first mode is sqrt(EA/mu)/2L exactly
+at frets 0, 5 and 12 and loses pi eta per trip within 1%. With the force off
+the engine renders bit-identical to 1.9.13. The first build broke five
+engine checks, each traced to the force against it switched off. A
+re-prepared engine no longer played exactly as a new one: a string's line
+was read in the last performance's excursion units until its first pluck,
+and reset now takes them from the technique. E3's top band at 0.2 s stood
+30 dB over the string's own, and a tuning switched under a chord ticked
+4.1 dB over its steady sound at 44.1 kHz against a 2 dB bound: the strided
+read's images rung on by the ring's upper modes, and a fret change stepping
+the whole stretch. After the band and the re-reference above they read as
+with the force off (-63.6 against -63.6 dB, 0.25 against 0.17 dB). Pick's
+E3 H5 on the chorus check beat 1.15 dB against a 1 dB bound; it now beats
+0.96 dB, 0.76 without the force. H1's decay spread across rates reached
+0.20% on MIDI 80-84 against a 0.1% bound, because the saddle there also
+carries the force's lines beside H1, 46 dB under it, at a phase that differs
+by up to 20 degrees between rates; that check measures the loop, and now
+leaves the force out as it leaves out the bridge and the sympathetic
+strings.
+
+**Letters.** A: 1.9.13 shipping. B: the stretch as a uniform tension, acting
+at once along the string, with no longitudinal resonance. C: the stretch
+carried by the longitudinal waves. D: C with the bending loss at the
+recordings' measured 0.006 plain and 0.10 wound, in place of the 0.0023 and
+0.0175 chosen by ear (Set 14, 2026-09-28; 2026-10-10), which also speeds the
+upper partials' decay. A top-E melody, frets 5-15, loud (velocity 110) then
+soft (50), Jumbo Steel Pick, 48 kHz, whole-file RMS match (trims B -0.160,
+C -0.160, D -0.098 dB). Null against A: B -31.3 dB, C -26.0 dB, D -21.7 dB;
+over each note's first 50 ms C's added sound sits 19.9 dB under the note
+loud and 30.4 dB soft.
+
+**Measured.** Isolated Jumbo Steel Pick notes, velocity 30-120, energy at
+2.3-12 kHz between the partials over a note's first 40 ms: from F#4 to C6 it
+grows 0.9-1.4 dB per dB of note level under C, against A's 0.9-1.1 and the
+Shinyguitar recordings' 2.4-6; at velocity 120 it sits 24-31 dB under the
+energy on the partials (A 29-33 dB, recordings 4.5-13.4 dB). C closes
+0.8-6.4 dB of the gap, most at F#4 and C5, and leaves 14-23 dB of it. The
+force takes no energy from the transverse waves, so the strings decay as in
+A.
+
+**Chosen.** C, under the owner's standing rule that the candidate wins; the
+owner has not heard it. The set is outside the repository
+(`acustra/listening-tests/2026-11-02-string-stretch/` in the project files).
+
+**What it licensed.** The mechanism at the level its authored break angle
+gives. The 2026-09-04 entry found no published break angle for a measured
+instrument, and the force scales with its sine: 8 degrees would be 3.5 dB
+less, 20 degrees 4.3 dB more. A measured angle, or a tap test of a
+steel-string top at the saddle, normal and along the strings, replaces it.
+B and D remain the owner's choices; D would reopen the 2026-09-28 bending
+loss.
+
+**How it differs from the 2026-09-04 prototype.** That fed the quasi-static
+tension into the two-way junction, where the strings felt it; it stood
+8.3 dB under the low E's own junction force and broke five engine
+regressions. This force goes one way, into the body, carries the
+longitudinal resonance whose absence Woodhouse (2004) doubted the
+quasi-static approximation for, and passes the engine suites.
+
+**CPU.** About 55% more over the eight demos (wall clock, 48 kHz, 256-sample
+blocks, a shared 4-core Xeon at 2.1 GHz: 0.08-0.11 times realtime against
+1.9.13's 0.05-0.07; 1.39-1.84 per demo, each the median of five alternated
+runs of three). The build before the output band measured about 45%. A
+first build doubled it; reading the first wave of each cell on whole samples
+took 28% of the force's instructions off. Cells wide enough to see the slope
+only to 5 kHz would have cut it further but left the slow-limit stretch 9%
+under the Kirchhoff-Carrier tension, against 3.5%, and were not taken.
+
 ## 2026-11-01 — strum keys F0 and F#0, and Keys mode, 1.9.13
 
 **Why.** A user reported that strumming did not work. It did, but only for

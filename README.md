@@ -39,6 +39,23 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.14 — 2026-11-02 — a string's own stretch presses on the saddle
+
+- A vibrating string stretches, and that extra tension now reaches the top:
+  it travels to the saddle as the string's longitudinal waves and presses
+  the saddle down through the strings' break angle. It adds sound between
+  the partials in a loud note's first tens of milliseconds, most on high
+  frets, where the string's first longitudinal mode rises from 3.9 kHz
+  (open plain string) to 7.8 kHz (12th fret), and it grows twice as fast as
+  the note. On Jumbo Steel Pick's loudest notes from F#4 to C6 the energy
+  between the partials at 2.3-12 kHz rises 0.8-6.4 dB, still 14-23 dB short
+  of the recordings. Its level rests on an authored 12-degree break angle.
+  About 55% more CPU over the eight demos. Adopted under the owner's
+  standing rule; not yet heard. Details in
+  [the decision log](Docs/decisions.md).
+- A re-prepared engine plays exactly as a new one again: until a string's
+  first pluck its line kept the previous performance's units.
+
 ### 1.9.13 — 2026-11-01 — strum keys, and fingers that slide between frets
 
 - Strum keys: F0 strums every held key downward and F#0 upward, at the strum
@@ -408,11 +425,21 @@ normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
 2nd-4th partials swell and fade as a recorded guitar's do. A
 bounded Kirchhoff-Carrier surrogate sharpens the attack pitch; a plectrum
 lets go at 0.69 of the finger's excursion, so a hard pick starts as sharp as
-the reference bank's picked flat-top.
+the reference bank's picked flat-top. The stretch a vibrating string adds to
+its tension, the integral of its squared slope read off both planes' lines,
+travels to the saddle as longitudinal waves: a ring tuned to the string's
+first longitudinal mode, sqrt(EA/mu)/2L (3.9 kHz on an open plain string,
+twice that at the 12th fret), losing the string's own loss angle per round
+trip, kept to the sums of two partials under the read's cut-off. Through a
+12-degree break angle it presses the saddle into the top, and so reaches the
+body's normal force, its rocking and the piezo; the strings do not feel it
+back.
 
 **References.** Laakso, Valimaki, Karjalainen and Laine, IEEE Signal
 Processing Magazine 13(1), 1996; Woodhouse, Acta Acustica 90, 2004 (the
-polarisation end correction, shipped at zero by ear); crown heights from
+polarisation end correction, shipped at zero by ear); for the longitudinal
+waves, Bank and Sujbert, J. Acoust. Soc. Am. 117(4), 2005, Bank's PhD thesis
+(BME Budapest, 2006) and Woodhouse, Acta Acustica 103, 2017; crown heights from
 R. Mores, *List of guitars measured*, 2021; the
 [contact kernel](Docs/research/contact-kernel-and-power-2026-09-08.md) and
 [string loss](Docs/research/string-hf-loss-2026-10-10.md) reports.
@@ -605,8 +632,10 @@ separates verified errors from accepted approximations.
 
 **Strings and excitation**
 
-- The strings are linear apart from the bounded attack-pitch surrogate; the
-  geometrically exact nonlinear string, which supplies up to about 58% of the
+- The strings are linear apart from the bounded attack-pitch surrogate and
+  the one-way stretch at the saddle (1.9.14), which takes no energy from the
+  transverse waves, so the early drain Woodhouse (2004) describes is absent;
+  the geometrically exact nonlinear string, which supplies up to about 58% of the
   recordings' loud-layer brightness rise, is not built. Velocity brightens a
   Pick stroke about half as much as the archtop recordings show, and about a
   third as much as the reference bank's picked flat-top: from its softest
@@ -654,6 +683,31 @@ separates verified errors from accepted approximations.
 
 **Bridge and body**
 
+- The string's stretch reaches the body only as saddle down-force, through
+  an authored 12-degree break angle: no published angle for a measured
+  instrument was found (Docs/decisions.md, 2026-09-04), and the force scales
+  with its sine, 3.5 dB less at 8 degrees and 4.3 dB more at 20. The
+  stretch's push along the strings on the saddle top, whose response
+  Woodhouse (2017) measured overtaking the normal one above about 5 kHz, is
+  not modelled; the measured bridge holds no such input. Which way the
+  normal plane's positive displacement points is assumed (away from the
+  top). The stretch is sampled four times per period of 5 kHz, or of the
+  first longitudinal mode where that is lower (the wound strings, and the
+  plain strings below the 5th fret), a numerical convention after Ducceschi,
+  Russo and Webb (DAFx-26), and kept to twice that, so the plain strings'
+  first longitudinal mode drops out of the force above the top E's 16th
+  fret. It reads the slope off lines whose dispersion is lumped into two
+  allpass sections, so the highest partials' slope is approximate (Bank,
+  thesis statement 4.2). A tap test of a steel-string top at the saddle,
+  normal and along the strings, would settle the level and the missing path.
+- The stretch is read without an anti-alias filter, so what it holds above
+  the read's Nyquist folds under it, and where the first longitudinal mode
+  sets the read, the stride rounds to between four and eight reads per
+  period of it, differently at each rate. There the force differs between
+  44.1, 48 and 96 kHz by up to 9 dB at 2.5-10 kHz: on the top E's first
+  frets, where it sits 20-40 dB under the note, and on the wound strings,
+  where it sits 60 dB and more under it. From the 5th fret up, and below
+  2.5 kHz everywhere, it agrees within 2.5 dB.
 - Shape and Body Material morph one measured, nylon-strung flamenca (g21);
   the steel-string mobility level comes from one other guitar. A measured body
   of each size, and a bridge mobility measured strung on a steel-string

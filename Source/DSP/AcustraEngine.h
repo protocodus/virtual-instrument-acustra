@@ -1271,6 +1271,59 @@ private:
             }
         };
         AxialContactArrivals axialContactArrivals {};
+        // The string's own lengthwise force at the saddle: the stretch its
+        // vibration adds, carried there by its longitudinal waves
+        // (renderStringAxialForce). The ring holds the longitudinal round
+        // trip, at most 519 samples (open low E at 768 kHz).
+        struct StringAxialForce
+        {
+            static constexpr int ringSize = 1024;
+            std::array<float, ringSize> ring {};
+            int writeIndex { 0 };
+            // The design, for the length, tension, excursion scale and loss
+            // it was made at (the rate clears it).
+            bool designed { false };
+            std::uint32_t lengthBits { 0 }, tensionBits { 0 };
+            std::uint32_t scaleBits { 0 }, lossBits { 0 };
+            int stride { 1 };
+            // The force's output band (designStringAxialForce): four lowpass
+            // sections, b0 b1 b2 a1 a2, in transposed direct form II.
+            bool banded { false };
+            std::array<std::array<float, 5>, 4> band {};
+            std::array<std::array<float, 2>, 4> bandState {};
+            float roundTrip { 1.0f };
+            float stretchScale { 0.0f };
+            float forceScale { 0.0f };
+            int ringDelay { 1 };
+            float thiran { 0.0f };
+            float lossGain { 0.0f }, lossPole { 0.0f };
+            // The longitudinal ring's state and the force at the saddle, in
+            // newtons.
+            float thiranY1 { 0.0f }, lossY1 { 0.0f };
+            float force { 0.0f };
+            bool ringing { false };
+            int quietSamples { 0 };
+            // The stretch last evaluated, and its change spread over the
+            // samples to the next evaluation.
+            double lastStretch { 0.0 };
+            float increment { 0.0f };
+            int countdown { 0 };
+            // Samples since the line last held a new shape: how far back its
+            // history belongs to this shape.
+            int validAge { 0 };
+            bool rereference { true };
+            // A new pluck or a cleared line holds a new shape whose stretch
+            // the hand set up before the release: count its changes from
+            // there, and let what the old one launched ring on.
+            void lineRewritten() noexcept
+            {
+                rereference = true;
+                validAge = 0;
+                countdown = 0;
+            }
+            void clear() noexcept { *this = StringAxialForce {}; }
+        };
+        StringAxialForce stringAxialForce {};
         std::uint32_t fretMotionNoiseState { 1 };
         std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
@@ -1412,6 +1465,9 @@ private:
         // The string's tension now, in newtons, bend included. Kept so the
         // bend can be checked against Grimes' law rather than inferred.
         float tensionNewtons { 0.0f };
+        // The loss factor of the string's Young's modulus, which its
+        // longitudinal waves lose by (configureVoice).
+        float axialLossFactor { 0.0f };
         // Fretting point after a conventional/manager slide. A lateral
         // member bend keeps it fixed. The attack's extension uses the same
         // geometry as dispersion.
@@ -1961,6 +2017,9 @@ private:
     int drainReleaseNoiseTravel(Voice& voice) noexcept;
     static void primeFretMotion(Voice& voice) noexcept;
     void renderFretMotion(Voice& voice, int stringIndex) noexcept;
+    [[nodiscard]] float excursionMetres(const Voice& voice) const noexcept;
+    void designStringAxialForce(Voice& voice, int stringIndex) noexcept;
+    float renderStringAxialForce(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
     void addReleaseNoise(Voice& voice) noexcept;
     void finishVoice(Voice& voice, int stringIndex, float verticalIncident,

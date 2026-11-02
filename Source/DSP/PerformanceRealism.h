@@ -87,6 +87,14 @@ struct PerformanceRealism
     // including while strings are held and after release. A bounded authored
     // posture, not string palm muting or a MIDI note-off envelope.
     bool playerBodyLoading { true };
+    // The string's own lengthwise force: the stretch its vibration adds,
+    // reaching the saddle down-force through the break angle
+    // (AcustraEngine::renderStringAxialForce).
+    bool stringAxialForce { true };
+    // Carry that force along the string as longitudinal waves, with their
+    // resonances. Off, the stretch acts at once along the whole string, a
+    // uniform tension with no longitudinal resonance.
+    bool axialWaves { true };
 };
 
 } // namespace acustra

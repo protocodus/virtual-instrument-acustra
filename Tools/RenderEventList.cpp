@@ -3,7 +3,11 @@
 //
 //   AcustraRenderEventList <preset 0-7> <events.txt> <out.wav> <seconds>
 //                          [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]
+//                          [--axial-force 0|1] [--axial-waves 0|1]
+//                          [--plain-bending-loss eta] [--wound-bending-loss eta]
 //
+// The last four set offline comparison switches (PerformanceRealism) and the
+// strings' bending loss (PhysicalCalibration) for A-Z candidates.
 // Each line of events.txt is "seconds status data1 data2". The preset loads
 // as a fresh plug-in instance does. Used for listening tests.
 
@@ -40,7 +44,9 @@ int main(int argc, char** argv)
     if (argc < 5)
     {
         std::puts("usage: AcustraRenderEventList <preset> <events.txt> <out.wav> <seconds>"
-                  " [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]");
+                  " [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]"
+                  " [--axial-force 0|1] [--axial-waves 0|1]"
+                  " [--plain-bending-loss eta] [--wound-bending-loss eta]");
         return 1;
     }
     constexpr double rate = 48000.0;
@@ -49,10 +55,20 @@ int main(int argc, char** argv)
     if (preset >= acustra::factoryPresets.size())
         return 1;
     auto parameters = acustra::engineParameters(acustra::factoryPresets[preset]);
+    acustra::PerformanceRealism realism {};
+    acustra::PhysicalCalibration calibration = acustra::fittedPhysicalCalibration;
     for (int i = 5; i + 1 < argc; i += 2)
     {
         const std::string option = argv[i];
-        if (option == "--picking")
+        if (option == "--axial-force")
+            realism.stringAxialForce = std::atoi(argv[i + 1]) != 0;
+        else if (option == "--axial-waves")
+            realism.axialWaves = std::atoi(argv[i + 1]) != 0;
+        else if (option == "--plain-bending-loss")
+            calibration.steelPlainBendingLoss = static_cast<float>(std::atof(argv[i + 1]));
+        else if (option == "--wound-bending-loss")
+            calibration.steelWoundBendingLoss = static_cast<float>(std::atof(argv[i + 1]));
+        else if (option == "--picking")
             parameters.picking = static_cast<acustra::PickingTechnique>(std::atoi(argv[i + 1]));
         else if (option == "--room")
             parameters.room = static_cast<float>(std::atof(argv[i + 1]));
@@ -71,6 +87,8 @@ int main(int argc, char** argv)
                      [](const Event& a, const Event& b) { return a.sample < b.sample; });
 
     auto performer = std::make_unique<acustra::Performer>();
+    performer->engine().setPerformanceRealism(realism);
+    performer->engine().setPhysicalCalibration(calibration);
     performer->setParameters(parameters);
     performer->prepare(rate, block);
     performer->setParameters(parameters);
