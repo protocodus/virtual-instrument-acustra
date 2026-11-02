@@ -22,12 +22,12 @@ rewrites this table. Longer technique and repertoire renders are described in
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
 | 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -1.3 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -7.6 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -7.5 dBFS |
 | 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -8.9 dBFS |
 | 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -5.3 dBFS |
 | 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -3.8 dBFS |
 | 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.wav](Docs/audio/06-dadgad-mono-mic.wav) | 11.2 s | -11.9 dBFS |
-| 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -6.5 dBFS |
+| 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -6.3 dBFS |
 | 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -6.9 dBFS |
 
 <!-- audio-demos-end -->
@@ -339,7 +339,7 @@ later builds to exceed.
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 63](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/41454408224/artifacts/13148042046)**, built from [`4b4997fea24c`](https://github.com/protocodus/virtual-instrument-acustra/commit/4b4997fea24cf9643b18955317dda9e4361698f5). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 65](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/41496989332/artifacts/13170508285)**, built from [`44fd4a99615d`](https://github.com/protocodus/virtual-instrument-acustra/commit/44fd4a99615d7b9ac0a290dfa5dd02d96653aa7a). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
