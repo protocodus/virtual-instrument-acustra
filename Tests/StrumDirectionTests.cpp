@@ -9,6 +9,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace acustra
@@ -382,7 +383,7 @@ std::vector<float> phrase(double rate, int block)
     return left;
 }
 }
-// The strum keys strum the keys held on their channel, E0 down and F0 up,
+// The strum keys strum the keys held on their channel, F0 down and F#0 up,
 // whatever the technique and however apart the keys arrived. In Keys mode
 // the keys alone sound nothing; a re-strum keeps one owner per key.
 void testStrumKeys()
@@ -404,19 +405,19 @@ void testStrumKeys()
         expect(first == 0 && last > 0, message);
     };
     key(P::keyswitchStrumDown, true);
-    expect(p->strokeMode() == P::StrokeMode::Keys, "E0 did not latch Keys mode");
+    expect(p->strokeMode() == P::StrokeMode::Keys, "F0 did not latch Keys mode");
     expect(p->engine().getActiveVoiceCount() == 0, "a strum key with no keys held sounded");
     for (const int note : top) { key(note, true); advance(*p, 200); }
     advance(*p, 2000);
     expect(p->engine().getActiveVoiceCount() == 0, "a key sounded on its own in Keys mode");
     key(P::keyswitchStrumDown, true);
-    swept(false, "E0 did not sweep the held keys low to high as a downstroke");
+    swept(false, "F0 did not sweep the held keys low to high as a downstroke");
     advance(*p, 6000);
     std::array<int, 4> strings {};
     for (std::size_t i = 0; i < top.size(); ++i)
         strings[i] = p->engine().heldString(top[i], 1);
     key(P::keyswitchStrumUp, true);
-    swept(true, "F0 did not sweep the held keys high to low as an upstroke");
+    swept(true, "F#0 did not sweep the held keys high to low as an upstroke");
     for (std::size_t i = 0; i < top.size(); ++i)
         expect(p->engine().heldString(top[i], 1) == strings[i], "a re-strum moved a held key");
     advance(*p, 6000);
@@ -478,6 +479,172 @@ void testStrumKeyStrikesAGatheredChord()
            "a strum key struck only part of a gathered chord");
 }
 
+// Explicit directions describe the player's gesture even when automatic
+// alternate picking is ablated. Disable scatter only to isolate the sweep's
+// endpoint timing; testStrumKeys above retains the production scatter path.
+auto explicitStrokePerformer(acustra::PickingTechnique picking, bool alternatePicking)
+{
+    auto p = std::make_unique<acustra::Performer>();
+    acustra::EngineParameters parameters;
+    parameters.picking = picking;
+    p->setParameters(parameters);
+    acustra::PerformanceRealism realism;
+    realism.alternatePicking = alternatePicking;
+    realism.strumScatter = false;
+    p->engine().setPerformanceRealism(realism);
+    p->prepare(48000.0, 127);
+    p->setGatherChords(false);
+    return p;
+}
+
+void testExplicitSmallStrokes()
+{
+    using P = acustra::Performer;
+    constexpr std::array<int, 4> top { 50, 55, 59, 64 };
+    for (const auto picking : { acustra::PickingTechnique::Finger,
+                                acustra::PickingTechnique::Thumb,
+                                acustra::PickingTechnique::Pick })
+        for (const bool alternatePicking : { false, true })
+            for (const int count : { 1, 2, 4 })
+            {
+                auto p = explicitStrokePerformer(picking, alternatePicking);
+                const std::string context = " (technique "
+                    + std::to_string(static_cast<int>(picking)) + ", alternatePicking "
+                    + std::to_string(alternatePicking) + ", held notes "
+                    + std::to_string(count) + ")";
+                const auto check = [&](bool condition, const char* message)
+                { expect(condition, (std::string(message) + context).c_str()); };
+                keyswitch(*p, P::keyswitchStrumDown, true);
+                // A live keyboard chord is fretted one key at a time, without
+                // Gather Chords or any sound before the picking hand arrives.
+                for (int index = 4 - count; index < 4; ++index)
+                {
+                    keyswitch(*p, top[static_cast<std::size_t>(index)], true);
+                    advance(*p, 200);
+                }
+                check(p->engine().getActiveVoiceCount() == 0,
+                      "a staggered fretting key sounded before its strum key");
+                std::array<int, 4> strings {};
+                strings.fill(-1);
+                // Repeated directions must remain explicit instead of taking
+                // the automatic hand's return; both keys also re-strum singles.
+                for (const int key : { P::keyswitchStrumDown, P::keyswitchStrumDown,
+                                       P::keyswitchStrumUp, P::keyswitchStrumUp })
+                {
+                    const bool upstroke = key == P::keyswitchStrumUp;
+                    keyswitch(*p, key, true);
+                    check(p->strokeMode() == P::StrokeMode::Keys,
+                          "a strum key left Keys mode");
+                    for (int index = 4 - count; index < 4; ++index)
+                    {
+                        const auto slot = static_cast<std::size_t>(index);
+                        const int string = p->engine().heldString(top[slot], 1);
+                        check(string >= 0, "a strum key lost a fretted key");
+                        if (string < 0) continue;
+                        check(Access::sign(p->engine(), string) == (upstroke ? -1.0f : 1.0f),
+                              "F0/F#0 did not set the held key's explicit direction");
+                        check(strings[slot] < 0 || strings[slot] == string,
+                              "a strum key moved a key that remained held");
+                        strings[slot] = string;
+                    }
+                    if (count > 1)
+                    {
+                        const int first = strings[static_cast<std::size_t>(upstroke ? 3 : 4 - count)];
+                        const int last = strings[static_cast<std::size_t>(upstroke ? 4 - count : 3)];
+                        if (first >= 0 && last >= 0)
+                            check(Access::delay(p->engine(), first) == 0
+                                      && Access::delay(p->engine(), last) > 0,
+                                  "F0/F#0 did not sweep its held keys in the explicit direction");
+                    }
+                    advance(*p, 6000);
+                }
+                for (int index = 4 - count; index < 4; ++index)
+                    keyswitch(*p, top[static_cast<std::size_t>(index)], false);
+                for (int index = 4 - count; index < 4; ++index)
+                    check(p->engine().heldString(top[static_cast<std::size_t>(index)], 1) < 0,
+                          "a repeated explicit strum added an owner that survived key-up");
+            }
+
+    // Direction latches override independent finger/thumb pair plucks too:
+    // a two-note chord is swept, just as a larger forced-direction chord is.
+    for (const auto picking : { acustra::PickingTechnique::Finger,
+                                acustra::PickingTechnique::Thumb })
+        for (const bool alternatePicking : { false, true })
+            for (const int key : { P::keyswitchDownstroke, P::keyswitchUpstroke })
+            {
+                auto p = explicitStrokePerformer(picking, alternatePicking);
+                const std::string context = " (technique "
+                    + std::to_string(static_cast<int>(picking)) + ", direction key "
+                    + std::to_string(key) + ", alternatePicking "
+                    + std::to_string(alternatePicking) + ")";
+                const auto check = [&](bool condition, const char* message)
+                { expect(condition, (std::string(message) + context).c_str()); };
+                keyswitch(*p, key, true);
+                std::array<float, 1> left {}, right {};
+                p->beginBlock(left.data(), right.data(), 1);
+                p->noteOn(0, 1, 59, 100);
+                p->noteOn(0, 1, 64, 100);
+                p->endBlock();
+                const bool upstroke = key == P::keyswitchUpstroke;
+                const int low = p->engine().heldString(59, 1);
+                const int high = p->engine().heldString(64, 1);
+                check(low >= 0 && high >= 0, "C0/C#0 lost a two-note chord member");
+                if (low >= 0 && high >= 0)
+                {
+                    check(Access::sign(p->engine(), low) == (upstroke ? -1.0f : 1.0f)
+                              && Access::sign(p->engine(), high) == (upstroke ? -1.0f : 1.0f),
+                          "C0/C#0 did not set a two-note chord's explicit direction");
+                    check(Access::delay(p->engine(), upstroke ? high : low) == 0
+                              && Access::delay(p->engine(), upstroke ? low : high) > 0,
+                          "C0/C#0 did not sweep a two-note chord in its explicit direction");
+                }
+                keyswitch(*p, 59, false);
+                keyswitch(*p, 64, false);
+                check(p->engine().heldString(59, 1) < 0 && p->engine().heldString(64, 1) < 0,
+                      "a forced two-note chord survived its keys' single key-ups");
+            }
+
+    // Disabling automatic alternation cannot disable an explicitly latched
+    // picked direction. The latch still governs each individual pick stroke.
+    for (const bool alternatePicking : { false, true })
+        for (const int key : { P::keyswitchDownstroke, P::keyswitchUpstroke })
+        {
+            auto p = explicitStrokePerformer(acustra::PickingTechnique::Pick,
+                                             alternatePicking);
+            keyswitch(*p, key, true);
+            keyswitch(*p, 64, true);
+            const int string = p->engine().heldString(64, 1);
+            expect(string >= 0, "C0/C#0 lost a picked single note");
+            if (string >= 0)
+                expect(Access::sign(p->engine(), string)
+                           == (key == P::keyswitchUpstroke ? -1.0f : 1.0f),
+                       "C0/C#0 lost a picked single's direction when automatic picking was ablated");
+            keyswitch(*p, 64, false);
+            expect(p->engine().heldString(64, 1) < 0,
+                   "a latched-direction picked single stayed owned after key-up");
+        }
+
+    // The direction latches affect strums and picked notes. An ordinary
+    // Finger/Thumb single still plucks toward the palm, unlike a strum key.
+    for (const auto picking : { acustra::PickingTechnique::Finger,
+                                acustra::PickingTechnique::Thumb })
+        for (const int key : { P::keyswitchAutomatic, P::keyswitchDownstroke,
+                               P::keyswitchUpstroke })
+        {
+            auto p = explicitStrokePerformer(picking, true);
+            keyswitch(*p, key, true);
+            keyswitch(*p, 64, true);
+            const int string = p->engine().heldString(64, 1);
+            expect(string >= 0, "an ordinary Finger/Thumb single lost its key");
+            if (string >= 0)
+                expect(Access::sign(p->engine(), string) == 1.0f,
+                       "a direction latch reversed an ordinary Finger/Thumb single");
+            keyswitch(*p, 64, false);
+            expect(p->engine().heldString(64, 1) < 0,
+                   "an ordinary Finger/Thumb single stayed owned after key-up");
+        }
+}
+
 int main()
 {
     testFreshReleaseAndDefaultPaths();
@@ -486,6 +653,7 @@ int main()
     testKeyswitches();
     testStrumKeys();
     testStrumKeyStrikesAGatheredChord();
+    testExplicitSmallStrokes();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto reference = phrase(rate, 17);
