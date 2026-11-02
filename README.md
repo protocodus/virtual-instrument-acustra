@@ -138,7 +138,7 @@ long per-version notes are in the
   Thumb notes come out darker against loud ones. From velocity 12 to 127,
   the brightness over C4-A5 now rises 6.9 dB on Dreadnought Steel with
   Finger (2.0 before), 9.9 dB with Thumb (5.3) and 7.9 dB on Mahogany Steel
-  Thumb (0.6), against 14.5 dB in the reference bank's picked flat-top; over
+  Thumb (0.6), against 14.5 dB in the reference bank's Shinyguitar archtop; over
   E2-B3, 9.7, 11.0 and 10.2 dB (5.9, 6.4 and 2.9). A velocity-16 thumb note
   no longer comes back brighter than a velocity-32 one, except by 2.4 dB on
   the low E. Loud notes and the Pick are unchanged. Details in
@@ -148,7 +148,7 @@ long per-version notes are in the
 
 - A hard picked note's attack starts 3.4 cents sharp instead of 7.3
   (velocity 112, Jumbo Steel Pick), against 3.1 in the reference bank's
-  loudest picked flat-top layer and 4.1 in the archtop recordings. The
+  loudest Shinyguitar archtop layer and 4.1 in the separate archtop recordings. The
   plectrum's attack glide now reads 0.69 of the excursion fitted with the
   finger's stroke. Finger and Thumb are unchanged. Details in
   [the decision log](Docs/decisions.md).
@@ -156,7 +156,7 @@ long per-version notes are in the
 ### 1.9.9 — 2026-10-30 — overtones that swell and fade
 
 - A string's two planes now sound 0.75 cent apart, so held notes' 2nd-4th
-  partials swell and fade as the reference bank's picked flat-top's do:
+  partials swell and fade as the reference bank's Shinyguitar archtop's do:
   Dreadnought Steel's 3rd and 4th partials beat in 19% and 25% of notes,
   against 0% before and 12-28% in the recordings. The pitch is still centred
   on the request; the first second sits up to 0.75 cent under it. Chosen by
@@ -175,7 +175,7 @@ long per-version notes are in the
 
 - Repeated picked notes vary more in colour from one to the next: the Pick's
   hand spread is 0.03 of the string, up from 0.02. Measured on the picked
-  flat-top round robins in the reference bank, a note's partials scatter
+  Shinyguitar archtop round robins in the reference bank, a note's partials scatter
   1.70-2.93 dB from take to take; Jumbo Steel Pick's scattered 1.56 dB and
   now 1.93. Finger and Thumb keep 0.02 (Finger already scatters 2.03 dB).
   An explicit MPE CC74 point keeps 0.02 under every technique. Details in
@@ -474,7 +474,7 @@ normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
 2nd-4th partials swell and fade as a recorded guitar's do. A
 bounded Kirchhoff-Carrier surrogate sharpens the attack pitch; a plectrum
 lets go at 0.69 of the finger's excursion, so a hard pick starts as sharp as
-the reference bank's picked flat-top. The stretch a vibrating string adds to
+the reference bank's Shinyguitar archtop. The stretch a vibrating string adds to
 its tension, the integral of its squared slope read off both planes' lines,
 travels to the saddle as longitudinal waves: a ring tuned to the string's
 first longitudinal mode, sqrt(EA/mu)/2L (3.9 kHz on an open plain string,
@@ -632,7 +632,7 @@ reference for a string held before release, after
 
 Neither the plug-in nor the repository holds recorded audio. Until
 2026-10-31 an offline reference bank embedded 280 CC0 regions (272 Shinyguitar
-steel regions and 8 Eastman E1D finger-plucked anchors) for the fitter; it was
+archtop regions and 8 Eastman E1D finger-plucked anchors) for the fitter; it was
 removed with its renderer and tests, and recordings are now fetched for each
 measurement and never committed. The fitter renders the engine
 deterministically and scores it against recordings on seven robust terms (attack spectra, harmonic envelopes,
@@ -645,6 +645,13 @@ override the fit where recorded. Scores are paired measurements, not
 constants. The [real dry-note benchmark](Docs/research/real-dry-note-benchmark.md)
 compares the fit with real recordings, and [verification](Docs/validation/verification.md)
 records the measured checks.
+
+The reference library's
+[first-party description](https://github.com/sfzinstruments/karoryfer.shinyguitar)
+identifies Shinyguitar as an **archtop**. Historical reports that call its
+picked reference regions a flat-top refer to that archtop recording; their
+measurements are retained, but they are not independent flat-top validation.
+The separately identified Eastman E1D finger recordings are a dreadnought.
 
 ## Known gaps
 
@@ -693,14 +700,14 @@ separates verified errors from accepted approximations.
   the geometrically exact nonlinear string, which supplies up to about 58% of the
   recordings' loud-layer brightness rise, is not built. Velocity brightens a
   Pick stroke about half as much as the archtop recordings show, and about a
-  third as much as the reference bank's picked flat-top: from its softest
+  third as much as the reference bank's Shinyguitar archtop: from its softest
   layer to its hardest, the share above 2.5 kHz over a note's first 30-330 ms
   rises 15.5 dB while the level rises 4.4 dB; Jumbo Steel Pick's rises 5.7 dB
   from velocity 20 to 112 (measured with `compare_reference_takes.py`, removed with the bank on
   2026-10-31).
 - The recordings snap and then mellow; the engine's upper partials die at
   about 35% of the recorded rate and the attack transient those partials stood
-  for is missing. On the reference bank's picked flat-top
+  for is missing. On the reference bank's Shinyguitar archtop
   (`compare_reference_takes.py --decay`, since removed) partials 9-12 fall 61-72 dB/s over
   a note's first 0.3 s and 19-24 after it; Jumbo Steel Pick's fall 34, then
   22, and neither of its planes alone snaps (the normal 30 then 28, the

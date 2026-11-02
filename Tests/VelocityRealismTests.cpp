@@ -6,6 +6,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -132,15 +133,158 @@ int failures = 0;
 void expect(bool condition, const char* message)
 { if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; } }
 
-auto fresh(double rate, acustra::PickingTechnique picking)
+struct FixtureKey
+{
+    double rate;
+    acustra::PickingTechnique picking;
+    acustra::CaptureType capture;
+    bool parametersBeforePrepare;
+};
+
+auto directlyPrepared(const FixtureKey& key)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
-    engine->prepare(rate, 128);
-    engine->setStringPerChannelMode(true);
     acustra::EngineParameters parameters;
-    parameters.picking = picking;
-    engine->setParameters(parameters);
+    parameters.picking = key.picking;
+    parameters.capture = key.capture;
+    if (key.parametersBeforePrepare)
+        engine->setParameters(parameters);
+    engine->prepare(key.rate, 128);
+    engine->setStringPerChannelMode(true);
+    if (!key.parametersBeforePrepare)
+        engine->setParameters(parameters);
     return engine;
+}
+
+int regressionFixtureCount = 0;
+
+auto preparedFixtureCopy(const FixtureKey& key, bool regressionFixture = true)
+{
+    struct Fixture
+    {
+        FixtureKey key;
+        std::unique_ptr<const acustra::AcustraEngine> snapshot;
+    };
+    // All 1,467 original velocity fixtures start from one of these identical
+    // prepared states. Preparing each from scratch repeatedly solves the
+    // same piezo table and body configurations, unrelated to velocity.
+    // Copy the complete pristine engine instead: no reset/RNG shortcut and
+    // no shared mutable signal state. Every original probe and assertion
+    // below remains. testPreparedFixtureCopiesMatchFreshSetup independently
+    // checks both setup orders and all 27 rate/style/capture keys, including
+    // obtaining a second copy after another has rendered and reconfigured.
+    static std::vector<Fixture> fixtures;
+    if (regressionFixture)
+        ++regressionFixtureCount;
+    for (const auto& fixture : fixtures)
+        if (fixture.key.rate == key.rate && fixture.key.picking == key.picking
+            && fixture.key.capture == key.capture
+            && fixture.key.parametersBeforePrepare == key.parametersBeforePrepare)
+            return std::make_unique<acustra::AcustraEngine>(*fixture.snapshot);
+    fixtures.push_back({ key, directlyPrepared(key) });
+    return std::make_unique<acustra::AcustraEngine>(*fixtures.back().snapshot);
+}
+
+auto fresh(double rate, acustra::PickingTechnique picking)
+{
+    return preparedFixtureCopy({ rate, picking, acustra::EngineParameters {}.capture, false });
+}
+
+void testPreparedFixtureCopiesMatchFreshSetup()
+{
+    int keys = 0;
+    const auto check = [&keys] (const FixtureKey& key)
+    {
+        // First mutate and render an independent copy. Any shallow history
+        // or configuration alias would contaminate the next copy below.
+        auto changed = preparedFixtureCopy(key, false);
+        changed->noteOn(40, 0.51f, 1);
+        std::array<float, 256> left {}, right {};
+        changed->process(left.data(), right.data(), 256);
+        auto parameters = acustra::EngineParameters {};
+        parameters.shape = acustra::BodyShape::Jumbo;
+        parameters.bodyMaterial = acustra::BodyMaterial::Mahogany;
+        parameters.picking = acustra::PickingTechnique::Thumb;
+        parameters.capture = acustra::CaptureType::Piezo;
+        changed->setParameters(parameters);
+        changed->setPitchBend(1.25f, 1);
+        changed->noteOn(76, 0.9f, 6);
+        changed->process(left.data(), right.data(), 256);
+
+        auto copied = preparedFixtureCopy(key, false);
+        auto direct = directlyPrepared(key);
+        const auto compareAudio = [&]
+        {
+            std::array<float, 256> aLeft {}, aRight {}, bLeft {}, bRight {};
+            for (int block = 0; block < 2; ++block)
+            {
+                direct->process(aLeft.data(), aRight.data(), 256);
+                copied->process(bLeft.data(), bRight.data(), 256);
+                const auto finite = [] (const auto& samples)
+                { return std::all_of(samples.begin(), samples.end(),
+                         [] (float sample) { return std::isfinite(sample); }); };
+                expect(finite(aLeft) && finite(aRight) && finite(bLeft) && finite(bRight),
+                       "fresh/copy fixture witness produced nonfinite audio");
+                expect(std::memcmp(aLeft.data(), bLeft.data(), sizeof(float) * aLeft.size()) == 0
+                           && std::memcmp(aRight.data(), bRight.data(), sizeof(float) * aRight.size()) == 0,
+                       "prepared fixture copy changed fresh audio or shared mutable signal state");
+            }
+        };
+        const auto compareContact = [&] (int string)
+        {
+            const auto a = Access::inspect(*direct, string);
+            const auto b = Access::inspect(*copied, string);
+            const std::array<double, 6> aState { a.pole, a.reference, a.position,
+                a.displacement, a.brightness, a.absolutePole };
+            const std::array<double, 6> bState { b.pole, b.reference, b.position,
+                b.displacement, b.brightness, b.absolutePole };
+            const auto finite = [] (const auto& state)
+            { return std::all_of(state.begin(), state.end(),
+                     [] (double value) { return std::isfinite(value); }); };
+            expect(finite(aState) && finite(bState),
+                   "fresh/copy fixture witness produced nonfinite release state");
+            expect(std::memcmp(aState.data(), bState.data(), sizeof(double) * aState.size()) == 0,
+                   "prepared fixture copy changed fresh release state or seed draws");
+        };
+        for (auto* engine : { direct.get(), copied.get() })
+        {
+            Access::seed(*engine, 0x13579bdu);
+            Access::primeRepeatForce(*engine, 0.445f, 42284u);
+            engine->noteOn(40, 0.445f, 1);
+        }
+        compareContact(0);
+        compareAudio();
+        for (auto* engine : { direct.get(), copied.get() })
+            engine->noteOn(40, 0.5f + std::ldexp(1.0f, -20), 1);
+        compareContact(0);
+        compareAudio();
+        for (auto* engine : { direct.get(), copied.get() })
+            engine->noteOn(76, 100.0f / 127.0f, 6);
+        compareContact(5);
+        compareAudio();
+        for (auto* engine : { direct.get(), copied.get() })
+        {
+            engine->noteOff(40, 1);
+            engine->noteOff(76, 6);
+        }
+        compareAudio();
+        ++keys;
+    };
+    for (const auto technique : { acustra::PickingTechnique::Finger,
+                                  acustra::PickingTechnique::Pick,
+                                  acustra::PickingTechnique::Thumb })
+    {
+        for (double rate : { 44100.0, 48000.0, 96000.0 })
+            check({ rate, technique, acustra::EngineParameters {}.capture, false });
+        for (double rate : { 44100.0, 96000.0 })
+            for (const auto capture : { acustra::CaptureType::StereoMic,
+                                       acustra::CaptureType::MonoMic,
+                                       acustra::CaptureType::Piezo })
+                check({ rate, technique, capture, true });
+    }
+    expect(keys == 27, "prepared fixture verification omitted a setup key");
+    std::cout << "Prepared velocity fixtures: " << keys
+              << " fresh/copy setup keys, exact release state and stereo samples after copy contamination witness\n";
 }
 
 void testContactLawAndForceSensitiveBrightness()
@@ -232,13 +376,7 @@ void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
 double renderedLevel(acustra::PickingTechnique technique,
                      acustra::CaptureType capture, int midi, int velocity, double rate)
 {
-    auto engine = std::make_unique<acustra::AcustraEngine>();
-    acustra::EngineParameters parameters;
-    parameters.picking = technique;
-    parameters.capture = capture;
-    engine->setParameters(parameters);
-    engine->prepare(rate, 128);
-    engine->setStringPerChannelMode(true);
+    auto engine = preparedFixtureCopy({ rate, technique, capture, true });
     const int string = midi < 64 ? 1 : 6;
     engine->noteOn(midi, float(velocity) / 127.0f, string);
     std::array<float, 128> left {}, right {};
@@ -462,5 +600,8 @@ int main()
     testPlayableAudibleVelocityRange();
     testDenseFloatingVelocityResponse();
     testRepeatedContactConvergesAcrossExactVelocity();
+    expect(regressionFixtureCount == 1467,
+           "velocity fixture optimization changed the original probe inventory");
+    testPreparedFixtureCopiesMatchFreshSetup();
     return failures == 0 ? 0 : 1;
 }
