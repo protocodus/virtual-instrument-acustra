@@ -24,16 +24,27 @@ green checks with feedback addressed.
 - Review audio, fixed scores, raw levels and hashes remain outside Git.
   No listener preference is asserted; the owner's recorded candidate-wins
   rule licenses the current candidate, not a claim that someone heard it.
+- The actual Rack wrapper/output converter at fresh 2x defaults retains the
+  effects across 28 finite captures. Telemetry verifies the declared strings
+  and frets, explicit default-switch setup has byte parity, and additional
+  one-change lettered pairs preserve both old mechanisms in their baseline.
 
-## Remaining sound investigation
+## Bounded research result and future model work
 
 The broader upper-register attack/sustain realism is not proved by a small
 brightness change. The [follow-up audit](../research/upper-register-audit-2026-11-02.md)
 does not support an arbitrary velocity-phase flip or extra constant damping.
-Keep the validated candidate while the next bounded experiment is evaluated.
+The [reference follow-up](../research/upper-register-reference-audit-2026-11-02.md)
+has now separated the identified archtop and dreadnought sources, checked
+onsets and floor-censored partial envelopes, and found layer- and
+pitch-dependent attack differences. It does not justify another blanket
+gain, phase or damping change. Retain the validated candidate at its actual
+scope: clearer soft upper contacts and audible wound-string shifts.
 
-1. Re-establish attack/partial-envelope measurements against the identified
-   recordings. Shinyguitar is an archtop and the Eastman E1D is a dreadnought;
+Further model research is a separate backlog:
+
+1. Expand attack/partial-envelope measurements with technique- and
+   register-matched release recordings. Shinyguitar is an archtop and the Eastman E1D is a dreadnought;
    technique, unknown MIDI force, capture, noise floor and historical fitting
    overlap must be explicit. Use upper-register cases and lower controls,
    native levels and a common matching protocol; do not retune per note.
@@ -53,7 +64,8 @@ Keep the validated candidate while the next bounded experiment is evaluated.
    the applicable native and Rack suites. Fresh measurements replace stale
    claims; frozen review evidence remains intact.
 
-The goal stays active while this sound-evidence gap is open. This does not
-require every known guitar-model limitation to be solved, but a more natural
-upper attack must be supported at its actual scope rather than inferred
-solely from green infrastructure checks.
+The requested improvement iteration does not require every known guitar-model
+limitation to be solved. Its acceptance evidence is the independent release
+corner proof, controlled fret-source checks, native and Rack-default audio,
+unchanged compatibility contracts and passing validation. A broader claim
+that the recorded snap/mellow behavior has been solved is not made.
