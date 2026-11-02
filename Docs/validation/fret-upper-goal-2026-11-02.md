@@ -86,6 +86,15 @@ first-party description. The separate Eastman E1D recordings are the
 identified dreadnought reference. Historical measurements are not recast as
 independent flat-top validation.
 
+The [bounded reference study](../research/upper-register-reference-audit-2026-11-02.md)
+adds 67 identified reference recordings and 25 dry model renders. Attack
+differences change with layer and corpus; selected high-note early partial
+decay is broadly comparable and late model decay is faster. Its changed
+estimator, preset and register do not reproduce or universally contradict
+the historical global decay estimate. Floor, capture, force and fingering
+limits are explicit. It supplies no defensible additional gain or damping
+change for this iteration.
+
 The current sound improvements remain the exact soft-contact cutoff and
 the audible wound-string shift source. The broader snap/mellow gap is still
 an explicit modelling limit. Further attack-envelope work requires an
@@ -96,3 +105,33 @@ Evidence lives outside Git under `diagnostics/acustra-goal-20261102/`:
 `timeout-gates.log`, original test/binary snapshots, fresh/copy equivalence
 results, reference provenance, the moment audit and the negative phase audit.
 No PR was found for either task branch when checked, and none was merged.
+
+## Rack defaults through the output converter
+
+A separate SDK-free `CAcustra::RenderBatch` host-shim probe retains fresh
+Rack defaults at 48 kHz: 2x quality, Room 10%, mixed Piezo 20%, Release Noise
+10% and Output 0 dB. All 28 native stereo-float captures are finite and below
+full scale; the largest peak is -1.998 dBFS. Public display packets confirm
+the five six-string barre positions and B/high-E dyads at frets 12/16/20,
+velocities 40/100. Events reach the wrapper as normal note-state diffs.
+
+Explicitly setting both research switches true matches an untouched instance
+byte for byte in barre and upper-fret witnesses. The arrival-only ablation
+is also byte-identical for all six first-contact upper dyads. The barre
+candidate minus legacy-arrival null is -44.232 dB relative to the whole
+candidate phrase, with +0.000699 dB phrase RMS change. Upper candidate minus
+legacy-pad nulls are -31.362 to -27.219 dB relative to each dyad. These are
+controlled differences, not isolated total-noise recordings or listener scores.
+
+The additional 4-second fret and 7.2-second upper lettered pairs preserve
+both pre-iteration mechanisms in A and change only the reviewed mechanism in
+B, using the offline ablations. They are not recordings from an old installed
+binary. B is whole-file stereo-RMS matched to A: -0.000702501 dB for fret,
+-0.044169194 dB for upper; mismatch is below 1.3e-9 dB. No common attenuation
+is needed. Separate keys exist and no listening preference is asserted.
+The full two-change candidate and unscaled controls are retained separately.
+
+Source, object/input hashes, fixed events, raw captures, analysis and pairs
+are in `diagnostics/acustra-goal-20261102/rack-default-audio/`. This confirms
+the effects through the actual wrapper and output converter at defaults;
+it remains host-shim evidence rather than installed Reason playback.

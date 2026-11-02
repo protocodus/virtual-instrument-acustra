@@ -705,17 +705,23 @@ separates verified errors from accepted approximations.
   rises 15.5 dB while the level rises 4.4 dB; Jumbo Steel Pick's rises 5.7 dB
   from velocity 20 to 112 (measured with `compare_reference_takes.py`, removed with the bank on
   2026-10-31).
-- The recordings snap and then mellow; the engine's upper partials die at
-  about 35% of the recorded rate and the attack transient those partials stood
-  for is missing. On the reference bank's Shinyguitar archtop
+- Recorded attack and partial-envelope evolution remain an open realism
+  gap. A historical aggregate put the engine's upper-partial decay at about
+  35% of the recorded rate. On the reference bank's Shinyguitar archtop
   (`compare_reference_takes.py --decay`, since removed) partials 9-12 fall 61-72 dB/s over
   a note's first 0.3 s and 19-24 after it; Jumbo Steel Pick's fall 34, then
   22, and neither of its planes alone snaps (the normal 30 then 28, the
   parallel 32 then 22), so the snap is not one plane draining faster.
   Raising the bridge's high-frequency conductance from 0.011 to 0.025 moves
   them only to 41 then 24. The Finger's attack stays brighter than the finger-plucked
-  recordings'. A noise-free or floor-documented finger-plucked steel corpus,
-  and an attack transient a listener accepts, would settle both.
+  recordings' in that comparison. The
+  [bounded high-note audit](Docs/research/upper-register-reference-audit-2026-11-02.md)
+  of 1.9.13 with 1.9.20's pad corner, before the stretch and 1.9.15's shelf,
+  uses Dreadnought and a changed estimator: selected early upper-partial decay
+  is broadly comparable, late model decay is faster, and between-partial
+  attack deficits change with layer and corpus. The historical aggregate is
+  not a universal high-register loss ratio. Technique-matched release
+  measurements and a listener-accepted attack remain future evidence needs.
 - The Finger's pluck point at the 12th to 20th fret is nominally 0.30-0.31 of
   the speaking length on every string since 1.9.19. The third harmonic did not
   rise with it on the A and D strings (2-3 dB lower); whether the move helps
