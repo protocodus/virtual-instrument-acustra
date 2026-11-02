@@ -212,13 +212,14 @@ alternate, quarter notes and the first note after a rest are downstrokes.
 Two notes played together, a power chord say, are one small stroke: the
 pick reaches one string about a hundredth of a second before the other. A
 small stroke crosses each string more slowly than a full six-string one,
-as a strumming hand does. Finger and
-Thumb pluck every note the same way.
+as a strumming hand does. Ordinary Finger and Thumb single notes pluck
+toward the palm; an explicit strum key supplies its own direction.
 
 **Keyswitches** below the guitar's range latch the stroke direction on
 every channel, whichever channel sends them, until the next keyswitch or
 PANIC: MIDI 24 makes every strum (and, with a pick, every picked note) a
-downstroke, 25 an upstroke and 26 returns to automatic. They never sound. The panel's legend names them
+downstroke, 25 an upstroke and 26 returns to automatic. A forced direction
+sweeps even a two-note Finger/Thumb chord. They never sound. The panel's legend names them
 **C0**, **C#0** and **D0**, counting middle C as C3; with middle C as C4,
 as in the rest of this guide, they are C1, C#1 and D1.
 
@@ -229,7 +230,8 @@ strum key's own velocity, under Finger, Thumb or Pick. The first strum key
 switches on Keys mode: from then on a key only frets its string and sounds
 at the next strum key, so a chord can be changed ahead of the beat. C0, C#0
 or D0 switches Keys mode off; PANIC does too. A strum key with nothing held
-plays nothing. Strum keys need no CHORDS and add no latency, and work the
+plays nothing; one held string still follows the explicit down/up direction.
+Strum keys need no CHORDS and add no latency, and work the
 same in the Rack Extension.
 
 **Sustain switch and sustain pedal.** CC64 holds released notes on its

@@ -5,6 +5,32 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-02 — rear keyswitch contract, 1.9.15
+
+The owner chose B while reporting little audible difference, then requested
+that strumming honor the rear-panel keyswitches. The preceding instruction
+that the exaggerated 16× treatment is webpage-only remains in force: the
+engine retains the actual 1.9.14 acoustic changes, without extrapolating the
+browser mix into a new contact or noise setting. This records the owner's
+choice, not a claim of improved audibility or a preference reported earlier.
+
+The key audit found two canonical contract defects. C0/C#0 did not turn a
+two-note Finger/Thumb chord into a directional sweep, although the guide says
+a direction key makes every chord a strum. F#0 also struck a single held
+Finger/Thumb string downward. Explicit gestures now override those automatic
+technique rules, including the offline automatic-picking switch. Ordinary
+Finger/Thumb single notes retain their existing palmward pluck.
+
+Separately, the Rack wrapper processed new MIDI/CV strikes before C0/C#0/D0
+at the same frame. Leaving Keys mode could therefore silently fret the new
+note instead of sounding it. The adapter repairs that ordering; sustain's
+relative release ordering is retained. The rear legend also gains the
+existing F0/F#0 strum controls. Neither change is a by-ear parameter choice.
+
+[Validation](validation/keyswitch-strumming-2026-11-02.md) records baseline
+failure witnesses, exact scope and final checks. No 16× preview processing
+is included in the instrument.
+
 ## 2026-11-02 — exact pad corner and a clearer winding arrival, 1.9.14
 
 The user requested another researched iteration with fret noise and an
@@ -23,8 +49,9 @@ setting. No absolute squeak level is claimed from the literature. In the
 48 kHz Pick barre review the arrival-window null rises from -52.65 to
 -40.60 dB relative to the phrase; continuous slides, key-up brushes and
 ineligible contacts keep their existing behavior. The candidate follows
-the user's requested direction and the recorded standing rule; nobody has
-reported listening to this iteration. Its native and RMS-matched A/B
+the user's requested direction and the recorded standing rule. At initial
+adoption nobody had reported listening; the later owner choice is recorded
+above with the webpage-preview qualification. Its native and RMS-matched A/B
 renders are retained outside Git, with a separate unread-by-design letter key.
 
 [Research and protocol](research/fret-upper-refinement-2026-11-02.md) and

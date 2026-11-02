@@ -1680,7 +1680,10 @@ void testUnsoundableNotesMakeNoStrum()
             events.push_back(message(0.01, 0x90, note, 100));
         return render(custom("strum count", 0.6, events), 48000.0, 64, false);
     };
-    expect(play({ 30, 33, 52 }) == play({ 52 }),
+    // MIDI 30 is F#0, an explicit up-strum control since 1.9.13, not an
+    // unsoundable pitch. Use two genuine non-control notes below the range;
+    // StrumDirection separately proves that F#0 does act on a single note.
+    expect(play({ 32, 33, 52 }) == play({ 52 }),
            "two unreachable notes turned a single note into a strum");
     expect(play({ 36, 48, 52 }) == play({ 48, 52 }),
            "an unreachable note turned two notes into a strum");

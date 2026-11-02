@@ -39,6 +39,15 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.15 — 2026-11-02 — explicit strum directions cover small chords
+
+- C0/C#0 now sweep two-note Finger/Thumb chords down/up, matching their
+  documented direction override. Ordinary single Finger/Thumb notes retain
+  their palmward pluck; an explicit F0/F#0 strum key gives even one held
+  string its requested direction, under every technique.
+  [Keyswitch validation](Docs/validation/keyswitch-strumming-2026-11-02.md)
+  separates the canonical fix from the Reason adapter's event-order repair.
+
 ### 1.9.14 — 2026-11-02 — clearer soft contacts and audible fret shifts
 
 - A finger or thumb's two-pass release now keeps the intended half-power

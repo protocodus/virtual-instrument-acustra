@@ -474,7 +474,13 @@ void Performer::flushNoteGroup() noexcept
     const bool fingerPair = soundingNotes == 2 && fingerTechnique_
         && strokeMode == StrokeMode::Automatic
         && engine_.performanceRealism().fingerPairs;
-    bool strum = soundingNotes >= 3 || fingerPair || (strumKey && soundingNotes == 2)
+    // A latched direction overrides the technique's independent two-finger
+    // pluck too: the rear-panel Down/Up modes promise swept chords. Keep
+    // ordinary Finger/Thumb singles as plucks; explicit F0/F#0 single-key
+    // strokes receive their direction in pickedStroke below.
+    const bool forcedDirection = strokeMode == StrokeMode::Down
+                              || strokeMode == StrokeMode::Up;
+    bool strum = soundingNotes >= 3 || fingerPair || (forcedDirection && soundingNotes == 2)
         || (soundingNotes == 2 && pickTechnique_
             && engine_.performanceRealism().twoStringStrokes);
     // The rest is measured between the strokes' own samples, so no block
@@ -684,7 +690,11 @@ void Performer::flushNoteGroup() noexcept
     // Under Pick, a group that is not a strum is one plectrum stroke: down
     // after a rest, the hand's return within the alternation window, and the
     // same stroke still travelling within the chord window of the last.
-    const bool pickedStroke = !strum && pickHand && pendingNoteOnCount_ > 0;
+    // An explicit strum key also names the direction of a one-string stroke,
+    // under every technique and independently of automatic-picking realism.
+    const bool pickedStroke = !strum
+        && (pickHand || strumKey || (pickTechnique_ && forcedDirection))
+        && pendingNoteOnCount_ > 0;
     bool pickedUpstroke = continuedStroke ? lastStrokeUpstroke_
                         : !restarted && nextUpstroke_;
     if (strokeMode != StrokeMode::Automatic)
