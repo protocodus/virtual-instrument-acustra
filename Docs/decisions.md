@@ -5,6 +5,35 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-03 — the Finger's pluck-point easing applies to every string, 1.9.19 (A–Z pair; B taken on the owner's word, not yet heard)
+
+**What was addressed.** 1.9.15 eased a Finger pluck's speaking length toward the
+4th fret's past that fret (exponent 0.35) on the G, B and E strings only, to
+keep the pluck off the third harmonic's null. The same geometry holds on the
+low E, A and D: with the hand 149 mm from the bridge, the nominal point at
+frets 12, 16 and 20 is 0.322, 0.333 and 0.340 of the speaking length there and
+0.300, 0.307 and 0.314 on the eased strings. A review of the string code found
+the gate (`stringIndex >= 3`) is by string, not by geometry.
+
+**Letters.** A: 1.9.18. B: the easing without the string gate. Dreadnought
+Steel (Finger) through the engine, three runs of every second fret from the 5th
+to the 19th on the D, A and low E strings, level-matched on whole-file RMS
+(B trimmed −0.27 dB). Frets 0-4 and the G, B and E strings render the same
+bytes in both.
+
+**What the measurement said.** It did not support the premise. Over 12 takes of
+every note at frets 12-19 (mean level re H1): the low E's third harmonic is
+unchanged (−26.1 dB), the A's falls 2.1 dB and the D's 2.7 dB; the second
+harmonic rises 1.4-1.5 dB, the fourth falls 0.8-3.6 dB and the sixth rises
+2.2-3.0 dB. At frets 5-11 the third harmonic rises 0.8-2.3 dB. The nominal
+point is only part of the comb: each take draws its own point (±0.02) and the
+finger's width and the normal-plane projection also shape the harmonics.
+
+**Chosen.** B, taken on the owner's word after being shown the measurement and
+before anyone listened. It is the last commit of the round so that it can be
+reverted alone. If a listener finds the upper frets of the low strings hollower
+or nasal, revert it.
+
 ## 2026-11-03 — the string stretch's cell sums go four at a time, 1.9.16 (numerical optimization; measured)
 
 **What was addressed.** After 1.9.14, `renderStringAxialForce` was 17.5% of the

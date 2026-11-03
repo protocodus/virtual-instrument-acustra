@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.19 — 2026-11-03 — the Finger's pluck eases on the low strings too
+
+- A Finger pluck past the 4th fret meets the string a little nearer the bridge
+  than a fixed hand would, as 1.9.15 did on the G, B and E strings; the low E,
+  A and D now do too. Frets 0-4 and the three treble strings are unchanged.
+  On frets 12-19 the A and D strings' third harmonic is 2-3 dB weaker and the
+  sixth 2-3 dB stronger; on frets 5-11 the third is 1-2 dB stronger. Taken on
+  the owner's word, not yet heard. Details in
+  [the decision log](Docs/decisions.md).
+
 ### 1.9.17 — 2026-11-03 — an MPE member sent home keeps its pitch as it is let go
 
 - An MPE controller that sends a note's member home (a pitch bend back to
@@ -687,10 +697,10 @@ separates verified errors from accepted approximations.
   them only to 41 then 24. The Finger's attack stays brighter than the finger-plucked
   recordings'. A noise-free or floor-documented finger-plucked steel corpus,
   and an attack transient a listener accepts, would settle both.
-- The Finger's pluck point at the 12th to 20th fret falls at 0.32-0.34 of
-  the speaking length on the low E, A and D, on the third harmonic's null
-  (1/3); 1.9.15 moved only the treble strings off it, to 0.30-0.31. Whether
-  the low strings want the same move is a listening decision.
+- The Finger's pluck point at the 12th to 20th fret is nominally 0.30-0.31 of
+  the speaking length on every string since 1.9.19. The third harmonic did not
+  rise with it on the A and D strings (2-3 dB lower); whether the move helps
+  is a listening decision.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
   real spread is not measured. A picked note's partials and brightness now

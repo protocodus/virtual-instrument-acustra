@@ -7143,8 +7143,11 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     }
     constexpr float highRegisterFretPivot = 0.793700526f; // 2^(-4/12), 4th fret
     const float highRegisterLength = highRegisterFretPivot * scaleLength;
-    const float effectivePluckLength = (stringIndex >= 3
-        && parameters_.picking == PickingTechnique::Finger
+    // A Finger's hand keeps its distance from the bridge, so on any string a
+    // note past the 4th fret is met ever nearer the middle and, from the 12th
+    // to the 20th fret, at 0.32-0.34 of its length, on the third harmonic's
+    // null. Past the pivot the length is eased toward the 4th fret's.
+    const float effectivePluckLength = (parameters_.picking == PickingTechnique::Finger
         && soundingLength < highRegisterLength)
         ? highRegisterLength * std::pow(soundingLength / highRegisterLength, 0.35f)
         : soundingLength;
