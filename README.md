@@ -22,7 +22,7 @@ rewrites this table. Longer technique and repertoire renders are described in
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
 | 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -1.3 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -7.5 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -7.3 dBFS |
 | 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -8.9 dBFS |
 | 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -5.3 dBFS |
 | 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -3.8 dBFS |
@@ -376,7 +376,7 @@ later builds to exceed.
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 66](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/41621262861/artifacts/13227097854)**, built from [`131d06dbc6e0`](https://github.com/protocodus/virtual-instrument-acustra/commit/131d06dbc6e0b898568a9d616c96237d124cbc6e). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 67](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/41670969590/artifacts/13248329715)**, built from [`4c5e32fee938`](https://github.com/protocodus/virtual-instrument-acustra/commit/4c5e32fee938ae7740c16981b18000669a713074). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
