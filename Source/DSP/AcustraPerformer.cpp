@@ -729,17 +729,44 @@ void Performer::flushNoteGroup() noexcept
                                                  : left.channel < right.channel;
               });
     for (int index = 0; index < pendingNoteOffCount_; ++index)
-    {
-        const auto& note = pendingNoteOffs_[static_cast<std::size_t>(index)];
-        if (note.pedalMoved)
-            engine_.noteOffWithVelocity(note.note, note.channel,
-                                        note.sustained, note.releaseVelocity,
-                                        note.pedalReleased);
-        else
-            engine_.noteOffWithVelocity(note.note, note.channel,
-                                        note.releaseVelocity);
-    }
+        sendNoteOff(pendingNoteOffs_[static_cast<std::size_t>(index)]);
     pendingNoteOffCount_ = 0;
+}
+
+void Performer::sendNoteOff(const PendingNoteOff& note) noexcept
+{
+    if (note.pedalMoved)
+        engine_.noteOffWithVelocity(note.note, note.channel,
+                                    note.sustained, note.releaseVelocity,
+                                    note.pedalReleased);
+    else
+        engine_.noteOffWithVelocity(note.note, note.channel,
+                                    note.releaseVelocity);
+}
+
+// A key-up waits for the Note Ons of its sample, but a member's string holds
+// the bend it was lifted at while it is let go (freezeMemberPitchBend). A
+// bend, or a reset of the controllers, that follows the key-up on its sample
+// is the controller sending the member home after the key, as MPE controllers
+// do, so the key-ups it reaches are let go first, in the order they came.
+// One that pairs with a Note On of its sample stays behind it.
+void Performer::releaseMemberKeysBeforeBend(int controllerChannel) noexcept
+{
+    int kept = 0;
+    for (int index = 0; index < pendingNoteOffCount_; ++index)
+    {
+        const auto off = pendingNoteOffs_[static_cast<std::size_t>(index)];
+        const bool pairedOn = std::any_of(pendingNoteOns_.begin(),
+            pendingNoteOns_.begin() + pendingNoteOnCount_,
+            [&off](const PendingNoteOn& on)
+            { return on.note == off.note && on.channel == off.channel; });
+        if (pairedOn || !isLowerZoneMember(off.channel)
+            || !channelIsInControllerScope(controllerChannel, off.channel))
+            pendingNoteOffs_[static_cast<std::size_t>(kept++)] = off;
+        else
+            sendNoteOff(off);
+    }
+    pendingNoteOffCount_ = kept;
 }
 
 // A strum key strikes every key held on its channel, at its own velocity.
@@ -884,6 +911,10 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
         // catch it, and one lifted after it lets it go, whatever the pedal
         // does next on this sample - unless another pedal still holds it (an
         // MPE member's key-up is held by its own pedal or the manager's).
+        if (pendingNoteOffCount_ > 0
+            && (status == 0xe0u
+                || (status == 0xb0u && size >= 3 && (data[1] & 0x7fu) == 121u)))
+            releaseMemberKeysBeforeBend(midiChannel);
         dispatchMidiData(data, size);
         if (status == 0xb0u && size >= 3
             && ((data[1] & 0x7fu) == 64u || (data[1] & 0x7fu) == 121u))
@@ -974,6 +1005,10 @@ void Performer::gatherChord(int first) noexcept
             return;
         pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
             = { note, channel, static_cast<float>(held.bytes[2] & 0x7fu) / 127.0f, 0 };
+        // It never reaches handleEvent, which is where a key is noted as
+        // held for the strum keys.
+        keysDown_[static_cast<std::size_t>(channel - 1)]
+                 [static_cast<std::size_t>(note / 32)] |= noteBit;
         held.gathered = true;
     }
 }

@@ -449,6 +449,35 @@ void testStrumKeys()
     expect(p->engine().heldString(40, 1) == 0, "a key silent before reset stayed silent after it");
 }
 
+// Gather Chords holds a chord's keys back and sounds them together; the
+// strum keys strike every key held, so the keys it gathered count as held:
+// before, only the one that came due was struck again.
+void testStrumKeyStrikesAGatheredChord()
+{
+    using P = acustra::Performer;
+    auto p = std::make_unique<P>();
+    p->prepare(48000.0, 127);
+    p->setGatherChords(true);
+    constexpr std::array<int, 4> top { 50, 55, 59, 64 };
+    {
+        std::array<float, 127> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 127);
+        for (std::size_t i = 0; i < top.size(); ++i)
+            p->noteOn(static_cast<int>(10 * i), 1, top[i], 90);
+        p->endBlock();
+    }
+    advance(*p, 6000);
+    for (const int note : top)
+        expect(p->engine().heldString(note, 1) >= 0, "a gathered chord did not sound");
+    keyswitch(*p, P::keyswitchStrumDown, true);
+    // The strum waits out the gather window, then the pick sweeps all four
+    // keys: the last strings wait for it while the first is struck.
+    for (int waited = 0; waited < 3000 && Access::delay(p->engine(), 5) == 0; waited += 10)
+        advance(*p, 10);
+    expect(Access::delay(p->engine(), 5) > 0 && Access::delay(p->engine(), 4) > 0,
+           "a strum key struck only part of a gathered chord");
+}
+
 int main()
 {
     testFreshReleaseAndDefaultPaths();
@@ -456,6 +485,7 @@ int main()
     testPerformerAlternationRestAndReset();
     testKeyswitches();
     testStrumKeys();
+    testStrumKeyStrikesAGatheredChord();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto reference = phrase(rate, 17);

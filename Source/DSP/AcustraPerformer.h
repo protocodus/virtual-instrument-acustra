@@ -334,6 +334,8 @@ private:
     // A sustain change after a grouped key-up preserves event order. Zero
     // means a global change; other values apply the MIDI controller scope.
     void updatePendingSustain(int controllerChannel = 0) noexcept;
+    void sendNoteOff(const PendingNoteOff& note) noexcept;
+    void releaseMemberKeysBeforeBend(int controllerChannel) noexcept;
     bool processRpnController(int midiChannel, int controller, int value) noexcept;
     void setLowerZoneMemberCount(int memberCount) noexcept;
     void refreshPitchBend(int midiChannel) noexcept;

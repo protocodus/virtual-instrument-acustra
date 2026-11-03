@@ -919,6 +919,40 @@ void testResetAllControllersResetsVibratoAndPressure()
            "pressure");
 }
 
+// An MPE controller sends a member home right after the key: its bend (or a
+// Reset All Controllers) shares the key-up's sample. The key-up waits for the
+// sample's Note Ons, but the member's string holds the bend it was lifted at,
+// so the home must follow the key-up and not step the pitch as it is let go.
+void testMemberBendHomeAfterItsKeyUpKeepsTheReleasePitch()
+{
+    const std::vector<Event> zone { message(0.0, 0xb0, 101, 0), message(0.0, 0xb0, 100, 6),
+                                    message(0.0, 0xb0, 6, 15) };
+    const auto play = [&](std::vector<Event> events)
+    {
+        auto all = zone;
+        all.insert(all.end(), events.begin(), events.end());
+        return render(custom("bend home", 1.5, std::move(all)), 48000.0, 64, false);
+    };
+    const auto bend = message(0.0, 0xe1, 0, 0x44);
+    const auto on = message(0.001, 0x91, 60, 100);
+    const auto off = message(0.5, 0x81, 60, 64);
+    const double later = 0.5 + 200.0 / 48000.0;
+    for (const auto& home : { message(0.5, 0xe1, 0, 0x40), message(0.5, 0xb1, 121, 0) })
+    {
+        auto after = home;
+        after.seconds = later;
+        expect(play({ bend, on, off, home }) == play({ bend, on, off, after }),
+               "a member's bend home on its key-up's sample stepped the release pitch");
+    }
+
+    // A key-up that pairs with a Note On of its sample (a re-strike of the
+    // note) still waits behind it.
+    const auto strike = message(0.5, 0x91, 60, 100);
+    expect(play({ bend, on, off, strike, message(0.5, 0xe1, 0, 0x40) })
+               == play({ bend, on, strike, off, message(0.5, 0xe1, 0, 0x40) }),
+           "a bend on the sample of a re-struck note let its key-up go first");
+}
+
 // A sample's Note Offs wait for its Note Ons (testOneSampleIsOneCanonicalEvent),
 // but the sustain pedal still meets them in the order the host sent them: a
 // pedal pressed after a key-up on the same sample does not catch that note,
@@ -1869,6 +1903,7 @@ int main()
     testHelpersSpellMidi();
     testMasterTune();
     testResetAllControllersResetsVibratoAndPressure();
+    testMemberBendHomeAfterItsKeyUpKeepsTheReleasePitch();
     testSustainMeetsSameSampleKeyUpsInOrder();
     testSustainHoldIsThePedalOnEveryChannel();
     testSustainKeyswitchIsAnIndependentGlobalLatch();
