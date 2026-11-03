@@ -12278,9 +12278,12 @@ float AcustraEngine::renderStringAxialForce(Voice& voice, int stringIndex) noexc
                     ? std::min(axial.roundTrip / period, 0.5f) : 0.0f;
                 // Before its own release a new shape was held still, so a
                 // retardation reaching past it reads the shape as released.
-                const float reach = std::min({ shear * period,
+                // At the longest period the line allows the room left is a
+                // sample short; a negative reach would read the line's far
+                // end.
+                const float reach = std::max(0.0f, std::min({ shear * period,
                     static_cast<float>(axial.validAge),
-                    static_cast<float>(activeDelaySamples() - 4) - period });
+                    static_cast<float>(activeDelaySamples() - 4) - period }));
                 // The direct path and the one by way of the nut join into one
                 // loop over u in [0, D], u = x on the first and D - x on the
                 // second: there the waves are read at u + r and D - u + r,
