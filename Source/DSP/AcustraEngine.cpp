@@ -11960,6 +11960,96 @@ ACUSTRA_NOINLINE void AcustraEngine::addReleaseNoise(
     }
 }
 
+namespace
+{
+// The interior cells [first, end) of the unheld slope sum in
+// renderStringAxialForce: cell k reads the outgoing wave's sample k strides
+// back and the returning wave at its own age, and adds the square of the two
+// waves' slopes over the cell. `outgoing`, `returning` and `sum` carry the
+// previous cell's reads and the running sum in and out. Four cells go at once
+// where the compiler has 4-wide float vectors; each cell's reads and slope are
+// the one-at-a-time arithmetic, and only the order the squares are added in
+// differs (four partial sums, joined last), a change in the sum's last bits.
+void sumAxialCells(const float* line, unsigned mask, unsigned newest,
+                   int stride, int first, int end, float period,
+                   float returningSpan, float outgoingScale,
+                   float returningScale, float& outgoing, float& returning,
+                   float& sum) noexcept
+{
+    const auto tap = [line, mask, newest] (float samplesAgo)
+    {
+        const int whole = static_cast<int>(samplesAgo);
+        const float part = samplesAgo - static_cast<float>(whole);
+        const unsigned at = newest - static_cast<unsigned>(whole);
+        const float a = line[at & mask];
+        const float b = line[(at - 1u) & mask];
+        return a + part * (b - a);
+    };
+    int cell = first;
+#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+    typedef float Floats __attribute__((vector_size(16)));
+    typedef int Ints __attribute__((vector_size(16)));
+    if (end - cell >= 4)
+    {
+        const Floats periodV = { period, period, period, period };
+        const Floats spanV = { returningSpan, returningSpan, returningSpan,
+                               returningSpan };
+        const Floats outgoingScaleV = { outgoingScale, outgoingScale,
+                                        outgoingScale, outgoingScale };
+        const Floats returningScaleV = { returningScale, returningScale,
+                                         returningScale, returningScale };
+        const Floats four = { 4.0f, 4.0f, 4.0f, 4.0f };
+        Floats cells = { static_cast<float>(cell), static_cast<float>(cell + 1),
+                         static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
+        Floats partial = { 0.0f, 0.0f, 0.0f, 0.0f };
+        for (; end - cell >= 4; cell += 4)
+        {
+            const Floats age = periodV - spanV * cells;
+            const Ints whole = __builtin_convertvector(age, Ints);
+            const Floats part = age - __builtin_convertvector(whole, Floats);
+            unsigned at[4];
+            for (int lane = 0; lane < 4; ++lane)
+                at[lane] = newest - static_cast<unsigned>(whole[lane]);
+            const Floats a = { line[at[0] & mask], line[at[1] & mask],
+                               line[at[2] & mask], line[at[3] & mask] };
+            const Floats b = { line[(at[0] - 1u) & mask], line[(at[1] - 1u) & mask],
+                               line[(at[2] - 1u) & mask], line[(at[3] - 1u) & mask] };
+            const Floats nextReturning = a + part * (b - a);
+            const auto out = [line, mask, newest, stride] (int k)
+            {
+                return line[(newest - static_cast<unsigned>(k * stride)) & mask];
+            };
+            const Floats nextOutgoing = { out(cell), out(cell + 1),
+                                          out(cell + 2), out(cell + 3) };
+            const Floats previousOutgoing = { outgoing, nextOutgoing[0],
+                                              nextOutgoing[1], nextOutgoing[2] };
+            const Floats previousReturning = { returning, nextReturning[0],
+                                               nextReturning[1], nextReturning[2] };
+            const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
+                + (nextReturning - previousReturning) * returningScaleV;
+            partial += slope * slope;
+            outgoing = nextOutgoing[3];
+            returning = nextReturning[3];
+            cells += four;
+        }
+        sum += (partial[0] + partial[1]) + (partial[2] + partial[3]);
+    }
+#endif
+    for (; cell < end; ++cell)
+    {
+        const float nextOutgoing = line[(newest
+            - static_cast<unsigned>(cell * stride)) & mask];
+        const float nextReturning = tap(period
+            - returningSpan * static_cast<float>(cell));
+        const float slope = (nextOutgoing - outgoing) * outgoingScale
+            + (nextReturning - returning) * returningScale;
+        sum += slope * slope;
+        outgoing = nextOutgoing;
+        returning = nextReturning;
+    }
+}
+} // namespace
+
 // The string's own lengthwise force at the saddle. A string stretched by its
 // own vibration carries the tension
 //     tau = EA xi_x + beta y_x^2,   beta = (EA - T) / 2,
@@ -12215,17 +12305,9 @@ float AcustraEngine::renderStringAxialForce(Voice& voice, int stringIndex) noexc
                     const float returningSpan = width * returningStep;
                     const float outgoingScale = -1.0f / static_cast<float>(stride);
                     const float returningScale = 1.0f / returningSpan;
-                    for (int cell = 1; cell < cells; ++cell)
-                    {
-                        const float nextOutgoing = sample(cell * stride);
-                        const float nextReturning = tap(period
-                            - returningSpan * static_cast<float>(cell));
-                        const float slope = (nextOutgoing - outgoing) * outgoingScale
-                            + (nextReturning - returning) * returningScale;
-                        sum += slope * slope;
-                        outgoing = nextOutgoing;
-                        returning = nextReturning;
-                    }
+                    sumAxialCells(line, mask, newest, stride, 1, cells, period,
+                                  returningSpan, outgoingScale, returningScale,
+                                  outgoing, returning, sum);
                     sum *= width;
                     const float slope = (tap(outgoingStep * period) - outgoing)
                             / (-lastWidth * outgoingStep)
