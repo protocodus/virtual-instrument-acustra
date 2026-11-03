@@ -39,6 +39,33 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.17 — 2026-11-03 — an MPE member sent home keeps its pitch as it is let go
+
+- An MPE controller that sends a note's member home (a pitch bend back to
+  centre, or Reset All Controllers) on the key-up's own sample used to make
+  the note jump to its home pitch as the damper took it: in a test arpeggio
+  of four notes, each lifted two semitones sharp, two were let go at the
+  home pitch. The key-up now goes first and the string keeps the pitch it was
+  lifted at.
+- With Gather Chords on, F0 and F#0 strike every key of a gathered chord,
+  where only the last key to come due was struck.
+
+### 1.9.16 — 2026-11-03 — the string stretch costs about 4% less CPU
+
+- The stretch's sums go four cells at a time: about 4.5% fewer instructions
+  over a render, the function itself 25% fewer, the eight demos' bytes
+  differing from 1.9.15 by at most 24-bit quantisation noise. Details in
+  [the CPU report](Docs/benchmarks/cpu-optimization-2026-11-03.md).
+
+### 1.9.15 — 2026-11-02 — less plastic high notes
+
+- Plain treble strings stopped above the open-string register lose less of
+  their upper partials in each round trip, and a Finger pluck on the treble
+  strings from the fifth fret up no longer lands on the third harmonic's
+  null. The high-register score against the reference corpora improves 3.0%
+  to 4.2%, the full-range score 0.8% to 1.7%. Details in
+  [the decision log](Docs/decisions.md).
+
 ### 1.9.14 — 2026-11-02 — a string's own stretch presses on the saddle
 
 - A vibrating string stretches, and that extra tension now reaches the top:
@@ -624,6 +651,12 @@ separates verified errors from accepted approximations.
   Increment/Decrement are ignored; the Sustain switch acts at block start;
   Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond
   the CC74/pressure bias are absent.
+- Keys mode (F0, F#0) is global but a strum is one channel's: in it, notes
+  on MPE member channels stay silent until C0, C#0 or D0 and their own strum
+  key strikes nothing, and strum keys on two channels in one sample strum
+  only the last. A repeated Note On without a Note Off in Keys mode swallows
+  the next Note Off, and Reset All Controllers leaves a member's CC74. Found
+  by reading the code, not yet reproduced.
 - Tapping, slapping, fret buzz, artificial and pinch harmonics, body knocks
   and a moving-fret boundary for hammer-ons are absent; slide roughness and the
   hammer-on contact are authored. Fret collision fires when built but needs a
@@ -654,6 +687,10 @@ separates verified errors from accepted approximations.
   them only to 41 then 24. The Finger's attack stays brighter than the finger-plucked
   recordings'. A noise-free or floor-documented finger-plucked steel corpus,
   and an attack transient a listener accepts, would settle both.
+- The Finger's pluck point at the 12th to 20th fret falls at 0.32-0.34 of
+  the speaking length on the low E, A and D, on the third harmonic's null
+  (1/3); 1.9.15 moved only the treble strings off it, to 0.30-0.31. Whether
+  the low strings want the same move is a listening decision.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
   real spread is not measured. A picked note's partials and brightness now

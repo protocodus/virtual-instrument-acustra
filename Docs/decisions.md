@@ -5,6 +5,22 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-03 — the string stretch's cell sums go four at a time, 1.9.16 (numerical optimization; measured)
+
+**What was addressed.** After 1.9.14, `renderStringAxialForce` was 17.5% of the
+instructions of a Jumbo Steel Pick render, the largest single function after
+the engine's own `process`. Its cell loop reads and squares four cells per
+step where the compiler has 4-wide vectors (x86-64 GCC and Clang) and keeps
+the one-at-a-time loop for the rest of the cells and for other targets. Each
+cell's reads and slope are the same arithmetic; only the order the squares
+are added in changes (four partial sums joined last).
+
+**Validation.** All eight preset demos against 1.9.15 differ by at most
+8.3e-7, 24-bit quantisation noise, −115 to −121 dB re signal. Nobody
+listened; the residual is the evidence. `Acustra.StringAxialForce` and the
+unit, audio and perf tiers pass. Cost and method in
+[the CPU report](benchmarks/cpu-optimization-2026-11-03.md).
+
 ## 2026-11-02 — high-register round-trip shelf retention and finger pluck geometry, 1.9.15
 
 **What was addressed.** User reports of a "plastic" sound in higher registers
