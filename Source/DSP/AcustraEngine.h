@@ -2022,7 +2022,7 @@ private:
     float renderStringAxialForce(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
     void addReleaseNoise(Voice& voice) noexcept;
-    void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
+    ACUSTRA_ALWAYS_INLINE void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
                      float horizontalIncident, float excitation,
                      float tailIncident, float tailParallelIncident,
                      float bridgeDisplacement,

@@ -12518,7 +12518,8 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
     return excitation;
 }
 
-void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
+ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
                                 float verticalIncident,
                                 float horizontalIncident, float excitation,
                                 float tailIncident,
@@ -12675,6 +12676,7 @@ void AcustraEngine::finishVoice(Voice& voice, int stringIndex,
         returnToOpenString(voice, stringIndex, false);
 
 }
+ACUSTRA_FORCED_INLINE_END
 
 void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
                                                        float airMode, float midPeak) noexcept
