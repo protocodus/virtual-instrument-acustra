@@ -14434,11 +14434,32 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
                     & static_cast<unsigned>(earlyCapacity - 1);
                 __builtin_memcpy(&rows[lane], early.data() + index, sizeof(Vector));
             }
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_shufflevector)
+#define ACUSTRA_ROOM_SHUFFLE 1
+#endif
+#endif
+#ifdef ACUSTRA_ROOM_SHUFFLE
+            // The 4x4 transpose in eight shuffles rather than sixteen
+            // element moves; columns[k] holds each row's lane k.
+            const Vector low01 = __builtin_shufflevector(rows[0], rows[1], 0, 4, 1, 5);
+            const Vector low23 = __builtin_shufflevector(rows[2], rows[3], 0, 4, 1, 5);
+            const Vector high01 = __builtin_shufflevector(rows[0], rows[1], 2, 6, 3, 7);
+            const Vector high23 = __builtin_shufflevector(rows[2], rows[3], 2, 6, 3, 7);
+            const Vector columns[4] {
+                __builtin_shufflevector(low01, low23, 0, 1, 4, 5),
+                __builtin_shufflevector(low01, low23, 2, 3, 6, 7),
+                __builtin_shufflevector(high01, high23, 0, 1, 4, 5),
+                __builtin_shufflevector(high01, high23, 2, 3, 6, 7) };
+            const auto column = [&columns] (int age) { return columns[3 - age]; };
+#undef ACUSTRA_ROOM_SHUFFLE
+#else
             const auto column = [&rows] (int age)
             {
                 return Vector { rows[0][3 - age], rows[1][3 - age],
                                 rows[2][3 - age], rows[3][3 - age] };
             };
+#endif
             const auto weights = [this, group] (int age)
             {
                 Vector value;
