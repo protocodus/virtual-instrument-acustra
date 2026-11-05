@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.22 — 2026-11-05 — about 6% fewer instructions, the same output
+
+- Five exact engine optimizations: the string stretch's line sum reads its
+  ring unmasked, the body bank's full mode groups skip the partial-group test,
+  the per-string finish and per-sample stretch and delay read inline into the
+  sample loop, and the room's early arrivals transpose in shuffles. 6.5%
+  fewer instructions over the eight demos and about 3% less wall time; every
+  sample and state bit unchanged. Details in
+  [the CPU report](Docs/benchmarks/cpu-optimization-2026-11-05.md).
+
 ### 1.9.21 — 2026-11-05 — explicit strum directions cover small chords
 
 - C0/C#0 now sweep two-note Finger/Thumb chords down/up, matching their
