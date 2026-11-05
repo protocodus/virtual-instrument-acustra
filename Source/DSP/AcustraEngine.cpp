@@ -12039,6 +12039,50 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         Floats cells = { static_cast<float>(cell), static_cast<float>(cell + 1),
                          static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
         Floats partial = { 0.0f, 0.0f, 0.0f, 0.0f };
+        // Mostly the cells' reads lie in one unbroken run of the ring, up
+        // to `newest`: read them there without masking. The deepest is the
+        // outgoing wave's last full group, or the returning wave's first
+        // tap and the sample before it; the shallowest the returning wave's
+        // last tap, which must not reach past `newest`. The bounds carry a
+        // sample's margin. Same reads, same arithmetic.
+        const int groups = (end - cell) / 4;
+        const int lastCell = cell + 4 * groups - 1;
+        const float deepestReturning = period - returningSpan * static_cast<float>(cell);
+        const float shallowestReturning = period - returningSpan * static_cast<float>(lastCell);
+        if (newest <= mask && shallowestReturning >= 1.0f
+            && deepestReturning + 3.0f <= static_cast<float>(newest)
+            && static_cast<unsigned>(lastCell * stride) <= newest)
+        {
+            const float* const head = line + newest;
+            const float* outgoingAt = head - cell * stride;
+            for (int group = 0; group < groups; ++group, cell += 4)
+            {
+                const Floats age = periodV - spanV * cells;
+                const Ints whole = __builtin_convertvector(age, Ints);
+                const Floats part = age - __builtin_convertvector(whole, Floats);
+                int back[4];
+                __builtin_memcpy(back, &whole, sizeof back);
+                const Floats a = { head[-back[0]], head[-back[1]],
+                                   head[-back[2]], head[-back[3]] };
+                const Floats b = { head[-back[0] - 1], head[-back[1] - 1],
+                                   head[-back[2] - 1], head[-back[3] - 1] };
+                const Floats nextReturning = a + part * (b - a);
+                const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-stride],
+                                              outgoingAt[-2 * stride],
+                                              outgoingAt[-3 * stride] };
+                outgoingAt -= 4 * stride;
+                const Floats previousOutgoing = { outgoing, nextOutgoing[0],
+                                                  nextOutgoing[1], nextOutgoing[2] };
+                const Floats previousReturning = { returning, nextReturning[0],
+                                                   nextReturning[1], nextReturning[2] };
+                const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
+                    + (nextReturning - previousReturning) * returningScaleV;
+                partial += slope * slope;
+                outgoing = nextOutgoing[3];
+                returning = nextReturning[3];
+                cells += four;
+            }
+        }
         for (; end - cell >= 4; cell += 4)
         {
             const Floats age = periodV - spanV * cells;
