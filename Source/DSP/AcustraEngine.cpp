@@ -3575,27 +3575,33 @@ float AcustraEngine::FixedDerivative::processAcrossStep(
     return process(input, sampleRateRatio);
 }
 
-float AcustraEngine::StringLoop::readDelay(float samples) noexcept
+// The read's tap and Thiran coefficients for a new delay; out of line, so
+// the per-sample read inlines into the loop.
+void AcustraEngine::StringLoop::designReadDelay(float samples) noexcept
 {
     const auto sampleBits = exact::bits(samples);
-    if (!readDelayValid || sampleBits != readDelayBits)
+    const float bounded = AcustraEngine::clamp(
+        samples, 3.0f, static_cast<float>(static_cast<int>(delay.size()) - 3));
+    readDelayWhole = delayAnchor(bounded);
+    const float fraction = bounded - static_cast<float>(readDelayWhole);
+    if (exact::bits(fraction) != exact::bits(thiranFraction))
     {
-        const float bounded = AcustraEngine::clamp(
-            samples, 3.0f, static_cast<float>(static_cast<int>(delay.size()) - 3));
-        readDelayWhole = delayAnchor(bounded);
-        const float fraction = bounded - static_cast<float>(readDelayWhole);
-        if (exact::bits(fraction) != exact::bits(thiranFraction))
-        {
-            double a1 = 0.0;
-            double a2 = 0.0;
-            thiranCoefficients(static_cast<double>(fraction), a1, a2);
-            thiranFraction = fraction;
-            thiranFirst = static_cast<float>(a1);
-            thiranSecond = static_cast<float>(a2);
-        }
-        readDelayBits = sampleBits;
-        readDelayValid = true;
+        double a1 = 0.0;
+        double a2 = 0.0;
+        thiranCoefficients(static_cast<double>(fraction), a1, a2);
+        thiranFraction = fraction;
+        thiranFirst = static_cast<float>(a1);
+        thiranSecond = static_cast<float>(a2);
     }
+    readDelayBits = sampleBits;
+    readDelayValid = true;
+}
+
+ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::readDelay(float samples) noexcept
+{
+    if (!readDelayValid || exact::bits(samples) != readDelayBits)
+        designReadDelay(samples);
     const int whole = readDelayWhole;
     const auto at = [&] (int samplesAgo)
     {
@@ -3622,6 +3628,7 @@ float AcustraEngine::StringLoop::readDelay(float samples) noexcept
     allpassY1 = output;
     return output;
 }
+ACUSTRA_FORCED_INLINE_END
 
 float AcustraEngine::StringLoop::displacementAt(float fraction) const noexcept
 {
@@ -12319,7 +12326,121 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
     axial.thiran = static_cast<float>((1.0 - fraction) / (1.0 + fraction));
 }
 
-float AcustraEngine::renderStringAxialForce(Voice& voice, int stringIndex) noexcept
+// Every stride samples of a played string: the stretch summed over the
+// line, and its change spread over the samples to the next evaluation. Kept
+// out of line so the per-sample rest of renderStringAxialForce inlines.
+void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) noexcept
+{
+    auto& axial = voice.stringAxialForce;
+    designStringAxialForce(voice, stringIndex);
+    double stretch = 0.0;
+    for (const auto& loop : voice.loops)
+    {
+        // displacementAt's read, age 0 the newest sample, on the
+        // line's own power-of-two ring.
+        const float* line = loop.delay.data();
+        const auto mask = static_cast<unsigned>(loop.delay.size()) - 1u;
+        const auto newest = static_cast<unsigned>(loop.writeIndex - 1);
+        const auto sample = [line, mask, newest] (int samplesAgo)
+        {
+            return line[(newest - static_cast<unsigned>(samplesAgo)) & mask];
+        };
+        const auto tap = [line, mask, newest] (float samplesAgo)
+        {
+            const int whole = static_cast<int>(samplesAgo);
+            const float part = samplesAgo - static_cast<float>(whole);
+            const unsigned at = newest - static_cast<unsigned>(whole);
+            const float a = line[at & mask];
+            const float b = line[(at - 1u) & mask];
+            return a + part * (b - a);
+        };
+        const float period = loop.currentDelay;
+        // The axial round trip is a twelfth to an eighteenth of the
+        // transverse one on these strings; the bound only keeps a
+        // cell's span of the line from closing up.
+        const float shear = performanceRealism_.axialWaves
+            ? std::min(axial.roundTrip / period, 0.5f) : 0.0f;
+        // Before its own release a new shape was held still, so a
+        // retardation reaching past it reads the shape as released.
+        // At the longest period the line allows the room left is a
+        // sample short; a negative reach would read the line's far
+        // end.
+        const float reach = std::max(0.0f, std::min({ shear * period,
+            static_cast<float>(axial.validAge),
+            static_cast<float>(activeDelaySamples() - 4) - period }));
+        // The direct path and the one by way of the nut join into one
+        // loop over u in [0, D], u = x on the first and D - x on the
+        // second: there the waves are read at u + r and D - u + r,
+        // r = min(e u, reach). Unheld, the first read moves (1 + e)
+        // per unit of u, so cells of a stride over (1 + e) put it on
+        // whole samples and only the second is interpolated. The
+        // last cell runs on to u = D, one to two cells wide.
+        const int stride = axial.stride;
+        const float outgoingStep = 1.0f + shear;
+        const float returningStep = 1.0f - shear;
+        const float width = static_cast<float>(stride) / outgoingStep;
+        const int cells = std::max(1, static_cast<int>(
+            outgoingStep * period / static_cast<float>(stride)));
+        const float lastWidth = period - width * static_cast<float>(cells - 1);
+        // y_x = -s'(outgoing) - s'(returning), each the mean over the
+        // cell's span of its own line.
+        float outgoing = sample(0);
+        float returning = tap(period);
+        float sum = 0.0f;
+        if (reach >= shear * period)
+        {
+            const float returningSpan = width * returningStep;
+            const float outgoingScale = -1.0f / static_cast<float>(stride);
+            const float returningScale = 1.0f / returningSpan;
+            sumAxialCells(line, mask, newest, stride, 1, cells, period,
+                          returningSpan, outgoingScale, returningScale,
+                          outgoing, returning, sum);
+            sum *= width;
+            const float slope = (tap(outgoingStep * period) - outgoing)
+                    / (-lastWidth * outgoingStep)
+                + (tap(shear * period) - returning) / (lastWidth * returningStep);
+            sum += lastWidth * slope * slope;
+        }
+        else
+        {
+            float outgoingAge = 0.0f;
+            float returningAge = period;
+            for (int cell = 1; cell <= cells; ++cell)
+            {
+                const bool last = cell == cells;
+                const float u = last ? period : width * static_cast<float>(cell);
+                const float delay = std::min(shear * u, reach);
+                const float nextOutgoingAge = u + delay;
+                const float nextReturningAge = period - u + delay;
+                const float nextOutgoing = tap(nextOutgoingAge);
+                const float nextReturning = tap(nextReturningAge);
+                const float slope = (nextOutgoing - outgoing)
+                        / (outgoingAge - nextOutgoingAge)
+                    + (nextReturning - returning)
+                        / (returningAge - nextReturningAge);
+                sum += (last ? lastWidth : width) * slope * slope;
+                outgoingAge = nextOutgoingAge;
+                returningAge = nextReturningAge;
+                outgoing = nextOutgoing;
+                returning = nextReturning;
+            }
+        }
+        stretch += static_cast<double>(period) * static_cast<double>(sum);
+    }
+    stretch *= static_cast<double>(axial.stretchScale);
+    if (axial.rereference || !exact::isfinite(stretch))
+    {
+        axial.lastStretch = exact::isfinite(stretch) ? stretch : 0.0;
+        axial.rereference = false;
+    }
+    axial.increment = static_cast<float>((stretch - axial.lastStretch)
+                                         / static_cast<double>(axial.stride));
+    axial.lastStretch = stretch;
+    axial.countdown = axial.stride;
+}
+
+ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE float AcustraEngine::renderStringAxialForce(Voice& voice, int stringIndex) noexcept
 {
     auto& axial = voice.stringAxialForce;
     const bool driven = voice.played;
@@ -12328,113 +12449,7 @@ float AcustraEngine::renderStringAxialForce(Voice& voice, int stringIndex) noexc
     if (driven)
     {
         if (axial.countdown <= 0)
-        {
-            designStringAxialForce(voice, stringIndex);
-            double stretch = 0.0;
-            for (const auto& loop : voice.loops)
-            {
-                // displacementAt's read, age 0 the newest sample, on the
-                // line's own power-of-two ring.
-                const float* line = loop.delay.data();
-                const auto mask = static_cast<unsigned>(loop.delay.size()) - 1u;
-                const auto newest = static_cast<unsigned>(loop.writeIndex - 1);
-                const auto sample = [line, mask, newest] (int samplesAgo)
-                {
-                    return line[(newest - static_cast<unsigned>(samplesAgo)) & mask];
-                };
-                const auto tap = [line, mask, newest] (float samplesAgo)
-                {
-                    const int whole = static_cast<int>(samplesAgo);
-                    const float part = samplesAgo - static_cast<float>(whole);
-                    const unsigned at = newest - static_cast<unsigned>(whole);
-                    const float a = line[at & mask];
-                    const float b = line[(at - 1u) & mask];
-                    return a + part * (b - a);
-                };
-                const float period = loop.currentDelay;
-                // The axial round trip is a twelfth to an eighteenth of the
-                // transverse one on these strings; the bound only keeps a
-                // cell's span of the line from closing up.
-                const float shear = performanceRealism_.axialWaves
-                    ? std::min(axial.roundTrip / period, 0.5f) : 0.0f;
-                // Before its own release a new shape was held still, so a
-                // retardation reaching past it reads the shape as released.
-                // At the longest period the line allows the room left is a
-                // sample short; a negative reach would read the line's far
-                // end.
-                const float reach = std::max(0.0f, std::min({ shear * period,
-                    static_cast<float>(axial.validAge),
-                    static_cast<float>(activeDelaySamples() - 4) - period }));
-                // The direct path and the one by way of the nut join into one
-                // loop over u in [0, D], u = x on the first and D - x on the
-                // second: there the waves are read at u + r and D - u + r,
-                // r = min(e u, reach). Unheld, the first read moves (1 + e)
-                // per unit of u, so cells of a stride over (1 + e) put it on
-                // whole samples and only the second is interpolated. The
-                // last cell runs on to u = D, one to two cells wide.
-                const int stride = axial.stride;
-                const float outgoingStep = 1.0f + shear;
-                const float returningStep = 1.0f - shear;
-                const float width = static_cast<float>(stride) / outgoingStep;
-                const int cells = std::max(1, static_cast<int>(
-                    outgoingStep * period / static_cast<float>(stride)));
-                const float lastWidth = period - width * static_cast<float>(cells - 1);
-                // y_x = -s'(outgoing) - s'(returning), each the mean over the
-                // cell's span of its own line.
-                float outgoing = sample(0);
-                float returning = tap(period);
-                float sum = 0.0f;
-                if (reach >= shear * period)
-                {
-                    const float returningSpan = width * returningStep;
-                    const float outgoingScale = -1.0f / static_cast<float>(stride);
-                    const float returningScale = 1.0f / returningSpan;
-                    sumAxialCells(line, mask, newest, stride, 1, cells, period,
-                                  returningSpan, outgoingScale, returningScale,
-                                  outgoing, returning, sum);
-                    sum *= width;
-                    const float slope = (tap(outgoingStep * period) - outgoing)
-                            / (-lastWidth * outgoingStep)
-                        + (tap(shear * period) - returning) / (lastWidth * returningStep);
-                    sum += lastWidth * slope * slope;
-                }
-                else
-                {
-                    float outgoingAge = 0.0f;
-                    float returningAge = period;
-                    for (int cell = 1; cell <= cells; ++cell)
-                    {
-                        const bool last = cell == cells;
-                        const float u = last ? period : width * static_cast<float>(cell);
-                        const float delay = std::min(shear * u, reach);
-                        const float nextOutgoingAge = u + delay;
-                        const float nextReturningAge = period - u + delay;
-                        const float nextOutgoing = tap(nextOutgoingAge);
-                        const float nextReturning = tap(nextReturningAge);
-                        const float slope = (nextOutgoing - outgoing)
-                                / (outgoingAge - nextOutgoingAge)
-                            + (nextReturning - returning)
-                                / (returningAge - nextReturningAge);
-                        sum += (last ? lastWidth : width) * slope * slope;
-                        outgoingAge = nextOutgoingAge;
-                        returningAge = nextReturningAge;
-                        outgoing = nextOutgoing;
-                        returning = nextReturning;
-                    }
-                }
-                stretch += static_cast<double>(period) * static_cast<double>(sum);
-            }
-            stretch *= static_cast<double>(axial.stretchScale);
-            if (axial.rereference || !exact::isfinite(stretch))
-            {
-                axial.lastStretch = exact::isfinite(stretch) ? stretch : 0.0;
-                axial.rereference = false;
-            }
-            axial.increment = static_cast<float>((stretch - axial.lastStretch)
-                                                 / static_cast<double>(axial.stride));
-            axial.lastStretch = stretch;
-            axial.countdown = axial.stride;
-        }
+            evaluateStringAxialStretch(voice, stringIndex);
         if (axial.validAge < (1 << 30))
             ++axial.validAge;
     }
@@ -12490,6 +12505,7 @@ float AcustraEngine::renderStringAxialForce(Voice& voice, int stringIndex) noexc
         axial.quietSamples = 0;
     return axial.forceScale * output;
 }
+ACUSTRA_FORCED_INLINE_END
 
 float AcustraEngine::renderExcitation(Voice& voice) noexcept
 {

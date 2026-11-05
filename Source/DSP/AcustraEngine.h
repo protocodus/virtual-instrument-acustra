@@ -918,7 +918,8 @@ private:
 
         void reset() noexcept;
         void setCurrentDelay(float samples) noexcept;
-        [[nodiscard]] float readDelay(float samples) noexcept;
+        void designReadDelay(float samples) noexcept;
+        [[nodiscard]] ACUSTRA_ALWAYS_INLINE float readDelay(float samples) noexcept;
         // Switches the second dispersion section in or out under a sounding
         // wave (see its definition).
         void switchSecondDispersion(bool active) noexcept;
@@ -2019,7 +2020,8 @@ private:
     void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     [[nodiscard]] float excursionMetres(const Voice& voice) const noexcept;
     void designStringAxialForce(Voice& voice, int stringIndex) noexcept;
-    float renderStringAxialForce(Voice& voice, int stringIndex) noexcept;
+    void evaluateStringAxialStretch(Voice& voice, int stringIndex) noexcept;
+    ACUSTRA_ALWAYS_INLINE float renderStringAxialForce(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
     void addReleaseNoise(Voice& voice) noexcept;
     ACUSTRA_ALWAYS_INLINE void finishVoice(Voice& voice, int stringIndex, float verticalIncident,
