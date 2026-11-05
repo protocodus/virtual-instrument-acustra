@@ -5,33 +5,32 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-02 — rear keyswitch contract, 1.9.15
+## 2026-11-05 — explicit strum directions for small chords and held singles, 1.9.21 (a contract fix made on 2026-11-02 off 1.9.13, landed now)
 
-The owner chose B while reporting little audible difference, then requested
-that strumming honor the rear-panel keyswitches. The preceding instruction
-that the exaggerated 16× treatment is webpage-only remains in force: the
-engine retains the actual 1.9.14 acoustic changes, without extrapolating the
-browser mix into a new contact or noise setting. This records the owner's
-choice, not a claim of improved audibility or a preference reported earlier.
-
-The key audit found two canonical contract defects. C0/C#0 did not turn a
-two-note Finger/Thumb chord into a directional sweep, although the guide says
-a direction key makes every chord a strum. F#0 also struck a single held
-Finger/Thumb string downward. Explicit gestures now override those automatic
-technique rules, including the offline automatic-picking switch. Ordinary
-Finger/Thumb single notes retain their existing palmward pluck.
+After the owner's choice below, the owner asked for strumming to honor the
+rear-panel keyswitches. The key audit found two canonical contract defects.
+C0/C#0 did not turn a two-note Finger/Thumb chord into a directional sweep,
+although the guide says a direction key makes every chord a strum. F#0 also
+struck a single held Finger/Thumb string downward. Explicit gestures now
+override those automatic technique rules, including the offline
+automatic-picking switch. Ordinary Finger/Thumb single notes retain their
+existing palmward pluck. Neither change is a by-ear parameter choice.
 
 Separately, the Rack wrapper processed new MIDI/CV strikes before C0/C#0/D0
 at the same frame. Leaving Keys mode could therefore silently fret the new
 note instead of sounding it. The adapter repairs that ordering; sustain's
-relative release ordering is retained. The rear legend also gains the
-existing F0/F#0 strum controls. Neither change is a by-ear parameter choice.
+relative release ordering is retained, and the rear legend gains the F0/F#0
+strum keys.
 
-[Validation](validation/keyswitch-strumming-2026-11-02.md) records baseline
-failure witnesses, exact scope and final checks. No 16× preview processing
-is included in the instrument.
+**Provenance.** This was that branch's 1.9.15
+(`codex/keyswitch-strumming-20261102`, `5a93004`), built into Rack 1.9.15d2
+and checked in Recon, but it never reached main, whose own 1.9.14 to 1.9.19
+followed. It is replayed onto 1.9.20 unchanged; the Gather Chords strum test
+1.9.17 added passes beside its own. [Validation](validation/keyswitch-strumming-2026-11-02.md)
+records the baseline failure witnesses on 1.9.13, the exact scope and the
+checks then.
 
-## 2026-11-02 — exact pad corner and a clearer winding arrival, 1.9.14
+## 2026-11-05 — exact pad corner and a clearer winding arrival, 1.9.20 (B chosen by the owner on 2026-11-02, off 1.9.13; landed now)
 
 The user requested another researched iteration with fret noise and an
 upper-register improvement. The soft-contact investigation found a numerical
@@ -39,25 +38,33 @@ error: two zero-phase passes at `b^sqrt(2)` do not retain the original
 one-pass half-power corner. The new pole solves that sampled response exactly,
 including Thumb's inverse reference. This is a mathematical correction, not
 a listening verdict. It leaves the fitted contact geometry and string losses
-alone. In the paired review, soft upper Finger/Thumb notes gain a median
-0.38/0.34 dB in H2–H6/H1; Pick notes are byte-identical. This does not close
-the documented snap/mellow gap.
+alone. In the paired review on 1.9.13, soft upper Finger/Thumb notes gain a
+median 0.38/0.34 dB in H2–H6/H1; Pick notes are byte-identical. This does not
+close the documented snap/mellow gap.
 
 Only the brief position-shift arrival gains four times its former force
 (+12.04 dB), an authored balance for the existing 10% Release Noise preset
 setting. No absolute squeak level is claimed from the literature. In the
-48 kHz Pick barre review the arrival-window null rises from -52.65 to
--40.60 dB relative to the phrase; continuous slides, key-up brushes and
-ineligible contacts keep their existing behavior. The candidate follows
-the user's requested direction and the recorded standing rule. At initial
-adoption nobody had reported listening; the later owner choice is recorded
-above with the webpage-preview qualification. Its native and RMS-matched A/B
-renders are retained outside Git, with a separate unread-by-design letter key.
+48 kHz Pick barre review on 1.9.13 the arrival-window null rises from -52.65
+to -40.60 dB relative to the phrase; continuous slides, key-up brushes and
+ineligible contacts keep their existing behavior.
 
+**Chosen.** B, by the owner, who reported little audible difference. The
+listening page exaggerated the treatment 16 times; that treatment stays out of
+the engine, which keeps the changes above as measured. The native and
+RMS-matched A/B renders are retained outside Git, with a separate
+unread-by-design letter key.
+
+**Provenance.** This was `codex/fret-upper-20261102`'s 1.9.14 (`33470e8`),
+built into Rack 1.9.15d2, but it never reached main. It is replayed onto
+1.9.19 unchanged: the figures above were measured on 1.9.13, before the
+string stretch and 1.9.15's shelf retention; on 1.9.20 the contracts
+`Acustra.PadReleaseCorner` and `Acustra.ShiftArrivalAudibility` pass.
 [Research and protocol](research/fret-upper-refinement-2026-11-02.md) and
 [validation](validation/fret-upper-refinement-2026-11-02.md) record the exact
 scope, remaining limits and checks. Neither blanket treble EQ nor extra
 constant damping was adopted.
+
 ## 2026-11-03 — the Finger's pluck-point easing applies to every string, 1.9.19 (A–Z pair; B taken on the owner's word, not yet heard)
 
 **What was addressed.** 1.9.15 eased a Finger pluck's speaking length toward the

@@ -1,5 +1,9 @@
 # Fret noise and upper-register refinement — 2026-11-02
 
+> Written on a branch off 1.9.13 that numbered this work 1.9.14 and 1.9.15.
+> Those versions reached main on 2026-11-05 as 1.9.20 and 1.9.21, after
+> main's own 1.9.14 to 1.9.19; the figures here are from that branch.
+
 This iteration starts from canonical Acustra `73665a8` (1.9.13), the Rack
 Extension's recorded instrument revision. It changes the canonical DSP;
 the Reason adapter consumes that revision without a copied or patched engine.

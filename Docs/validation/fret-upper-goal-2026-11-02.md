@@ -1,5 +1,9 @@
 # Acustra goal follow-up — 2026-11-02
 
+> Written on a branch off 1.9.13 that numbered this work 1.9.14 and 1.9.15.
+> Those versions reached main on 2026-11-05 as 1.9.20 and 1.9.21, after
+> main's own 1.9.14 to 1.9.19; the figures here are from that branch.
+
 This follows the researched 1.9.14 sound candidate (`9ecc7db`) and its
 [original validation](fret-upper-refinement-2026-11-02.md). Production DSP,
 calibration, parameters, CMake inputs and the audio renderer are unchanged.

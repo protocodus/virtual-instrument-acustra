@@ -1,5 +1,9 @@
 # Acustra fret/upper goal — 2026-11-02
 
+> Written on a branch off 1.9.13 that numbered this work 1.9.14 and 1.9.15.
+> Those versions reached main on 2026-11-05 as 1.9.20 and 1.9.21, after
+> main's own 1.9.14 to 1.9.19; the figures here are from that branch.
+
 The user's goal is researched, iterative improvement of acoustic-guitar
 realism, with natural audible fret movement and improved upper articulation.
 The canonical DSP and Reason adapter stay synchronized; changes and audio

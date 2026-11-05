@@ -1,5 +1,9 @@
 # Acustra keyswitch and strumming repair — 2026-11-02
 
+> Written on a branch off 1.9.13 that numbered this work 1.9.14 and 1.9.15.
+> Those versions reached main on 2026-11-05 as 1.9.20 and 1.9.21, after
+> main's own 1.9.14 to 1.9.19; the figures here are from that branch.
+
 Baseline is canonical `edeeed8` (1.9.14), retained as a frozen native library
 with SHA-256 `56b795eb147a77aeb8923026b8e5f1dad7af3927d63cedcc3e5e15149b719c00`.
 The candidate is 1.9.15. The Reason adapter separately follows as 1.9.15d1.

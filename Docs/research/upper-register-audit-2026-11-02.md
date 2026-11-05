@@ -1,5 +1,9 @@
 # Upper-register release audit — 2026-11-02
 
+> Written on a branch off 1.9.13 that numbered this work 1.9.14 and 1.9.15.
+> Those versions reached main on 2026-11-05 as 1.9.20 and 1.9.21, after
+> main's own 1.9.14 to 1.9.19; the figures here are from that branch.
+
 The validated 1.9.14 changes remain the exact sampled half-power conversion for
 Finger/Thumb release and the authored increase of the short fret-shift arrival
 source. This follow-up found a smaller numerical approximation to investigate,

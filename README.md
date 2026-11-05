@@ -39,7 +39,7 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
-### 1.9.15 — 2026-11-02 — explicit strum directions cover small chords
+### 1.9.21 — 2026-11-05 — explicit strum directions cover small chords
 
 - C0/C#0 now sweep two-note Finger/Thumb chords down/up, matching their
   documented direction override. Ordinary single Finger/Thumb notes retain
@@ -47,8 +47,10 @@ long per-version notes are in the
   string its requested direction, under every technique.
   [Keyswitch validation](Docs/validation/keyswitch-strumming-2026-11-02.md)
   separates the canonical fix from the Reason adapter's event-order repair.
+- Made on 2026-11-02 off 1.9.13 and built into Rack 1.9.15d2, but not on
+  main until now.
 
-### 1.9.14 — 2026-11-02 — clearer soft contacts and audible fret shifts
+### 1.9.20 — 2026-11-05 — clearer soft contacts and audible fret shifts
 
 - A finger or thumb's two-pass release now keeps the intended half-power
   corner exactly. The previous conversion introduced a rate-dependent
@@ -59,6 +61,9 @@ long per-version notes are in the
   not a measured handling-noise level; zero still bypasses the source.
   [Research and validation](Docs/research/fret-upper-refinement-2026-11-02.md)
   separates this correction from the remaining high-register realism gaps.
+- Chosen by the owner on 2026-11-02, made off 1.9.13 and built into Rack
+  1.9.15d2, but not on main until now; its measured figures are 1.9.13's.
+  Details in [the decision log](Docs/decisions.md).
 
 ### 1.9.19 — 2026-11-03 — the Finger's pluck eases on the low strings too
 
