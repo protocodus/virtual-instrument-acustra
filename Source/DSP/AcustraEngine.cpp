@@ -12857,7 +12857,9 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
     const Vector momentLanes = { moment, moment, moment, moment };
     Vector leftSum = { 0.0f, 0.0f, 0.0f, 0.0f };
     Vector rightSum = { 0.0f, 0.0f, 0.0f, 0.0f };
-    for (int index = 0; index < count; index += lanes)
+    // One group of four modes. Only a last, partial group masks off its
+    // padding lanes' parts, so the full groups run without the test.
+    const auto group = [&] (int index, bool partial)
     {
         const Vector pr = load(poleReal, index);
         const Vector pim = load(poleImaginary, index);
@@ -12883,7 +12885,7 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
         store(imaginary, index, flush(nextImaginary));
         store(momentReal, index, flush(nextMomentReal));
         store(momentImaginary, index, flush(nextMomentImaginary));
-        if (index + lanes > count)
+        if (partial)
         {
             const Mask lane = { 0, 1, 2, 3 };
             const Mask summed = lane < (count - index);
@@ -12892,7 +12894,12 @@ AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float mom
         }
         leftSum += leftPart;
         rightSum += rightPart;
-    }
+    };
+    const int whole = count / lanes * lanes;
+    for (int index = 0; index < whole; index += lanes)
+        group(index, false);
+    if (whole < count)
+        group(whole, true);
     output.left = 2.0f * ((leftSum[0] + leftSum[1]) + (leftSum[2] + leftSum[3]));
     output.right = 2.0f * ((rightSum[0] + rightSum[1]) + (rightSum[2] + rightSum[3]));
 #else
