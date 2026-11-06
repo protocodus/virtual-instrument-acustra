@@ -1,5 +1,6 @@
-// The authored position-shift lift is four times the former force, not a
-// change to key-up noise or continuously sliding fingers. Isolate that source
+// The authored position-shift lift is eight times the former force (four
+// until 1.9.24, when the owner chose +6 dB more by ear), not a change to
+// key-up noise or continuously sliding fingers. Isolate that source
 // after genuine note-on allocation, then witness it through the capture path
 // at the Rack presets' 10% Release Noise. The force ratio is independent of
 // the instrument's absolute handling-noise level (which is not measured).
@@ -136,9 +137,9 @@ void testSourceGainAndContinuousAmount()
             const auto zero = arrivalSource(rate, string, 0.0f, true);
             expect(energy(legacy.force) > 1.0e-15,
                    "arrival gain fixture had no winding-friction force");
-            expect(relativeScaleError(audible.force, legacy.force, 4.0) < 2.0e-6
-                       && relativeScaleError(audible.wave, legacy.wave, 4.0) < 2.0e-6,
-                   "the default arrival did not gain exactly four in force and travelling wave");
+            expect(relativeScaleError(audible.force, legacy.force, 8.0) < 2.0e-6
+                       && relativeScaleError(audible.wave, legacy.wave, 8.0) < 2.0e-6,
+                   "the default arrival did not gain exactly eight in force and travelling wave");
             expect(relativeScaleError(half.force, audible.force, 0.5) < 2.0e-6
                        && half.random == audible.random && audible.random == legacy.random,
                    "arrival gain quantized Release Noise or changed random draws");
@@ -219,8 +220,8 @@ void testCaptureContributionAndUnchangedControls()
         }
         const double rise = 10.0 * std::log10(loudEnergy / std::max(oldEnergy, 1.0e-30));
         const double relative = 10.0 * std::log10(loudEnergy / std::max(noteEnergy, 1.0e-30));
-        expect(rise > 11.5 && rise < 12.5,
-               "arrival did not reach the capture path with its authored 12 dB lift");
+        expect(rise > 17.5 && rise < 18.5,
+               "arrival did not reach the capture path with its authored 18 dB lift");
         expect(relative > -70.0 && relative < -10.0,
                "default arrival was numerically absent or overwhelmed the note");
         expect(std::all_of(audible.begin(), audible.end(), [](float sample)

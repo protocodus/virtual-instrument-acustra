@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.24 — 2026-11-06 — no two finger shifts alike
+
+- A finger shifting to a new fret slides 6 dB louder than before, the level
+  the owner chose by ear. Each shift now draws its own finger pressure (5 dB
+  spread), pace, settling time and, with Finger Lookahead, the point along
+  its path where the finger touches down. The friction also wanders along
+  the slide (3 dB, below 12 Hz). Twelve repeated shifts used to land within
+  0.5 dB of each other; they now spread about 6 dB and change in colour.
+  The spreads are authored. The demos change only where a finger shifts.
+
 ### 1.9.23 — 2026-11-06 — Finger Lookahead: the finger moves before the note
 
 - A new FINGERS switch (Finger Lookahead, off by default) holds every event
@@ -716,7 +726,8 @@ separates verified errors from accepted approximations.
   50 ms early. Events that arrive inside the window, such as a late key-up or a
   controller, can change the choice. The finger has then still let go of the
   old note (whose key-up was already due) up to 0.12 s early and slid. The slide's speed and path are a
-  hand-movement law, not measured guitar shifts. The Reason Rack Extension
+  hand-movement law, and its level and its spread from shift to shift are
+  set by ear, not measured guitar shifts. The Reason Rack Extension
   cannot report the latency, so the switch is not on its panel.
 - Live chords with Gather Chords off can keep a wider fingering than one hand
   reaches. The hand's span and costs follow the listener's direction and a

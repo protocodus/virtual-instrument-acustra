@@ -1248,6 +1248,10 @@ private:
             // at the pick's contact (firePluck), which re-primes the motion;
             // zero for none.
             double arrivalFrom { 0.0 };
+            // This shift's own finger pressure, as a force gain, and the
+            // slow wander of the friction along it (shiftGesture).
+            float gesture { 1.0f };
+            float wobble { 0.0f };
             float speed { 0.0f };
             float emittedForce { 0.0f };
             float sourceWave { 0.0f };
@@ -1349,6 +1353,10 @@ private:
         };
         StringAxialForce stringAxialForce {};
         std::uint32_t fretMotionNoiseState { 1 };
+        // Per-shift draws, and the slide's wander on its own sequence, so
+        // a slide's length never shifts the next shift's draws.
+        std::uint32_t fretGestureState { 1 };
+        std::uint32_t fretWanderState { 1 };
         std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
         // Key and payload follow whole-voice copies. Waveform resets may retain
@@ -2057,6 +2065,9 @@ private:
         double to { 0.0 };
         double position { 0.0 };
         double inverseDuration { 0.0 };
+        // Where along the move the finger starts to rub, and how hard.
+        std::uint64_t touchStart { 0 };
+        float gesture { 1.0f };
         // The fret it reached and when, for startNote: an arrival already
         // heard is not played again at the pick.
         int arrivedFret { -1 };

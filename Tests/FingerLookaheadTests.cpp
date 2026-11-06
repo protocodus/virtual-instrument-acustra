@@ -181,7 +181,10 @@ int main()
         expect(before > 4.0 * plainBefore,
                "the slide sounds before shift " + std::to_string(index)
                    + " (" + std::to_string(20.0 * std::log10(before / plainBefore)) + " dB)");
-        expect(before < 0.1 * note,
+        // 1.9.24 raised the slide 6 dB (the owner's choice by ear) and gave
+        // each shift its own pressure, so a firm shift sits nearer the note
+        // than the old fixed level's -20 dB; it still stays 12 dB under.
+        expect(before < 0.25 * note,
                "the slide stays far under the note it leads to, shift " + std::to_string(index)
                    + " (" + std::to_string(20.0 * std::log10(before / note)) + " dB)");
     }

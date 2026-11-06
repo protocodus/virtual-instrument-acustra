@@ -5,6 +5,39 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-06 — the finger's shifts: level by ear, and no two alike, 1.9.24 (level chosen by the owner; the variation adopted under the owner's standing rule, not yet heard)
+
+**What was decided.** The owner could not hear 1.9.23's slides. A set with
+the slide at its level and at +12, +24 and +36 dB
+(`listening-tests/acustra-2026-11-06-slide-level/` in the project files) drew
+"between A and B": the arrival share goes from 0.002 to 0.004 (+6 dB). The
+owner also heard the slides as one sample repeated, and asked for them to be
+arbitrary and random, organic and natural. Each shift now draws its own:
+
+- pressure, a force gain with a 5 dB spread whose mean power is the chosen
+  level;
+- pace (half an octave either way without lookahead; 55-100% of the window
+  with it);
+- settling time;
+- with lookahead, the point along its path where the finger touches down
+  (0-60%).
+
+The friction also wanders along each slide with a 3 dB spread below 12 Hz.
+The draws are made whatever Release Noise is, on their own sequence per
+string, so a control does not shift the hand's later choices. Every spread
+is authored. No measurement of fretting-hand pressure or shift timing during
+shifts is available here.
+
+**What it was tested with.** `listening-tests/acustra-2026-11-06-varied-slides/`:
+the earlier legato phrase, and F2-G2 on the low E twelve times. A is 1.9.23
+and B is 1.9.24, both with Finger Lookahead on, RMS matched within 0.03 dB.
+The slide alone, isolated by a render at Release Noise 0, reads -60.7 dBFS
+mean, SD 0.5 dB, over the twelve shifts in A. In B it reads -53.4 dBFS mean,
+SD 6.3 dB.
+
+**Verdict.** The level is the owner's choice by ear. The variation is B,
+adopted under the standing rule and not yet heard.
+
 ## 2026-11-06 — Finger Lookahead: the shift moves before the note, 1.9.23 (A–Z pair; B adopted under the owner's standing rule, not yet heard)
 
 **What was decided.** The owner asked for more fret noise and finger
