@@ -5,7 +5,7 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-06 — the finger's shifts: level by ear, and no two alike, 1.9.24 (level chosen by the owner; the variation adopted under the owner's standing rule, not yet heard)
+## 2026-11-06 — the finger's shifts: level by ear, and no two alike, 1.9.24 (level and variation both chosen by the owner by ear)
 
 **What was decided.** The owner could not hear 1.9.23's slides. A set with
 the slide at its level and at +12, +24 and +36 dB
@@ -35,8 +35,8 @@ The slide alone, isolated by a render at Release Noise 0, reads -60.7 dBFS
 mean, SD 0.5 dB, over the twelve shifts in A. In B it reads -53.4 dBFS mean,
 SD 6.3 dB.
 
-**Verdict.** The level is the owner's choice by ear. The variation is B,
-adopted under the standing rule and not yet heard.
+**Verdict.** The level is the owner's choice by ear. The variation is B, chosen by the owner by ear on
+the A/B set above (2026-11-06).
 
 ## 2026-11-06 — Finger Lookahead: the shift moves before the note, 1.9.23 (A–Z pair; B adopted under the owner's standing rule, not yet heard)
 
