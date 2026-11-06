@@ -294,6 +294,11 @@ public:
     }
 
 private:
+    // Tests (the Rack wrapper suite) read the playing state through this
+    // friend instead of redefining `private`, which clang rejects under
+    // -Wpedantic (-Wkeyword-macro).
+    friend struct PerformerTestAccess;
+
     struct PendingNoteOn
     {
         int note { 0 };
