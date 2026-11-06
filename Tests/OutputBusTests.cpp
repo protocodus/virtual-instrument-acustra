@@ -82,13 +82,15 @@ struct Force
 };
 
 void applyControl(acustra::EngineParameters& parameters, bool& gather,
-                  bool& panic, const Control& control, const Force& force)
+                  bool& sustain, bool& panic, const Control& control,
+                  const Force& force)
 {
     using Kind = Control::Kind;
     const int index = static_cast<int>(control.value);
     switch (control.kind)
     {
         case Kind::GatherChords: gather = control.value >= 0.5f; break;
+        case Kind::Sustain: sustain = control.value >= 0.5f; break;
         case Kind::Panic: panic = true; break;
         case Kind::CaptureMode:
             if (! force.capture)
@@ -140,6 +142,7 @@ Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
         result.piezo.assign(padded, 7.0f);
     }
     bool gather = false;
+    bool sustain = false;
     std::vector<bool> applied(scenario.controls.size(), false);
     std::vector<std::pair<int, const Event*>> block;
     for (int start = 0; start < length; start += blockSize)
@@ -150,7 +153,8 @@ Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
                 && sampleAt(scenario.controls[index].seconds, sampleRate)
                        < start + blockSize)
             {
-                applyControl(parameters, gather, panic, scenario.controls[index], force);
+                applyControl(parameters, gather, sustain, panic, scenario.controls[index],
+                             force);
                 applied[index] = true;
             }
         block.clear();
@@ -167,6 +171,7 @@ Buses render(const Scenario& scenario, int blockSize, bool wantBuses,
         if (panic)
             performer->reset();
         performer->setGatherChords(gather);
+        performer->setSustainHold(sustain);
         const auto offset = static_cast<std::size_t>(start);
         if (wantBuses)
             performer->beginBlock(result.left.data() + offset,
