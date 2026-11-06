@@ -153,17 +153,17 @@ void testParameterContract()
         ids::stereoWidth, ids::output, ids::capture, ids::picking,
         ids::upperMic, ids::piezoLoading, ids::captureMode, ids::guitarModel,
         ids::gatherChords, ids::piezoMix, ids::releaseNoise, ids::room,
-        ids::sustain, ids::piezoPolarityInverted
+        ids::sustain, ids::piezoPolarityInverted, ids::fingerLookahead
     };
-    static_assert (ids::parameterCount == 21,
+    static_assert (ids::parameterCount == 22,
                    "String Material and Bridge Model are gone; Guitar Model is a "
-                   "legacy slot; Piezo Mix, Release Noise, Room and Sustain are "
-                   "appended");
+                   "legacy slot; Piezo Mix, Release Noise, Room, Sustain and "
+                   "Finger Lookahead are appended");
     // Piezo Mix defaults to 20%, a bit of the piezo under the microphones;
     // Release Noise and Room to the requested 10%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
         2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 10.0f, 0.0f, 0.0f
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 10.0f, 0.0f, 0.0f, 0.0f
     };
 
     const auto& hostParameters = processor.getParameters();
@@ -251,6 +251,11 @@ void testParameterContract()
     expect (gather != nullptr && gather->getVersionHint() == 8
                 && gather->getParameterIndex() == 15 && ! gather->isAutomatable(),
             "Gather Chords must append a non-automatable switch with AU version hint 8");
+    const auto* lookahead = dynamic_cast<const juce::AudioParameterBool*> (
+        processor.parameters.getParameter (ids::fingerLookahead));
+    expect (lookahead != nullptr && lookahead->getVersionHint() == 14
+                && lookahead->getParameterIndex() == 21 && ! lookahead->isAutomatable(),
+            "Finger Lookahead must append a non-automatable switch with AU version hint 14");
     const auto* piezoMix = dynamic_cast<const juce::AudioParameterFloat*> (
         processor.parameters.getParameter (ids::piezoMix));
     expect (piezoMix != nullptr && piezoMix->getVersionHint() == 9
@@ -1558,7 +1563,8 @@ void testStateRoundTripAndMigration()
                                 ids::output, ids::capture, ids::picking,
                                 ids::upperMic, ids::piezoLoading, ids::captureMode,
                                 ids::guitarModel, ids::gatherChords, ids::piezoMix,
-                                ids::releaseNoise, ids::room, ids::piezoPolarityInverted })
+                                ids::releaseNoise, ids::room, ids::piezoPolarityInverted,
+                                ids::fingerLookahead })
         {
             const bool kept = std::abs (valueOf (to, id) - valueOf (from, id)) < 0.011f;
             expect (kept, std::string { "state round trip lost " } + id);
@@ -2763,6 +2769,19 @@ void testGatherSwitchAndPanicReleaseHeldNotes()
     expect (processor.getLatencySamples()
                 == 1440 + acustra::AcustraEngine::outputLatencySamples(),
             "switching Gather Chords back on did not restore its latency");
+    // Finger Lookahead's 50 ms adds to it, and goes with it.
+    setValue (processor, acustra::parameters::fingerLookahead, 1.0f);
+    expect (processor.getLatencySamples()
+                == 1440 + 2400 + acustra::AcustraEngine::outputLatencySamples(),
+            "Finger Lookahead did not add its 50 ms to the reported latency");
+    setValue (processor, acustra::parameters::gatherChords, 0.0f);
+    expect (processor.getLatencySamples()
+                == 2400 + acustra::AcustraEngine::outputLatencySamples(),
+            "Finger Lookahead's latency did not stand alone");
+    setValue (processor, acustra::parameters::fingerLookahead, 0.0f);
+    expect (processor.getLatencySamples()
+                == acustra::AcustraEngine::outputLatencySamples(),
+            "switching Finger Lookahead off kept its latency");
 }
 
 void testStringPerChannelModeViaMonoModeOn()

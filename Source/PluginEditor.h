@@ -86,6 +86,9 @@ private:
     juce::TextButton gatherChordsButton { "CHORDS" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
         gatherChordsAttachment;
+    juce::TextButton fingerLookaheadButton { "FINGERS" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+        fingerLookaheadAttachment;
 
     std::array<juce::Label, 3> setupLabels;
     std::array<std::unique_ptr<ChoiceButtonGroup>, 3> setupControls;

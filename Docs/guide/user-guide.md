@@ -102,11 +102,16 @@ Extension these are its Bridge Hand and Bend Range knobs.
 
 ## The panel
 
-The host can automate every knob and switch except CHORDS and PANIC. The
+The host can automate every knob and switch except FINGERS, CHORDS and PANIC. The
 window can be resized from its corner and keeps its proportions.
 
 **Top bar**
 
+- **FINGERS** (Finger Lookahead, off): holds every note back 50 ms so
+  the fretting hand sees it coming. A finger that must change fret on a
+  string then lets go of the old note and slides there before the pluck,
+  rather than with it; the slide's level follows Release Noise. Every note
+  sounds 50 ms later, which the host compensates on playback.
 - **SUSTAIN** (off): lets every released note ring as the sustain pedal
   does, on every MIDI channel, until its string is needed or the switch is
   turned off.
@@ -298,7 +303,8 @@ MPE controllers usually send it again when they connect.
   settings; an Audio Unit host always sees both outputs.
 
 Acustra reports 7 samples of latency to the host, at every sample rate,
-and 30 ms more while CHORDS is on (1447 samples at 48 kHz). Hosts
+30 ms more while CHORDS is on (1447 samples at 48 kHz) and 50 ms more
+while FINGERS is on (2407 samples at 48 kHz; 3847 with both). Hosts
 compensate it on playback; live playing hears it.
 
 ## CPU

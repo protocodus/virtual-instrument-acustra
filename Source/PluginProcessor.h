@@ -35,8 +35,9 @@ inline constexpr auto releaseNoise = "releaseNoise";
 inline constexpr auto room = "room";
 inline constexpr auto sustain = "sustain";
 inline constexpr auto piezoPolarityInverted = "piezoPolarityInverted";
+inline constexpr auto fingerLookahead = "fingerLookahead";
 
-inline constexpr int activeParameterCount = 17;
+inline constexpr int activeParameterCount = 18;
 // Four non-automatable host slots remain solely for old session identity.
 inline constexpr int parameterCount = activeParameterCount + 4;
 } // namespace acustra::parameters
@@ -158,6 +159,9 @@ private:
     // The performer's Gather Chords window, for the latency the listener
     // reports from the message thread.
     std::atomic<int> gatherWindowSamples { 0 };
+    // And its Finger Lookahead window, likewise.
+    std::atomic<int> lookaheadWindowSamples { 0 };
+    void reportLatency() noexcept;
     int currentProgram { 0 };
     std::atomic<bool> panicRequested { false };
     std::atomic<bool> engineReady { false };

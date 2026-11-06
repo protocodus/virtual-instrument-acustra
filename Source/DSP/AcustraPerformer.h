@@ -157,6 +157,19 @@ public:
     // off releases what is held at the start of the next block, in order.
     void setGatherChords(bool gather) noexcept { gatherChords_ = gather; }
     [[nodiscard]] bool isGatheringChords() const noexcept { return gatherChords_; }
+    // Finger Lookahead (off by default). While on, every event is held back
+    // by AcustraEngine::fingerLookaheadSeconds (50 ms, on top of Gather
+    // Chords' window when both are on), so the fretting hand knows each note
+    // before it sounds and moves to it ahead of the pick
+    // (AcustraEngine::anticipateNoteOn): a finger leaving another fret on the
+    // note's string lifts and slides there, heard before the note instead of
+    // with it. It costs that latency, which latencySamples() reports. Off is
+    // an exact no-op. Switching it off releases what is held at the start of
+    // the next block, in order.
+    void setFingerLookahead(bool lookahead) noexcept { fingerLookahead_ = lookahead; }
+    [[nodiscard]] bool isFingerLookahead() const noexcept { return fingerLookahead_; }
+    // The lookahead, and so its latency, at this sample rate.
+    [[nodiscard]] static int fingerLookaheadSamples(double sampleRate) noexcept;
     // Sustain, the panel switch (AcustraEngine::setSustainHold): while on,
     // every key-up on every channel rings on as under its pedal, until the
     // switch is turned off; CC64 adds nothing while it is on and keeps its
@@ -185,12 +198,19 @@ public:
     // the window.
     [[nodiscard]] int latencySamples() const noexcept
     {
-        return latencySamples(gatherChords_, gatherWindow_);
+        return latencySamples(gatherChords_, gatherWindow_)
+            + (fingerLookahead_ ? lookaheadWindow_ : 0);
     }
     [[nodiscard]] static constexpr int latencySamples(bool gather,
                                                       int gatherWindow) noexcept
     {
         return AcustraEngine::outputLatencySamples() + (gather ? gatherWindow : 0);
+    }
+    [[nodiscard]] static constexpr int latencySamples(bool gather, int gatherWindow,
+                                                      bool lookahead,
+                                                      int lookaheadWindow) noexcept
+    {
+        return latencySamples(gather, gatherWindow) + (lookahead ? lookaheadWindow : 0);
     }
 
     // A host's global reference tuning (Reason's master tune). Retensions
@@ -308,6 +328,9 @@ private:
         std::array<std::uint8_t, 3> bytes {};
         int size { 0 };
         bool gathered { false };
+        // A Note On queued this block, not yet shown to the engine's
+        // lookahead (anticipateHeldNotes).
+        bool fresh { false };
         bool tempo { false };
         double tempoBpm { 120.0 };
     };
@@ -329,6 +352,14 @@ private:
     void collectStrum() noexcept;
     void clearKeys(int midiChannel) noexcept;
     void gatherChord(int first) noexcept;
+    void anticipateHeldNotes() noexcept;
+    // How far events are held back now: the gathering window and the
+    // lookahead, each while it is on.
+    [[nodiscard]] int holdSamples() const noexcept
+    {
+        return (gatherChords_ ? gatherWindow_ : 0)
+            + (fingerLookahead_ ? lookaheadWindow_ : 0);
+    }
     void renderTo(int sample) noexcept;
     void dispatchMidiData(const std::uint8_t* data, int size) noexcept;
     // A sustain change after a grouped key-up preserves event order. Zero
@@ -398,6 +429,8 @@ private:
     std::array<HeldEvent, heldEventCapacity> held_ {};
     int heldCount_ { 0 };
     int gatherWindow_ { 0 };
+    bool fingerLookahead_ { false };
+    int lookaheadWindow_ { 0 };
     std::uint32_t droppedEvents_ { 0 };
 
     // The block being played.

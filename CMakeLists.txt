@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.9.22 LANGUAGES C CXX)
+project(Acustra VERSION 1.9.23 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -1150,7 +1150,7 @@ if(BUILD_TESTING)
     add_test(NAME Acustra.PhysicalHandRealism COMMAND AcustraPhysicalHandRealismTests)
     set_tests_properties(Acustra.PhysicalHandRealism PROPERTIES TIMEOUT 120)
 
-    foreach(contract MaterialStiffness PhysicalHandGeometry ReleaseBrushTrajectory FractionalContact PhysicalStopping PhysicalVibratoStopping WoodMaterial FretMotion MasterTuning BodyConfigurationCache RepluckContactParity StringAxialForce PadReleaseCorner ShiftArrivalAudibility)
+    foreach(contract MaterialStiffness PhysicalHandGeometry ReleaseBrushTrajectory FractionalContact PhysicalStopping PhysicalVibratoStopping WoodMaterial FretMotion MasterTuning BodyConfigurationCache RepluckContactParity StringAxialForce PadReleaseCorner ShiftArrivalAudibility FingerLookahead)
         add_executable(Acustra${contract}Tests Tests/${contract}Tests.cpp)
         target_link_libraries(Acustra${contract}Tests PRIVATE AcustraDSP)
         set_target_properties(Acustra${contract}Tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)

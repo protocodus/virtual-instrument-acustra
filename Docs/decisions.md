@@ -5,6 +5,38 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-06 — Finger Lookahead: the shift moves before the note, 1.9.23 (A–Z pair; B adopted under the owner's standing rule, not yet heard)
+
+**What was decided.** The owner asked for more fret noise and finger
+movement, allowing a switch that costs 50 ms of latency. The 1.9.13 shift
+arrival starts at the pick's contact because a note-on is the first the
+engine knows of where the hand goes. A player's hand moves before the note.
+Finger Lookahead (FINGERS, off by default) holds every event back 50 ms. The
+Performer shows each held note-on to the engine, together with the key-ups
+due no later than it. The engine predicts the string the hand will take. If a
+finger must leave a different fret on that string (held by a key being let
+go, or lifted under 0.25 s ago), it lets go of the old note and slides there
+by the 1.9.13 law: a 0.12 s shift at 0.15-1.2 m/s, inside the window. The path
+is a minimum-jerk one (Flash and Hogan, J. Neurosci. 5(7), 1985), so the
+finger rests at both ends and lands on the sample before the pluck. The
+note-on then skips its own arrival. Chords, open strings and notes whose old
+key is still held keep their timing and only move later by 50 ms. Keys mode
+and connected (CC65/CC84) gestures are left alone.
+
+**What it was tested with.** A legato line on the low and middle strings,
+Dreadnought Steel, at the presets' 10% Release Noise and at 50%
+(`listening-tests/acustra-2026-11-06-finger-lookahead/` in the project
+files). A is 1.9.22. B is 1.9.23 with FINGERS on, aligned by dropping the
+first 50 ms. RMS matched (B -0.02 dB). At 50% the slide sits about -45 dBFS,
+about 18 dB under the old note's tail in the 50 ms before the next note.
+
+**Verdict.** B, adopted under the owner's standing rule; not yet heard. With
+FINGERS off, the eight demos and every test render bit for bit as 1.9.22.
+`Acustra.FingerLookahead` checks the window, latency, that a shift-free
+passage is the plain render 50 ms later, that the old finger lets go before
+the next note, that the slide leads it and stays under it, and block-size
+invariance.
+
 ## 2026-11-05 — explicit strum directions for small chords and held singles, 1.9.21 (a contract fix made on 2026-11-02 off 1.9.13, landed now)
 
 After the owner's choice below, the owner asked for strumming to honor the

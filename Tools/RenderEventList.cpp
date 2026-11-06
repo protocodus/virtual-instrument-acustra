@@ -5,7 +5,10 @@
 //                          [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]
 //                          [--axial-force 0|1] [--axial-waves 0|1]
 //                          [--plain-bending-loss eta] [--wound-bending-loss eta]
+//                          [--lookahead 0|1]
 //
+// --lookahead 1 turns Finger Lookahead on and drops its 50 ms from the start
+// of the file, so a render with it lines up with one without it.
 // The last four set offline comparison switches (PerformanceRealism) and the
 // strings' bending loss (PhysicalCalibration) for A-Z candidates.
 // Each line of events.txt is "seconds status data1 data2". The preset loads
@@ -46,7 +49,8 @@ int main(int argc, char** argv)
         std::puts("usage: AcustraRenderEventList <preset> <events.txt> <out.wav> <seconds>"
                   " [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]"
                   " [--axial-force 0|1] [--axial-waves 0|1]"
-                  " [--plain-bending-loss eta] [--wound-bending-loss eta]");
+                  " [--plain-bending-loss eta] [--wound-bending-loss eta]"
+                  " [--lookahead 0|1]");
         return 1;
     }
     constexpr double rate = 48000.0;
@@ -57,6 +61,7 @@ int main(int argc, char** argv)
     auto parameters = acustra::engineParameters(acustra::factoryPresets[preset]);
     acustra::PerformanceRealism realism {};
     acustra::PhysicalCalibration calibration = acustra::fittedPhysicalCalibration;
+    bool lookahead = false;
     for (int i = 5; i + 1 < argc; i += 2)
     {
         const std::string option = argv[i];
@@ -72,6 +77,8 @@ int main(int argc, char** argv)
             parameters.picking = static_cast<acustra::PickingTechnique>(std::atoi(argv[i + 1]));
         else if (option == "--room")
             parameters.room = static_cast<float>(std::atof(argv[i + 1]));
+        else if (option == "--lookahead")
+            lookahead = std::atoi(argv[i + 1]) != 0;
         else if (option == "--release-noise")
             parameters.releaseNoise = static_cast<float>(std::atof(argv[i + 1]));
     }
@@ -92,13 +99,15 @@ int main(int argc, char** argv)
     performer->setParameters(parameters);
     performer->prepare(rate, block);
     performer->setParameters(parameters);
+    performer->setFingerLookahead(lookahead);
+    const long skip = lookahead ? acustra::Performer::fingerLookaheadSamples(rate) : 0;
     const long total = static_cast<long>(std::atof(argv[4]) * rate);
     std::vector<float> interleaved(2 * static_cast<std::size_t>(total));
     std::array<float, block> left {}, right {};
     std::size_t next = 0;
-    for (long start = 0; start < total; start += block)
+    for (long start = 0; start < total + skip; start += block)
     {
-        const int frames = static_cast<int>(std::min<long>(block, total - start));
+        const int frames = static_cast<int>(std::min<long>(block, total + skip - start));
         performer->beginBlock(left.data(), right.data(), frames);
         for (; next < events.size() && events[next].sample < start + frames; ++next)
             performer->handleMidi(static_cast<int>(std::max(0L, events[next].sample - start)),
@@ -106,8 +115,11 @@ int main(int argc, char** argv)
         performer->endBlock();
         for (int i = 0; i < frames; ++i)
         {
-            interleaved[2 * static_cast<std::size_t>(start + i)] = left[static_cast<std::size_t>(i)];
-            interleaved[2 * static_cast<std::size_t>(start + i) + 1] = right[static_cast<std::size_t>(i)];
+            const long at = start + i - skip;
+            if (at < 0)
+                continue;
+            interleaved[2 * static_cast<std::size_t>(at)] = left[static_cast<std::size_t>(i)];
+            interleaved[2 * static_cast<std::size_t>(at) + 1] = right[static_cast<std::size_t>(i)];
         }
     }
     const auto bytes = static_cast<std::uint32_t>(interleaved.size() * sizeof(float));

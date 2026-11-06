@@ -882,6 +882,22 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
             audioProcessor.parameters, acustra::parameters::gatherChords,
             gatherChordsButton);
 
+    const juce::String lookaheadDescription {
+        "Finger lookahead: hear each note 50 ms later so the fretting finger "
+        "can lift and slide to it before it sounds. Hosts compensate the "
+        "delay on playback." };
+    fingerLookaheadButton.setName ("Finger lookahead");
+    fingerLookaheadButton.setTitle ("Finger lookahead");
+    fingerLookaheadButton.setDescription (lookaheadDescription);
+    fingerLookaheadButton.setTooltip (lookaheadDescription);
+    fingerLookaheadButton.setWantsKeyboardFocus (true);
+    fingerLookaheadButton.setClickingTogglesState (true);
+    addAndMakeVisible (fingerLookaheadButton);
+    fingerLookaheadAttachment = std::make_unique<
+        juce::AudioProcessorValueTreeState::ButtonAttachment> (
+            audioProcessor.parameters, acustra::parameters::fingerLookahead,
+            fingerLookaheadButton);
+
     configureSetupChoice (
         0, "GUITAR", nullptr,
         "Set the body shape and wood together. "
@@ -1265,9 +1281,10 @@ void AcustraAudioProcessorEditor::resized()
     statusLabel.setFont (displayFont (14.0f * scale));
     titleLabel.setBounds (box (80, 10, 360, 44));
     subtitleLabel.setBounds (box (84, 52, 460, 20));
-    statusLabel.setBounds (box (458, 22, 210, 28));
-    sustainButton.setBounds (box (680, 25, 100, 36));
-    gatherChordsButton.setBounds (box (792, 25, 94, 36));
+    statusLabel.setBounds (box (458, 22, 136, 28));
+    fingerLookaheadButton.setBounds (box (600, 25, 92, 36));
+    sustainButton.setBounds (box (700, 25, 92, 36));
+    gatherChordsButton.setBounds (box (800, 25, 90, 36));
     panicButton.setBounds (box (898, 25, 90, 36));
     backButton.setBounds (box (1000, 25, 94, 36));
     piezoPolarityButton.setBounds (box (220, 179, 124, 38));

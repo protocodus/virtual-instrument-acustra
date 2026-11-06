@@ -4317,6 +4317,7 @@ void AcustraEngine::reset() noexcept
     pickingGestureOriginSample_ = 0;
     pickingGestureSample_ = 0;
     hand_.fill({});
+    anticipations_.fill({});
     lastNoteOnSample_.fill(0);
     chordStartSample_.fill(0);
     noteOnSeen_.fill(false);
@@ -10202,7 +10203,29 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     configureVoice(voice, string, midiNote, !continuing);
     voice.onsetSample = sampleClock_;
     if (!continuing)
-        planShiftArrival(voice, string, previousFinger, previousKeyDown);
+    {
+        // A finger the lookahead already moved here (advanceAnticipation)
+        // has been heard arriving; one still on its way lands from where it
+        // is. Either way the string is taken, so its anticipation ends.
+        auto& anticipation = anticipations_[static_cast<std::size_t>(string)];
+        const bool landed = anticipation.arrivedFret == voice.fret && voice.fret >= 1
+            && static_cast<double>(sampleClock_ - anticipation.arrivedAt)
+                <= 0.005 * sampleRate_;
+        if (landed)
+            voice.fretMotion.arrivalFrom = 0.0;
+        else
+        {
+            planShiftArrival(voice, string, previousFinger, previousKeyDown);
+            if (anticipation.moving && anticipation.fret == voice.fret
+                && voice.fretMotion.arrivalFrom > 0.0)
+                voice.fretMotion.arrivalFrom = anticipation.position;
+        }
+    }
+    {
+        auto& anticipation = anticipations_[static_cast<std::size_t>(string)];
+        anticipation.pending = anticipation.moving = false;
+        anticipation.arrivedFret = -1;
+    }
     rememberFinger(string);
     voice.strumming = strumMember;
     // A forming chord may move an unfired string while another stroke has
@@ -11684,28 +11707,208 @@ void AcustraEngine::startShiftArrival(Voice& voice) noexcept
         1.0 - std::exp(-1.0 / (arrivalSeconds * sampleRate_)));
 }
 
+void AcustraEngine::anticipateNoteOn(int midiNote, int midiChannel, int samplesAhead,
+                                     const ReleasingKey* releasing,
+                                     int releasingCount) noexcept
+{
+    if (!prepared_ || midiNote < 0 || midiNote > 127 || samplesAhead <= 0
+        || midiChannel < 1 || midiChannel > midiChannelCount
+        || !canSound(midiNote, midiChannel))
+        return;
+    // The strings whose keys the player lets go before this note: free for
+    // the prediction, and the finger on them may leave for the new fret.
+    unsigned freed = 0u;
+    std::array<int, stringCount> liftNote {};
+    std::array<int, stringCount> liftChannel {};
+    liftNote.fill(-1);
+    for (int index = 0; releasing != nullptr && index < releasingCount; ++index)
+    {
+        int candidate = -1;
+        for (int string = 0; string < stringCount; ++string)
+        {
+            const auto& voice = voices_[static_cast<std::size_t>(string)];
+            if (voice.played && voice.keyDown && voice.midiNote == releasing[index].note
+                && voice.midiChannel == releasing[index].channel
+                && (candidate < 0 || voice.startOrder
+                    > voices_[static_cast<std::size_t>(candidate)].startOrder))
+                candidate = string;
+        }
+        if (candidate < 0)
+            continue;
+        freed |= 1u << candidate;
+        liftNote[static_cast<std::size_t>(candidate)] = releasing[index].note;
+        liftChannel[static_cast<std::size_t>(candidate)] = releasing[index].channel;
+    }
+    int string = -1;
+    if (stringPerChannelMode_ && midiChannel <= stringCount)
+        string = midiChannel - 1;
+    else
+    {
+        // noteOn's own allocator, as it will run with those keys up. A
+        // chord's plan is made only on its sample, so a chord's notes are
+        // predicted one by one; one that lands elsewhere loses nothing.
+        std::array<bool, stringCount> keyDown {};
+        for (int index = 0; index < stringCount; ++index)
+        {
+            auto& voice = voices_[static_cast<std::size_t>(index)];
+            keyDown[static_cast<std::size_t>(index)] = voice.keyDown;
+            if ((freed & (1u << index)) != 0u)
+                voice.keyDown = false;
+        }
+        string = isLowerZoneMember(midiChannel)
+            ? chooseStringWithoutHand(midiNote) : chooseString(midiNote);
+        for (int index = 0; index < stringCount; ++index)
+            voices_[static_cast<std::size_t>(index)].keyDown
+                = keyDown[static_cast<std::size_t>(index)];
+    }
+    if (string < 0)
+        return;
+    const auto index = static_cast<std::size_t>(string);
+    const int fret = midiNote - voices_[index].openMidi;
+    if (fret < 1 || fret > fretCount)
+        return;
+    auto& anticipation = anticipations_[index];
+    anticipation = {};
+    anticipation.pending = true;
+    anticipation.fret = fret;
+    anticipation.pluckSample = sampleClock_ + static_cast<std::uint64_t>(samplesAhead);
+    const auto window = static_cast<std::uint64_t>(
+        std::lround(fingerLookaheadSeconds * sampleRate_));
+    anticipation.decideSample = anticipation.pluckSample
+        - std::min(window, static_cast<std::uint64_t>(samplesAhead));
+    anticipation.liftNote = liftNote[index];
+    anticipation.liftChannel = liftChannel[index];
+}
+
+// The lookahead's finger on one string, once a sample while it is pending.
+// At the decision (the lookahead window before the note) it checks that a
+// finger is on this string at another fret, as planShiftArrival does: held
+// by a key the player lets go before the note, or let go under 0.25 s ago.
+// It then plans the shift by planShiftArrival's law (0.12 s, 0.15-1.2 m/s)
+// inside the window, so a long shift's earlier part is in the air and only
+// the last stretch slides. When the move begins the finger lifts: its key
+// comes up there with the hand's immediate damping (beginRelease), as the
+// pressure leaves the fret before the finger slides; the string falls to
+// the fingertip (releasePitchFall) and the rest of the old note dies under
+// it. The finger follows a minimum-jerk path (Flash and Hogan, J. Neurosci.
+// 5 (1985) 1688), the smoothest a hand's point-to-point move takes, so it
+// leaves and lands at rest; renderFretMotion sounds it by the shift
+// arrival's contact law, and it lands as the note-on comes.
+void AcustraEngine::advanceAnticipation(Voice& voice, int stringIndex) noexcept
+{
+    auto& anticipation = anticipations_[static_cast<std::size_t>(stringIndex)];
+    if (sampleClock_ >= anticipation.pluckSample)
+    {
+        anticipation.pending = anticipation.moving = false;
+        return;
+    }
+    if (!anticipation.decided)
+    {
+        if (sampleClock_ < anticipation.decideSample)
+            return;
+        anticipation.decided = true;
+        constexpr double liftedSeconds = 0.25;
+        constexpr double shiftSeconds = 0.12;
+        const auto& finger = hand_[static_cast<std::size_t>(stringIndex)];
+        const bool held = voice.played && voice.keyDown;
+        bool free = finger.valid && finger.fret != anticipation.fret
+            && voice.harmonic == 1 && voice.fret == finger.fret;
+        if (held)
+            free = free && voice.midiNote == anticipation.liftNote
+                && voice.midiChannel == anticipation.liftChannel
+                && voice.ownerCount == 1 && voice.pluckDelay == 0
+                && !sustainIsDown(voice);
+        else
+            free = free && static_cast<double>(sampleClock_ - finger.heldAt)
+                <= liftedSeconds * sampleRate_;
+        if (!free)
+        {
+            anticipation.pending = false;
+            return;
+        }
+        const double scale = voice.speakingLengthMetres
+            * std::exp2(static_cast<double>(voice.fret) / 12.0);
+        const double from = scale * std::exp2(-static_cast<double>(finger.fret) / 12.0);
+        const double to = scale * std::exp2(-static_cast<double>(anticipation.fret) / 12.0);
+        const double available = static_cast<double>(
+            anticipation.pluckSample - sampleClock_) / sampleRate_;
+        const double longest = std::min(shiftSeconds, available);
+        const double distance = exact::abs(from - to);
+        const double speed = std::clamp(distance / longest, 0.15, 1.2);
+        const double duration = std::min(longest, distance / speed);
+        const double travel = std::min(distance, speed * duration);
+        const auto samples = std::max<std::uint64_t>(1u, static_cast<std::uint64_t>(
+            std::lround(duration * sampleRate_)));
+        anticipation.from = to + (from > to ? travel : -travel);
+        anticipation.to = to;
+        anticipation.position = anticipation.from;
+        anticipation.inverseDuration = 1.0 / static_cast<double>(samples);
+        anticipation.moveStart = anticipation.pluckSample - samples;
+    }
+    if (sampleClock_ < anticipation.moveStart)
+        return;
+    if (!anticipation.moving)
+    {
+        anticipation.moving = true;
+        if (voice.played && voice.keyDown && voice.midiNote == anticipation.liftNote
+            && voice.midiChannel == anticipation.liftChannel)
+            releaseKey(anticipation.liftNote, anticipation.liftChannel,
+                       true, false, -1.0f, true);
+        // The slide starts where the finger is, so its first step is a
+        // finger at rest, not a jump from the old fret.
+        voice.fretMotion.length = anticipation.from;
+    }
+    // Minimum jerk, 10t^3 - 15t^4 + 6t^5: at rest at both ends, reaching
+    // the fret on the move's last sample, the one before the note-on.
+    const double t = std::min(1.0, static_cast<double>(
+        sampleClock_ - anticipation.moveStart + 1u) * anticipation.inverseDuration);
+    const double shape = t * t * t * (10.0 + t * (-15.0 + 6.0 * t));
+    anticipation.position = anticipation.from
+        + (anticipation.to - anticipation.from) * shape;
+    if (t >= 1.0)
+    {
+        anticipation.arrivedFret = anticipation.fret;
+        anticipation.arrivedAt = sampleClock_;
+        // It stays pending until the note-on's sample, which ends it
+        // (startNote) or, if the note went elsewhere, the check above.
+    }
+}
+
 void AcustraEngine::renderFretMotion(Voice& voice, int stringIndex) noexcept
 {
     auto& motion = voice.fretMotion;
-    const bool touching = stringIndex < 4 && voice.played && voice.keyDown
-        && voice.attackFired && voice.harmonic == 1;
+    // A finger the lookahead moves (advanceAnticipation) touches the string
+    // on its way to the next note's fret, after its own note let go.
+    const auto& anticipation = anticipations_[static_cast<std::size_t>(stringIndex)];
+    const bool anticipated = anticipation.moving;
+    const bool touching = stringIndex < 4 && voice.harmonic == 1
+        && ((voice.played && voice.keyDown && voice.attackFired) || anticipated);
     const double target = voice.speakingLengthMetres;
     const double previous = motion.length;
-    // Follow the physical stop at the same 6 ms time scale as string retuning.
-    // Never differentiate pitch: member bends, vibrato and attack tension
-    // change frequency while the finger stays at the same fret. The tiny
-    // terminal snap is a numerical rest condition, not a MIDI motion layer.
-    const double glide = motion.arriving ? motion.arrivalCoefficient : delaySmoothing_;
-    motion.length = touching
-        ? previous + glide * (target - previous)
-        : (motion.remaining > 0 ? previous : target);
-    if (touching && exact::abs(target - motion.length) < 1.0e-10)
+    if (anticipated)
     {
-        motion.length = target;
-        motion.arriving = false;
+        motion.length = anticipation.position;
+        motion.arriving = true;
     }
-    if (!touching)
-        motion.arriving = false;
+    else
+    {
+        // Follow the physical stop at the same 6 ms time scale as string
+        // retuning. Never differentiate pitch: member bends, vibrato and
+        // attack tension change frequency while the finger stays at the same
+        // fret. The tiny terminal snap is a numerical rest condition, not a
+        // MIDI motion layer.
+        const double glide = motion.arriving ? motion.arrivalCoefficient : delaySmoothing_;
+        motion.length = touching
+            ? previous + glide * (target - previous)
+            : (motion.remaining > 0 ? previous : target);
+        if (touching && exact::abs(target - motion.length) < 1.0e-10)
+        {
+            motion.length = target;
+            motion.arriving = false;
+        }
+        if (!touching)
+            motion.arriving = false;
+    }
     motion.speed = touching
         ? static_cast<float>((motion.length - previous) * sampleRate_) : 0.0f;
     motion.emittedForce = 0.0f;
@@ -13538,6 +13741,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             }
             if (voice.releaseNoiseSamples > 0 || voice.releaseNoiseTravel.active)
                 addReleaseNoise(voice);
+            if (anticipations_[static_cast<std::size_t>(string)].pending)
+                advanceAnticipation(voice, string);
             renderFretMotion(voice, string);
             if (performanceRealism_.stringAxialForce)
             {

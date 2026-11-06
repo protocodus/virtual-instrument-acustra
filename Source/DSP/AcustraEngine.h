@@ -323,6 +323,29 @@ public:
     // standalone dead stroke transient; the pedal never owns a hand shape.
     void muteStroke(int string, int delaySamples, float velocity,
                     int midiChannel = 1, unsigned heldShapeOwners = 0u) noexcept;
+    // Finger Lookahead (Performer::setFingerLookahead): the player hears
+    // every event this much later, so it knows a note before it sounds and
+    // the fretting finger can move to it ahead of the pick, as a guitarist's
+    // does, instead of only at the pick's contact. Fifty milliseconds is the
+    // owner's latency budget; a shift that takes longer starts its last
+    // stretch in the air and lands sliding (anticipateNoteOn).
+    static constexpr double fingerLookaheadSeconds = 0.05;
+    struct ReleasingKey
+    {
+        int note { 0 };
+        int channel { 1 };
+    };
+    // A note-on that will reach noteOn() samplesAhead samples from now, with
+    // the key-ups the player will apply before it (releasing). The engine
+    // predicts the string the note will take, as noteOn() would with those
+    // keys up, and if a finger has to leave another fret on that string it
+    // lifts there and slides to the new fret, arriving as the note-on does
+    // (advanceAnticipation). A note that lands elsewhere is placed as
+    // always; nothing else about the note changes. A newer anticipation on a
+    // string replaces an older one.
+    void anticipateNoteOn(int midiNote, int midiChannel, int samplesAhead,
+                          const ReleasingKey* releasing,
+                          int releasingCount) noexcept;
     // Whether noteOn() would sound this note at all in the current tuning
     // and channel mode, rather than drop it (outside the tuning's fretted
     // range, or off a string-per-channel string's frets).
@@ -2017,6 +2040,29 @@ private:
                                int offset = 0) noexcept;
     int drainReleaseNoiseTravel(Voice& voice) noexcept;
     static void primeFretMotion(Voice& voice) noexcept;
+    // A finger anticipated by anticipateNoteOn: when it lifts, where it
+    // starts and where it lands. Kept per string, beside the hand.
+    struct FingerAnticipation
+    {
+        bool pending { false };
+        bool decided { false };
+        bool moving { false };
+        std::uint64_t pluckSample { 0 };
+        std::uint64_t decideSample { 0 };
+        std::uint64_t moveStart { 0 };
+        int fret { 0 };
+        int liftNote { -1 };
+        int liftChannel { 0 };
+        double from { 0.0 };
+        double to { 0.0 };
+        double position { 0.0 };
+        double inverseDuration { 0.0 };
+        // The fret it reached and when, for startNote: an arrival already
+        // heard is not played again at the pick.
+        int arrivedFret { -1 };
+        std::uint64_t arrivedAt { 0 };
+    };
+    void advanceAnticipation(Voice& voice, int stringIndex) noexcept;
     void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     [[nodiscard]] float excursionMetres(const Voice& voice) const noexcept;
     void designStringAxialForce(Voice& voice, int stringIndex) noexcept;
@@ -2399,6 +2445,7 @@ private:
     std::uint64_t sampleClock_ { 0 };
     double tempoBpm_ { 120.0 };
     std::array<HandFinger, stringCount> hand_ {};
+    std::array<FingerAnticipation, stringCount> anticipations_ {};
     // Reused synchronously by one note-on; never a second bridge-loaded string.
     std::array<StringLoop, 2> repluckOldLoops_ {};
     std::array<std::uint64_t, midiChannelCount> lastNoteOnSample_ {};

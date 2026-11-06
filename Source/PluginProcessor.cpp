@@ -124,6 +124,7 @@ enum ParameterSlot
     slotRoom,
     slotSustain,
     slotPiezoPolarityInverted,
+    slotFingerLookahead,
     slotCount
 };
 
@@ -146,7 +147,8 @@ constexpr std::array<const char*, slotCount> parameterIds {
     ids::releaseNoise,
     ids::room,
     ids::sustain,
-    ids::piezoPolarityInverted
+    ids::piezoPolarityInverted,
+    ids::fingerLookahead
 };
 
 std::unique_ptr<juce::RangedAudioParameter> makePercentParameter (
@@ -335,6 +337,7 @@ AcustraAudioProcessor::AcustraAudioProcessor()
         jassert (parameterPointers[slot] != nullptr);
     }
     parameters.addParameterListener (ids::gatherChords, this);
+    parameters.addParameterListener (ids::fingerLookahead, this);
     // The engine's own output latency holds before prepareToPlay too.
     setLatencySamples (acustra::Performer::latencySamples (false, 0));
     if (wrapperType == wrapperType_Standalone)
@@ -344,6 +347,7 @@ AcustraAudioProcessor::AcustraAudioProcessor()
 AcustraAudioProcessor::~AcustraAudioProcessor()
 {
     parameters.removeParameterListener (ids::gatherChords, this);
+    parameters.removeParameterListener (ids::fingerLookahead, this);
 }
 
 void AcustraAudioProcessor::parameterChanged (const juce::String& parameterID,
@@ -352,9 +356,20 @@ void AcustraAudioProcessor::parameterChanged (const juce::String& parameterID,
     // Holding MIDI back is latency, on top of the engine's own (the
     // microphones wait out the piezo's pipeline); the host compensates what
     // it is told.
-    if (parameterID == ids::gatherChords)
-        setLatencySamples (acustra::Performer::latencySamples (
-            newValue >= 0.5f, gatherWindowSamples.load (std::memory_order_relaxed)));
+    if (parameterID == ids::gatherChords || parameterID == ids::fingerLookahead)
+    {
+        juce::ignoreUnused (newValue);
+        reportLatency();
+    }
+}
+
+void AcustraAudioProcessor::reportLatency() noexcept
+{
+    setLatencySamples (acustra::Performer::latencySamples (
+        parameterPointers[slotGatherChords]->load (std::memory_order_relaxed) >= 0.5f,
+        gatherWindowSamples.load (std::memory_order_relaxed),
+        parameterPointers[slotFingerLookahead]->load (std::memory_order_relaxed) >= 0.5f,
+        lookaheadWindowSamples.load (std::memory_order_relaxed)));
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
@@ -463,6 +478,13 @@ AcustraAudioProcessor::createParameterLayout()
     // acquire the normal default through addMissingParameterDefaults.
     result.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ids::piezoPolarityInverted, 13 }, "Invert Piezo Blend", false));
+    // Finger Lookahead (acustra::Performer::setFingerLookahead): every note
+    // 50 ms later, so the fretting finger can move to it before it sounds.
+    // Like Gather Chords it changes the latency, so it is not automatable;
+    // off by default and in sessions saved before it, which sound as they did.
+    result.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID { ids::fingerLookahead, 14 }, "Finger Lookahead", false,
+        juce::AudioParameterBoolAttributes().withAutomatable (false)));
 
     return { result.begin(), result.end() };
 }
@@ -566,8 +588,10 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     gatherWindowSamples.store (acustra::Performer::gatherWindowSamples (
                                    performer.engine().sampleRate()),
                                std::memory_order_relaxed);
-    parameterChanged (ids::gatherChords, parameterPointers[slotGatherChords]->load (
-        std::memory_order_relaxed));
+    lookaheadWindowSamples.store (acustra::Performer::fingerLookaheadSamples (
+                                      performer.engine().sampleRate()),
+                                  std::memory_order_relaxed);
+    reportLatency();
     displaySampleRate.store (sampleRate, std::memory_order_relaxed);
     activeVoiceCount.store (0, std::memory_order_relaxed);
     sympatheticStringCount.store (0, std::memory_order_relaxed);
@@ -646,6 +670,8 @@ void AcustraAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // DSP/AcustraPerformer.h.
     performer.setGatherChords (parameterPointers[slotGatherChords]->load (
                                    std::memory_order_relaxed) >= 0.5f);
+    performer.setFingerLookahead (parameterPointers[slotFingerLookahead]->load (
+                                      std::memory_order_relaxed) >= 0.5f);
     // Before this block's MIDI, so a key-up in it is held when the switch
     // came on with it; a switch-off lets the held notes go here.
     performer.setSustainHold (parameterPointers[slotSustain]->load (

@@ -39,6 +39,19 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.23 — 2026-11-06 — Finger Lookahead: the finger moves before the note
+
+- A new FINGERS switch (Finger Lookahead, off by default) holds every event
+  back 50 ms. While it waits, the player sees each coming note. Where a finger
+  must leave a fret for another on the same string, it lets go of the old note
+  and slides along the winding before the pluck. The slide follows the 1.9.13
+  shift law on a minimum-jerk path (Flash and Hogan 1985) and arrives as the
+  string is plucked. Without lookahead the same slide sounds with the note. It
+  scales with Release Noise. The plug-in reports the 50 ms as latency, added to
+  Gather Chords' 30 ms when both are on. Off, every sample is unchanged.
+  Adopted under the project's standing listening rule; not yet heard by the
+  owner.
+
 ### 1.9.22 — 2026-11-05 — about 6% fewer instructions, the same output
 
 - Five exact engine optimizations: the string stretch's line sum reads its
@@ -456,7 +469,9 @@ automatic. The strum keys F0 (down) and F#0 (up) strum whatever keys are held
 on their channel at their own velocity; the first one latches Keys mode, in
 which a key frets its string silently until the next strum key, and C0, C#0
 or D0 leaves it. Gather Chords (CHORDS) groups keys within 30 ms into one shape at
-30 ms of reported latency. A key-up waits one 1/32 note, so a re-struck note
+30 ms of reported latency. Finger Lookahead (FINGERS) holds events back 50 ms,
+at 50 ms of reported latency, so a finger that changes fret on a string lets go
+and slides there before the next pluck instead of with it. A key-up waits one 1/32 note, so a re-struck note
 joins its ringing string, then the hand damps it, adds its own touch (Release
 Noise) and lets a fretted note's pitch fall as GuitarSet's note ends do.
 CC64 and the SUSTAIN switch hold released notes. CC2 is the picking hand's
@@ -580,7 +595,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Picking** | Finger, Pick (sharper, nearer the bridge, darker when soft) or Thumb (rounder, nearer the neck). |
 | **Capture** | Stereo mic, a single measured mono mic, or the under-saddle piezo through its preamp. |
 | **Piezo Mix** | The piezo beneath the microphones on Main; 20% for a new instance, 0% for an older session. |
-| **Release Noise** | The damping hand's touch as a note ends, faint friction on held wound-string slides, and a finger sliding along a wound string into a new fret; 0% adds nothing. |
+| **Release Noise** | The damping hand's touch as a note ends, faint friction on held wound-string slides, and a finger sliding along a wound string into a new fret (before the note with Finger Lookahead on); 0% adds nothing. |
 | **Room** | Small-studio reflections around the microphones, 0-100% (10% for a new instance); the piezo stays dry. |
 | **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
 | **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |
@@ -630,7 +645,7 @@ and the [room report](Docs/research/room-2026-10-10.md).
 
 Both outputs are seven samples behind the strings at every rate, so the two
 sensors sum as the instrument moved them; the plug-in reports that latency,
-plus 30 ms while Gather Chords is on. In VST3 the Piezo bus is optional and
+plus 30 ms while Gather Chords is on and 50 ms while Finger Lookahead is on. In VST3 the Piezo bus is optional and
 off by default. The plug-in plays at host rates from 8 kHz to 384 kHz and stays
 silent, showing UNSUPPORTED RATE, at any other. An idle instance stops
 computing the strings and wakes with output bit for bit that of one that never
@@ -697,6 +712,12 @@ separates verified errors from accepted approximations.
   annotated corpus would separate them.
 - A single picked upstroke radiates 2.1-3.8 dB more than a downstroke on the
   treble strings; no measurement here says whether a real plectrum does.
+- Finger Lookahead predicts a coming note's string from the hand as it stands
+  50 ms early. Events that arrive inside the window, such as a late key-up or a
+  controller, can change the choice. The finger has then still let go of the
+  old note (whose key-up was already due) up to 0.12 s early and slid. The slide's speed and path are a
+  hand-movement law, not measured guitar shifts. The Reason Rack Extension
+  cannot report the latency, so the switch is not on its panel.
 - Live chords with Gather Chords off can keep a wider fingering than one hand
   reaches. The hand's span and costs follow the listener's direction and a
   finger-span study, not recorded fingerings.
