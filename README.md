@@ -435,7 +435,7 @@ later builds to exceed.
 
 <!-- The block between the build-download markers is rewritten by .github/workflows/main-build.yml; edits there are overwritten. -->
 <!-- build-download-begin -->
-**[Download main build 77](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/42255822515/artifacts/13524813115)**, built from [`5ce58b83b0d4`](https://github.com/protocodus/virtual-instrument-acustra/commit/5ce58b83b0d40125b0666962ac426f1402524df1). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
+**[Download main build 78](https://github.com/protocodus/virtual-instrument-acustra/actions/runs/42361450539/artifacts/13571980096)**, built from [`97c8d3c38b92`](https://github.com/protocodus/virtual-instrument-acustra/commit/97c8d3c38b92132fe83e6b7d94526d41f28bb995). It holds the macOS, Windows and Linux packages, `SHA256SUMS` and `BUILD.txt`.
 <!-- build-download-end -->
 
 ---
