@@ -185,6 +185,29 @@ G3 on the low E (+11 to +12, its fast member) and the jumbo's 11th fret
 (+11). None of these is a tuning error of the loop: each is a pair 12-22
 cents wide whose members trade places with velocity and time.
 
+## Cost
+
+The solve is about 140 determinant evaluations a note (255 at most), each
+about 1 µs on the development machine: the 55-mode bridge sum 0.38 µs and
+the five resting strings' loads 0.64 µs, so a note-on and its first
+64-sample block at 48 kHz cost 306 µs mean, 532 worst. Six note-ons struck
+in one block (an E, A, G and D chord, MIDI at one tick) cost 0.8-0.9 ms
+for the E and G shapes and 1.4-1.5 ms for the A and D shapes, whose notes
+meet open-string unisons and hold more poles, against the block's 1.33 ms;
+1.9.25 cost 0.5-0.7 ms for the same chords, and 0.1-0.9 ms a block for
+every note held under a vibrato. Of the 140 evaluations about 100 are the
+twelve wide seeds walking in 5-cent steps to a pole already found. Three
+ways to cut them were measured and rejected the same day because they
+moved the tuning: dropping a start whose Newton target lies within 0.35
+cent of a found pole lost members (36 notes moved, up to 1.5 cents, and
+the lost poles made the solve re-seed at every detune step, so it cost
+more); seeding only from the dips of |det| read at the twelve points found
+a different family on 45 of 378 notes (up to 5 cents); a 10-cent step
+clamp and the secant slope at convergence saved under a tenth and moved
+one note 0.25 cent. What would close the gap without touching the family
+is spreading a chord's solves over its first blocks, which is a
+scheduling change and was not made.
+
 ## Not changed
 
 The width of the pairs. Whether a steel-string bridge's rocking couples the

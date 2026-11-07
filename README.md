@@ -912,6 +912,13 @@ separates verified errors from accepted approximations.
   sideways hold, the string's own asymmetry) is not modelled. It costs
   fingered notes about 1.5 dB of their brightening with velocity
   (Docs/decisions.md, 2026-10-30).
+- A note-on's tuning solve costs 0.1-0.3 ms on the development machine
+  (48 kHz, 64-sample blocks), so six note-ons struck in one block cost
+  0.8-1.5 ms with the block's own rendering, over the block's 1.33 ms on
+  chords that meet open-string unisons (1.9.25: 0.5-0.7 ms, but 0.1-0.9 ms
+  a block for every note held under a vibrato). Spreading a chord's solves
+  over its first blocks would close it; the development-machine figures are
+  not Reason's (`Docs/research/coupled-tuning-2026-11-07.md`, Cost).
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over
