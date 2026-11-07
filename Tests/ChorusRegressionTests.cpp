@@ -8,17 +8,6 @@
 #include <memory>
 #include <vector>
 
-namespace acustra
-{
-struct AcustraEngineTestAccess
-{
-    static double releaseSlipPole(const AcustraEngine& engine, int string)
-    {
-        return engine.voices_[static_cast<std::size_t>(string)].releaseSlipPole;
-    }
-};
-} // namespace acustra
-
 namespace
 {
 constexpr double pi = 3.14159265358979323846;
@@ -83,19 +72,26 @@ HarmonicEnvelope observe(const std::vector<float>& audio, double rate,
 int main()
 {
     int failures = 0;
-    // Observed on unchanged 8ea51f9 with this exact protocol. A six-decibel
+    // References observed on 1.9.26 with this exact protocol (first on
+    // unchanged 8ea51f9; re-observed when 1.9.26 put E3 on the low E in
+    // tune, 10 cents up, and the earlier velocity-law and Thumb-release
+    // rescalings of the old references fell away with them). A six-decibel
     // energy bracket prevents suppressing a harmonic to hide its beating,
     // while allowing the requested pitch correction to move its comb level.
     // Open G's H8 was a second fixture until 1.9.9, when the owner chose by
     // ear to part the planes by 0.75 cent (normalPlaneLagPeriods) so that
     // partials swell and fade as the recordings' do: it beats there at
-    // 0.68 Hz, 8-11 dB across this window, by design. E3's H5 stays, because
-    // that split beats it at 0.36 Hz, which the window's straight decay
-    // absorbs, while the per-plane end-delay chorus this guards against
-    // beat it audibly.
+    // 0.68 Hz, 8-11 dB across this window, by design. E3's H5 stays: that
+    // split beats it at 0.36 Hz, which the window's straight decay absorbs.
+    // In tune, its H5 (824 Hz) sits a few cents under a dreadnought body
+    // mode that answers 19 dB down and beats it at 2 Hz, up to 1.7 dB
+    // across this window (1.9.26, the pair tuned on its loudness centre;
+    // 2.6 dB when it was tuned on its energy centre); the per-plane
+    // end-delay chorus this guards against beat it well beyond the 2 dB
+    // allowed.
     constexpr double referenceAmplitude[2][3] {
-        { 0.000861821, 0.000319559, 0.000739774 },
-        { 0.000816120, 0.000323796, 0.000718182 }
+        { 0.00134199, 0.000492141, 0.00108866 },
+        { 0.00125877, 0.000494366, 0.00102439 }
     };
     for (const double rate : { 48000.0, 96000.0 })
     for (const auto technique : { acustra::PickingTechnique::Finger,
@@ -113,11 +109,16 @@ int main()
         // Default Detune is zero on both the pre-polish negative control
         // and the current instrument; no wheel or modulation is sent.
         engine->setParameters(parameters);
+        // The partial's level and beating depend on where it meets the
+        // body; the fretting finger's own offset (frettingPitchCents) is a
+        // performance draw, not this fixture.
+        auto realism = engine->performanceRealism();
+        realism.frettingPitch = false;
+        engine->setPerformanceRealism(realism);
         engine->prepare(rate, 256);
         engine->setStringPerChannelMode(true);
         const int note = engine->openNotes(parameters.tuning)[string] + fret;
         engine->noteOn(note, 0.6f, string + 1);
-        const double releasePole = acustra::AcustraEngineTestAccess::releaseSlipPole(*engine, string);
         std::vector<float> left(static_cast<std::size_t>(2.0 * rate)), right(left.size());
         engine->process(left.data(), right.data(), static_cast<int>(left.size()));
         const double frequency = 440.0 * std::exp2((note - 69.0) / 12.0) * partial;
@@ -126,38 +127,13 @@ int main()
                   << " note=" << note << " H" << partial
                   << " modulationDb=" << envelope.modulationDb
                   << " meanAmplitude=" << envelope.meanAmplitude << '\n';
-        if (!(std::isfinite(envelope.modulationDb) && envelope.modulationDb < 1.0))
+        if (!(std::isfinite(envelope.modulationDb) && envelope.modulationDb < 2.0))
         {
             std::cerr << "FAIL: upper partial acquired an audible beating envelope\n";
             ++failures;
         }
-        // The references were observed under the earlier quadratic velocity
-        // law. 1.6.3's linear law gives velocity 0.6 a force of 0.6 instead
-        // of 0.36, and its release-edge scaling keeps the contact shape, so
-        // every partial scales by that ratio (1.66-1.68x on 1.6.2's output).
-        constexpr double linearForceScale = 0.6 / 0.36;
-        // Since 1.9.5 the Thumb's release time follows the Finger's
-        // v^-0.766875 rather than 1/v^2, so at velocity 0.6 it lets go
-        // 0.6^-1.233125 = 1.88 times sooner than when these were observed,
-        // and its slip, a one-pole on the periodic line, passes more of an
-        // upper partial. Scale the Thumb's reference by that one-pole's gain
-        // at the partial under its release time against the old one: 1.62
-        // for E3's H5 and 1.73 for G3's retired H8, which grew 1.07 and 1.96-2.20
-        // times from 1.9.4.
-        double releaseScale = 1.0;
-        if (technique == acustra::PickingTechnique::Thumb)
-        {
-            const double w = 2.0 * pi * frequency / rate;
-            const auto gain = [w](double pole) {
-                return (1.0 - pole) / std::sqrt(1.0 - 2.0 * pole * std::cos(w) + pole * pole);
-            };
-            const double oldPole = std::pow(releasePole, std::pow(0.6, 1.233125));
-            releaseScale = releasePole > 0.0 ? gain(releasePole) / gain(oldPole) : 0.0;
-            std::cout << "  Thumb release scale " << releaseScale << '\n';
-        }
-        const double reference = linearForceScale * releaseScale
-            * referenceAmplitude[rate == 48000.0 ? 0 : 1]
-                                [static_cast<int>(technique)];
+        const double reference = referenceAmplitude[rate == 48000.0 ? 0 : 1]
+                                                   [static_cast<int>(technique)];
         if (!(envelope.meanAmplitude > 0.5 * reference
               && envelope.meanAmplitude < 2.0 * reference))
         {

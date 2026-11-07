@@ -25,11 +25,20 @@ measured for:
   rel      the release: peak in the 100 ms after key-up against the RMS of
            the 100 ms before it (dB), a click or a thump reads high
   tail     level 0.5-0.7 s after key-up against the level before it (dB)
+  att_c    pitch of the attack, 0.03-0.15 s, in cents from equal temperament
+           at A440: the strongest peak within 8 % of the nominal fundamental,
+           Hann window, 8x zero padding, parabolic interpolation
+  set_c    the same over 0.3-0.9 s, the settled pitch; glide = att_c - set_c
+  B        inharmonicity coefficient from partials 1-6 over 0.1-0.6 s,
+           f_n = n f1 sqrt(1 + B n^2), least squares on f_n^2 / n^2
 
 Every metric is also expressed as a deviation from its neighbourhood: the
 mean of the same metric at frets +/-1 and +/-2 on the same string, with the
-note left out. A level deviation beyond 3 dB, a centroid beyond 35 % or a
-fundamental T60 beyond 40 % of the neighbourhood is listed as an outlier;
+note left out. A level deviation beyond 3 dB, a centroid beyond 35 %, a
+fundamental T60 beyond 40 % of the neighbourhood or a settled pitch 4 cents
+from it is listed as an outlier, as is a settled pitch more than 6 cents from
+equal temperament outright (the strings are tuned to it; a real guitar's
+intonation error is the player's setup, not the model's);
 the same pitch on two strings is also compared, where a real guitar differs
 by construction but not by a hole. Signal metrics establish no listener
 preference; they say where a step is, not whether it is heard as one.
@@ -92,9 +101,12 @@ def db(power: float) -> float:
 
 def preset_options(preset: tuple, calibration: str | None) -> list[str]:
     _, capture, technique, tuning, shape, wood, touch, pluck, piezo_mix = preset
+    # Every contact at its reference pitch: the fretting finger's own draw
+    # (frettingPitchCents, +-3 cents fretted, +-1 open) is the player, and
+    # this measures the instrument.
     options = [capture, technique, "--tuning", tuning, "--body-shape", shape,
                "--body-material", wood, "--touch", f"{touch}",
-               "--pluck-position", f"{pluck}"]
+               "--pluck-position", f"{pluck}", "--exact-intonation", "1"]
     if piezo_mix:
         options += ["--piezo-mix", f"{piezo_mix}"]
     if calibration:
@@ -170,6 +182,43 @@ def partial_levels(mono: np.ndarray, f0: float, start: float, end: float,
     return partials, between
 
 
+def peak_frequency(x: np.ndarray, low: float, high: float) -> float:
+    """Frequency of the strongest spectral peak in [low, high], Hz."""
+    window = np.hanning(len(x))
+    size = 8 * len(x)
+    spectrum = np.abs(np.fft.rfft(x * window, size))
+    frequencies = np.fft.rfftfreq(size, 1 / RATE)
+    band = np.flatnonzero((frequencies >= low) & (frequencies <= high))
+    if len(band) < 3:
+        return float("nan")
+    k = band[np.argmax(spectrum[band])]
+    if k == 0 or k + 1 >= len(spectrum):
+        return float(frequencies[k])
+    a, b, c = np.log(spectrum[k - 1:k + 2] + 1e-30)
+    curvature = a - 2 * b + c
+    shift = 0.5 * (a - c) / curvature if curvature < -1e-12 else 0.0
+    return float((k + shift) * frequencies[1])
+
+
+def pitch_cents(mono: np.ndarray, f0: float, start: float, end: float) -> float:
+    measured = peak_frequency(seg(mono, start, end), f0 * 0.92, f0 * 1.08)
+    return float(1200 * np.log2(measured / f0)) if np.isfinite(measured) else float("nan")
+
+
+def inharmonicity(mono: np.ndarray, f0: float, start: float, end: float,
+                  count: int = 6) -> float:
+    """B of f_n = n f1 sqrt(1 + B n^2), fitted to the partials' peaks."""
+    x = seg(mono, start, end)
+    n = np.arange(1, count + 1)
+    peaks = np.array([peak_frequency(x, f0 * k * (1 - 0.03), f0 * k * (1 + 0.03 + 0.004 * k * k))
+                      for k in n])
+    if not np.isfinite(peaks).all() or f0 * count > 12000:
+        return float("nan")
+    # (f_n / n)^2 = f1^2 + f1^2 B n^2: a line in n^2.
+    slope, intercept = np.polyfit(n ** 2, (peaks / n) ** 2, 1)
+    return float(slope / intercept) if intercept > 0 else float("nan")
+
+
 def note_metrics(audio: np.ndarray, midi: int) -> dict:
     mono = audio.mean(axis=1)
     f0 = 440.0 * 2 ** ((midi - 69) / 12)
@@ -199,15 +248,19 @@ def note_metrics(audio: np.ndarray, midi: int) -> dict:
         "floor_db": db(floor_between[usable].sum() / max(floor_partials[usable].sum(), 1e-30)),
         "release_db": db(np.max(np.abs(after)) ** 2) - db(np.mean(before ** 2)),
         "tail_db": db(np.mean(tail ** 2)) - db(np.mean(before ** 2)),
+        "attack_cents": pitch_cents(mono, f0, 0.03, 0.15),
+        "settled_cents": pitch_cents(mono, f0, 0.3, 0.9),
+        "inharmonicity_b": inharmonicity(mono, f0, 0.1, 0.6),
     }
 
 
 METRICS = ("peak_dbfs", "attack_dbfs", "sustain_dbfs", "sustain_left_dbfs",
            "sustain_right_dbfs", "attack_centroid_hz",
            "sustain_centroid_hz", "t60_fundamental_s", "t60_high_s", "h2_db",
-           "h3_db", "floor_db", "release_db", "tail_db")
+           "h3_db", "floor_db", "release_db", "tail_db", "attack_cents",
+           "settled_cents", "inharmonicity_b")
 LOG_METRICS = ("attack_centroid_hz", "sustain_centroid_hz", "t60_fundamental_s",
-               "t60_high_s")
+               "t60_high_s", "inharmonicity_b")
 
 
 def deviations(rows: list[dict], reach: int = 2) -> None:
@@ -221,7 +274,7 @@ def deviations(rows: list[dict], reach: int = 2) -> None:
             values = np.array([r[metric] for r in string_rows], dtype=float)
             if metric in LOG_METRICS:
                 values = 20 * np.log10(np.clip(values, 1e-3, 1e6)) if "hz" in metric \
-                    else 10 * np.log10(np.clip(values, 1e-3, 1e3))
+                    else 10 * np.log10(np.clip(values, 1e-7, 1e3))
             for index, row in enumerate(string_rows):
                 neighbours = [other for other in range(max(0, index - reach),
                                                        min(len(values), index + reach + 1))
@@ -238,7 +291,13 @@ OUTLIER_LIMITS = {"peak_dbfs": 3.0, "attack_dbfs": 3.0, "sustain_dbfs": 3.0,
                   "t60_fundamental_s": 10 * np.log10(1.4),
                   "t60_high_s": 10 * np.log10(1.6),
                   "h2_db": 6.0, "h3_db": 6.0, "floor_db": 6.0,
-                  "release_db": 6.0, "tail_db": 6.0}
+                  "release_db": 6.0, "tail_db": 6.0,
+                  "attack_cents": 8.0, "settled_cents": 4.0,
+                  # B doubles each fret on one string (1/L^2), so the
+                  # neighbourhood mean is biased; a 3x step is still a hole.
+                  "inharmonicity_b": 10 * np.log10(3.0)}
+# Outright limits, against the nominal rather than the neighbours.
+ABSOLUTE_LIMITS = {"settled_cents": 6.0}
 
 
 def outliers(rows: list[dict]) -> list[dict]:
@@ -250,6 +309,12 @@ def outliers(rows: list[dict]) -> list[dict]:
                 found.append({"string": row["string"], "fret": row["fret"],
                               "name": row["name"], "velocity": row["velocity"],
                               "metric": metric, "value": row[metric], "dev": dev})
+        for metric, limit in ABSOLUTE_LIMITS.items():
+            value = row.get(metric, float("nan"))
+            if np.isfinite(value) and abs(value) > limit:
+                found.append({"string": row["string"], "fret": row["fret"],
+                              "name": row["name"], "velocity": row["velocity"],
+                              "metric": metric + "_abs", "value": value, "dev": value})
     return found
 
 
@@ -319,7 +384,7 @@ def print_report(report: dict) -> None:
         print(f"-- velocity {velocity}")
         print(f"{'str':>3} {'fret':>4} {'note':>5} {'peak':>6} {'att':>6} {'sus':>6} "
               f"{'sus_l':>6} {'sus_r':>6} {'cent_a':>7} {'cent_s':>7} {'t60_f':>6} {'t60_hi':>6} {'h2':>6} "
-              f"{'h3':>6} {'floor':>6} {'rel':>6} {'tail':>6}")
+              f"{'h3':>6} {'floor':>6} {'rel':>6} {'tail':>6} {'att_c':>6} {'set_c':>6} {'B':>8}")
         for row in sorted((r for r in report["notes"] if r["velocity"] == velocity),
                           key=lambda r: (r["string"], r["fret"])):
             print(f"{row['string']:>3} {row['fret']:>4} {row['name']:>5} "
@@ -328,7 +393,9 @@ def print_report(report: dict) -> None:
                   f"{row['sustain_right_dbfs']:6.1f} {row['attack_centroid_hz']:7.0f} "
                   f"{row['sustain_centroid_hz']:7.0f} {row['t60_fundamental_s']:6.2f} "
                   f"{row['t60_high_s']:6.2f} {row['h2_db']:6.1f} {row['h3_db']:6.1f} "
-                  f"{row['floor_db']:6.1f} {row['release_db']:6.1f} {row['tail_db']:6.1f}")
+                  f"{row['floor_db']:6.1f} {row['release_db']:6.1f} {row['tail_db']:6.1f} "
+                  f"{row['attack_cents']:6.1f} {row['settled_cents']:6.1f} "
+                  f"{row['inharmonicity_b']:8.2e}")
     print("-- outliers against frets +/-2 on the same string")
     for item in sorted(report["outliers"], key=lambda o: -abs(o["dev"])):
         print(f"  s{item['string']} f{item['fret']:02d} {item['name']:>4} v{item['velocity']:>3} "

@@ -1169,6 +1169,7 @@ private:
         std::uint32_t attackPitch { 0 };
         std::uint32_t noteDetune { 0 };
         std::uint32_t masterTune { 0 };
+        std::uint32_t tuningSlide { 0 };
 
         bool operator==(const PitchGeometryKey& other) const noexcept
         {
@@ -1177,7 +1178,7 @@ private:
                 && performedBend == other.performedBend && memberBend == other.memberBend
                 && vibrato == other.vibrato && attackPitch == other.attackPitch
                 && noteDetune == other.noteDetune
-                && masterTune == other.masterTune;
+                && masterTune == other.masterTune && tuningSlide == other.tuningSlide;
         }
     };
 
@@ -1188,6 +1189,10 @@ private:
         float contactPeriodSamples { 0.0f };
         float frequency { 0.0f };
         float lossDesignFrequency { 0.0f };
+        // The pitch the finger stopped at contact (the fret and the slide
+        // held then), without a member's bend, the vibrato, a later slide
+        // or the fretting error: what the string is tuned at.
+        float tuningFrequency { 0.0f };
         float tension { 0.0f };
         float tensionSemitones { 0.0f };
         float bentTension { 0.0f };
@@ -1509,6 +1514,9 @@ private:
         // keeps this position. Zero slide retains the exact MIDI fret.
         float speakingFret { 0.0f };
         float attackPitchCents { 0.0f };
+        // The slide the wheel held when this wave was struck, in semitones;
+        // the coupled tuning is solved there (configureVoice).
+        float tuningSlideSemitones { 0.0f };
         float attackPitchDecay { 1.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
         float attackSlopeEnergy { 0.0f };
@@ -1549,7 +1557,6 @@ private:
         // small attack glide does not change its frozen reference load.
         std::uint64_t commonTuningGeneration { 0 };
         std::array<std::uint32_t, 7> commonTuningKey {};
-        bool commonTuningSympathetic { false };
         float commonTuningValue { 0.0f };
         // The two dispersion sections' pole pairs relative to the
         // fundamental; a zero decay ratio is an unused section.
@@ -1864,8 +1871,8 @@ private:
     // polarisations form through a rocking saddle sits from the nominal
     // shared-loop pitch (see AcustraEngine.cpp).
     [[nodiscard]] float coupledPolarisationDetune(
-        Voice& voice, int stringIndex, float impedance, float bentImpedance,
-        float frequency, float normalGain, float parallelGain) noexcept;
+        Voice& voice, int stringIndex, float impedance, float frequency,
+        float normalGain, float parallelGain, float normalShare) noexcept;
     // The saddle crown's height over the measured body's rocking axis, over
     // the normalized rocking coordinate's half-spacing: what projects a
     // string's horizontal (soundboard-parallel) force onto the rocking
@@ -2131,6 +2138,7 @@ private:
     struct RestingStringModel
     {
         float delay { 3.0f }, impedance { 1.0f }, loopGain { 1.0f };
+        float frequency { 1.0f }; // the open string's fundamental, Hz
         float highCoefficient { 0.0f }, highMix { 0.0f };
         OnePole highFilter {};
         float bendingGain { 1.0f }, bendingA1 { 0.0f }, bendingA2 { 0.0f };

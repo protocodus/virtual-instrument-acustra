@@ -81,7 +81,7 @@ int main(int argc, char** argv)
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|mahogany|maple] "
                      "[--touch 0..1] [--pluck-position 0..1] [--room 0..1] "
-                     "[--piezo-mix 0..1] "
+                     "[--piezo-mix 0..1] [--exact-intonation 0|1] "
                      "[--calibration FILE] "
                      "[--observe piezo_voltage|piezo_levels|piezo_stages]\n";
         return 2;
@@ -118,7 +118,11 @@ int main(int argc, char** argv)
         bool tuningSeen = false;
         bool shapeSeen = false, woodSeen = false, calibrationSeen = false;
         bool observeSeen = false, touchSeen = false, pluckSeen = false, roomSeen = false;
-        bool piezoMixSeen = false;
+        bool piezoMixSeen = false, exactIntonationSeen = false;
+        // 1 holds every contact to its reference pitch, without the
+        // fretting finger's own few-cent draw (frettingPitchCents), so a
+        // measurement reads the tuning and not the player.
+        bool exactIntonation = false;
         // 0: the output; 1: piezo_voltage; 2: piezo_levels; 3: piezo_stages.
         int observation = 0;
         for (int index = optionStart; index < argc; index += 2)
@@ -204,6 +208,13 @@ int main(int argc, char** argv)
                 calibration = acustra::offline::readCalibration(value);
                 calibrationSeen = true;
             }
+            else if (option == "--exact-intonation" && !exactIntonationSeen)
+            {
+                if (value != "0" && value != "1")
+                    throw std::runtime_error("exact intonation must be 0 or 1");
+                exactIntonation = value == "1";
+                exactIntonationSeen = true;
+            }
             else
                 throw std::runtime_error("unknown or repeated render option");
         }
@@ -245,6 +256,12 @@ int main(int argc, char** argv)
         constexpr int blockSize = 127;
         engine.setPhysicalCalibration(calibration);
         engine.setParameters(parameters);
+        if (exactIntonation)
+        {
+            auto realism = engine.performanceRealism();
+            realism.frettingPitch = false;
+            engine.setPerformanceRealism(realism);
+        }
         engine.prepare(sampleRate, blockSize);
         engine.setStringPerChannelMode(true);
         std::ofstream output(argv[2], std::ios::binary);

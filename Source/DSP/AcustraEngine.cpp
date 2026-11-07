@@ -5922,6 +5922,7 @@ AcustraEngine::restingStringModels() noexcept
         model.delay = clamp(rawDelay - bridgePhaseDelay(bridgePortMobility(frequency, string), frequency, string),
             3.0f, static_cast<float>(activeDelaySamples() - 3));
         model.impedance = stringImpedance(string, notes[index]) * masterTuneRatio_;
+        model.frequency = frequency;
         const float fundamentalT60 = 5.4f * (1.0f - 0.12f * age) * physical.fundamentalT60Scale;
         const float desiredGain = std::pow(0.001f, 1.0f / std::max(fundamentalT60 * frequency, 1.0f));
         const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
@@ -5941,9 +5942,20 @@ AcustraEngine::restingStringModels() noexcept
 // One shared delay keeps the two planes' upper partials coherent. Correcting
 // each plane with its own constant H1 end delay also shifted every higher
 // partial, creating the audible chorus fixed here. The common nominal tuning
-// uses the saddle's coupled eigenmodes and their remaining energy after 3 s,
-// rather than the former 100 ms attack weighting. This is a bounded unit-circle
-// mode-centre approximation, independently checked against actual damped poles.
+// finds the damped poles of the two coupled loops through the saddle, the
+// body and the resting strings, weighs each by its loudness over its life
+// and puts the family's centre on the stopped pitch; Tests/ModalTuningTests.cpp
+// checks it against an independent reconstruction of the poles.
+//
+// Until 1.9.25 the weight was the energy remaining after 3 s, which on a string
+// whose fundamental meets a body mode picks the wrong member of the pair. The
+// jumbo low E (82.4 Hz) splits into the normal plane's mode (99.9 % of the
+// pluck, T60 1.0 s, -0.5 cent) and the parallel plane's (0.09 %, T60 3.7 s,
+// +6.5 cents); after 3 s the quiet member holds 16 000 times the energy, so
+// the string was tuned to it and the note everyone hears sat 10 cents flat
+// (open-string peak 0.3-0.9 s, 2026-11-07: jumbo E2 -10.1, auditorium E2
+// -10.5, DADGAD D2 -12.6, Open G's G3 +15.2 cents; with the step disabled
+// -2.3, -3.7, -7.5 and -3.2). A player tunes the string they hear.
 //
 // Other strings enter through deterministic resting open branches. Using live
 // played loops here would make base tuning depend on chord order and cache
@@ -5951,18 +5963,21 @@ AcustraEngine::restingStringModels() noexcept
 // they are not replaced or muted. A nominal-input cache excludes the string's
 // own small attack glide, so this model is not rebuilt every control period.
 float AcustraEngine::coupledPolarisationDetune(
-    Voice& voice, int stringIndex, float impedance, float bentImpedance,
-    float frequency, float normalGain, float parallelGain) noexcept
+    Voice& voice, int stringIndex, float impedance, float frequency,
+    float normalGain, float parallelGain, float normalShare) noexcept
 {
     const std::array<std::uint32_t, 7> key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
-        exact::bits(bentImpedance), exact::bits(normalGain), exact::bits(parallelGain),
+        exact::bits(normalGain), exact::bits(parallelGain), exact::bits(normalShare),
         exact::bits(static_cast<float>(sampleRate_)) };
+    // The tuning is the whole guitar's, with every idle string on its
+    // bridge: the sympathetic switch takes their sound out of the mix, not
+    // the string out of tune (testSympatheticStringsAreAudibleButBounded
+    // compares the two renders and must see only their sound).
     if (voice.commonTuningGeneration == voiceConfigurationGeneration_
-        && voice.commonTuningKey == key && voice.commonTuningSympathetic == sympatheticStringsEnabled_)
+        && voice.commonTuningKey == key)
         return voice.commonTuningValue;
     voice.commonTuningKey = key;
     voice.commonTuningGeneration = voiceConfigurationGeneration_;
-    voice.commonTuningSympathetic = sympatheticStringsEnabled_;
     const auto finish = [&voice] (float result)
     {
         voice.commonTuningValue = result;
@@ -5972,19 +5987,58 @@ float AcustraEngine::coupledPolarisationDetune(
     if (!port.valid || port.transfer == std::complex<float>{})
         return finish(0.0f);
     using Complex = std::complex<double>;
-    // The junction reads the string's port at its bent impedance; the normal
-    // loop's own compensation (bridgePhaseDelay) was taken at the unbent one.
-    const double admittance = 1.0 / static_cast<double>(bentImpedance);
-    const double unbentAdmittance = 1.0 / static_cast<double>(impedance);
-    const auto loadOtherStrings = [&](const PortMobility& source) {
-        PortMobility effective = source;
-        if (!sympatheticStringsEnabled_) return effective;
-        const double eta = saddleHeightRatio(), arm = saddleLeverArm(stringIndex);
-        const Complex y11 = Complex(source.parallel) / (eta * eta);
-        const Complex y01 = -Complex(source.transfer) / eta - arm * y11;
-        const Complex y00 = Complex(source.normal) - 2.0 * arm * y01 - arm * arm * y11;
-        const double omega = 2.0 * piDouble * frequency / sampleRate_;
-        const Complex z = std::polar(1.0, -omega), zz = z * z;
+    using Port = std::array<Complex, 3>; // normal, transfer, parallel
+    const double admittance = 1.0 / static_cast<double>(impedance);
+    const double unbentAdmittance = admittance;
+    const double eta = saddleHeightRatio(), arm = saddleLeverArm(stringIndex);
+    const double omega0 = 2.0 * piDouble * frequency / sampleRate_;
+    // One round trip of the tuned loop in samples. configureVoice applies the
+    // detune to the plane's raw delay less the bridge's lag, which differs
+    // from this period by the filters' phase lag (a fraction of a sample at
+    // these frequencies); keying on that delay would re-solve every control
+    // period of the attack glide for a few hundredths of a cent.
+    const double period = 2.0 * piDouble / omega0;
+    const double delayElement = period;
+    const auto& table = bridgeMobilityTable();
+    // bridgePortMobility at a complex digital frequency s (z = e^s): the same
+    // modal sum at the bilinear image of s, which on the unit circle is its
+    // j 2 fs tan(w/2).
+    const auto portAt = [&] (Complex s) -> Port
+    {
+        const double bilinear = 2.0 * sampleRate_;
+        const Complex zInverse = std::exp(-s);
+        const Complex analog = bilinear * exact::divide(1.0 - zInverse, 1.0 + zInverse);
+        const Complex squared = analog * analog;
+        const Complex scaled = static_cast<double>(table.scale) * analog;
+        Complex heave {}, cross {}, rock {};
+        for (int index = 0; index < table.count; ++index)
+        {
+            const auto& mode = table.modes[static_cast<std::size_t>(index)];
+            const Complex shape = exact::divide(scaled, squared
+                + 2.0 * static_cast<double>(mode.damping) * analog
+                + static_cast<double>(mode.omega) * static_cast<double>(mode.omega));
+            heave += static_cast<double>(mode.heave) * shape;
+            cross += static_cast<double>(mode.cross) * shape;
+            rock += static_cast<double>(mode.rock) * shape;
+        }
+        if (table.plate)
+        {
+            const Complex shape = exact::divide(analog, squared
+                + 2.0 * static_cast<double>(table.plateDamping) * analog
+                + static_cast<double>(table.plateOmega) * static_cast<double>(table.plateOmega));
+            heave += static_cast<double>(table.plateWeight) * shape;
+            rock += static_cast<double>(table.plateRock) * shape;
+        }
+        return { heave + 2.0 * arm * cross + arm * arm * rock,
+                 -eta * (cross + arm * rock), eta * eta * rock };
+    };
+    const auto loadOtherStrings = [&] (const Port& source, Complex s) -> Port
+    {
+        const Complex z = std::exp(-s);
+        const Complex y11 = source[2] / (eta * eta);
+        const Complex y01 = -source[1] / eta - arm * y11;
+        const Complex y00 = source[0] - 2.0 * arm * y01 - arm * arm * y11;
+        const Complex zz = z * z;
         Complex g00 {}, g01 {}, g11 {};
         const auto& references = restingStringModels();
         for (int other = 0; other < stringCount; ++other) {
@@ -5999,7 +6053,7 @@ float AcustraEngine::coupledPolarisationDetune(
             const auto ap = [&](double first, double second) {
                 return exact::divide(second + first * z + zz, 1.0 + first * z + second * zz);
             };
-            Complex feedback = std::polar(double(model.loopGain), -omega * anchor) * ap(a1, a2);
+            Complex feedback = double(model.loopGain) * std::exp(-s * double(anchor)) * ap(a1, a2);
             feedback *= ap(model.dispersion[0], model.dispersion[1]);
             if (model.secondDispersion) feedback *= ap(model.dispersion[2], model.dispersion[3]);
             const double pole = model.highFilter.remapped ? model.highFilter.ratePole : model.highCoefficient;
@@ -6025,83 +6079,300 @@ float AcustraEngine::coupledPolarisationDetune(
         const Complex c = y01 * g00 + y11 * g01;
         const Complex d = 1.0 + y01 * g01 + y11 * g11;
         const Complex determinant = a * d - b * c;
-        if (exact::magnitude(determinant) < 1.0e-10) return effective;
+        if (exact::magnitude(determinant) < 1.0e-10) return source;
         const Complex h = exact::divide(d * y00 - b * y01, determinant);
         const Complex cross = exact::divide(d * y01 - b * y11, determinant);
         const Complex rock = exact::divide(a * y11 - c * y01, determinant);
-        effective.normal = h + 2.0 * arm * cross + arm * arm * rock;
-        effective.transfer = -eta * (cross + arm * rock);
-        effective.parallel = eta * eta * rock;
-        return effective;
+        return { h + 2.0 * arm * cross + arm * arm * rock,
+                 -eta * (cross + arm * rock), eta * eta * rock };
     };
-    const auto loaded = loadOtherStrings(port);
-    const Complex normal = loaded.normal;
-    const Complex transfer = loaded.transfer;
-    const Complex parallel = loaded.parallel;
-    const Complex b00 = admittance + normal;
-    const Complex b11 = admittance + parallel;
-    const Complex inverseDeterminant = exact::divide(Complex(1.0), b00 * b11 - transfer * transfer);
-    // R = (Y0 I - Y)(Y0 I + Y)^-1 with Y symmetric.
-    const Complex c00 = admittance - normal;
-    const Complex c11 = admittance - parallel;
-    const Complex r00 = (c00 * b11 + transfer * transfer) * inverseDeterminant;
-    const Complex r01 = (-c00 * transfer - transfer * b00) * inverseDeterminant;
-    const Complex r10 = (-transfer * b11 - c11 * transfer) * inverseDeterminant;
-    const Complex r11 = (transfer * transfer + c11 * b00) * inverseDeterminant;
-    // The parallel plane's phase follows the same bounded correction share
-    // used when its delay is configured below.
+    // The two planes' loop gains at the nominal, with the phases their loops
+    // are tuned to: the normal plane's own compensation (bridgePhaseDelay)
+    // and its lag (normalPlaneLagPeriods), so the pair is centred with its
+    // split in it. Everything else the loop does over the few cents this
+    // solve moves is in the delay term below.
     const double ownPhase = std::arg(exact::divide(unbentAdmittance - Complex(port.normal),
                                              unbentAdmittance + Complex(port.normal)));
-    // The normal plane's lag (normalPlaneLagPeriods) is in its loop, so the
-    // pair is centred with its split in it.
     const Complex gainNormal = std::polar(static_cast<double>(normalGain),
         -ownPhase - 2.0 * piDouble * static_cast<double>(normalPlaneLagPeriods));
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain), -ownPhase);
-    const Complex a00 = gainNormal * r00;
-    const Complex a01 = gainNormal * r01;
-    const Complex a10 = gainParallel * r10;
-    const Complex a11 = gainParallel * r11;
-    const Complex halfTrace = 0.5 * (a00 + a11);
-    const Complex root = exact::complexSqrt(halfTrace * halfTrace - (a00 * a11 - a01 * a10));
-    constexpr double onsetSeconds = 3.0;
-    const double onsetPeriods = onsetSeconds * static_cast<double>(frequency);
-    std::array<double, 2> logWeight { -1.0e300, -1.0e300 }, phase {};
-    double highestWeight = -1.0e300;
-    const std::array<Complex, 2> eigenvalues { halfTrace + root, halfTrace - root };
-    for (std::size_t mode = 0; mode < eigenvalues.size(); ++mode)
+    // The loop's round-trip matrix at s, less its delay: the plane gains
+    // times the saddle's reflection R = (Y0 I - Y)(Y0 I + Y)^-1, Y symmetric.
+    const auto loopMatrix = [&] (Complex s) -> std::array<Complex, 4>
     {
-        const auto eigenvalue = eigenvalues[mode];
-        // Use the larger of two equivalent eigenvectors. The first loses its
-        // normal component by cancellation on a weakly coupled normal branch.
-        const double firstNormal = std::norm(a01), firstParallel = std::norm(eigenvalue - a00);
-        const double secondNormal = std::norm(eigenvalue - a11), secondParallel = std::norm(a10);
-        const bool alternate = secondNormal + secondParallel > firstNormal + firstParallel;
-        const double normalPart = alternate ? secondNormal : firstNormal;
-        const double parallelPart = alternate ? secondParallel : firstParallel;
-        const double total = normalPart + parallelPart;
-        const double power = std::norm(eigenvalue);
-        if (!(total > 0.0 && normalPart > 0.0 && power > 0.0)
-            || !exact::isfinite(power) || !exact::isfinite(total))
-            continue;
-        const double share = normalPart / total;
-        phase[mode] = std::arg(eigenvalue);
-        logWeight[mode] = std::log(share) + onsetPeriods * std::log(power)
-            - std::log(std::max(1.0 - power, 1.0e-6));
-        highestWeight = std::max(highestWeight, logWeight[mode]);
+        const auto loaded = loadOtherStrings(portAt(s), s);
+        const Complex normal = loaded[0], transfer = loaded[1], parallel = loaded[2];
+        const Complex b00 = admittance + normal;
+        const Complex b11 = admittance + parallel;
+        const Complex inverseDeterminant = exact::divide(Complex(1.0), b00 * b11 - transfer * transfer);
+        const Complex c00 = admittance - normal;
+        const Complex c11 = admittance - parallel;
+        const Complex r00 = (c00 * b11 + transfer * transfer) * inverseDeterminant;
+        const Complex r01 = (-c00 * transfer - transfer * b00) * inverseDeterminant;
+        const Complex r10 = (-transfer * b11 - c11 * transfer) * inverseDeterminant;
+        const Complex r11 = (transfer * transfer + c11 * b00) * inverseDeterminant;
+        return { gainNormal * r00, gainNormal * r01, gainParallel * r10, gainParallel * r11 };
+    };
+    struct Mode { Complex eigenvalue; double share; };
+    // The matrix's two eigenmodes and the normal plane's share of each.
+    const auto modesOf = [] (const std::array<Complex, 4>& a) -> std::array<Mode, 2>
+    {
+        const Complex halfTrace = 0.5 * (a[0] + a[3]);
+        const Complex root = exact::complexSqrt(halfTrace * halfTrace - (a[0] * a[3] - a[1] * a[2]));
+        std::array<Mode, 2> modes { Mode { halfTrace + root, 0.0 }, Mode { halfTrace - root, 0.0 } };
+        for (auto& mode : modes)
+        {
+            // Use the larger of two equivalent eigenvectors. The first loses
+            // its normal component by cancellation on a weakly coupled
+            // normal branch.
+            const double firstNormal = std::norm(a[1]), firstParallel = std::norm(mode.eigenvalue - a[0]);
+            const double secondNormal = std::norm(mode.eigenvalue - a[3]), secondParallel = std::norm(a[2]);
+            const bool alternate = secondNormal + secondParallel > firstNormal + firstParallel;
+            const double normalPart = alternate ? secondNormal : firstNormal;
+            const double total = normalPart + (alternate ? secondParallel : firstParallel);
+            mode.share = total > 0.0 && exact::isfinite(total) ? normalPart / total : 0.0;
+        }
+        return modes;
+    };
+    const Complex atNominal(0.0, omega0);
+    const auto nominalModes = modesOf(loopMatrix(atNominal));
+    // The poles of the coupled loops are the roots of det(I - E M(s)), E the
+    // two planes' common delay: e^-(s - j w0) period for the nominal loop,
+    // which has zero phase at the nominal, times e^-s d delay for a detune
+    // d of the delay element. The poles are found at d = 0 by Newton steps
+    // in s from seeds; each eigenvalue's phase / 2 pi, where its loop phase
+    // would be zero, seeds a plain note. Where the fundamental meets a body
+    // mode the reflection's loss and phase both change fastest and the
+    // damped pole sits up to 8 cents from that seed (ModalTuning's actual
+    // poles: -3.7 cents for E3 on the low E, -3.2 for the jumbo's open E,
+    // 2026-11-07), which is why the pole is solved rather than the phase.
+    //
+    // Where the note meets a partial of a resting string (every fifth fret
+    // meets the next open string) the pair forms an in-phase member, which
+    // drives the bridge and is heard, and antiphase members that hardly
+    // move it; the eigenvalue seeds both sit on the antiphase side at its
+    // slow decay, so twelve more seeds, 7, 14 and 21 cents either way at
+    // that decay and at four times it, find the in-phase member (E3 on the
+    // D string, D3 on the A string: 10 and 4.6 cents flat without them,
+    // 2026-11-07). A note on a body mode can hold a member as far from the
+    // eigenvalue seeds, and a start that reaches a pole already found is
+    // dropped after a step or two, so the seeds are always tried: a solve
+    // costs 140 determinant evaluations on average over every string and
+    // fret, 255 at most, 0.3 ms with the rest of a note-on. The in-phase member sits
+    // off the resting string's resonance, so it is found in s, not with its
+    // frequency held at the nominal and the resting string read at its clamp.
+    const auto loopDeterminant = [&] (Complex s, double d)
+    {
+        const auto a = loopMatrix(s);
+        const Complex scale = std::exp(-(s - atNominal) * period - s * d * delayElement);
+        return 1.0 - scale * (a[0] + a[3]) + scale * scale * (a[0] * a[3] - a[1] * a[2]);
+    };
+    // Poles closer than this are one pole: the members of a doublet or a
+    // unison sit cents apart, and a start that comes within it of a pole
+    // already found is dropped rather than converged again (most starts of
+    // a unison's eighteen end on one of its three or four poles).
+    const double samePole = 1.0e-4 * omega0;
+    std::array<Complex, 24> found {};
+    std::size_t foundCount = 0;
+    const auto alreadyFound = [&] (Complex s)
+    {
+        for (std::size_t pole = 0; pole < foundCount; ++pole)
+            if (exact::magnitude(found[pole] - s) < samePole)
+                return true;
+        return false;
+    };
+    // Newton on the analytic determinant, its slope by a difference at the
+    // seed and by the secant of the steps after it (one evaluation a step
+    // instead of two; the function is analytic, so the complex secant
+    // converges as Newton nearly does), and measured again at the pole for
+    // the residue below. No step crosses more than about five cents, so a
+    // seed on the far side of a resting string's resonance does not fly
+    // off. False when it leaves the neighbourhood, stalls or reaches a pole
+    // already found.
+    const auto solvePole = [&] (Complex& s, double d, Complex& slope)
+    {
+        constexpr double h = 1.0e-7;
+        const auto finite = [] (Complex value)
+        {
+            return exact::isfinite(value.real()) && exact::isfinite(value.imag());
+        };
+        Complex value = loopDeterminant(s, d);
+        slope = (loopDeterminant(s + h, d) - value) / h;
+        for (int step = 0; step < 16; ++step)
+        {
+            if (!finite(value) || !finite(slope) || std::norm(slope) < 1.0e-36)
+                return false;
+            Complex delta = -exact::divide(value, slope);
+            const double longest = exact::magnitude(delta);
+            if (longest > 0.003 * omega0)
+                delta *= 0.003 * omega0 / longest;
+            s += delta;
+            if (!finite(s) || std::abs(s.imag() / omega0 - 1.0) > 0.015 || alreadyFound(s))
+                return false;
+            if (exact::magnitude(delta) < 1.0e-8 * omega0)
+            {
+                if (!(s.real() < 0.0))
+                    return false;
+                value = loopDeterminant(s, d);
+                slope = (loopDeterminant(s + h, d) - value) / h;
+                return finite(slope) && std::norm(slope) >= 1.0e-36;
+            }
+            const Complex next = loopDeterminant(s, d);
+            slope = (next - value) / delta;
+            value = next;
+        }
+        return false;
+    };
+    std::array<Complex, 14> seeds {};
+    std::size_t seedCount = 0;
+    double phaseGuess = 0.0;
+    for (const auto& mode : nominalModes)
+    {
+        const double power = std::norm(mode.eigenvalue);
+        if (!(power > 0.0 && power < 1.0) || !exact::isfinite(power)) continue;
+        const double guess = std::arg(mode.eigenvalue) / (2.0 * piDouble);
+        if (seedCount == 0) phaseGuess = guess;
+        seeds[seedCount++] = Complex(std::log(power) / (2.0 * period), omega0 * (1.0 + guess));
     }
-    if (!(highestWeight > -1.0e300))
+    if (seedCount == 0)
         return finish(0.0f);
-    double weighted = 0.0, weights = 0.0;
-    for (std::size_t mode = 0; mode < eigenvalues.size(); ++mode)
+    for (double offset : { -0.012, -0.008, -0.004, 0.004, 0.008, 0.012 })
     {
-        const double weight = std::exp(logWeight[mode] - highestWeight);
-        weighted += weight * phase[mode];
-        weights += weight;
+        seeds[seedCount++] = Complex(seeds[0].real(), omega0 * (1.0 + phaseGuess + offset));
+        seeds[seedCount++] = Complex(4.0 * seeds[0].real(), omega0 * (1.0 + phaseGuess + offset));
     }
-    const double detune = weighted / (weights * 2.0 * piDouble);
-    return finish(exact::isfinite(detune)
-        ? static_cast<float>(std::clamp(detune, -0.02, 0.02)) : 0.0f);
-
+    // Each pole is weighed by its loudness over its life (below), from the
+    // energy of it that is heard: the energy the pluck puts into it, the
+    // squared residue of the response to the pluck's wave at the pole, times
+    // the fraction of that energy that leaves through the bridge, (its loss
+    // per period - the string's own) / its loss. The pluck releases most of a steel string parallel to the
+    // top (pluckNormalShare: 22-30 % normal, by Touch); its parallel
+    // member rings long and radiates little through the rocking saddle, and
+    // a unison's antiphase members hardly move the bridge. What is tuned to
+    // the nominal is the weighted centre of the family: a plain note's is
+    // its heard member; a unison's members veer apart as the string is
+    // detuned, trading energy, and no detune puts one of them alone at the
+    // nominal, so the pair is centred on it (the oracle's criterion,
+    // Tests/ModalTuningTests.cpp).
+    const double stringLoss = 1.0 - static_cast<double>(normalGain) * normalGain;
+    // The pluck's wave by plane, a downstroke's sign; the stroke's own 2
+    // degree turn and its direction (initialisePluck) are performance, not
+    // tuning.
+    const double pluckNormal = std::sqrt(std::clamp(static_cast<double>(normalShare), 0.0, 1.0));
+    const double pluckParallel = std::sqrt(1.0 - pluckNormal * pluckNormal);
+    double previousD = 0.0; // the detune the poles in found were followed to
+    const auto centreAt = [&] (double d, double& weights)
+    {
+        // The family is found once, from the seeds at d = 0; at the detunes
+        // after it each pole is followed from where it was, which a pole
+        // pinned by a body mode or a resting string stays near, and from
+        // where a free pole moves to, down by the change in d. Seeding
+        // again at each d found a unison's family in one evaluation and
+        // missed a member in the next, which moved the centre by cents
+        // (2026-11-07); the seeds are tried again only when following lost
+        // a pole.
+        std::array<Complex, 64> starts {};
+        std::size_t startCount = 0;
+        const std::size_t followed = foundCount;
+        for (std::size_t pole = 0; pole < followed; ++pole)
+        {
+            starts[startCount++] = found[pole];
+            starts[startCount++] = Complex(found[pole].real(),
+                found[pole].imag() * (1.0 - (d - previousD) * delayElement / period));
+        }
+        foundCount = 0;
+        double weighted = 0.0;
+        weights = 0.0;
+        bool seeded = false;
+        for (std::size_t start = 0;; ++start)
+        {
+            if (start == startCount)
+            {
+                if (seeded || (followed > 0 && foundCount >= followed))
+                    break;
+                seeded = true;
+                for (std::size_t seed = 0; seed < seedCount; ++seed)
+                    starts[startCount++] = Complex(seeds[seed].real(),
+                        seeds[seed].imag() * (1.0 - d * delayElement / period));
+                if (start == startCount)
+                    break;
+            }
+            Complex s = starts[start], slope {};
+            if (!solvePole(s, d, slope))
+                continue;
+            found[foundCount++] = s;
+            auto a = loopMatrix(s);
+            const Complex scale = std::exp(-(s - atNominal) * period - s * d * delayElement);
+            for (auto& entry : a) entry *= scale;
+            // The pluck's wave in our string circulates in the mode with the
+            // residue of (I - E M)^-1 on the pluck's input, the adjugate on
+            // the pluck's plane vector over the determinant's slope; the
+            // mode's energy is that squared times what the whole mode
+            // stores per unit of it, the loop's period plus the group delay
+            // of the bridge and the resting strings it rings. By Jacobi's
+            // formula the slope is the adjugate's trace times that total, so
+            // the energy is |adjugate u|^2 / (|slope| |trace|): a unison's
+            // in-phase member, half of which lives in the other string,
+            // holds twice what its wave in this string alone would.
+            const Complex adjugateNormal = (1.0 - a[3]) * pluckNormal + a[1] * pluckParallel;
+            const Complex adjugateParallel = a[2] * pluckNormal + (1.0 - a[0]) * pluckParallel;
+            const double excitation = (std::norm(adjugateNormal) + std::norm(adjugateParallel))
+                / std::max(exact::magnitude(slope) * exact::magnitude(2.0 - a[0] - a[3]), 1.0e-300);
+            const double lossPerPeriod = 1.0 - std::exp(2.0 * s.real() * period);
+            const double radiated = lossPerPeriod > 0.0
+                ? std::clamp((lossPerPeriod - stringLoss) / lossPerPeriod, 0.0, 1.0) : 0.0;
+            // What the ear gives each member is its loudness over its life,
+            // not its energy: loudness goes as the 0.3 power of intensity
+            // (Stevens' law, the sone; ISO 532), so a member whose radiated
+            // energy E decays at alpha nepers a second counts
+            // integral (2 alpha E e^-2 alpha t)^0.3 dt = (2 alpha E)^0.3 /
+            // (0.6 alpha). By energy alone a wolf's fast member (F3 on the
+            // low E: 14 cents flat, gone in 0.45 s) outweighs the member
+            // that rings 10 s and carries the pitch of the note, and the
+            // sustain of the low E's 10th-16th frets read 13-19 cents sharp
+            // (2026-11-07 sweep).
+            const double alpha = -s.real() * sampleRate_;
+            const double weight = alpha > 0.0
+                ? std::pow(2.0 * alpha * excitation * radiated, 0.3) / alpha : 0.0;
+            if (!exact::isfinite(weight) || !(weight > 0.0))
+                continue;
+            weighted += weight * (s.imag() / omega0 - 1.0);
+            weights += weight;
+        }
+        return weights > 0.0 ? weighted / weights : 0.0;
+    };
+    double weights = 0.0;
+    double previousCentre = centreAt(0.0, weights);
+    // Nothing converged or nothing reaches the bridge: zero loop phase at
+    // the nominal, as before the solve.
+    if (!(weights > 0.0))
+        return finish(static_cast<float>(std::clamp(phaseGuess, -0.02, 0.02)));
+    // A free string's centre moves with its delay, d = its offset; one
+    // pinned by a body mode or a resting string moves less, so the centre
+    // is re-solved at that d and the secant through both closes the rest.
+    // The detune kept is the evaluated one that centres best.
+    double bestD = 0.0, bestCentre = std::abs(previousCentre);
+    double d = std::clamp(previousCentre * period / delayElement, -0.02, 0.02);
+    for (int step = 0; step < 3; ++step)
+    {
+        const double centre = centreAt(d, weights);
+        if (!(weights > 0.0))
+            break;
+        if (std::abs(centre) < bestCentre)
+        {
+            bestCentre = std::abs(centre);
+            bestD = d;
+        }
+        if (std::abs(centre) < 1.0e-5 || std::abs(centre - previousCentre) < 1.0e-9)
+            break;
+        const double next = d - centre * (d - previousD) / (centre - previousCentre);
+        previousD = d;
+        previousCentre = centre;
+        if (!exact::isfinite(next))
+            break;
+        d = std::clamp(next, -0.02, 0.02);
+    }
+    return finish(static_cast<float>(bestD));
 }
 
 // A string's two transverse polarisations do not reach the body alike. The
@@ -6176,6 +6447,15 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const auto bend = voiceBend(voice);
     const float performedBend = bend.performed;
     const float memberBendSemitones = bend.member;
+    // A struck string is tuned where the finger stops it: the wheel's slide
+    // at contact (a slid note is the physical fret it lands on,
+    // testSlideAttackMatchesItsPhysicalFret), and a slide after it rides on
+    // that tuning like the vibrato and a member's bend do. A re-pluck is a
+    // new contact, so it takes the stop it finds, like the rest of its
+    // attack geometry (testRepeatedPickRefreshesReferenceWithoutReplacingTheWave).
+    if (clearDelay || refreshPickReference)
+        voice.tuningSlideSemitones = clamp(performedBend - memberBendSemitones,
+                                           -192.0f, 192.0f);
     float vibratoInterval = 0.0f;
     if (vibrato_ > 0.0f && voice.played && voice.keyDown && voice.harmonic <= 1)
     {
@@ -6204,7 +6484,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         exact::bits(static_cast<float>(sampleRate_)), exact::bits(performedBend),
         exact::bits(memberBendSemitones), exact::bits(vibratoInterval),
         exact::bits(voice.attackPitchCents), exact::bits(voice.noteDetuneCents),
-        exact::bits(masterTuneSemitones_) };
+        exact::bits(masterTuneSemitones_), exact::bits(voice.tuningSlideSemitones) };
     auto& geometry = voice.pitchGeometry;
     if (!geometry.valid || !(pitchKey == geometry.key))
     {
@@ -6299,8 +6579,12 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             ? bentStringTension(tension, axialRigidity,
                                 std::exp2(tensionSemitones / 12.0f))
             : tension;
+        const float tuningFrequency = clamp(
+            unbentFrequency * std::exp2(voice.tuningSlideSemitones / 12.0f),
+            static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f),
+            0.24f * static_cast<float>(sampleRate_));
         geometry.value = { soundingLength, speakingFret,
-            contactPeriodSamples, frequency, lossDesignFrequency,
+            contactPeriodSamples, frequency, lossDesignFrequency, tuningFrequency,
             tension, tensionSemitones, bentTension };
         geometry.key = pitchKey;
         geometry.valid = true;
@@ -6633,14 +6917,25 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     const float desiredPeriodGain = std::pow(0.001f,
         1.0f / std::max(fundamentalT60 * frequency, 1.0f));
     const float unbentImpedance = stringImpedance(stringIndex, voice.openMidi) * masterTuneRatio_;
-    const float nominalPeriodGain = std::pow(0.001f,
-        1.0f / std::max(fundamentalT60 * lossDesignFrequency, 1.0f));
+    // Solved at the pitch the finger stopped at contact: a player tunes the
+    // string where the finger lands and slides, bends and shakes it by ear,
+    // so a later slide, a member channel's bend, the vibrato and a note's
+    // fretting error (noteDetuneCents) ride on the detune of the stop they
+    // leave from, and the same interval slid or bent lands on the same delay.
+    // A slide held at contact is the physical fret it lands on. Re-solving
+    // under the vibrato cost 100-900 us a block and moved the detune by 3.8
+    // cents between control periods where a unison's pole family was found
+    // in one and missed in the next (2026-11-07); a wheel sweep on a chord
+    // would have paid that six times a control period.
+    const float tuningPeriodGain = std::pow(0.001f,
+        1.0f / std::max(fundamentalT60 * pitch.tuningFrequency, 1.0f));
     const float coupledDetune = coupledPolarisationDetune(
-        voice, stringIndex, unbentImpedance, unbentImpedance
-            * exact::sqrt((bentTension / tension) / (1.0f
-                + (bentTension - tension) / std::max(axialRigidity, 1.0f))),
-        lossDesignFrequency, nominalPeriodGain * stringRoundTripGain,
-        nominalPeriodGain * stringRoundTripGain);
+        voice, stringIndex, unbentImpedance, pitch.tuningFrequency,
+        tuningPeriodGain * stringRoundTripGain,
+        tuningPeriodGain * stringRoundTripGain,
+        // At the Touch control alone: a re-pluck's velocity must not retune
+        // the string under its preceding wave (testDelayedHeldRepluck).
+        pluckNormalShare(parameters_.touch));
     voice.polarisationDetune = coupledDetune;
     const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));
     const float filterGain = magnitudeForOnePoleMix(

@@ -5,7 +5,7 @@
 // transfers and the microphone observer. It never calls the tuning helper.
 // Twelve bounded complex-root starts cover these five adversarial fixtures;
 // residual and mode-count checks prevent accepting a missed or spurious pole.
-// The 3-second radiated centre and dominant mode must stay within two cents,
+// The energy-weighted radiated centre and dominant mode must stay within two cents,
 // while both polarisations retain one speaking length to protect higher partials.
 
 #include "DSP/AcustraEngine.h"
@@ -277,7 +277,17 @@ struct AcustraEngineTestAccess
         for (C x : roots)
         {
             const double residual = std::abs(fullDet(e, x));
-            const double cents = 1200 * std::log2(x.imag() / omega), w = weight(e, x, st, 3.);
+            // Each mode's loudness over its life: its radiated power P at
+            // the release, decaying at alpha nepers a second, heard as
+            // loudness P^0.3 (Stevens' law, the sone), integrated to
+            // P^0.3 / (0.6 alpha). Until 1.9.26 this was the power left
+            // after 3 s, which hands every verdict to the longest member
+            // whatever its level; by total energy instead, a wolf's fast
+            // member (F3 on the low E, gone in 0.45 s) outweighed the member
+            // that carries the note; the engine weighs the pair the same way.
+            const double cents = 1200 * std::log2(x.imag() / omega),
+                         alpha = -x.real() * e.sampleRate_,
+                         w = std::pow(weight(e, x, st, 0.), 0.3) / alpha;
             valid &= std::isfinite(residual) && residual < 1e-8 && std::isfinite(w) && w >= 0.;
             if (w > largestWeight)
             {
@@ -289,7 +299,14 @@ struct AcustraEngineTestAccess
         }
         const double centre = sumCents / sumWeight;
         valid &= std::isfinite(centre) && sumWeight > 0. && std::abs(centre) < 2.;
-        valid &= std::abs(dominantCents) < 2.;
+        // A pair whose members share the loudness (E3 on the D string
+        // against the low E's second partial, 34 % and 66 % twelve cents
+        // apart; the jumbo's open E, 72 % and 28 %, 1.9.26) has no member
+        // that is the note on its own; the engine centres such a pair on
+        // the nominal, and only the centre can be held. Where one member
+        // holds three quarters of the loudness it is the note, and the
+        // centre must put it within two cents.
+        valid &= std::abs(dominantCents) < 2. || largestWeight < 0.75 * sumWeight;
         // The planes once shared one speaking length to end the per-plane
         // chorus; since 1.9.9 the normal plane is longer by the split the
         // owner chose by ear (normalPlaneLagPeriods), and the roots above
@@ -299,7 +316,8 @@ struct AcustraEngineTestAccess
         valid &= planes[0].currentDelay > planes[1].currentDelay;
         std::cout << "Modal tuning rate=" << e.sampleRate_ << " shape=" << int(e.parameters_.shape)
                   << " string=" << st << " note=" << note << " modes=" << roots.size()
-                  << " centre=" << centre << " cents, dominant=" << dominantCents << " cents\n";
+                  << " centre=" << centre << " cents, dominant=" << dominantCents << " cents ("
+                  << 100. * largestWeight / sumWeight << " % of the loudness)\n";
         if (!valid)
             std::cerr << "FAIL: physical modal tuning or shared speaking length\n";
         return valid;
@@ -334,6 +352,12 @@ int main()
             p.room = 0;
             p.releaseNoise = 0;
             e->setParameters(p);
+            // The pole is measured against the exact reference pitch; the
+            // fretting finger's own per-note offset (frettingPitchCents, up
+            // to 3 cents) is a performance draw, not a tuning error.
+            auto realism = e->performanceRealism();
+            realism.frettingPitch = false;
+            e->setPerformanceRealism(realism);
             e->prepare(rate, 128);
             valid &= acustra::AcustraEngineTestAccess::check(
                 *e, fixture.string, fixture.note, fixture.velocity, fixture.minimumModes);

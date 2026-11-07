@@ -39,6 +39,35 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.26 — 2026-11-07 — the string is tuned to the member you hear
+
+- Every note's two polarisations form a pair of coupled modes through the
+  rocking saddle, a few cents apart. Since 1.8 both loops were lengthened so
+  that the pair is heard in tune, but the member chosen was the one with the
+  most energy left after three seconds: the long, quiet one that hardly
+  moves the bridge: the jumbo's open E sustained 9 cents flat, DADGAD's D
+  12 flat, Open G's G 15 sharp, and the dreadnought's low E attacked 7–12
+  cents flat around the 12th fret. Each member is now weighed by its
+  loudness over its life and the pair's centre is tuned, so the note lands
+  where it is heard; the oracle reads every fixture within 2 cents where it
+  read −10 to +15. Where the pair is widest (the low E's 12th–16th frets on
+  the dreadnought's top resonance) the attack still reads a few cents flat
+  and the sustain a few sharp; a listening set of the three rules was
+  rendered for the owner (`Docs/decisions.md`).
+- A note that meets a partial of another open string (every fifth fret
+  meets the next string) forms a unison with it whose members veer apart as
+  the string is detuned; the pair is centred rather than one member put on
+  the pitch. The unison's tail rings a few cents off the centre, as a
+  guitar's does.
+- The tuning is solved once per contact, at the pitch the finger stops
+  (the fret, with the slide the wheel holds at that moment); a later slide,
+  a bend, the vibrato and the fretting draw ride on it, as a player's do. The solve no longer
+  runs under a vibrato (it cost up to 0.9 ms a block and jittered the detune
+  by 3.8 cents), and it no longer changes with the sympathetic-strings
+  switch, which takes the idle strings' sound out of the mix and nothing
+  else. Details, the wolf note at F3 and the re-derived fixtures in
+  [the research note](Docs/research/coupled-tuning-2026-11-07.md).
+
 ### 1.9.25 — 2026-11-07 — the same stroke stays the same stroke up the neck
 
 - A Finger or Thumb stroke used to grow louder the higher it was fretted:
@@ -538,7 +567,12 @@ phase with a second-order fall above its half-power point. A short noise burst c
 pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
-2nd-4th partials swell and fade as a recorded guitar's do. A
+2nd-4th partials swell and fade as a recorded guitar's do. Through the
+rocking the two planes form a pair of coupled modes a few cents apart, and
+both loops are lengthened so that the pair's centre, each member weighed by
+its loudness over its life, sits on the pitch the finger stopped at contact, the body and the idle
+strings folded into the solve (since 1.9.26; before it the member with the
+most energy left after three seconds was tuned, heard or not). A
 bounded Kirchhoff-Carrier surrogate sharpens the attack pitch; a plectrum
 lets go at 0.69 of the finger's excursion, so a hard pick starts as sharp as
 the reference bank's Shinyguitar archtop. The stretch a vibrating string adds to
@@ -866,9 +900,14 @@ separates verified errors from accepted approximations.
   guitar, would replace the morphs.
 - The parallel polarisation reaches the body through the measured rocking,
   not a measured tangential admittance; the saddle's in-plane translation is
-  unmeasured. Sharing the normal loop's bridge compensation leaves sustained
-  pitch up to 9 cents off on a few Dreadnought notes, kept by ear for its
-  beating. The 0.75-cent split between the planes is chosen by ear, not
+  unmeasured. Where the fundamental sits on a body mode the pair the two
+  planes form is wide: E3 on the low E has one member ringing 10 s and
+  another gone in 2 s, 12 cents apart; F3 on the low E's 13th fret and the
+  D string's 3rd is a wolf, one member gone in 0.45 s and the other ringing
+  10 s, 22 cents apart (1.9.26, `Docs/research/coupled-tuning-2026-11-07.md`).
+  Tuned on their centre, such a note attacks a few cents flat and sustains a
+  few sharp. A measured rocking admittance of a steel-string bridge would
+  say whether the split is that wide. The 0.75-cent split between the planes is chosen by ear, not
   derived: what parts a real string's planes (the saddle's or nut's
   sideways hold, the string's own asymmetry) is not modelled. It costs
   fingered notes about 1.5 dB of their brightening with velocity

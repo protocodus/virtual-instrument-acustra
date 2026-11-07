@@ -49,7 +49,7 @@ struct AcustraEngineTestAccess
             if (changed >= 0)
                 values[static_cast<std::size_t>(changed)] = std::nextafter(values[static_cast<std::size_t>(changed)], INFINITY);
             return engine.coupledPolarisationDetune(voice, string,
-                values[1], values[2], values[0], values[3], values[4]);
+                values[1], values[0], values[2], values[3], values[4]);
         };
         voice.commonTuningValue = -123.0f;
         if (request() != -123.0f)

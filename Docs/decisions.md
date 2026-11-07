@@ -5,6 +5,75 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-07 — the pair is tuned on its loudness, and once, where the finger stops, 1.9.26 (measured; the weighting and the gestures decided under the owner's standing rule; an A/B/C set rendered, key unread)
+
+**What was decided.** The owner asked again for the model to be reviewed
+and every note checked for tuning. Four things changed in
+`coupledPolarisationDetune`; `Docs/research/coupled-tuning-2026-11-07.md`
+has the measurements.
+
+1. Which member of a note's polarisation pair is tuned. 1.9.25 weighed the
+   members by the energy left after three seconds, heard or not, so the
+   jumbo's open E sustained 9 cents flat, DADGAD's D 12 flat and Open G's G
+   15 sharp, and the dreadnought's low E attacked 7-12 cents flat around
+   the 12th fret. That the weighting was wrong is settled by the oracle
+   (`Tests/ModalTuningTests.cpp`, within 2 cents where it read −10 to +15).
+   Which weighting replaces it is a choice between formulations: by each
+   pole's total radiated energy (the squared residue of the pluck's wave,
+   times the radiated fraction of its loss), or by its loudness over its
+   life (that energy's power, to Stevens' 0.3, integrated over the decay).
+   On the dreadnought's low E the first put attacks within 5 cents and the
+   sustain 11-19 sharp; the second puts the attack 3-9 flat and the sustain
+   4-5 sharp. Over the whole fretboard (2016 notes, eight presets) the
+   settled pitch is beyond 5 cents on 99 notes under 1.9.25, 95 under the
+   energy rule and 50 under the loudness rule, RMS 2.31, 2.65 and 1.92
+   cents. The loudness rule ships on that measurement and under the
+   owner's standing rule that the candidate wins unless they say otherwise;
+   a tuner and a player read the sustain. The set was rendered: A 1.9.25, B total
+   energy, C loudness, the low E's 10th-16th frets on the dreadnought,
+   level-matched on RMS, the key written and unread
+   (`acustra/listening-2026-11-07-coupled-tuning/` in the project files).
+   If the owner chooses B, the weight in `coupledPolarisationDetune` and
+   the oracle is `excitation * radiated`; if A, the pair was tuned to a
+   member that is not heard and nothing here should go back.
+2. A unison (the note meets a partial of another open string) is centred,
+   not one member put on the pitch: its members trade energy and veer apart
+   as the string is detuned, and no detune lands one alone. Settled by the
+   oracle's own criterion.
+3. The solve runs once per contact, at the pitch the finger stops: the
+   fret and the slide the wheel holds when the string is struck or
+   re-plucked. A later slide, a member bend, the vibrato and the fretting
+   draw ride on that detune, as a player tunes where the finger lands and
+   plays the rest by ear. Two readings were defensible: re-solve
+   at the sounding pitch (1.9.25, exact landing for every gesture, 34-112
+   determinant evaluations every 32-sample control period of a bend, which
+   on a chord under the wheel overruns a 64-sample block) or tune at the
+   contact (a slide or bend of a fifth after it lands where the far fret's
+   detune differs from the near one's, typically under 2 cents, up to 10 by
+   a body mode). The contact was chosen under the standing rule, because a
+   note struck under a held wheel is the physical fret it lands on
+   (testSlideAttackMatchesItsPhysicalFret), and because the same
+   interval slid or bent then lands on the same delay (the Engine suite's
+   bend-against-slide contract).
+4. The tuning no longer depends on the sympathetic-strings switch: the
+   switch takes the idle strings out of the junction and the mix, and the
+   string stays tuned as the whole guitar's. Settled by the sympathetic
+   test, whose on/off comparison must see only their sound.
+
+**Kept.** The wolf at F3 (low E 13th fret, D string 3rd): the
+energy-weighted centre leaves the fast member 14 cents flat and the long
+one 10 sharp, which is what a wolf does; no detune lands both, and choosing
+one was not done.
+
+**Fixtures re-derived with their reasons beside them.** `ModalTuning`'s
+weights and its dominant-pole bound on equal-energy unisons;
+`ChorusRegression`'s references (E3's fifth partial now sits 4 cents under a
+body mode and beats 2.6 dB at 2 Hz); `FingerLookahead`'s shift bound (3.5×
+from 4.0×, the low E's fretted notes having moved 8-10 cents up);
+`Engine`'s equal-tuning check exempts unison notes, whose late window reads
+the long member, and its isolated settled-pitch bound for E3 on the low E
+is 8 cents where the long member reads +6.9.
+
 ## 2026-11-07 — the release follows the string's compliance, and the treble shelf is per second on every string, 1.9.25 (measured; the shelf law adopted under the owner's standing rule, not yet heard)
 
 **What was decided.** The owner asked for every playable note at two

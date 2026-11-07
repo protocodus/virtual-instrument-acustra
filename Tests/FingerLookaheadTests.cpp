@@ -178,7 +178,10 @@ int main()
         const double before = rms(slide, onset + window - lead, onset + window);
         const double plainBefore = rms(plainSlide, onset - lead, onset);
         const double note = rms(noisy.left, onset + window, onset + window + lead);
-        expect(before > 4.0 * plainBefore,
+        // The slide led the plain player by 12.5 dB at shift 2 (F#2 to G#2)
+        // until 1.9.26 tuned the low E's fretted notes 8-10 cents up, where
+        // the string answers the same noise 0.8 dB more quietly: 11.8 dB.
+        expect(before > 3.5 * plainBefore,
                "the slide sounds before shift " + std::to_string(index)
                    + " (" + std::to_string(20.0 * std::log10(before / plainBefore)) + " dB)");
         // 1.9.24 raised the slide 6 dB (the owner's choice by ear) and gave
