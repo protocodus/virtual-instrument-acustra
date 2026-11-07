@@ -5,6 +5,33 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-07 — the release follows the string's compliance, and the treble shelf is per second on every string, 1.9.25 (measured; the shelf law adopted under the owner's standing rule, not yet heard)
+
+**What was decided.** The owner asked for every playable note at two
+velocities to be checked for outliers and for the model to be fixed where it
+was wrong. Two things were.
+
+1. The release amplitude kept a hand at a fixed distance from the bridge
+   while the Finger easing and the knee moved it, so a stopped string was
+   plucked as if it were more compliant than it is: +3 dB saddle force at the
+   12th fret, +8 dB at the 18th under a Thumb. It now follows
+   `F L p (1 - p) / T` against the open string's point. This is a correction
+   of the model's own stated law, settled by the saddle-force measurement
+   and in the direction of the Eastman E1D recordings' level against pitch
+   (`Docs/research/fretboard-evenness-2026-11-07.md`). Not a by-ear choice.
+2. The 1.9.15 shelf retention applied to the plain strings above MIDI 66 with
+   an exponent of 0.65. Two laws were defensible: keep 1.9.15's, or keep each
+   partial's lifetime in seconds on every string (exponent 1, `fretHighLoss`).
+   The per-second law was adopted under the owner's standing rule that the
+   candidate wins unless they say otherwise; it was not heard. At the 20th
+   fret the per-trip loss is 0.32 of the open string's where 1.9.15 kept
+   0.51. If the high notes read as too bright, this is the entry to revisit.
+
+**What was checked and left.** The measured body's antiresonances (Dreadnought
+C5/C#5, Parlor B3, Auditorium G#3/G#4), the B string's high-fret
+inharmonicity, unison strings growing after one key-up, and the Pick's level
+against pitch, which stays flatter than the picked recording and is open.
+
 ## 2026-11-06 — the finger's shifts: level by ear, and no two alike, 1.9.24 (level and variation both chosen by the owner by ear)
 
 **What was decided.** The owner could not hear 1.9.23's slides. A set with

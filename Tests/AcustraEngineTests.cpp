@@ -9174,8 +9174,14 @@ void testHighRegisterFingerAvoidsThirdPartialNullAndScalesRoundTripLoss()
     const double fret5Mix = Access::highLossMixAtFret(5, 5);
     const double fret12Mix = Access::highLossMixAtFret(5, 12);
     const double fret20Mix = Access::highLossMixAtFret(5, 20);
+    // The shelf keeps a partial's lifetime in seconds whichever fret stops
+    // the string: the per-trip retention is raised to f_open/f, so at fret
+    // 20 the mix is 1 - (1 - open)^(2^(-20/12)), about 0.32 of the open mix
+    // where the loss is small. The 0.35 floor this replaces came from
+    // 1.9.15's 0.65 exponent, which the per-second law supersedes (1.9.25).
+    const double fret20Law = 1.0 - std::pow(1.0 - openMix, std::exp2(-20.0 / 12.0));
     expect(openMix > fret5Mix && fret5Mix > fret12Mix && fret12Mix > fret20Mix
-               && fret20Mix > 0.35 * openMix,
+               && std::abs(fret20Mix - fret20Law) < 0.02 * openMix,
            "high-register per-round-trip highLossMix did not scale with speaking period");
 }
 

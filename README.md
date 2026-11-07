@@ -39,6 +39,24 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.25 — 2026-11-07 — the same stroke stays the same stroke up the neck
+
+- A Finger or Thumb stroke used to grow louder the higher it was fretted:
+  +3 dB on the saddle at the 12th fret, +8 dB at the 18th under a Thumb, up
+  to +9 dB at the microphones on the low E's 13th fret. The release now
+  follows the string's true compliance under the hand's force, so the saddle
+  force stays within about 1 dB of the open string at every fret and the
+  level falls with pitch much as the CC0 Eastman E1D recordings do (−3.1
+  against their −4.2 dB per octave; it was −1.6). Open strings and every Pick
+  preset are unchanged.
+- The upper partials of a stopped note are kept per second on every string,
+  not only on the three plain strings above F#4 as 1.9.15 did. At the 20th
+  fret a note keeps a little more of its top than before.
+- `Tools/MeasureFretboardSweep.py` measures every string, fret and two
+  velocities; `Tools/MeasureCorpusLevels.py` reads level against pitch from a
+  recorded corpus. Details in
+  [the research note](Docs/research/fretboard-evenness-2026-11-07.md).
+
 ### 1.9.24 — 2026-11-06 — no two finger shifts alike
 
 - A finger shifting to a new fret slides 6 dB louder than before, the level
@@ -716,6 +734,12 @@ separates verified errors from accepted approximations.
 - Strum direction follows an interval rule, not the host's beat grid. A
   listening pass of the interval rule decides whether a beat-grid rule is
   needed.
+- A Pick's level falls with pitch less than the picked Eastman E1D
+  recording (−0.4 to −1.0 against −1.9 dB per octave in the attack, −3.3 in
+  the sustain; `Tools/MeasureCorpusLevels.py`). The Finger and Thumb follow
+  the finger-plucked recording since 1.9.25. The player's effort and the
+  player's string choice are inside the recorded slope, so a corpus with
+  both noted would say how much is the body's.
 - The upstroke's level offset and tilt, the stroke edges and the release
   pitch fall are corpus means; players' accents, a finger's release speed and
   upstrokes' thinner bass reach are not separated or modelled. A per-stroke
