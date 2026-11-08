@@ -27,6 +27,20 @@ struct AcustraEngineTestAccess
     { return engine.renderStringAxialForce(voice(engine, string), string); }
     static float excursion(AcustraEngine& engine, int string)
     { return engine.excursionMetres(voice(engine, string)); }
+    // Supply a known force in Newtons without transverse motion, isolating
+    // the physical-to-shared-unit conversion and both radiation coordinates.
+    static void steadyForce(AcustraEngine& engine, int string, float newtons)
+    {
+        auto& v = voice(engine, string);
+        design(engine, string);
+        v.played = false;
+        auto& a = v.stringAxialForce;
+        a.force = newtons;
+        a.ringing = true;
+        a.countdown = 0;
+        a.lossPole = 1.0f;
+        a.banded = false;
+    }
 };
 }
 
@@ -316,6 +330,49 @@ void ringsOutAndSwitchesOff()
         engine->process(left.data(), right.data(), 256);
     expect(!voice.stringAxialForce.ringing, "its ring runs out and clears");
 }
+
+void newtonsHaveOneSharedUnit()
+{
+    constexpr double projection = 0.20791169081775931; // sin(12 degrees)
+    for (const double fs : { 44100.0, 48000.0, 96000.0 })
+        for (const auto technique : { acustra::PickingTechnique::Finger,
+              acustra::PickingTechnique::Thumb, acustra::PickingTechnique::Pick })
+            for (const float displacement : { 0.0f, 0.00005f, 0.00773577847f, 0.04f })
+            {
+                auto engine = std::make_unique<Engine>();
+                auto calibration = acustra::fittedPhysicalCalibration;
+                calibration.steelDisplacementScaleMetres = displacement;
+                engine->setPhysicalCalibration(calibration);
+                acustra::PerformanceRealism realism;
+                realism.axialWaves = false;
+                engine->setPerformanceRealism(realism);
+                acustra::EngineParameters parameters;
+                parameters.picking = technique;
+                engine->setParameters(parameters);
+                engine->prepare(fs, 64);
+                // Two known axial sources at different saddle arms. Their
+                // Newton forces must add before the common pressure/piezo
+                // observation, regardless of the inferred pluck excursion.
+                Access::steadyForce(*engine, 0, 1.0f);
+                Access::steadyForce(*engine, 5, 0.25f);
+                step(*engine);
+                const auto probe = engine->getLastBodyForceProbe();
+                const double unit = engine->getPiezoNewtonsPerUnit();
+                expect(std::abs(probe.axialNormal * unit + 1.25 * projection) < 1.0e-7,
+                       "axial Newton force changed with technique, calibration or rate");
+                expect(std::abs(probe.axialMoment * unit - 0.9375 * projection) < 1.0e-7,
+                       "axial saddle moment lost its force unit or lever arm");
+                expect(probe.transverseNormal == 0.0f && probe.transverseMoment == 0.0f
+                           && engine->getLastBridgePower() == 0.0f,
+                       "one-way axial source unexpectedly entered transverse power");
+                expect(probe.totalNormal == probe.axialNormal
+                           && probe.totalMoment == probe.axialMoment,
+                       "radiation did not receive the axial force exactly once");
+                engine->reset();
+                expect(engine->getLastBodyForceProbe().totalNormal == 0.0f,
+                       "reset retained a stale radiation force observer");
+            }
+}
 } // namespace
 
 int main()
@@ -324,6 +381,7 @@ int main()
     wavesKeepTheUniformTension();
     ringIsTheLongitudinalString();
     ringsOutAndSwitchesOff();
+    newtonsHaveOneSharedUnit();
     if (failures == 0)
         std::cout << "String axial force tests passed\n";
     return failures == 0 ? 0 : 1;

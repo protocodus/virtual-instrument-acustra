@@ -510,6 +510,17 @@ public:
     [[nodiscard]] float getLastBridgeVelocity() const noexcept;
     [[nodiscard]] float getLastBridgeReactionForce() const noexcept;
     [[nodiscard]] float getLastBridgeBodyForce() const noexcept;
+    // The exact force/moment inputs to radiation, split by their source.
+    // All use the common engine force unit. Axial is a one-way observer:
+    // it does not enter the transverse junction or its power ledger.
+    struct BodyForceProbe
+    {
+        float transverseNormal { 0.0f }, transverseMoment { 0.0f };
+        float axialNormal { 0.0f }, axialMoment { 0.0f };
+        float totalNormal { 0.0f }, totalMoment { 0.0f };
+    };
+    [[nodiscard]] BodyForceProbe getLastBodyForceProbe() const noexcept
+    { return lastBodyForceProbe_; }
     // The under-saddle piezo's voltage at the jack, where it enters the
     // preamp: the element's charge on its own capacitance, the cable's and
     // the preamp's input network (renderPiezo). Read by
@@ -534,7 +545,9 @@ public:
     // (PiezoDesign item 2). Read by Tools/CalibratePiezo.py through
     // AcustraPerformanceRenderer --piezo-unit.
     [[nodiscard]] double getPiezoNewtonsPerUnit() const noexcept;
-    // Zero-state port-power observers retain the work that enters at note-on.
+    // Transverse-junction zero-state port-power observers retain the work
+    // that enters at note-on. They exclude the one-way axial radiation
+    // source; neither getter is a complete instrument energy ledger.
     // Acoustic derivatives re-reference a newly established pluck shape;
     // they cannot account for that initial state in a passivity ledger.
     [[nodiscard]] float getLastBridgePower() const noexcept;
@@ -2276,6 +2289,7 @@ private:
     float lastBridgeVelocity_ { 0.0f };
     float lastBridgeReactionForce_ { 0.0f };
     float lastBridgeBodyForce_ { 0.0f };
+    BodyForceProbe lastBodyForceProbe_ {};
     float lastBridgePower_ { 0.0f };
     float lastBridgeBodyPower_ { 0.0f };
     float bodyAmount_ { 0.82f };

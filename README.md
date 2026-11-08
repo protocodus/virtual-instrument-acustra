@@ -39,6 +39,15 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.29 — 2026-11-08 — the axial saddle force uses one physical unit
+
+- Pick's inferred excursion still follows its accepted 0.69 calibration, but
+  its axial force now enters the shared body and piezo in the same Newton
+  unit as Finger and Thumb. Previously the conversion amplified this
+  contribution by 1/0.69 (3.23 dB). This is the axial contribution alone,
+  not a 3.23 dB change to the complete note. Prepared locally for A/B review;
+  not published or approved by listening.
+
 ### 1.9.28 — 2026-11-08 — a fret played again finds its tuning, identical output
 
 - Each string keeps the tunings of its last eight stops, so a riff or a

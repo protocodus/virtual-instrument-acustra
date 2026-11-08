@@ -4361,11 +4361,10 @@ void AcustraEngine::reset() noexcept
         voice.lastPluckSample = 0;
         voice.pluckForceGain = 1.0f;
         voice.repluckForceGain = 1.0f;
-        // The line's units until the string's own first pluck
-        // (excursionMetres): the technique's, which the bridge carries in
-        // from the strings plucked before it. Left from an earlier
-        // performance, a re-prepared engine's axial force read them
-        // differently from a new one's.
+        // The nonlinear observer's technique calibration until this string's
+        // first pluck. The shared junction's wave units never change with
+        // technique. Left from an earlier performance, this calibration made
+        // a re-prepared engine's axial force differ from a new one's.
         voice.excitationSoft = parameters_.picking != PickingTechnique::Pick;
         voice.ownerCount = 0;
         voice.played = false;
@@ -4418,6 +4417,7 @@ void AcustraEngine::resetSoundState() noexcept
     lastBridgeVelocity_ = 0.0f;
     lastBridgeReactionForce_ = 0.0f;
     lastBridgeBodyForce_ = 0.0f;
+    lastBodyForceProbe_ = {};
     lastBridgePower_ = 0.0f;
     lastBridgeBodyPower_ = 0.0f;
     bridgeDerivativesNeedPriming_ = true;
@@ -7169,7 +7169,9 @@ float AcustraEngine::handDamping(float t60Seconds, float fundamental) noexcept
     return std::pow(0.001f, 1.0f / std::max(t60Seconds * fundamental, 1.0f));
 }
 
-// How far the string is drawn aside, in metres, per unit of the line's wave.
+// The excursion inferred for the nonlinear pitch/stretch observers. The
+// shared transverse junction keeps one displacement/force unit for every
+// technique; this fitted Pick correction is not a change of that unit.
 // The excursion scale was fitted with the Finger's stroke. A plectrum lets go
 // at a smaller excursion: at 1.0 a velocity-112 note on Jumbo Steel Pick
 // started 7.3 cents sharp, against 3.1 in the reference bank's loudest picked
@@ -12824,9 +12826,10 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 // nonlinearity out above it with no audible loss by informal A/B; it is a
 // numerical convention, not a measurement.
 //
-// Units: the line's wave is the string's displacement over excursionMetres,
-// and a bridge force F_N newtons is F_N / (48000 d) in the junction's units
-// (its forces are wave-impedance products per 48 kHz sample). The force
+// Units: excursionMetres supplies the nonlinear observer's inferred physical
+// displacement. Its force in newtons is divided by the common force unit,
+// 48000 times steelDisplacementScaleMetres (also the piezo's Newton unit),
+// never by the technique-dependent inferred excursion. The force
 // reaches the measured body through the saddle's down-force
 // (breakAngleProjection), with positive normal displacement taken to point
 // away from the top, so a tension rise pushes the saddle into it. The
@@ -12908,7 +12911,7 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
     axial.roundTrip = static_cast<float>(roundTrip);
     const double displacement = static_cast<double>(excursion);
     axial.forceScale = static_cast<float>(-static_cast<double>(breakAngleProjection)
-        / (48000.0 * std::max(displacement, 1.0e-6)));
+        / piezoNewtonsPerUnit_);
     // The source per unit of D times the line's sum of squared cell slopes:
     // F in square metres per metre is d^2 (D / 2L) times that sum.
     const double perStretch = displacement * displacement
@@ -14536,10 +14539,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // physical model. Sending it through displacement-wave derivatives
         // or transverse loss would attenuate precisely the handling modes
         // a soft fingertip excites. The zero branch retains baseline bits.
-        const BodyOutput body = axialBodyForce == 0.0f && axialBodyMoment == 0.0f
-            ? renderBody(lastBridgeBodyForce_ + 0.0f, bodyMomentRate)
-            : renderBody(lastBridgeBodyForce_ + axialBodyForce,
-                         bodyMomentRate + axialBodyMoment);
+        const float radiationForce = lastBridgeBodyForce_ + axialBodyForce;
+        const float radiationMoment = axialBodyForce == 0.0f && axialBodyMoment == 0.0f
+            ? bodyMomentRate : bodyMomentRate + axialBodyMoment;
+        lastBodyForceProbe_ = { lastBridgeBodyForce_, bodyMomentRate,
+            axialBodyForce, axialBodyMoment, radiationForce, radiationMoment };
+        const BodyOutput body = renderBody(radiationForce, radiationMoment);
         const float bodyScale = 0.68f + 0.72f * bodyAmount_;
         const float monoBody = 0.5f * (body.left + body.right);
         const float spreadLeft = monoBody + width_ * (body.left - monoBody);

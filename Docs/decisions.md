@@ -5,6 +5,24 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-08 — one shared Newton unit for the axial source, 1.9.29 (local review candidate)
+
+The physical-model audit found that the longitudinal force was divided by
+the technique's inferred excursion, including Pick's 0.69 correction, then
+observed by a body and piezo using one common force unit. A known Newton
+recovered as 1.44928 Newtons under Pick and one under Finger/Thumb. The source
+now divides by the common unit used by the piezo. The 0.69 factor remains an
+explicit nonlinear-observer calibration; it no longer claims that a shared
+bridge can carry different displacement units for different techniques.
+
+The change leaves the transverse junction and the one-way longitudinal
+approximation intact. `getLastBodyForceProbe` reports the actual radiation
+inputs split into transverse and axial contributions. The existing bridge
+power getters are documented as transverse-subsystem ledgers, not a complete
+instrument energy proof. Independent Newton-source tests cover techniques,
+rates, calibration floors and saddle moment arms. Prepared locally at the
+owner's request for A/B review; no listening verdict or publication is claimed.
+
 ## 2026-11-07 — the pair is tuned on its loudness, and once, where the finger stops, 1.9.26 (measured; the weighting and the gestures decided under the owner's standing rule; an A/B/C set rendered, key unread)
 
 **What was decided.** The owner asked again for the model to be reviewed
