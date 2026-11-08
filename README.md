@@ -961,7 +961,7 @@ separates verified errors from accepted approximations.
   plain strings below the 5th fret), a numerical convention after Ducceschi,
   Russo and Webb (DAFx-26), and kept to twice that, so the plain strings'
   first longitudinal mode drops out of the force above the top E's 16th
-  fret. It reads the slope off lines whose dispersion is lumped into two
+  fret. It reads the slope off lines whose dispersion is lumped into
   allpass sections, so the highest partials' slope is approximate (Bank,
   thesis statement 4.2). A tap test of a steel-string top at the saddle,
   normal and along the strings, would settle the level and the missing path.
