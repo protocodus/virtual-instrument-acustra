@@ -13374,13 +13374,15 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
     axial.thiran = static_cast<float>((1.0 - fraction) / (1.0 + fraction));
 }
 
-// Every host sample of a played string: the stretch summed over the line,
-// on the unchanged spatial cell grid. Kept
-// out of line so the per-sample rest of renderStringAxialForce inlines.
+// Every host sample of a played string: the stretch summed over the line.
+// The travelling model averages the slope over spatial cells. The uniform
+// model integrates the piecewise-linear shape without spatial averaging.
+// Keep this out of line so the rest of renderStringAxialForce inlines.
 void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) noexcept
 {
     auto& axial = voice.stringAxialForce;
     designStringAxialForce(voice, stringIndex);
+    const bool waves = performanceRealism_.axialWaves;
     double stretch = 0.0;
     for (const auto& loop : voice.loops)
     {
@@ -13403,11 +13405,44 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
             return a + part * (b - a);
         };
         const float period = loop.currentDelay;
+        if (!waves)
+        {
+            // In the folded coordinate u, y = s(D-u) - s(u). Outgoing
+            // slopes turn at integer u and returning slopes at the
+            // fractional part of D inside each unit cell. Integrate the
+            // squared sum of slopes on both sides of that crossing.
+            const int whole = static_cast<int>(period);
+            const double fraction = static_cast<double>(period) - whole;
+            double outgoing = sample(0);
+            double returning = sample(whole);
+            double returningSlope = fraction > 0.0
+                ? sample(whole + 1) - returning : 0.0;
+            double integral = 0.0;
+            for (int cell = 1; cell <= whole; ++cell)
+            {
+                const double nextOutgoing = sample(cell);
+                const double nextReturning = sample(whole - cell);
+                const double outgoingSlope = nextOutgoing - outgoing;
+                const double before = outgoingSlope + returningSlope;
+                returningSlope = returning - nextReturning;
+                const double after = outgoingSlope + returningSlope;
+                integral += fraction * before * before
+                          + (1.0 - fraction) * after * after;
+                outgoing = nextOutgoing;
+                returning = nextReturning;
+            }
+            if (fraction > 0.0)
+            {
+                const double slope = sample(whole + 1) - outgoing + returningSlope;
+                integral += fraction * slope * slope;
+            }
+            stretch += static_cast<double>(period) * integral;
+            continue;
+        }
         // The axial round trip is a twelfth to an eighteenth of the
         // transverse one on these strings; the bound only keeps a
         // cell's span of the line from closing up.
-        const float shear = performanceRealism_.axialWaves
-            ? std::min(axial.roundTrip / period, 0.5f) : 0.0f;
+        const float shear = std::min(axial.roundTrip / period, 0.5f);
         // Before its own release a new shape was held still, so a
         // retardation reaching past it reads the shape as released.
         // At the longest period the line allows the room left is a

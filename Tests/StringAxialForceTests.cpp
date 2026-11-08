@@ -27,6 +27,8 @@ struct AcustraEngineTestAccess
     { engine.designStringAxialForce(voice(engine, string), string); }
     static float render(AcustraEngine& engine, int string)
     { return engine.renderStringAxialForce(voice(engine, string), string); }
+    static void evaluate(AcustraEngine& engine, int string)
+    { engine.evaluateStringAxialStretch(voice(engine, string), string); }
     static void configure(AcustraEngine& engine, int string, int fret, int channel = 1)
     {
         auto& v = voice(engine, string);
@@ -132,10 +134,44 @@ double kirchhoffCarrier(Engine& engine)
     return beta * integral / length;
 }
 
+void uniformStretchIntegratesFractionalSlopeCrossings()
+{
+    auto engine = played(false);
+    auto& voice = Access::voice(*engine, 5);
+    constexpr std::array<float, 5> wave { 0.0f, 2.0f, -1.0f, 1.0f, 4.0f };
+    // Integrals of the squared outgoing plus returning slopes over the
+    // folded period. At D=3.25 the four intervals contribute 18.25,
+    // 27.25, 12.25 and 6.25, including the fractional final interval.
+    constexpr std::array<double, 5> expected { 68.0, 64.0, 60.0, 56.0, 52.0 };
+    for (int write : { 0, 1, 127 })
+        for (std::size_t i = 0; i < expected.size(); ++i)
+        {
+            for (auto& loop : voice.loops)
+                loop.delay.fill(0.0f);
+            auto& loop = voice.loops[0];
+            loop.writeIndex = write;
+            const float period = 3.0f + static_cast<float>(i) * 0.25f;
+            loop.setCurrentDelay(period);
+            const auto slot = [&] (std::size_t age)
+            {
+                return (static_cast<std::size_t>(write - 1) - age)
+                    & (loop.delay.size() - 1);
+            };
+            for (std::size_t age = 0; age < wave.size(); ++age)
+                loop.delay[slot(age)] = wave[age];
+            loop.delay[slot(wave.size())] = std::numeric_limits<float>::quiet_NaN();
+            Access::evaluate(*engine, 5);
+            const auto& axial = voice.stringAxialForce;
+            const double measured = axial.lastStretch
+                / (static_cast<double>(axial.stretchScale) * period);
+            expect(std::abs(measured - expected[i]) < 1.0e-10,
+                   "the uniform stretch missed a fractional slope crossing");
+        }
+}
+
 // Without longitudinal waves the stretch is the string's whole elongation at
-// once: each evaluation equals beta Q / L of the shape it read. The cells
-// average each wave's slope over `stride` line samples, so the pick's
-// sharpest corner loses its highest partials' share; a few percent.
+// once. Compare its exact spatial integral to a dense numerical integration
+// after each sample writes a new wave to the line.
 void slowLimitIsKirchhoffCarrier()
 {
     auto engine = played(false);
@@ -237,6 +273,60 @@ void wavesKeepTheUniformTension()
                    "where y_x^2 is uniform the waves give the uniform tension");
         else
             expect(gainDb > 10.0, "beside the first longitudinal mode the waves ring up");
+    }
+}
+
+// A prescribed spatially uniform squared-slope source q(t) gives the
+// closed-form retarded integral of q(t - x/c) over the whole round trip.
+// Use unit peak beta*q (one Newton). Drive the production longitudinal
+// recurrence with the sampled difference of that analytic integral, while
+// the analytical uniform target is simply beta*q itself.
+void uniformRetardedSourceKeepsUniformTension()
+{
+    auto engine = played(true);
+    auto& voice = Access::voice(*engine, 5);
+    Access::design(*engine, 5);
+    const double physicalRoundTrip = 2.0 * voice.speakingLengthMetres
+        / std::sqrt(topRigidity() / topLinearMass());
+    const double f0 = 2.0 * topOpenFrequency;
+    voice.played = false;
+    for (const int multiple : { 2, 4 })
+    {
+        auto& axial = voice.stringAxialForce;
+        axial.clear();
+        Access::design(*engine, 5);
+        axial.ringing = true;
+        const double omega = 2.0 * pi * multiple * f0;
+        const auto frame = std::polar(1.0, omega / rate);
+        const auto previous = std::conj(frame);
+        const auto delayed = std::polar(1.0, -omega * physicalRoundTrip);
+        const auto integral = (1.0 - delayed) / std::complex<double>(0.0, omega);
+        const auto increment = rate * (1.0 - previous) * integral;
+        std::complex<double> phase(1.0), observed(0.0), uniform(0.0);
+        constexpr int first = static_cast<int>(0.05 * rate);
+        constexpr int count = static_cast<int>(0.30 * rate);
+        for (int sample = 0; sample < first + count; ++sample)
+        {
+            axial.increment = static_cast<float>((increment * phase).real());
+            axial.countdown = 1;
+            Access::render(*engine, 5);
+            if (sample >= first)
+            {
+                const double w = 0.5 - 0.5 * std::cos(
+                    2.0 * pi * (sample - first + 0.5) / count);
+                const auto demod = w * std::conj(phase);
+                observed += static_cast<double>(axial.force) * demod;
+                uniform += phase.real() * demod;
+            }
+            phase *= frame;
+        }
+        const auto ratio = observed / uniform;
+        const double gainDb = 20.0 * std::log10(std::abs(ratio));
+        const double phaseDegrees = std::abs(std::arg(ratio)) * 180.0 / pi;
+        std::cout << "prescribed uniform source at " << multiple << " f0: "
+                  << gainDb << " dB, " << phaseDegrees << " degrees\n";
+        expect(std::abs(gainDb) < 1.0 && phaseDegrees < 15.0,
+               "a spatially uniform retarded source retains its uniform tension");
     }
 }
 
@@ -674,8 +764,10 @@ int main(int argc, char** argv)
     lowRateAxialRingDecaysWithoutInput();
     invalidStretchDoesNotEnterAxialFeedback();
     if(argc>1 && std::string(argv[1])=="--passivity-only") return failures==0?0:1;
+    uniformStretchIntegratesFractionalSlopeCrossings();
     slowLimitIsKirchhoffCarrier();
     wavesKeepTheUniformTension();
+    uniformRetardedSourceKeepsUniformTension();
     ringIsTheLongitudinalString();
     ringsOutAndSwitchesOff();
     newtonsHaveOneSharedUnit();
