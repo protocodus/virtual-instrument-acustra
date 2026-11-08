@@ -496,6 +496,83 @@ struct AcustraEngineTestAccess
                  voice.dispersionDesignInharmonicity, rate }, loop);
     }
 
+    static double drivenLoopTransferError(double rate, int stringIndex, int fret)
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->prepare(rate, 64);
+        engine->setBridgeCouplingEnabled(false);
+        auto& voice = engine->voices_[static_cast<std::size_t>(stringIndex)];
+        const int note = voice.openMidi + fret;
+        engine->configureVoice(voice, stringIndex, note, true);
+        auto& loop = voice.loops[0];
+        loop.setCurrentDelay(loop.targetDelay);
+        loop.designReadDelay(loop.currentDelay);
+        const auto snapshot = withBendingLoss({}, loop);
+        const auto transfer = [&] (double omega)
+        {
+            const auto z = std::polar(1.0, -omega);
+            const auto allpass = [&] (double a1, double a2)
+            {
+                return (a2 + a1 * z + z * z) / (1.0 + a1 * z + a2 * z * z);
+            };
+            const auto shelf = [&] (float pole, float mix, const auto& filter)
+            {
+                const double p = filter.remapped ? filter.ratePole : pole;
+                const double b1 = filter.remapped ? filter.delayedInputGain : 0.0;
+                const auto low = (1.0 - p - b1 + b1 * z) / (1.0 - p * z);
+                return 1.0 - mix + static_cast<double>(mix) * low;
+            };
+            auto gain = std::polar(double(loop.loopGain), -loop.readDelayWhole * omega)
+                * allpass(loop.thiranFirst, loop.thiranSecond)
+                * allpass(loop.dispersionA1, loop.dispersionA2)
+                * shelf(loop.lowpassCoefficient, loop.highLossMix, loop.lossFilter)
+                * shelf(loop.broadLossCoefficient, loop.broadLossMix, loop.broadLossFilter)
+                * lossSectionResponse(snapshot, omega);
+            if (loop.secondDispersionActive)
+                gain *= allpass(loop.secondDispersionA1, loop.secondDispersionA2);
+            if (loop.upperDispersionActive)
+            {
+                const auto& c = loop.upperDispersionCoefficients;
+                gain *= allpass(c[0], c[1]) * allpass(c[2], c[3]);
+            }
+            return gain;
+        };
+        const double fundamental = 440.0 * std::exp2((note - 69) / 12.0);
+        const std::array<double, 3> multiples { 0.81, 4.33, 13.07 };
+        const std::array<double, 3> levels { 0.31, 0.073, 0.019 };
+        std::array<std::complex<double>, 3> phase, step, gains;
+        for (std::size_t n = 0; n < multiples.size(); ++n)
+        {
+            const double omega = 2.0 * std::numbers::pi * fundamental * multiples[n] / rate;
+            phase[n] = std::polar(levels[n], 0.31 * n);
+            step[n] = std::polar(1.0, omega);
+            gains[n] = transfer(omega);
+        }
+        double errorEnergy = 0.0, referenceEnergy = 0.0;
+        const int warmup = static_cast<int>(0.13 * rate);
+        const int end = warmup + static_cast<int>(0.025 * rate);
+        for (int sample = 0; sample < end; ++sample)
+        {
+            double input = 0.047;
+            double expected = input * loop.loopGain;
+            for (std::size_t n = 0; n < phase.size(); ++n)
+            {
+                input += phase[n].real();
+                expected += (phase[n] * gains[n]).real();
+                phase[n] *= step[n];
+            }
+            const double actual = loop.advance(1.0f, 1.0f);
+            loop.write(static_cast<float>(input));
+            if (sample >= warmup)
+            {
+                const double error = actual - expected;
+                errorEnergy += error * error;
+                referenceEnergy += expected * expected;
+            }
+        }
+        return std::sqrt(errorEnergy / referenceEnergy);
+    }
+
     // Every string at every fret from open to the 20th at one rate, in the
     // standard tuning, configured the way configuredLoop configures a note.
     static std::vector<StringLoopSnapshot> fretboardLoops(double rate)
@@ -3603,6 +3680,30 @@ void testLossFiltersPreserveTheReferenceTransfer()
                        "the loss-filter recurrence changed its mapped transfer");
             }
         }
+}
+
+void testTheDrivenStringLoopMatchesItsTransfer()
+{
+    // Apply an independent multitone to the configured production loop
+    // without feeding the result back. The closed-form cascade predicts
+    // its phase and magnitude with the same stored physical coefficients.
+    // The final float read/write rounds, but extra arithmetic errors inside
+    // the near-unit-pole chain must not dominate those two conversions.
+    using Access = acustra::AcustraEngineTestAccess;
+    double worst = 0.0;
+    for (const double rate : { 48000.0, 96000.0,
+                              acustra::AcustraEngine::maximumSupportedSampleRate })
+        for (const auto& [stringIndex, fret] :
+             { std::pair { 0, 0 }, std::pair { 4, 9 }, std::pair { 5, 16 } })
+        {
+            const auto error = Access::drivenLoopTransferError(rate, stringIndex, fret);
+            worst = std::max(worst, error);
+            expect(error < 1.0e-7,
+                   "the driven string loop moved its complex transfer at "
+                       + std::to_string(static_cast<int>(rate)) + " Hz, string "
+                       + std::to_string(stringIndex + 1) + ", fret " + std::to_string(fret));
+        }
+    std::cout << "Acustra driven loop relative transfer error " << worst << '\n';
 }
 
 void testTheFractionalDelayReadIsLossless()
@@ -10068,6 +10169,7 @@ int main(int argc, char** argv)
     testUpperDispersionTracksAudibleHighPartials();
     testUpperDispersionFollowsHeldBends();
     testTheFractionalDelayReadIsLossless();
+    testTheDrivenStringLoopMatchesItsTransfer();
     testASlewingDelayDoesNotClickAboveFourteenKilohertz();
     testAMemberBendIsATensionBendByGrimes();
     testABendMovesTheTwelfthPartialStretch();

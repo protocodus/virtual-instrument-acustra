@@ -555,7 +555,7 @@ double slopeEnergy(const Access::Loop& loop)
     return sum;
 }
 
-std::array<float, 24> filterMemory(const Access::Loop& loop)
+std::array<double, 24> filterMemory(const Access::Loop& loop)
 {
     return { loop.allpassY1, loop.allpassY2, loop.thiranFraction,
         loop.thiranFirst, loop.thiranSecond, loop.bendingLossY1,

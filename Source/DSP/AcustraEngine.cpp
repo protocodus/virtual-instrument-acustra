@@ -3493,7 +3493,7 @@ float AcustraEngine::registeredPluckAperture(
         * std::pow(referenceDelay / boundedLength, exponent);
 }
 
-void AcustraEngine::OnePole::configureRate(float referencePole,
+void AcustraEngine::OnePoleCoefficients::configureRate(float referencePole,
                                            double sampleRate) noexcept
 {
     remapped = sampleRate != 48000.0;
@@ -3759,7 +3759,7 @@ void AcustraEngine::StringLoop::designReadDelay(float samples) noexcept
 }
 
 ACUSTRA_FORCED_INLINE_BEGIN
-ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::readDelay(float samples) noexcept
+ACUSTRA_FORCED_INLINE double AcustraEngine::StringLoop::readDelay(float samples) noexcept
 {
     if (!readDelayValid || exact::bits(samples) != readDelayBits)
         designReadDelay(samples);
@@ -3780,9 +3780,9 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::readDelay(float samples) 
     // transients in time-varying allpass fractional delay filters with
     // application to digital waveguide modeling", ICMC 1995, 327-334, which
     // for a line-read section is exactly this signal-valued state.
-    const float first = thiranFirst;
-    const float second = thiranSecond;
-    const float output = second * at(whole) + first * at(whole + 1)
+    const double first = thiranFirst;
+    const double second = thiranSecond;
+    const double output = second * at(whole) + first * at(whole + 1)
                        + at(whole + 2)
                        - first * allpassY1 - second * allpassY2;
     allpassY2 = allpassY1;
@@ -3843,10 +3843,10 @@ void AcustraEngine::StringLoop::handoffDispersion(SecondOrderAllpass& section,
             return delay[static_cast<std::size_t>(
                 wrapDelayIndex(writeIndex - samplesAgo))];
         };
-        const float first = thiranFirst;
-        const float second = thiranSecond;
-        float next = allpassY1;
-        float following = allpassY2;
+        const double first = thiranFirst;
+        const double second = thiranSecond;
+        double next = allpassY1;
+        double following = allpassY2;
         if (whole >= 2)
         {
             next = second * at(whole) + first * at(whole + 1) + at(whole + 2)
@@ -3961,7 +3961,7 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         currentDelay = static_cast<float>(delayProgress);
         delayProgressBits = exact::bits(currentDelay);
     }
-    float delayed = readDelay(currentDelay);
+    double delayed = readDelay(currentDelay);
     if (upperDispersionActive)
     {
         delayed = upperDispersion[1].process(delayed, upperDispersionCoefficients[2],
@@ -3974,14 +3974,14 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
                                            secondDispersionA2);
     // The broad shelf is retired (configureVoice): with its mix at zero the
     // wave passes it exactly and its one-pole is not run.
-    float reflected = delayed;
+    double reflected = delayed;
     if (broadLossMix != 0.0f)
     {
-        const float broad = broadLossFilter.process(
+        const double broad = broadLossFilter.process(
             delayed, broadLossCoefficient);
         reflected += broadLossMix * (broad - delayed);
     }
-    const float low = lossFilter.process(reflected, lowpassCoefficient);
+    const double low = lossFilter.process(reflected, lowpassCoefficient);
     reflected += highLossMix * (low - reflected);
     if (bendingLossActive)
     {
@@ -3998,8 +3998,8 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         // rounding of g = 1 + a1 + a2. At the highest host rates its poles
         // close on z = 1 and g falls under 0.01, where rounding the sum alone
         // put the direct form's gain at DC 4e-6 above one at 768 kHz.
-        const float difference = reflected - bendingLossX1;
-        const float taken = (1.0f - bendingLossGain) * difference
+        const double difference = reflected - bendingLossX1;
+        const double taken = (1.0f - bendingLossGain) * difference
             - bendingLossA2 * bendingLossX2
             - bendingLossA1 * bendingLossY1 - bendingLossA2 * bendingLossY2;
         bendingLossX1 = reflected;
@@ -4021,8 +4021,8 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         // H = 1 - (1 - z^-1)(g0 + g1 z^-1) / A(z) (constantLossSection): the
         // part taken from the wave is driven by its first difference, so the
         // section passes DC exactly whatever the coefficients' rounding.
-        const float difference = reflected - constantLossX1;
-        const float taken = (1.0f - constantLossGain) * difference
+        const double difference = reflected - constantLossX1;
+        const double taken = (1.0f - constantLossGain) * difference
             + (constantLossN2 - constantLossA2) * constantLossX2
             - constantLossA1 * constantLossY1 - constantLossA2 * constantLossY2;
         constantLossX1 = reflected;
@@ -4044,7 +4044,7 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
     else if (appliedReleaseGain > requestedReleaseGain)
         appliedReleaseGain = std::max(requestedReleaseGain,
                                       appliedReleaseGain - releaseGainStep);
-    return reflected * loopGain * appliedReleaseGain;
+    return static_cast<float>(reflected * loopGain * appliedReleaseGain);
 }
 ACUSTRA_FORCED_INLINE_END
 

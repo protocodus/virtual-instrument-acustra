@@ -750,16 +750,22 @@ private:
     void preparePiezoSaddleBank(double sampleRate) noexcept;
     void updatePiezoSaddleLoad(float impedance) noexcept;
 
-    struct OnePole
+    struct OnePoleCoefficients
     {
-        float state { 0.0f };
-        float previousInput { 0.0f };
         float delayedInputGain { 0.0f };
         float ratePole { 0.0f };
         bool remapped { false };
 
         void configureRate(float referencePole, double sampleRate) noexcept;
-        float process(float input, float coefficient) noexcept
+    };
+
+    template <typename Sample>
+    struct OnePoleState : OnePoleCoefficients
+    {
+        Sample state { 0.0 };
+        Sample previousInput { 0.0 };
+
+        Sample process(Sample input, float coefficient) noexcept
         {
             if (remapped)
             {
@@ -774,15 +780,22 @@ private:
         void reset() noexcept { state = previousInput = 0.0f; }
     };
 
+    using OnePole = OnePoleState<float>;
+    using StringLossShelf = OnePoleState<double>;
+
+    // Direct-form arithmetic error is amplified by the same all-pole
+    // denominator that delays the wave. Its poles approach 1 at high
+    // engine rates. Retain the same coefficients, cascade and float line,
+    // while carrying each section's arithmetic and history in double.
     struct SecondOrderAllpass
     {
-        float x1 { 0.0f };
-        float x2 { 0.0f };
-        float y1 { 0.0f };
-        float y2 { 0.0f };
-        float process(float input, float a1, float a2) noexcept
+        double x1 { 0.0f };
+        double x2 { 0.0f };
+        double y1 { 0.0f };
+        double y2 { 0.0f };
+        double process(double input, float a1, float a2) noexcept
         {
-            const float output = a2 * input + a1 * x1 + x2
+            const double output = a2 * input + a1 * x1 + x2
                                - a1 * y1 - a2 * y2;
             x2 = x1;
             x1 = input;
@@ -880,10 +893,10 @@ private:
         float bendingLossGain { 1.0f };
         float bendingLossA1 { 0.0f };
         float bendingLossA2 { 0.0f };
-        float bendingLossX1 { 0.0f };
-        float bendingLossX2 { 0.0f };
-        float bendingLossY1 { 0.0f };
-        float bendingLossY2 { 0.0f };
+        double bendingLossX1 { 0.0f };
+        double bendingLossX2 { 0.0f };
+        double bendingLossY1 { 0.0f };
+        double bendingLossY2 { 0.0f };
         // Its constant loss angles, dislocation and a wound string's winding
         // friction (constantLossSection in AcustraEngine.cpp), in cascade:
         // (g + n1 z^-1 + n2 z^-2) / (1 + a1 z^-1 + a2 z^-2), unit gain at
@@ -896,10 +909,10 @@ private:
         float constantLossA2 { 0.0f };
         float constantLossN1 { 0.0f };
         float constantLossN2 { 0.0f };
-        float constantLossX1 { 0.0f };
-        float constantLossX2 { 0.0f };
-        float constantLossY1 { 0.0f };
-        float constantLossY2 { 0.0f };
+        double constantLossX1 { 0.0f };
+        double constantLossX2 { 0.0f };
+        double constantLossY1 { 0.0f };
+        double constantLossY2 { 0.0f };
         // A discrete refret/retune changes intrinsic sections over the same
         // one-roundtrip physical transition as its feedback loss. Histories
         // stay intact; target revisions retain a finite completion deadline.
@@ -912,14 +925,14 @@ private:
         int intrinsicCoefficientSamples { 0 };
         void setIntrinsicCoefficients(const IntrinsicCoefficients& target,
                                       bool transition) noexcept;
-        OnePole broadLossFilter {};
-        OnePole lossFilter {};
+        StringLossShelf broadLossFilter {};
+        StringLossShelf lossFilter {};
         SecondOrderAllpass dispersion {};
         SecondOrderAllpass secondDispersion {};
         std::array<SecondOrderAllpass, 2> upperDispersion {};
         // The fractional-delay allpass's state: its two previous outputs.
-        float allpassY1 { 0.0f };
-        float allpassY2 { 0.0f };
+        double allpassY1 { 0.0f };
+        double allpassY2 { 0.0f };
         // Its coefficients for the last fraction read: once a delay has
         // slewed to its target the fraction repeats, and the two double
         // divisions that design it give the same coefficients again.
@@ -976,7 +989,7 @@ private:
         void reset() noexcept;
         void setCurrentDelay(float samples) noexcept;
         void designReadDelay(float samples) noexcept;
-        [[nodiscard]] ACUSTRA_ALWAYS_INLINE float readDelay(float samples) noexcept;
+        [[nodiscard]] ACUSTRA_ALWAYS_INLINE double readDelay(float samples) noexcept;
         // Move the line's first post-read allpass across the integer tap.
         void handoffDispersion(SecondOrderAllpass& section, bool active) noexcept;
         void switchDispersion(bool second, bool upper) noexcept;
