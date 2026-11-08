@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.28 — 2026-11-08 — a fret played again finds its tuning, identical output
+
+- Each string keeps the tunings of its last eight stops, so a riff or a
+  progression that returns to a fret does not solve it again: an E, A and
+  D progression strummed round, six note-ons a chord in one 64-sample
+  block at 48 kHz, costs 0.76-1.3 ms the first time round and 0.53-1.2 ms
+  after it on the development machine (1.9.26: 0.87-1.7 and 1.2-1.5 ms;
+  what remains is the attacks' own set-up, not the tuning). The output is
+  bit for bit as before.
+
 ### 1.9.27 — 2026-11-07 — a note-on costs about a sixth less, identical output
 
 - The tuning solve's determinant is evaluated with one reciprocal per
@@ -925,8 +935,10 @@ separates verified errors from accepted approximations.
 - A note-on's tuning solve costs 0.1-0.25 ms on the development machine
   (48 kHz, 64-sample blocks), so six note-ons struck in one block cost
   0.7-1.25 ms with the block's own rendering, close to the block's 1.33 ms
-  on chords that meet open-string unisons (1.9.25: 0.5-0.7 ms, but 0.1-0.9
-  ms a block for every note held under a vibrato). Spreading a chord's solves
+  on chords that meet open-string unisons the first time they are played
+  (1.9.25: 0.5-0.7 ms, but 0.1-0.9 ms a block for every note held under a
+  vibrato); a fret played again on a string within its last eight finds
+  its tuning without the solve (1.9.28). Spreading a chord's solves
   over its first blocks would close it; the development-machine figures are
   not Reason's (`Docs/research/coupled-tuning-2026-11-07.md`, Cost).
 - Notes near strong lossy body modes sit a few cents from their request, and

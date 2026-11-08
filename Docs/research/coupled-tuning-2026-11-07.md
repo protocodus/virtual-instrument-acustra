@@ -216,7 +216,14 @@ bridge and the strings instead of three. The 378 notes render bit for bit
 as before (a hash of 0.5 s of each, with a slide and a vibrato); the
 note-on and its first block cost 253 µs mean, 462 worst (309 and 540),
 and the four chords 0.72, 1.22, 0.72 and 1.16 ms (0.88, 1.45, 0.85 and
-1.44).
+1.44). Then (1.9.28) each string keeps the tunings of its last eight
+stops in a ring beside the one in front, so a progression that comes
+back to a fret finds its solve: an E, A, D progression strummed round
+costs 0.76, 1.3 and 1.26 ms for its three chords the first time and
+0.55, 0.53 and 1.13 ms after it (1.9.26: 0.87, 1.73, 1.53 and then 1.24-1.53).
+What remains on a repeated chord is the attacks' own set-up, 80-220 µs a
+note with its block (highest on the low E's upper frets), which the
+tuning solve was never part of.
 
 ## Not changed
 

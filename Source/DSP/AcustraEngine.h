@@ -1558,6 +1558,17 @@ private:
         std::uint64_t commonTuningGeneration { 0 };
         std::array<std::uint32_t, 7> commonTuningKey {};
         float commonTuningValue { 0.0f };
+        // The tunings this string had before the one in front, so a riff or
+        // a progression that comes back to a fret finds its solve (about
+        // 0.25 ms each) instead of running it again; a ring, oldest replaced.
+        struct CommonTuning
+        {
+            std::uint64_t generation { 0 };
+            std::array<std::uint32_t, 7> key {};
+            float value { 0.0f };
+        };
+        std::array<CommonTuning, 7> commonTuningHistory {};
+        int commonTuningHistoryNext { 0 };
         // The two dispersion sections' pole pairs relative to the
         // fundamental; a zero decay ratio is an unused section.
         std::array<float, 2> dispersionDecayRatios { 0.0f, 0.0f };
