@@ -1117,8 +1117,9 @@ endif()
 
 # Recording-guided realism regression 8.
 if(BUILD_TESTING)
+    find_package(Threads REQUIRED)
     add_executable(AcustraStrummingRealismTests Tests/StrummingRealismTests.cpp)
-    target_link_libraries(AcustraStrummingRealismTests PRIVATE AcustraDSP)
+    target_link_libraries(AcustraStrummingRealismTests PRIVATE AcustraDSP Threads::Threads)
     set_target_properties(AcustraStrummingRealismTests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
     add_test(NAME Acustra.StrummingRealism COMMAND AcustraStrummingRealismTests)
     set_tests_properties(Acustra.StrummingRealism PROPERTIES TIMEOUT 60)

@@ -34,11 +34,20 @@ struct AcustraEngineTestAccess
             * std::exp2((v.openMidi - 69.0) / 12.0) * v.bendImpedanceScale;
         const double speed = 0.5 * c * held
             * (1.0 / a + 1.0 / (v.speakingLengthMetres - a));
-        // Independently apply Finger's authored radius response to observed
-        // MIDI velocity, while recovering actual held force above.
+        // Independently apply Finger's authored radius response and point
+        // compliance to the physical contact whose held force is above.
+        const double velocity = v.velocity;
+        const double t = std::min(velocity * 127.0 / 81.0, 1.0);
+        const double forceScale = 0.2 + 0.8 * t * t * (3.0 - 2.0 * t);
+        const double p = v.pluckPoint;
+        const double boundary = std::clamp(std::pow(
+            (v.speakingLengthMetres / 0.648) * p * (1.0 - p) / (0.18 * 0.82),
+            0.22), 0.72, 1.35);
         const double radius = 0.2e-3 * std::exp2(2.0 * (0.58 - engine.parameters_.touch))
-            * std::pow(double(v.velocity), 0.233125);
-        return { std::exp(-speed / (radius * engine.sampleRate_)),
+            * forceScale * std::pow(velocity, 0.233125) * boundary;
+        const double nominalSpeed = speed / (velocity * forceScale * v.pluckForceGain);
+        const double time = std::max(radius / speed, 0.2e-3 / (3.0 * nominalSpeed));
+        return { std::exp(-1.0 / (time * engine.sampleRate_)),
                  v.excitationCoefficient, v.excitationReleaseCoefficient,
                  v.excitationColour, v.excitationEnvelope, v.excitationDecay,
                  v.releaseStepRise, v.loops[0].delay };

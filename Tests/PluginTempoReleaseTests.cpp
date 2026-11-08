@@ -216,7 +216,9 @@ void testHostTempoAndInclusiveDeadline()
         const int firstAudible = static_cast<int> (std::find_if (
             held.audio.begin(), held.audio.end(),
             [] (float sample) { return std::abs (sample) > 1.0e-12f; }) - held.audio.begin()) / 2;
-        expect (firstAudible >= onsetSample && firstAudible < onsetSample + 64,
+        const int earliestAudible = onsetSample
+            + acustra::AcustraEngine::outputLatencyForRate(sampleRate);
+        expect (firstAudible >= earliestAudible && firstAudible < earliestAudible + 64,
                 "release joining delayed or anticipated the MIDI attack");
     }
 }

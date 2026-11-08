@@ -33,20 +33,30 @@
 namespace
 {
 std::atomic<long> allocationCount { 0 };
+void* trackedAllocate(std::size_t size) noexcept
+{
+    ++allocationCount;
+    return std::malloc(size == 0 ? 1 : size);
+}
 }
 
 void* operator new(std::size_t size)
 {
-    ++allocationCount;
-    if (void* pointer = std::malloc(size == 0 ? 1 : size))
+    if (void* pointer = trackedAllocate(size))
         return pointer;
     throw std::bad_alloc {};
 }
 void* operator new[](std::size_t size) { return ::operator new(size); }
+// std::stable_sort may acquire its temporary storage with nothrow new and
+// release it with regular delete. Route both allocation forms through malloc.
+void* operator new(std::size_t size, const std::nothrow_t&) noexcept { return trackedAllocate(size); }
+void* operator new[](std::size_t size, const std::nothrow_t&) noexcept { return trackedAllocate(size); }
 void operator delete(void* pointer) noexcept { std::free(pointer); }
 void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
 void operator delete[](void* pointer) noexcept { std::free(pointer); }
 void operator delete[](void* pointer, std::size_t) noexcept { std::free(pointer); }
+void operator delete(void* pointer, const std::nothrow_t&) noexcept { std::free(pointer); }
+void operator delete[](void* pointer, const std::nothrow_t&) noexcept { std::free(pointer); }
 
 namespace
 {

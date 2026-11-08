@@ -15,7 +15,7 @@ struct AcustraEngineTestAccess
     struct Contact
     {
         double position, length, tension, displacement, force, waveSpeed;
-        double slip, reference;
+        double slip, reference, forceVariation;
         float colourCorner, releaseCorner;
     };
 
@@ -58,7 +58,7 @@ struct AcustraEngineTestAccess
                     * voice.bendImpedanceScale;
                 return { voice.pluckPoint, voice.speakingLengthMetres,
                          voice.tensionNewtons, metres, force, speed,
-                         voice.releaseSlipPole, voice.releaseReferencePole,
+                         voice.releaseSlipPole, voice.releaseReferencePole, voice.pluckForceGain,
                          voice.excitationCoefficient, voice.excitationReleaseCoefficient };
             }
         return {};
@@ -201,9 +201,19 @@ void testThumbRoughnessHasAFinitePhysicalRelease()
                 // Finger's pad does, so it goes as v^0.233. The 1/v alone
                 // this predicted before let a soft thumb go as 1/v^2 and
                 // brighten again below velocity 80 (Acustra.ThumbDynamics).
-                const double radius = 0.2e-3 / velocity
-                    * std::pow(double(velocity) * velocity, 0.6165625);
-                const double pole = std::exp(-releaseSpeed / (radius * rate));
+                const double t = std::min(double(velocity) * 127.0 / 81.0, 1.0);
+                const double forceScale = 0.2 + 0.8 * t * t * (3.0 - 2.0 * t);
+                const double p = contact.position;
+                const double boundary = std::clamp(std::pow(
+                    (contact.length / 0.648) * p * (1.0 - p) / (0.18 * 0.82),
+                    0.22), 0.72, 1.35);
+                const double radius = 0.2e-3 * forceScale * boundary
+                    * std::pow(double(velocity), 0.233125);
+                const double nominalSpeed = releaseSpeed
+                    / (velocity * forceScale * contact.forceVariation);
+                const double time = std::max(radius / releaseSpeed,
+                                             0.2e-3 / (3.0 * nominalSpeed));
+                const double pole = std::exp(-1.0 / (time * rate));
                 // Two smoothing stages have mean time 2q/(1-q). Equate
                 // that to the independently predicted contact b/(1-b).
                 const double expected = std::min(double(contact.colourCorner),
@@ -220,6 +230,11 @@ void testThumbRoughnessHasAFinitePhysicalRelease()
                 if (velocity == 1.0f)
                 {
                     auto nominal = make(rate, Picking::Thumb, 0.28f);
+                    // The neutral edge cancels the nominal waveform slip.
+                    // The physical boundary above can alter the actual edge.
+                    auto realism = nominal->performanceRealism();
+                    realism.pluckBoundaryCompliance = false;
+                    nominal->setPerformanceRealism(realism);
                     Access::holdNominalForce(*nominal, velocity);
                     nominal->noteOn(note, velocity);
                     const auto shape = Access::inspect(*nominal, note);

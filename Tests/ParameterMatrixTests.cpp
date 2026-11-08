@@ -110,7 +110,9 @@ int checkReleaseProtocol()
         return 1;
     const auto& c = *found;
     const auto limits = probe->LimitsFor (c);
-    const double expectedSeconds = 2.0 + (3000.0 + 1.0 + 7.0) / 48000.0;
+    // 7 sensor-alignment samples plus the approved 2 ms output limiter.
+    constexpr double latencyAt48k = 7.0 + 96.0;
+    const double expectedSeconds = 2.0 + (3000.0 + 1.0 + latencyAt48k) / 48000.0;
     if (std::abs (limits.releaseSeconds - expectedSeconds) > 1.0e-12
         || std::abs (limits.silenceFloor - 1.0e-3f) > 1.0e-10f)
     {

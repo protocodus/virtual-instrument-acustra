@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -206,7 +207,14 @@ std::vector<float> rapidPhrase(double rate, int frames, bool reverse, bool gathe
     return left;
 }
 
-void testFixedVelocityRepeatedStrokeLevels()
+struct RepeatedStrokeLevels
+{
+    std::vector<double> increases;
+    bool finite { true };
+};
+
+RepeatedStrokeLevels measureFixedVelocityRepeatedStrokeLevels(
+    acustra::PickingTechnique picking)
 {
     // Render real repeated chords through the MIDI performer. Equal command
     // velocity must not manufacture large random accents. Ringing waves and
@@ -221,69 +229,86 @@ void testFixedVelocityRepeatedStrokeLevels()
         {{ 40, 47, 52, 56, 59, 64 }},
         {{ 48, 52, 55, 60, 64, 67 }}
     }};
-    std::vector<double> increases;
-    bool finite = true;
-    for (const auto picking : { acustra::PickingTechnique::Finger,
-                                acustra::PickingTechnique::Pick,
-                                acustra::PickingTechnique::Thumb })
-        for (const auto& shape : shapes)
-            for (const auto direction : { Performer::StrokeMode::Automatic,
-                                          Performer::StrokeMode::Down })
-                for (const int velocity : { 64, 100 })
-                    for (const double seconds : { 0.15, 0.3, 0.6 })
+    RepeatedStrokeLevels result;
+    for (const auto& shape : shapes)
+        for (const auto direction : { Performer::StrokeMode::Automatic,
+                                      Performer::StrokeMode::Down })
+            for (const int velocity : { 64, 100 })
+                for (const double seconds : { 0.15, 0.3, 0.6 })
+                {
+                    auto performer = std::make_unique<Performer>();
+                    acustra::EngineParameters parameters;
+                    parameters.picking = picking;
+                    parameters.room = 0.0f;
+                    parameters.detune = 0.0f;
+                    performer->setParameters(parameters);
+                    performer->prepare(rate, block);
+                    performer->setGatherChords(false);
+                    performer->setStrokeMode(direction);
+                    const int interval = static_cast<int>(std::lround(seconds * rate));
+                    const int samples = start + repeats * interval;
+                    std::vector<float> left(static_cast<std::size_t>(samples));
+                    std::vector<float> right(left.size());
+                    for (int at = 0; at < samples; at += block)
                     {
-                        auto performer = std::make_unique<Performer>();
-                        acustra::EngineParameters parameters;
-                        parameters.picking = picking;
-                        parameters.room = 0.0f;
-                        parameters.detune = 0.0f;
-                        performer->setParameters(parameters);
-                        performer->prepare(rate, block);
-                        performer->setGatherChords(false);
-                        performer->setStrokeMode(direction);
-                        const int interval = static_cast<int>(std::lround(seconds * rate));
-                        const int samples = start + repeats * interval;
-                        std::vector<float> left(static_cast<std::size_t>(samples));
-                        std::vector<float> right(left.size());
-                        for (int at = 0; at < samples; at += block)
-                        {
-                            const int count = std::min(block, samples - at);
-                            performer->beginBlock(left.data() + at, right.data() + at, count);
-                            for (int stroke = 0; stroke < repeats; ++stroke)
-                            {
-                                const int on = start + stroke * interval;
-                                const int off = on + interval - static_cast<int>(0.008 * rate);
-                                if (on >= at && on < at + count)
-                                    for (const int note : shape)
-                                        performer->noteOn(on - at, 1, note, velocity);
-                                if (off >= at && off < at + count)
-                                    for (const int note : shape)
-                                        performer->noteOff(off - at, 1, note, 64);
-                            }
-                            performer->endBlock();
-                        }
-                        const int window = std::min(interval, rate / 4);
-                        double previousDb = 0.0;
+                        const int count = std::min(block, samples - at);
+                        performer->beginBlock(left.data() + at, right.data() + at, count);
                         for (int stroke = 0; stroke < repeats; ++stroke)
                         {
-                            double energy = 0.0;
-                            const int begin = start + stroke * interval;
-                            for (int sample = begin; sample < begin + window; ++sample)
-                            {
-                                const double l = left[static_cast<std::size_t>(sample)];
-                                const double r = right[static_cast<std::size_t>(sample)];
-                                finite = finite && std::isfinite(l) && std::isfinite(r)
-                                    && std::abs(l) <= 1.0 && std::abs(r) <= 1.0;
-                                energy += 0.5 * (l * l + r * r);
-                            }
-                            finite = finite && energy > 1.0e-12;
-                            const double levelDb = 10.0 * std::log10(
-                                std::max(energy / window, 1.0e-30));
-                            if (stroke > 0)
-                                increases.push_back(levelDb - previousDb);
-                            previousDb = levelDb;
+                            const int on = start + stroke * interval;
+                            const int off = on + interval - static_cast<int>(0.008 * rate);
+                            if (on >= at && on < at + count)
+                                for (const int note : shape)
+                                    performer->noteOn(on - at, 1, note, velocity);
+                            if (off >= at && off < at + count)
+                                for (const int note : shape)
+                                    performer->noteOff(off - at, 1, note, 64);
                         }
+                        performer->endBlock();
                     }
+                    const int window = std::min(interval, rate / 4);
+                    double previousDb = 0.0;
+                    for (int stroke = 0; stroke < repeats; ++stroke)
+                    {
+                        double energy = 0.0;
+                        const int begin = start + stroke * interval;
+                        for (int sample = begin; sample < begin + window; ++sample)
+                        {
+                            const double l = left[static_cast<std::size_t>(sample)];
+                            const double r = right[static_cast<std::size_t>(sample)];
+                            result.finite = result.finite && std::isfinite(l) && std::isfinite(r)
+                                && std::abs(l) <= 1.0 && std::abs(r) <= 1.0;
+                            energy += 0.5 * (l * l + r * r);
+                        }
+                        result.finite = result.finite && energy > 1.0e-12;
+                        const double levelDb = 10.0 * std::log10(
+                            std::max(energy / window, 1.0e-30));
+                        if (stroke > 0)
+                            result.increases.push_back(levelDb - previousDb);
+                        previousDb = levelDb;
+                    }
+                }
+    return result;
+}
+
+void testFixedVelocityRepeatedStrokeLevels()
+{
+    // Every technique renders with a separate performer. Parallelize the
+    // independent workloads while keeping the pooled percentile and maximum.
+    using Picking = acustra::PickingTechnique;
+    std::array jobs {
+        std::async(std::launch::async, measureFixedVelocityRepeatedStrokeLevels, Picking::Finger),
+        std::async(std::launch::async, measureFixedVelocityRepeatedStrokeLevels, Picking::Pick),
+        std::async(std::launch::async, measureFixedVelocityRepeatedStrokeLevels, Picking::Thumb)
+    };
+    std::vector<double> increases;
+    bool finite = true;
+    for (auto& job : jobs)
+    {
+        auto result = job.get();
+        finite = finite && result.finite;
+        increases.insert(increases.end(), result.increases.begin(), result.increases.end());
+    }
     expect(finite, "fixed-velocity repeated strokes were silent, nonfinite or unbounded");
     std::sort(increases.begin(), increases.end());
     const double p95 = increases[static_cast<std::size_t>(
