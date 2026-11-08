@@ -1986,11 +1986,12 @@ private:
     // triangle's stored energy. Both are projected onto the nth-harmonic
     // node like the plucked shape. Replaces the line's first length samples.
     // The share is solved on the grid of referenceDelay, the loop's period
-    // in 48 kHz samples, at any other host rate.
-    void writePickRelease(StringLoop& loop, int length, float height,
-                          float position, float aperture, int modes,
-                          float releaseShare, double slipPole,
-                          float referenceDelay) noexcept;
+    // in 48 kHz samples, at any other host rate. Return the released slope
+    // energy on that grid, or zero when the written line is the reference.
+    double writePickRelease(StringLoop& loop, int length, float height,
+                            float position, float aperture, int modes,
+                            float releaseShare, double slipPole,
+                            float referenceDelay) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
                             float scaleLength, float edgeRadius) const noexcept;

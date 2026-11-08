@@ -1220,6 +1220,20 @@ struct AcustraEngineTestAccess
         return trace;
     }
 
+    static float freshPickAttackCents(double rate, int string, int fret,
+                                      float velocity)
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        EngineParameters parameters;
+        parameters.picking = PickingTechnique::Pick;
+        engine->setParameters(parameters);
+        engine->prepare(rate, 64);
+        engine->setStringPerChannelMode(true);
+        const auto& voice = engine->voices_[static_cast<std::size_t>(string)];
+        engine->noteOn(voice.openMidi + fret, velocity, string + 1);
+        return voice.attackPitchCents;
+    }
+
     struct StolenStringSnapshot
     {
         double heldBeforeSteal;      // stored energy in the string's own loops
@@ -3064,6 +3078,32 @@ void testAttackPitchIsBoundedAndVelocityResponsive()
         expect(hardSteel.back().cents < 0.8 * hardSteel.front().cents,
                "energy-following attack pitch did not relax during sustain");
     }
+}
+
+void testFreshPickAttackPitchIsRateIndependent()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    double worst = 0.0;
+    for (const int string : { 4, 5 })
+        for (const int fret : { 12, 20 })
+            for (const float velocity : { 80.0f / 127.0f, 1.0f })
+            {
+                const float reference = Access::freshPickAttackCents(
+                    48000.0, string, fret, velocity);
+                expect(reference > 0.25f && reference <= 20.0f,
+                       "the high Pick fixture missed its initial tension cue");
+                for (const double rate : { 44100.0, 96000.0, 192000.0 })
+                {
+                    const float observed = Access::freshPickAttackCents(
+                        rate, string, fret, velocity);
+                    const double difference = std::abs(double(observed) - reference);
+                    worst = std::max(worst, difference);
+                    expect(difference < 0.01,
+                           "initial Pick attack pitch changed with sample rate");
+                }
+            }
+    std::cout << "High Pick maximum initial pitch-cue rate difference: "
+              << worst << " cents\n";
 }
 
 void testSteadyPitchIsCompensated()
@@ -9838,6 +9878,7 @@ int main(int argc, char** argv)
     testConstructionControlsChangeTheModel();
     testAgeRemovesUpperStringEnergy();
     testAttackPitchIsBoundedAndVelocityResponsive();
+    testFreshPickAttackPitchIsRateIndependent();
     testSteadyPitchIsCompensated();
     testEveryStringStaysOnEqualTemperedPitch();
     testPhysicalSustainSettlesNearRequestedPitch();

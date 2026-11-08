@@ -1,4 +1,5 @@
 #include "DSP/AcustraPerformer.h"
+#include "DSP/AcustraPresets.h"
 
 #include <algorithm>
 #include <array>
@@ -77,9 +78,10 @@ void testSoundPaletteAndVelocity()
     using acustra::Performer;
     for (const int rate : { 8000, 48000, 96000 })
     {
-        std::array<Audio, 5> loud {};
-        for (int key = Performer::firstNoiseKey; key <= Performer::lastNoiseKey; ++key)
+        std::array<Audio, Performer::noiseKeys.size()> loud {};
+        for (std::size_t gesture = 0; gesture < Performer::noiseKeys.size(); ++gesture)
         {
+            const int key = Performer::noiseKeys[gesture];
             std::array<double, 3> previous {};
             for (int velocity : { 32, 72, 116 })
             {
@@ -109,8 +111,7 @@ void testSoundPaletteAndVelocity()
                 expect(performer->engine().getActiveVoiceCount() == 0,
                        "noise key took a pitched string");
                 if (velocity == 116)
-                    loud[static_cast<std::size_t>(key - Performer::firstNoiseKey)]
-                        = std::move(audio);
+                    loud[gesture] = std::move(audio);
             }
         }
         for (std::size_t a = 0; a < loud.size(); ++a)
@@ -124,15 +125,24 @@ void testSoundPaletteAndVelocity()
                     const double delta = loud[a][frame][0] / first - loud[b][frame][0] / second;
                     difference += delta * delta;
                 }
+                if (difference <= 0.16)
+                    std::cerr << rate << " Hz gestures " << a << '/' << b
+                              << ", normalized distance " << difference << '\n';
                 expect(difference > 0.16, "two gesture types differ only in level");
             }
+        double quietestBody = power(loud[1], 0) + power(loud[1], 1);
+        for (std::size_t gesture = 2; gesture < loud.size(); ++gesture)
+            quietestBody = std::min(quietestBody,
+                power(loud[gesture], 0) + power(loud[gesture], 1));
+        expect(power(loud[0], 0) + power(loud[0], 1) < 0.2 * quietestBody,
+               "fretting-hand movement is too loud relative to body percussion");
     }
 }
 
 void testTimingAndOwnership()
 {
     constexpr int rate = 48000;
-    constexpr int key = acustra::Performer::firstNoiseKey;
+    constexpr int key = acustra::Performer::noiseKeys[0];
     const std::vector<Event> taps {{ 15, key, 96 }, { 229, key, 0 }, { 7100, key, 96 }};
     auto a = fresh(rate);
     auto b = fresh(rate);
@@ -175,7 +185,7 @@ void testTimingAndOwnership()
 void testBoundedVariation()
 {
     acustra::GuitarNoises noises;
-    for (int gesture = 0; gesture < 5; ++gesture)
+    for (int gesture = 0; gesture < static_cast<int>(acustra::GuitarNoise::Count); ++gesture)
     {
         std::array<float, 48> fingerprint {};
         for (auto& value : fingerprint)
@@ -183,7 +193,7 @@ void testBoundedVariation()
             noises.trigger(static_cast<acustra::GuitarNoise>(gesture), 0.72f, 1, 48000.0);
             double weighted = 0.0;
             int index = 0;
-            while (noises.active() && index < 10000)
+            while (noises.active() && index < 24000)
             {
                 const auto frame = noises.render();
                 weighted += frame.force * (1 + index);
@@ -211,7 +221,8 @@ void testOverlappingNoiseBursts()
         performer->prepare(rate, 257);
         std::vector<Event> bursts;
         for (int hit = 0; hit < 50; ++hit)
-            bursts.push_back({ hit * (rate / 500), 31 + hit % 5, 127 });
+            bursts.push_back({ hit * (rate / 500), acustra::Performer::noiseKeys[
+                static_cast<std::size_t>(hit) % acustra::Performer::noiseKeys.size()], 127 });
         const auto audio = play(*performer, bursts, rate / 2, 257);
         const float ceiling = rate < 44100 ? 0.630958f : 0.841398f;
         const bool bounded = std::all_of(audio.begin(), audio.end(),
@@ -226,6 +237,85 @@ void testOverlappingNoiseBursts()
                "contact burst dropped MIDI or activated a string");
     }
 }
+
+void testFretMotionAndKeyMap()
+{
+    using acustra::GuitarNoise;
+    using acustra::Performer;
+    auto keys = Performer::noiseKeys;
+    std::sort(keys.begin(), keys.end());
+    expect(std::adjacent_find(keys.begin(), keys.end()) == keys.end(),
+           "two gestures share a MIDI key");
+    for (int key : keys)
+        expect(!Performer::isKeyswitch(key) && key != 28 && key < 38,
+               "a noise key replaced an existing performance or playable key");
+
+    const auto motion = [](float velocity)
+    {
+        acustra::GuitarNoises noises;
+        noises.trigger(GuitarNoise::FretMove, velocity, 1, 48000.0);
+        int samples = 0;
+        double energy = 0.0;
+        while (noises.active() && samples < 48000)
+        {
+            const auto frame = noises.render();
+            energy += frame.air * frame.air;
+            ++samples;
+        }
+        return std::pair<int, double> { samples, energy };
+    };
+    const auto slow = motion(32.0f / 127.0f);
+    const auto fast = motion(116.0f / 127.0f);
+    expect(slow.first > 2 * fast.first && slow.second < fast.second,
+           "slow travel should last longer and be quieter than fast travel");
+
+    acustra::GuitarNoises noise;
+    noise.trigger(GuitarNoise::Count, 1.0f, 1, 48000.0);
+    noise.trigger(GuitarNoise::FingerKnock, 1.0f, 1, 0.0);
+    expect(!noise.active(), "invalid gesture or rate started a contact");
+}
+
+// Fresh-engine comparisons reuse a contact's random draw. This sequence
+// also verifies that ordinary independent hits retain clear velocity steps.
+void testVelocityWithSuccessiveContactVariation()
+{
+    constexpr int rate = 96000; // Rack's default 2x at a 48 kHz host
+    auto performer = fresh(rate);
+    auto parameters = acustra::engineParameters(acustra::factoryPresets[1]);
+    parameters.room = 0.0f;
+    performer->setParameters(parameters);
+    performer->prepare(rate, 257);
+    constexpr std::array<double, 6> offsets {{ 0.20, 1.12, 2.04, 3.03, 3.60, 4.17 }};
+    constexpr std::array<int, 6> velocities {{ 38, 75, 116, 96, 96, 96 }};
+    std::vector<Event> events;
+    for (std::size_t gesture = 0; gesture < acustra::Performer::noiseKeys.size(); ++gesture)
+        for (std::size_t hit = 0; hit < offsets.size(); ++hit)
+        {
+            const int frame = static_cast<int>((5.0 * gesture + offsets[hit]) * rate + 0.5);
+            const int key = acustra::Performer::noiseKeys[gesture];
+            events.push_back({ frame, key, velocities[hit] });
+            events.push_back({ frame + 8640, key, 0 });
+        }
+    const auto audio = play(*performer, events, 30 * rate, 257);
+    for (std::size_t gesture = 0; gesture < acustra::Performer::noiseKeys.size(); ++gesture)
+    {
+        double previous = 0.0;
+        for (std::size_t hit = 0; hit < 3; ++hit)
+        {
+            const int start = static_cast<int>((5.0 * gesture + offsets[hit]) * rate + 0.5);
+            double energy = 0.0;
+            for (int frame = start; frame < start + rate / 3; ++frame)
+                energy += audio[frame][0] * audio[frame][0]
+                    + audio[frame][1] * audio[frame][1];
+            if (!(energy > previous * 1.58))
+                std::cerr << "Successive gesture " << gesture << " v" << velocities[hit]
+                          << " energy " << energy << " after " << previous << '\n';
+            expect(energy > previous * 1.58,
+                   "independent contact variation obscured an ordinary velocity step");
+            previous = energy;
+        }
+    }
+}
 }
 
 int main()
@@ -234,7 +324,9 @@ int main()
     testTimingAndOwnership();
     testBoundedVariation();
     testOverlappingNoiseBursts();
+    testFretMotionAndKeyMap();
+    testVelocityWithSuccessiveContactVariation();
     if (failures == 0)
-        std::cout << "Five synthetic contacts pass level, variety, timing and isolation checks.\n";
+        std::cout << "Six synthetic contacts pass level, variety, timing and isolation checks.\n";
     return failures == 0 ? 0 : 1;
 }

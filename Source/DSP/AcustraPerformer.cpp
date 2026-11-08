@@ -844,7 +844,7 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     if ((positiveNoteOn || noteOff) && isNoiseKey(key))
     {
         if (positiveNoteOn)
-            engine_.triggerGuitarNoise(static_cast<GuitarNoise>(key - firstNoiseKey),
+            engine_.triggerGuitarNoise(noiseForKey(key),
                                        static_cast<float>(data[2] & 0x7fu) / 127.0f,
                                        midiChannel);
         return false;

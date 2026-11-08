@@ -7963,6 +7963,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // zero-velocity release: before smoothing it is phase-equivalent
     // to a rest pluck, with the same modal magnitudes. Unlike the fretting
     // primitives below, it is not combined with a prescribed velocity state.
+    double pickReferenceSlopeEnergy = 0.0;
     for (int polarisation = 0; polarisation < 2; ++polarisation)
     {
         auto& loop = voice.loops[static_cast<std::size_t>(polarisation)];
@@ -8071,10 +8072,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             physicalCalibration_.apertureRegisterExponent);
         if (releaseShare > 0.0f)
         {
-            writePickRelease(loop, length, releasedAmplitude * polarisationGain,
-                             localPosition, aperture, modes, releaseShare,
-                             slipPole, voice.referencePickDelay[
-                                 static_cast<std::size_t>(polarisation)]);
+            pickReferenceSlopeEnergy += writePickRelease(
+                loop, length, releasedAmplitude * polarisationGain, localPosition,
+                aperture, modes, releaseShare, slipPole,
+                voice.referencePickDelay[static_cast<std::size_t>(polarisation)]);
             continue;
         }
         const auto triangleAt = [localPosition] (double phase)
@@ -8333,28 +8334,36 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         voice.configurationKey.generation = 0;
     }
 
-    double slopeEnergy = 0.0;
-    for (auto& loop : voice.loops)
+    // A fresh Pick release's steep velocity edge contributes more sampled
+    // squared slope as the grid gets finer. Use the same 48 kHz reference
+    // as the release's energy fit to initialize its tension cue. A merged
+    // re-pluck still observes the actual retained and incoming wave together.
+    double slopeEnergy = merge ? 0.0 : pickReferenceSlopeEnergy;
+    if (!(slopeEnergy > 0.0) || !exact::isfinite(slopeEnergy))
     {
-        const int length = std::clamp(
-            static_cast<int>(std::round(merge ? loop.currentDelay : loop.targetDelay)), 8,
-            activeDelaySamples() - 3);
-        const auto at = [&] (int sample)
+        slopeEnergy = 0.0;
+        for (auto& loop : voice.loops)
         {
-            return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-                loop.writeIndex - sample))];
-        };
-        float previous = at(length);
-        double squaredDifferences = 0.0;
-        for (int sample = 1; sample <= length; ++sample)
-        {
-            const float current = at(sample);
-            const double difference
-                = static_cast<double>(current - previous);
-            squaredDifferences += difference * difference;
-            previous = current;
+            const int length = std::clamp(
+                static_cast<int>(std::round(merge ? loop.currentDelay : loop.targetDelay)), 8,
+                activeDelaySamples() - 3);
+            const auto at = [&] (int sample)
+            {
+                return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+                    loop.writeIndex - sample))];
+            };
+            float previous = at(length);
+            double squaredDifferences = 0.0;
+            for (int sample = 1; sample <= length; ++sample)
+            {
+                const float current = at(sample);
+                const double difference
+                    = static_cast<double>(current - previous);
+                squaredDifferences += difference * difference;
+                previous = current;
+            }
+            slopeEnergy += static_cast<double>(length) * squaredDifferences;
         }
-        slopeEnergy += static_cast<double>(length) * squaredDifferences;
     }
     voice.attackSlopeEnergy = exact::isfinite(slopeEnergy)
         ? static_cast<float>(std::max(slopeEnergy, 0.0)) : 0.0f;
@@ -9622,10 +9631,10 @@ double AcustraEngine::gaussianReleaseStep(double argument,
     return 0.5 * std::erfc(argument);
 }
 
-void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
-                                     float position, float aperture, int modes,
-                                     float releaseShare, double slipPole,
-                                     float referenceDelay) noexcept
+double AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
+                                       float position, float aperture, int modes,
+                                       float releaseShare, double slipPole,
+                                       float referenceDelay) noexcept
 {
     // As the shape's own bound (initialisePluck): p of the written line.
     // The reference grid below moves it (setApex) and puts it back.
@@ -9847,6 +9856,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     const bool referenceGrid = sampleRate_ != 48000.0;
     bool referenceSolved = false;
     double referenceHump = 0.0;
+    double referenceSlopeEnergy = 0.0;
     if (referenceGrid)
     {
         // The kept arrays serve as the reference's scratch: the host pass
@@ -9873,6 +9883,11 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         if (reference.velocity > 0.0)
         {
             const double share = static_cast<double>(releaseShare);
+            // The solved hump adds exactly share * D to the displacement
+            // energy D. Convert summed differences on the reference grid
+            // to normalized spatial slope and restore the actual height.
+            const double energyScale = (1.0 + share) * grid
+                * static_cast<double>(rest) * static_cast<double>(rest);
             if (referencePole > 0.0)
             {
                 // The rest line per unit height, from zero at the bridge,
@@ -9896,10 +9911,14 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                     });
                 referenceHump = solvedHump(share * slipped.displacement,
                                            slipped.cross, reference.velocity);
+                referenceSlopeEnergy = energyScale * slipped.displacement;
             }
             else
+            {
                 referenceHump = solvedHump(share * reference.displacement,
                                            reference.cross, reference.velocity);
+                referenceSlopeEnergy = energyScale * reference.displacement;
+            }
         }
     }
 
@@ -9950,7 +9969,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
         for (int sample = 1; sample <= length; ++sample)
             loop.delay[static_cast<std::size_t>(wrapDelayIndex(
                 loop.writeIndex - sample))] = frame(sample) - endpoint;
-        return;
+        return referenceSlopeEnergy;
     }
     const auto restFrame = [&] (int sample)
     {
@@ -9986,6 +10005,7 @@ void AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
     for (int sample = 1; sample <= length; ++sample)
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
             loop.writeIndex - sample))] += humpFrame(sample) - humpEndpoint;
+    return referenceSlopeEnergy;
 }
 
 void AcustraEngine::freezeMemberPitchBend(Voice& voice) noexcept

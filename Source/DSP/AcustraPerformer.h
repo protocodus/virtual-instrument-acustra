@@ -114,12 +114,21 @@ public:
     // E0 (28) is left out: the Rack Extension's hammer-on cue is that key.
     static constexpr int keyswitchStrumDown = 29;  // F0
     static constexpr int keyswitchStrumUp = 30;    // F#0
-    // G0 through B0 play one-shot noises in GuitarNoise order.
-    static constexpr int firstNoiseKey = 31;
-    static constexpr int lastNoiseKey = 35;
+    // Six basic gestures: G0 fret movement, G#0 finger slap, A0 palm knock,
+    // A#0 fist knock, B0 finger knock, C-1 palm slap. Keep performance keys.
+    // Array order matches GuitarNoise.
+    static constexpr std::array<int, static_cast<std::size_t>(GuitarNoise::Count)>
+        noiseKeys {{ 31, 33, 35, 34, 32, 12 }};
+    [[nodiscard]] static constexpr GuitarNoise noiseForKey(int note) noexcept
+    {
+        for (std::size_t index = 0; index < noiseKeys.size(); ++index)
+            if (noiseKeys[index] == note)
+                return static_cast<GuitarNoise>(index);
+        return GuitarNoise::Count;
+    }
     [[nodiscard]] static constexpr bool isNoiseKey(int note) noexcept
     {
-        return note >= firstNoiseKey && note <= lastNoiseKey;
+        return noiseForKey(note) != GuitarNoise::Count;
     }
     // A keyswitch that sounds: a front end that sleeps while silent must
     // wake for it, as for a key.
