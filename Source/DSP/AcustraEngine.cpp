@@ -1048,13 +1048,13 @@ ModalPole radiationPole(ConstSpan<detail::MeasuredBodyMode> bank, int index,
 // physical sensor/body outputs; it does not retension or renormalize strings.
 // Protocol and measured results: Docs/validation/output-levels-2026-11-08.md.
 constexpr float outputCalibrationGain = 1.30316678f; // +2.3dB
-// At low engine rates the existing model can have substantial near-Nyquist
-// energy. The worst32x reconstruction over the measured8..32kHz controls,
-// using10/64/128/256-lobe Kaiser kernels, was+1.729dBFS. Add0.75dB reserve
-// and round up to0.1dB:2.5dB extra limiter headroom, or a-4dBFS sample ceiling.
+// At low engine rates the model can have substantial near-Nyquist energy.
+// Retain 2.5 dB of measured output-only reserve, a -4 dBFS sample ceiling.
+// The corrected passive axial model is rechecked through ten-second tails
+// and independent long-kernel reconstruction; see the output-level report.
 // Reciprocal scaling plus the same compressor-threshold shift preserves
-// its VU transfer and quiet gain. At44.1kHz and above this path is bypassed
-// exactly. No physical sensor scale or latency changes. See the output report.
+// its VU transfer and quiet gain. At 44.1 kHz and above this is bypassed
+// exactly. No physical sensor scale, loss parameter or latency changes.
 constexpr double lowRateOutputReserveDb = 2.5;
 constexpr float lowRateOutputScale = 0.749894209f; // 10^(-2.5/20)
 constexpr float lowRateOutputInverseScale = 1.333521432f; // 10^(+2.5/20)
@@ -12948,7 +12948,28 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
         if (!(exact::abs(pole) < 1.0))
             pole = 0.0;
     }
-    const double gain = std::sqrt(r1 * (1.0 - 2.0 * pole * std::cos(omega) + pole * pole));
+    double gain = std::sqrt(r1 * (1.0 - 2.0 * pole * std::cos(omega) + pole * pole));
+    // A stable one-pole section can still amplify the closed axial ring:
+    // its whole-band peak is b/(1-|a|), at DC for this positive pole. The
+    // two-mode fit is passive only when r1*(1+2*cos(omega)) >= 1; merely
+    // putting the second mode below Nyquist is insufficient. At 11025 Hz,
+    // Open G string 3 had stored b/(1-a)=1.004616 and a closed-loop pole
+    // 1.0010143, causing a growing force after release. Test the stored
+    // float coefficients as well, so rounding cannot make a valid fit active.
+    // Reuse the pole-free fallback already used when the second mode cannot
+    // be represented: preserve the first mode's loss, flat above it. Its
+    // second-mode power attenuation is r1 instead of r1*r1 (half the target
+    // logarithmic loss per traversal). No new loss parameter is introduced.
+    // A zero loss angle
+    // remains exactly lossless; all authored positive losses are dissipative.
+    const double storedPole = static_cast<float>(pole);
+    const double storedGain = static_cast<float>(gain);
+    if (!(gain < 1.0 - exact::abs(pole))
+        || !(exact::abs(storedPole) + exact::abs(storedGain) < 1.0))
+    {
+        pole = 0.0;
+        gain = std::sqrt(r1);
+    }
     axial.lossPole = static_cast<float>(pole);
     axial.lossGain = static_cast<float>(gain);
     // The ring's whole delay, the Thiran allpass and the loss together give

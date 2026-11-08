@@ -5,6 +5,27 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-08 — passive axial feedback loss, 1.9.33 (local review candidate)
+
+A ten-second extension of the output audit exposed an existing physical
+feedback defect: a stable one-pole damping filter could have whole-band gain
+above one inside the longitudinal waveguide. Frozen shipping reproduces it.
+The output limiter hid the increasing force, then finite-output sanitation
+hid the resulting NaNs. Checking only short output captures was insufficient.
+
+The existing pole-free loss is now selected when either the fitted double
+coefficients or their stored float values would amplify the loop. This
+preserves first-mode attenuation without new damping constants; it gives
+half the target second-mode logarithmic loss per traversal rather than the
+two-mode fit. Delay/Thiran design follows the accepted filter. Intentional
+zero loss stays lossless. This is a passivity correction, not a listening
+fit or a change to the string/bridge/body force scales.
+
+The [validation record](validation/axial-loss-passivity-2026-11-08.md) separates
+the new whole-band proof, long internal-state checks, bounded phase coverage,
+and retained higher-mode approximation. A separate frozen-shipping A/B
+isolates this mechanism; no listening preference, push or release is claimed.
+
 ## 2026-11-08 — output calibration and digital headroom, 1.9.32 (local review candidate)
 
 The user requested usual playing levels and no output overload. Measurements

@@ -4,6 +4,7 @@
 // keep that slow tension, and their ring sounds at the longitudinal modes of
 // the string table with the loss its loss factor gives.
 #include "DSP/AcustraPerformer.h"
+#include "DSP/AcustraPresets.h"
 
 #include <algorithm>
 #include <array>
@@ -12,6 +13,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -25,6 +27,16 @@ struct AcustraEngineTestAccess
     { engine.designStringAxialForce(voice(engine, string), string); }
     static float render(AcustraEngine& engine, int string)
     { return engine.renderStringAxialForce(voice(engine, string), string); }
+    static void configure(AcustraEngine& engine, int string, int fret, int channel = 1)
+    {
+        auto& v = voice(engine, string);
+        v.midiChannel = channel;
+        v.midiNote = v.openMidi + fret;
+        engine.configureVoice(v, string, v.midiNote, false);
+        design(engine, string);
+    }
+    static auto bend(const AcustraEngine& engine, int string)
+    { return engine.voiceBend(engine.voices_[static_cast<std::size_t>(string)]); }
     static float excursion(AcustraEngine& engine, int string)
     { return engine.excursionMetres(voice(engine, string)); }
     // Supply a known force in Newtons without transverse motion, isolating
@@ -432,8 +444,190 @@ void sourceDoesNotFoldAtSpatialStride()
 }
 } // namespace
 
-int main()
+
+// A stable loss-filter pole alone does not make a feedback waveguide passive.
+// For b/(1-p z^-1), the EXACT whole-unit-circle maximum is b/(1-|p|).
+// Evaluate the stored float coefficients in double: float addition can round
+// a small excess to unity and hide the growing DC mode that failed at11025Hz.
+void longitudinalLossIsPassiveAcrossControls()
 {
+    constexpr double rates[] {8000,11025,12000,16000,22050,24000,32000,44100,
+        48000,88200,96000,176400,192000,384000,768000};
+    int cases = 0, active = 0, bad = 0, magnitudeBad = 0, phaseBad = 0;
+    double maximum = 0.0, largestPhase = 0.0, largestMagnitudeError = 0.0,
+        largestMagnitudeTolerance = 0.0;
+    const auto check = [&] (Engine& engine, double fs, int string) {
+        const auto& v = Access::voice(engine, string);
+        const auto& a = v.stringAxialForce;
+        const double b = a.lossGain, p = a.lossPole, t = a.thiran;
+        const double supremum = b / (1.0 - std::abs(p));
+        ++cases;
+        maximum = std::max(maximum, supremum);
+        if (!(std::isfinite(supremum) && b >= 0 && std::abs(p) < 1
+              && std::abs(t) < 1 && supremum < 1))
+        {
+            ++bad;
+            if (bad <= 3) std::cerr << "nonpassive axial loss at " << fs << " Hz string "
+                << string << " length " << v.speakingLengthMetres << ": " << supremum << '\n';
+        }
+        const double omega = 2.0*pi/a.roundTrip;
+        if (omega >= pi) return; // No resolvable first longitudinal mode.
+        const auto q = std::polar(1.0, -omega);
+        const auto loss = b/(1.0-p*q);
+        const double target = std::exp(-pi*double(v.axialLossFactor));
+        // The design uses double coefficients/frequency, then stores a, b
+        // and roundTrip as floats. With round-to-nearest unit roundoff u,
+        // |delta a| <= u*|a_f|/(1-u), |delta omega| <= u*omega_f/(1-u).
+        // |delta denominator| <= |delta a| + |a|*|delta omega|, while b's
+        // relative error is <=u. Thus relative |H| error is bounded by
+        // u+(1+u)*|delta denominator|/|1-a_f*exp(-j*omega_f)|. This matters
+        // at actual768k with long, lowered strings: cancellation near a=1
+        // permits ~2.2e-6 relative error without changing the physical loss.
+        const double u = 0.5*std::numeric_limits<float>::epsilon();
+        const double poleError = u*std::abs(p)/(1.0-u);
+        const double phaseError = u*omega/(1.0-u);
+        const double denominatorError = poleError + (std::abs(p)+poleError)*phaseError;
+        const double representationBound = u + (1.0+u)*denominatorError/std::abs(1.0-p*q);
+        const double magnitudeTolerance = std::max(2.0e-6,representationBound);
+        const double magnitudeError = std::abs(std::abs(loss)/target-1.0);
+        largestMagnitudeError = std::max(largestMagnitudeError,magnitudeError);
+        largestMagnitudeTolerance = std::max(largestMagnitudeTolerance,magnitudeTolerance);
+        if (!(magnitudeError < magnitudeTolerance)) {
+            ++magnitudeBad;
+            if(magnitudeBad<=3)std::cerr<<"magnitude at "<<fs<<" actual "<<engine.sampleRate()
+              <<" string "<<string<<" length "<<v.speakingLengthMetres<<" eta "<<v.axialLossFactor
+              <<" pole "<<p<<" gain "<<b<<" omega "<<omega
+              <<" relative error "<<(std::abs(loss)/target-1.0)<<'\n';
+        }
+        // Fraction refinement is explicitly constrained to[.25,1.75].
+        // At either stop (or the finite ring-capacity limit), this existing
+        // approximation cannot claim exact fundamental phase. Its loss must
+        // still be passive; the strict phase gate covers interior designs.
+        if (omega < .48*pi && a.thiran > -3.f/11.f+1e-6f
+            && a.thiran < .6f-1e-6f && a.roundTrip < a.ringSize-3)
+        {
+            // Integer delay + allpass + accepted loss must still close at
+            // the designed fundamental. An old loss phase retained after a
+            // scalar fallback would shift this resonance.
+            const auto loop = std::pow(q, a.ringDelay)*(t+q)/(1.0+t*q)*loss;
+            const double phase = std::abs(std::arg(loop));
+            largestPhase = std::max(largestPhase, phase);
+            if (!(phase < 0.035)) {++phaseBad;
+                if(phaseBad<=3)std::cerr<<"phase at "<<fs<<" string "<<string<<" trip "<<a.roundTrip
+                 <<" loss "<<a.lossPole<<" delay "<<a.ringDelay<<" Thiran "<<a.thiran<<": "<<phase<<'\n';} // <0.56% of one round trip.
+            ++active;
+        }
+    };
+    for (double fs : rates)
+    {
+        auto engine = std::make_unique<Engine>();
+        acustra::EngineParameters p;
+        p.picking = acustra::PickingTechnique::Pick;
+        engine->setParameters(p);
+        engine->prepare(fs,64);
+        expect(engine->sampleRate()==std::min(fs,Engine::maximumSupportedSampleRate),
+               "passivity sweep records the actual prepared rate and native clamp");
+        // Every playable fret and tuning, all six physical string tables.
+        for (int tuning=0; tuning<4; ++tuning)
+        {
+            p.tuning=static_cast<acustra::Tuning>(tuning);
+            engine->setParameters(p);
+            for(int fret=0; fret<=Engine::fretCount; ++fret)
+                for(int string=0; string<Engine::stringCount; ++string)
+                { Access::configure(*engine,string,fret); check(*engine,fs,string); }
+        }
+        // Construction and loss-age endpoints at low and nominal rates.
+        if(fs==11025 || fs==48000)
+            for(int shape=0;shape<4;++shape) for(int wood=0;wood<3;++wood)
+                for(float age:{0.f,.15f,1.f})
+                {
+                    p.shape=static_cast<acustra::BodyShape>(shape);
+                    p.bodyMaterial=static_cast<acustra::BodyMaterial>(wood);
+                    p.stringAge=age;engine->setParameters(p);
+                    for(int fret:{0,12,Engine::fretCount}) for(int string=0;string<6;++string)
+                    { Access::configure(*engine,string,fret); check(*engine,fs,string); }
+                }
+        // A manager wheel moves the speaking point; an MPE member changes
+        // tension at that point. Include the legal large-wheel saturation.
+        p=acustra::EngineParameters{};engine->setParameters(p);
+        for(bool member:{false,true})
+        {
+            engine->setLowerZoneMemberCount(member?1:0);
+            const int channel=member?2:1;
+            for(float cents:{-100.f,0.f,100.f}) for(float bend:{-96.f,-2.f,0.f,2.f,96.f})
+            {
+                engine->setMasterTuneCents(cents);engine->setPitchBend(bend,channel);
+                for(int fret:{0,Engine::fretCount}) for(int string=0;string<6;++string)
+                {
+                    auto& voice=Access::voice(*engine,string);
+                    voice.played=true;
+                    voice.keyDown=true;
+                    voice.mpeMember=member;
+                    voice.memberPitchBendFrozen=false;
+                    Access::configure(*engine,string,fret,channel);
+                    const auto actual=Access::bend(*engine,string);
+                    expect(actual.performed==bend && actual.member==(member?bend:0.f),
+                           "passivity fixture reaches the intended live manager/member bend");
+                    check(*engine,fs,string);
+                }
+            }
+            engine->setPitchBend(0,channel);
+        }
+    }
+    std::cout << "axial passive-loss sweep " << cases << " designs, sup |H| " << maximum
+              << ", " << active << " phase checks, maximum error " << largestPhase << " rad"
+              << ", magnitude error " << largestMagnitudeError << " within float bound "
+              << largestMagnitudeTolerance << ", prepared maximum " << Engine::maximumSupportedSampleRate << " Hz\n";
+    expect(bad==0,"stored axial loss is strictly passive over the whole frequency band");
+    expect(magnitudeBad==0,"accepted loss retains the physical first-mode attenuation");
+    expect(phaseBad==0,"accepted loss and Thiran retain longitudinal round-trip phase");
+}
+
+void lowRateAxialRingDecaysWithoutInput()
+{
+    auto engine=std::make_unique<Engine>();
+    engine->setParameters(acustra::engineParameters(acustra::factoryPresets[6]));
+    engine->prepare(11025,64);
+    Access::configure(*engine,3,0);
+    auto& v=Access::voice(*engine,3);v.played=false;
+    auto& a=v.stringAxialForce;
+    // G-string longitudinal mode at ~2551Hz: the unconstrained two-mode fit
+    // has DC gain1.004616, although its own pole lies inside the unit circle.
+    expect(a.lossPole==0.f,"known nonpassive 11025Hz fit selects scalar attenuation");
+    expect(std::abs(double(a.lossGain)-std::exp(-pi*v.axialLossFactor))<6e-8,
+           "scalar fallback retains the first-mode loss rather than inventing damping");
+    a.ringing=true;a.increment=1.f;a.countdown=1;
+    bool finite=true;double early=0,late=0;
+    for(int n=0;n<110250;++n)
+    {
+        Access::render(*engine,3);
+        finite=finite&&std::isfinite(a.force)&&std::isfinite(a.lossY1)&&std::isfinite(a.thiranY1);
+        if(n<11025)early+=double(a.force)*a.force;
+        if(n>=99225)late+=double(a.force)*a.force;
+    }
+    expect(finite,"zero-input longitudinal ring must not overflow after the note has ended");
+    expect(early>.1&&late<early*1e-12&&!a.ringing,
+           "low-rate axial impulse decays and clears within ten seconds");
+    // Zero loss is an intentional physical edge, not a reason to invent a
+    // damping margin. Its stored filter must be exactly lossless, not active.
+    v.axialLossFactor=0.f;
+    a.designed=false;
+    Access::design(*engine,3);
+    expect(a.lossPole==0.f && a.lossGain==1.f,
+           "intentional zero axial loss remains exactly lossless");
+    // Frozen previously-passive reference from the same physical fixture.
+    Access::configure(*engine,0,0);
+    const auto& unchanged=Access::voice(*engine,0).stringAxialForce;
+    expect(unchanged.lossGain==0.8059226274490356f
+           &&unchanged.lossPole==0.14545254409313202f,
+           "already-passive low-rate coefficients remain bit-identical");
+}
+
+int main(int argc, char** argv)
+{
+    longitudinalLossIsPassiveAcrossControls();
+    lowRateAxialRingDecaysWithoutInput();
+    if(argc>1 && std::string(argv[1])=="--passivity-only") return failures==0?0:1;
     slowLimitIsKirchhoffCarrier();
     wavesKeepTheUniformTension();
     ringIsTheLongitudinalString();

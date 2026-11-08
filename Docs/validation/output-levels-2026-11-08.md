@@ -1,6 +1,7 @@
 # Output calibration — 2026-11-08
 
-Local 1.9.32 review candidate. No publication or listening preference is claimed.
+Local 1.9.33 review candidate; includes the 1.9.32 output calibration and the
+subsequent physical axial-loop stability correction. No publication or listening preference is claimed.
 
 ## Change and physical boundary
 
@@ -82,16 +83,35 @@ The initial stage alone left positive reconstructed peaks at 8/16/22.05 kHz.
 Below 44.1 kHz **engine** rate, reciprocal pre/post scaling now gives the
 limiter 2.5 dB additional reserve (a −4 dBFS nominal sampled ceiling). Raising
 the compressor threshold by the same 2.5 dB preserves its over-threshold
-transfer and quiet gain in exact arithmetic. The reserve derives from the
-measured +1.729 dBFS long-kernel peak plus a design allowance, rounded upward
-to 0.1 dB; the final measured margin above is the result, not the allowance.
+transfer and quiet gain in exact arithmetic. The conservative reserve is validated on the final healthy engine. Earlier
++1.729 dBFS and +7.991 VU observations came from the superseded state and do
+not alone justify this final margin. The fresh convergence corpus above
+provides the measured 0.382 dB margin; no minimal-reserve claim is made.
 There is no additional delay. At 44.1 kHz and above, 40 full-control files
 (29,341,440 float samples) are bit-identical before and after this reserve.
 
-Dense low-rate maximum-control louder-channel VU reaches +7.991 VU while
-retaining peak headroom. This average-level reference is reported explicitly;
-it is not a digital clipping criterion. Physical piezo circuit overload,
-where present, remains an intentional upstream voltage-domain phenomenon.
+The original 11025 Hz Open G max-control case reached +7.991 VU and then
+exposed a runaway axial observer during its 10-second extension. The passive
+loss repair removes that physical defect; it is not hidden by stronger output
+limiting. Fresh low-rate maximum-control louder-channel VU is −0.0473.
+Across the complete healthy corpus the dense-stress maximum is +1.0372 VU
+on the louder Main channel, +0.9763 stereo-mean and +0.2143 on direct Piezo.
+These descriptive average levels are not digital clipping criteria. Physical
+piezo circuit overload remains an intentional upstream voltage-domain effect.
+
+All 752 low-rate cases were freshly rendered, including 320 adverse cases
+extended to 10 seconds with unchanged releases and internal state monitoring.
+The 1,096 higher-rate captures (324,345,600 float samples) were also freshly
+rendered and are byte-identical to their pre-passivity-fix counterparts.
+The worst long-kernel peak was independently recomputed from the current
+80,000-frame 8 kHz Mahogany Thumb full-mix capture, at frame 1233.5/channel 1.
+Its original 1.6-second prefix is byte-identical because this particular
+geometry already used passive scalar loss; this explains why the exact
+−0.381901 dB maximum is unchanged despite the repaired 11025 Hz runaway.
+The current raw-file SHA and reconstruction are in
+`fresh-convergence-provenance.json`, not inferred from superseded captures.
+See [axial stability](axial-loss-passivity-2026-11-08.md) for the independent
+unstable-pole proof,10-second decay and unresolved delay tuning boundaries.
 
 ## Verification and limits
 
@@ -119,8 +139,12 @@ The shared master is unchanged; this tiny numerical effect is not the
 measured musical overload that motivated the fix.
 
 Final GCC Release validation passes all 119 registered unit/audio tests
-(116 unit, three audio) in 626.97 seconds. Source and every test executable
-were hashed before/after this run and remained unchanged. The older first
+(116 unit, three audio) in618.53 seconds. Source and every test executable
+were hashed before/after this run and remained unchanged. Refined active-bend,
+zero-loss and actual 768 kHz first-mode/phase checks passed afterward, including
+a derived float-rounding bound for magnitude (passivity itself has no
+numerical tolerance). A later production comment update rebuilds to an
+identical engine object, so the full-run DSP behavior is still final. The older first
 118-test run is retained as diagnostic history; its three failures were
 obsolete delay/linear-routing test oracles, corrected without loosening their
 numeric tolerances. A subsequent three-tool check covers the wording-only
@@ -133,7 +157,17 @@ five declared host rates, and the separate OutputRate tests. The legacy
 all-patch two-second hard-strum window remains unchanged; it is distinct
 from the independently measured normal-playing calibration above.
 
-Final performance gates await a coordinated exclusive CPU window. Native
+Final exclusive performance gates pass: six-string engine 0.121246× realtime
+against 0.25×; worst factory median 0.174333507× against 0.28×. The bounded
+shipping-versus-final 64-frame callback comparison measures +17.5% to +95.6%
+median cost depending on rate/scenario. At 96 kHz attack design exceeds the
+667 µs block deadline: final Finger 763 µs/Pick 1006 µs versus shipping 581/812 µs.
+Return/held medians stay below deadline, but OS tails and a 2.01× worst preset
+block mean these average gates do not establish worst-case realtime.
+The exact flags, baseline objects, alternating samples and scenario table
+are retained in `review/acustra/output-levels/cpu-final/`.
+
+Native
 JUCE plug-in formats and their processor tests are not built here: JUCE and
 the required ALSA/Xinerama/Xrandr/Xcursor development packages are absent.
 The genuine Jukebox SDK is also absent; HostMock tests are not SDK validation.

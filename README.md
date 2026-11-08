@@ -39,6 +39,15 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.33 — 2026-11-08 — passive longitudinal damping
+
+- A low-rate axial damping fit could feed energy into its own feedback loop
+  after note release. Invalid fits now use the existing passive scalar loss,
+  preserving the first longitudinal mode's attenuation. The same check also
+  covers high-fret/rate combinations; valid fits retain their coefficients.
+- [Axial loss stability and validation](Docs/validation/axial-loss-passivity-2026-11-08.md).
+  Local review candidate; no release or listening verdict is claimed.
+
 ### 1.9.32 — 2026-11-08 — calibrated output with peak headroom
 
 - Factory playing is calibrated around −9 VU; independent Main and Piezo
