@@ -5,6 +5,26 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-08 — remove the axial source's reduced-rate folds, 1.9.30 (local review candidate)
+
+The source previously used its spatial quadrature stride as a temporal
+sample interval, then spread the sampled difference over that interval.
+The output band could remove reconstruction images but not already folded
+source content. The source now evaluates at each host sample with the same
+spatial cells, geometry, longitudinal ring and output band. No spectral
+parameter was fitted or changed. The independent pure-sinusoid source test
+fails before the correction and passes after it at 44.1, 48, 96 and 192 kHz.
+
+This is a correction of that particular sample-rate reduction, not a claim
+of complete nonlinear antialiasing: host-Nyquist quadratic alias and spatial
+quadrature error remain. The [validation report](validation/axial-source-rate-2026-11-08.md)
+separates those limits and the finite high-rate-reference measurement. The
+owner requested a local candidate and A/B review; no listening verdict or
+publication is claimed. CPU review is required because the source's spatial
+scan now runs more often. A cached filtered line was not introduced: plucks
+and contacts modify historical samples, making a write-only filtered copy
+stale. No fully coupled axial physics was added.
+
 ## 2026-11-08 — one shared Newton unit for the axial source, 1.9.29 (local review candidate)
 
 The physical-model audit found that the longitudinal force was divided by

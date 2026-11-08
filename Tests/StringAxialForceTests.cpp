@@ -373,6 +373,63 @@ void newtonsHaveOneSharedUnit()
                        "reset retained a stale radiation force observer");
             }
 }
+// A pure sinusoidal wave has only DC and twice its frequency in the
+// squared-slope source. The old spatial-stride sample clock folded that
+// second harmonic into a spurious low-frequency force.
+void sourceDoesNotFoldAtSpatialStride()
+{
+    for (const double hostRate : { 44100.0, 48000.0, 96000.0, 192000.0 })
+    {
+        auto engine = std::make_unique<Engine>();
+        acustra::PerformanceRealism realism;
+        realism.axialWaves = false;
+        engine->setPerformanceRealism(realism);
+        engine->prepare(hostRate, 64);
+        engine->setStringPerChannelMode(true);
+        engine->noteOn(64, 0.9f, 6);
+        auto& voice = Access::voice(*engine, 5);
+        Access::design(*engine, 5);
+        auto& axial = voice.stringAxialForce;
+        const int stride = axial.stride;
+        const double sourceRate = hostRate / stride;
+        constexpr double waveHz = 6000.0;
+        constexpr double squareHz = 2.0 * waveHz;
+        const double aliasHz = std::abs(squareHz - sourceRate * std::round(squareHz / sourceRate));
+        const double period = hostRate / 400.0;
+        for (auto& loop : voice.loops)
+        {
+            loop.currentDelay = static_cast<float>(period);
+            loop.writeIndex = 0;
+            loop.delay.fill(0.0f);
+        }
+        const int count = static_cast<int>(hostRate / 10.0);
+        std::complex<double> wanted {}, folded {};
+        for (int sample = 0; sample < 2 * count; ++sample)
+        {
+            auto& loop = voice.loops[0];
+            for (int age = 0; age < static_cast<int>(std::ceil(period)) + 4; ++age)
+            {
+                const unsigned at = (static_cast<unsigned>(loop.writeIndex - 1)
+                    - static_cast<unsigned>(age)) & (static_cast<unsigned>(loop.delay.size()) - 1);
+                loop.delay[at] = static_cast<float>(0.2 * std::cos(
+                    2.0 * pi * (waveHz * sample / hostRate + 15.0 * age / period)));
+            }
+            Access::render(*engine, 5);
+            if (sample < count) continue;
+            const double source = axial.increment;
+            wanted += source * std::polar(1.0, -2.0 * pi * squareHz * sample / hostRate);
+            folded += source * std::polar(1.0, -2.0 * pi * aliasHz * sample / hostRate);
+        }
+        const double ratio = std::abs(folded) / std::max(std::abs(wanted), 1.0e-30);
+        std::cout << "source " << hostRate << " Hz spatial stride " << stride
+                  << ": folded " << aliasHz << " Hz / 12 kHz "
+                  << 20.0 * std::log10(std::max(ratio, 1.0e-30)) << " dB\n";
+        expect(stride > 1 && std::abs(wanted) > 1.0e-8,
+               "the nonzero quadratic source crosses the old decimation boundary");
+        expect(ratio < std::pow(10.0, -75.0 / 20.0),
+               "the nonlinear source has no reduced-rate fold at " + std::to_string(hostRate));
+    }
+}
 } // namespace
 
 int main()
@@ -382,6 +439,7 @@ int main()
     ringIsTheLongitudinalString();
     ringsOutAndSwitchesOff();
     newtonsHaveOneSharedUnit();
+    sourceDoesNotFoldAtSpatialStride();
     if (failures == 0)
         std::cout << "String axial force tests passed\n";
     return failures == 0 ? 0 : 1;

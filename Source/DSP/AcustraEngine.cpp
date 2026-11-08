@@ -12816,11 +12816,12 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 // e D + x (1 - e) and D (1 + e) - x (1 + e). Each wave's slope is averaged
 // over cells exactly - the difference of the line across a cell over the
 // cell's span of the line - so the slope sums never alias between cells.
-// A cell spans `stride` samples of the outgoing wave's line, and F is
-// evaluated every `stride` samples, four per period of a cut-off at the
-// first longitudinal mode or 5 kHz, whichever is lower; its change reaches
-// the ring spread across the next stride, a linear interpolation of F a
-// stride late, and the force leaves through a band of twice the cut-off
+// A cell spans `stride` samples of the outgoing wave's line, four cells per
+// period of a cut-off at the first longitudinal mode or 5 kHz, whichever is
+// lower. This is spatial quadrature only: F is evaluated every host sample
+// and its one-sample change drives the host-rate ring. Subsampling F at the
+// cell stride folded its quadratic source before the output filter could
+// act. The force leaves through a band of twice the cut-off
 // (designStringAxialForce). The 5 kHz cap follows
 // Ducceschi, Russo and Webb (DAFx-26), who leave a guitar string's
 // nonlinearity out above it with no audible loss by informal A/B; it is a
@@ -12879,15 +12880,11 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
     const double rate = sampleRate_;
     const double cutoff = std::min(fundamental, 5000.0);
     axial.stride = std::max(1, static_cast<int>(std::floor(rate / (4.0 * cutoff))));
-    // Read every stride, F's changes carry images about each multiple of
-    // fs / stride, four times the cut-off and up, where the ring's own modes
-    // would ring them on: E3's top band at 0.2 s stood 30 dB over the
-    // string's own. The force leaves through twice the cut-off - the sums of
-    // two partials under it, at most the read's own Nyquist - in an
-    // eighth-order Butterworth, so the images of its slow swing and its 2 f0,
-    // the strongest, fall an octave above it and 48 dB down. A stride of one
-    // has none. What F holds above the read's Nyquist folds under it before
-    // any filter can see it (README, Known gaps).
+    // Preserve the established force bandwidth and smoothing of a ring
+    // redesign. This output filter is not the source's anti-alias filter:
+    // the former fs/stride fold is prevented by evaluating F at every host
+    // sample. Squaring above the host Nyquist can still alias; neither this
+    // band nor the spatial cell average claims to remove that residual.
     axial.banded = axial.stride > 1;
     if (axial.banded)
     {
@@ -12981,8 +12978,8 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
     axial.thiran = static_cast<float>((1.0 - fraction) / (1.0 + fraction));
 }
 
-// Every stride samples of a played string: the stretch summed over the
-// line, and its change spread over the samples to the next evaluation. Kept
+// Every host sample of a played string: the stretch summed over the line,
+// on the unchanged spatial cell grid. Kept
 // out of line so the per-sample rest of renderStringAxialForce inlines.
 void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) noexcept
 {
@@ -13088,10 +13085,9 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
         axial.lastStretch = exact::isfinite(stretch) ? stretch : 0.0;
         axial.rereference = false;
     }
-    axial.increment = static_cast<float>((stretch - axial.lastStretch)
-                                         / static_cast<double>(axial.stride));
+    axial.increment = static_cast<float>(stretch - axial.lastStretch);
     axial.lastStretch = stretch;
-    axial.countdown = axial.stride;
+    axial.countdown = 1;
 }
 
 ACUSTRA_FORCED_INLINE_BEGIN

@@ -39,6 +39,14 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.30 — 2026-11-08 — the axial source follows every sample
+
+- The nonlinear stretch source is evaluated at the host rate while its
+  spatial cell spacing stays unchanged. This removes the false low-frequency
+  force made by evaluating the squared source only at that cell stride.
+  It does not eliminate quadratic aliasing at the host Nyquist. Prepared
+  locally for A/B and CPU review, not published or approved by listening.
+
 ### 1.9.29 — 2026-11-08 — the axial saddle force uses one physical unit
 
 - Pick's inferred excursion still follows its accepted 0.69 calibration, but
@@ -915,14 +923,14 @@ separates verified errors from accepted approximations.
   allpass sections, so the highest partials' slope is approximate (Bank,
   thesis statement 4.2). A tap test of a steel-string top at the saddle,
   normal and along the strings, would settle the level and the missing path.
-- The stretch is read without an anti-alias filter, so what it holds above
-  the read's Nyquist folds under it, and where the first longitudinal mode
-  sets the read, the stride rounds to between four and eight reads per
-  period of it, differently at each rate. There the force differs between
-  44.1, 48 and 96 kHz by up to 9 dB at 2.5-10 kHz: on the top E's first
-  frets, where it sits 20-40 dB under the note, and on the wound strings,
-  where it sits 60 dB and more under it. From the 5th fret up, and below
-  2.5 kHz everywhere, it agrees within 2.5 dB.
+- The stretch source now runs at the host rate (1.9.30), eliminating the
+  former spatial-stride sample clock's folds. The quadratic source can still
+  alias at the host Nyquist, and the spatial quadrature remains approximate.
+  In a finite 192 kHz hard-note source reference, raw decimation to 48 kHz
+  differs from bandlimited downsampling by 24-64 dB below the axial force
+  after the same longitudinal ring and output band; this is a source-reference
+  estimate, not a bound on every native-rate render or the complete note.
+  See [source-rate validation](Docs/validation/axial-source-rate-2026-11-08.md).
 - Shape and Body Material morph one measured, nylon-strung flamenca (g21);
   the steel-string mobility level comes from one other guitar. A measured body
   of each size, and a bridge mobility measured strung on a steel-string
