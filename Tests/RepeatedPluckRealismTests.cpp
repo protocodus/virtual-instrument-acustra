@@ -949,7 +949,9 @@ void testAgeAutomationKeepsItsGlideDeadline()
             loop.bendingLossGain, loop.bendingLossA1, loop.bendingLossA2,
             loop.dispersionA1, loop.dispersionA2, loop.secondDispersionA1,
             loop.secondDispersionA2, loop.constantLossGain, loop.constantLossA1,
-            loop.constantLossA2, loop.constantLossN1, loop.constantLossN2 };
+            loop.constantLossA2, loop.constantLossN1, loop.constantLossN2,
+            loop.upperDispersionCoefficients[0], loop.upperDispersionCoefficients[1],
+            loop.upperDispersionCoefficients[2], loop.upperDispersionCoefficients[3] };
         return std::memcmp(applied.data(), loop.intrinsicCoefficientTarget.data(),
                            sizeof(applied)) == 0
             && std::memcmp(&loop.loopGain, &loop.targetLoopGain, sizeof(float)) == 0;

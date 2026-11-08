@@ -620,7 +620,9 @@ the hand or plectrum that lets them go.
 
 **How.** Each polarisation is a full-round-trip stiff-string waveguide whose
 fractional delay is a Thiran allpass and whose dispersion follows the
-stiff-string inharmonicity law through two allpass sections. Both planes carry
+stiff-string inharmonicity law through up to four allpass sections. Upper
+stopped notes use the extra sections to fit the audible upper overtones as
+well as the first twelve. Both planes carry
 the same intrinsic loss, with winding friction and bending loss on the wound
 strings; String Age lowers the cutoff and raises those losses. A pluck writes
 a triangular release rounded by a Gaussian contact, at a displacement set by
@@ -912,10 +914,22 @@ separates verified errors from accepted approximations.
   Finger's and Thumb's spreads have no round robins of their own to check.
 - Pick and Thumb dimensions are authored and the plectrum's values are fitted
   to one picked archtop; no beam/friction plectrum solver is available.
-- The pluck is a propagated ideal shape, not a finger-loaded rest state;
-  dispersion above H12 is not fitted (about 30 cents by H24 on the open low E);
-  the highest partials' decay still varies by up to about 5% between 44.1, 48
-  and 96 kHz.
+- The pluck is a propagated ideal shape, not a finger-loaded rest state.
+  At engine rates of at least 32 kHz, stopped notes at 350 Hz and above use
+  four allpass sections: H1-H12 are individual physical targets, followed
+  by a continuous stiff-string phase fit up to the lower of 20 kHz and
+  0.42 times the engine rate. The order is chosen from the physical stop
+  and held through bends and vibrato, with a guarded base-fit fallback.
+  The November 8 upper B/E sweep at a 96 kHz engine rate reduced median
+  H13+ error below 17 kHz from 8.83 to 0.26 cents, with about 19 cents worst.
+  At 17-20 kHz the median fell from 48.32 to 3.68 cents, with about 50 cents
+  remaining at the highest tested B-string partial. These are isolated
+  loop-mode errors against the stiffness law, not perceptual thresholds.
+  Lower stops and engine rates retain the previous H12 fit (about 30 cents
+  error by H24 on open low E). Redistributing delay into the extra filters
+  also changes the approximate initial wave projection and some attack
+  harmonics; it does not establish a measured match to a real pluck.
+  The rendered H8 decay spread across 44.1-96 kHz remains about 4.3%.
 - Where the pluck nearly nulls a partial, the random release burst decides its
   level.
 - A slow release still keeps a little of the treble it should lose on the

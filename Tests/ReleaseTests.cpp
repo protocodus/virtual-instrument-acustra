@@ -729,7 +729,7 @@ void testReleaseNoise()
 // The fretted-to-open reconfiguration itself leaves a step of its own: the
 // second dispersion section switched out and the delay's 6 ms slew under the
 // damped wave, steps a fret change under a sounding wave is allowed to make
-// (switchSecondDispersion). Until 2026-10-10 it read 15-21 dB here, but only
+// (switchDispersion). Until 2026-10-10 it read 15-21 dB here, but only
 // because this low E's former bending factor (0.035, FittedPhysicalData.h)
 // took 10-30 dB a round trip off the top band, where both steps sit: in the
 // same performance on a6f1ad8 the D string read 25-27 dB and the high E

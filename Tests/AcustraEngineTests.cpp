@@ -250,6 +250,8 @@ struct AcustraEngineTestAccess
         bool secondDispersionActive { false };
         double secondDispersionA1 { 0.0 };
         double secondDispersionA2 { 0.0 };
+        bool upperDispersionActive { false };
+        std::array<float, 4> upperDispersionCoefficients {};
         // The bridge's reflection lag, in samples, at the pitch the loop is
         // tuned to: the loop is shortened by it (bridgePhaseDelay) and the
         // bridge gives it back, so with it the loop resolves where the
@@ -266,6 +268,8 @@ struct AcustraEngineTestAccess
         snapshot.secondDispersionActive = loop.secondDispersionActive;
         snapshot.secondDispersionA1 = loop.secondDispersionA1;
         snapshot.secondDispersionA2 = loop.secondDispersionA2;
+        snapshot.upperDispersionActive = loop.upperDispersionActive;
+        snapshot.upperDispersionCoefficients = loop.upperDispersionCoefficients;
         if (loop.bendingLossActive)
         {
             snapshot.bendingGain = loop.bendingLossGain;
@@ -3447,11 +3451,18 @@ double loopPhase(const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loo
             phase -= 2.0 * std::numbers::pi;
         return phase;
     };
-    const double allpassPhase
+    double allpassPhase
         = sectionPhase(loop.dispersionA1, loop.dispersionA2)
         + (loop.secondDispersionActive
                ? sectionPhase(loop.secondDispersionA1, loop.secondDispersionA2)
                : 0.0);
+
+    if (loop.upperDispersionActive)
+    {
+        const auto& upper = loop.upperDispersionCoefficients;
+        allpassPhase += sectionPhase(upper[0], upper[1])
+                      + sectionPhase(upper[2], upper[3]);
+    }
 
     // The loss sections are designed at the host rate, so their lag is read
     // at the host frequency, from the sections as the loop runs them. Their
@@ -4078,6 +4089,90 @@ void testDispersionAcrossTheFretboard()
                            + " missed by " + std::to_string(cents)
                            + " cents");
             }
+        }
+    }
+}
+
+void testUpperDispersionTracksAudibleHighPartials()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    constexpr int frets = 21;
+    std::array<std::vector<double>, 2> errors;
+    for (const double rate : { 44100.0, 48000.0, 96000.0, 192000.0 })
+    {
+        const auto loops = Access::fretboardLoops(rate);
+        for (const int string : { 4, 5 })
+        for (const int fret : { 9, 13, 16, 20 })
+        {
+            const auto& loop = loops[static_cast<std::size_t>(string * frets + fret)];
+            expect(loop.upperDispersionActive, "an upper-register loop did not use its upper phase fit");
+            const int midiNote = (string == 4 ? 59 : 64) + fret;
+            const double nominal = 440.0 * std::exp2((midiNote - 69.0) / 12.0);
+            const double omega = 2.0 * std::numbers::pi * nominal / rate;
+            const double first = loopResonance(loop, 1, omega);
+            for (int partial = 13; partial <= 48; ++partial)
+            {
+                const double expected = first * partial * std::sqrt(
+                    (1.0 + loop.inharmonicity * partial * partial)
+                    / (1.0 + loop.inharmonicity));
+                if (expected * rate / (2.0 * std::numbers::pi) > 17000.0)
+                    break;
+                const double actual = loopResonance(loop, partial, expected, 150.0);
+                errors[static_cast<std::size_t>(string - 4)].push_back(
+                    1200.0 * std::abs(std::log2(actual / expected)));
+            }
+        }
+    }
+    for (std::size_t string = 0; string < errors.size(); ++string)
+    {
+        auto& measured = errors[string];
+        expect(measured.size() > 100, "too few upper partials reached the phase fit test");
+        std::sort(measured.begin(), measured.end());
+        const double median = measured[measured.size() / 2];
+        const double maximum = measured.back();
+        const std::string name = string == 0 ? "B" : "high E";
+        std::cout << "Acustra " << name << " H13+ pitch errors over "
+                  << measured.size() << " modes: median " << median
+                  << " cents, maximum " << maximum << " cents\n";
+        expect(median < (string == 0 ? 1.5 : 0.5)
+                   && maximum < (string == 0 ? 22.0 : 6.0),
+               name + " string's upper partials fell outside the stiff-string phase fit");
+    }
+}
+
+void testUpperDispersionFollowsHeldBends()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    // F4 and F#4 straddle the order selection boundary. The held bend
+    // crosses that pitch in either direction without changing the order
+    // selected at the physical finger stop. C6 also covers a short tap
+    // where loss and fractional-delay phase matter most at the lower rate.
+    for (const double rate : { 44100.0, 96000.0 })
+    for (const int midiNote : { 65, 66, 84 })
+    for (const bool member : { false, true })
+    {
+        double previousError = 0.0;
+        for (int step = -20; step <= 20; ++step)
+        {
+            const float bend = 0.1f * static_cast<float>(step);
+            const auto snapshot = Access::bentString(midiNote, member ? 0.0f : bend,
+                                                     member ? bend : 0.0f, rate);
+            const auto& loop = snapshot.loop;
+            expect(loop.upperDispersionActive == (midiNote >= 66),
+                   "a held bend changed the contact's dispersion order");
+            const double nominal = 440.0 * std::exp2((midiNote + bend - 69.0) / 12.0);
+            const double first = loopResonance(loop, 1,
+                nominal * (2.0 * std::numbers::pi) / rate);
+            constexpr int partial = 13;
+            const double expected = first * partial * std::sqrt(
+                (1.0 + loop.inharmonicity * partial * partial)
+                / (1.0 + loop.inharmonicity));
+            const double actual = loopResonance(loop, partial, expected, 150.0);
+            const double error = 1200.0 * std::log2(actual / expected);
+            if (step > -20)
+                expect(std::abs(error - previousError) < 5.0,
+                       "upper partial tuning stepped under a held bend");
+            previousError = error;
         }
     }
 }
@@ -9888,6 +9983,8 @@ int main(int argc, char** argv)
     testConfigurationKeysAndObserversLeaveTheOutputUnchanged();
     testDispersionAcrossRatesAndNotes();
     testDispersionAcrossTheFretboard();
+    testUpperDispersionTracksAudibleHighPartials();
+    testUpperDispersionFollowsHeldBends();
     testTheFractionalDelayReadIsLossless();
     testASlewingDelayDoesNotClickAboveFourteenKilohertz();
     testAMemberBendIsATensionBendByGrimes();

@@ -60,6 +60,8 @@
 namespace acustra
 {
 
+inline constexpr std::size_t stringDispersionSectionCount = 4;
+
 enum class BodyShape
 {
     Parlor,
@@ -856,15 +858,16 @@ private:
         float highLossMix { 0.1f };
         float broadLossCoefficient { 0.5f };
         float lowpassCoefficient { 0.5f };
-        // The dispersion's two allpass sections (calibrateDispersion in
-        // AcustraEngine.cpp), in cascade. The second runs only on the
-        // stiffer notes that need it; inactive, it is bypassed and leaves
-        // the loop exactly as it was.
+        // The dispersion is a cascade of stable allpasses. The stiffer
+        // strings use the second section, and the wider upper-register fit
+        // uses up to two more (calibrateDispersion in AcustraEngine.cpp).
         float dispersionA1 { 0.0f };
         float dispersionA2 { 0.0f };
         bool secondDispersionActive { false };
         float secondDispersionA1 { 0.0f };
         float secondDispersionA2 { 0.0f };
+        bool upperDispersionActive { false };
+        std::array<float, 4> upperDispersionCoefficients {};
         // The string's own bending loss (bendingLossSection in
         // AcustraEngine.cpp): g / (1 + a1 z^-1 + a2 z^-2), unit gain at DC,
         // designed at the host rate from the loss law rather than mapped
@@ -900,10 +903,9 @@ private:
         // A discrete refret/retune changes intrinsic sections over the same
         // one-roundtrip physical transition as its feedback loss. Histories
         // stay intact; target revisions retain a finite completion deadline.
-        // The order is the bending section's g, a1, a2, the two dispersion
-        // sections' a1, a2, then the constant-loss section's g, a1, a2, n1,
-        // n2.
-        static constexpr std::size_t intrinsicCoefficientCount = 12;
+        // Order: bending loss, the two base dispersion sections, constant
+        // loss, then the two optional upper dispersion sections.
+        static constexpr std::size_t intrinsicCoefficientCount = 16;
         using IntrinsicCoefficients = std::array<float, intrinsicCoefficientCount>;
         IntrinsicCoefficients intrinsicCoefficientTarget {};
         IntrinsicCoefficients intrinsicCoefficientStep {};
@@ -914,6 +916,7 @@ private:
         OnePole lossFilter {};
         SecondOrderAllpass dispersion {};
         SecondOrderAllpass secondDispersion {};
+        std::array<SecondOrderAllpass, 2> upperDispersion {};
         // The fractional-delay allpass's state: its two previous outputs.
         float allpassY1 { 0.0f };
         float allpassY2 { 0.0f };
@@ -974,9 +977,9 @@ private:
         void setCurrentDelay(float samples) noexcept;
         void designReadDelay(float samples) noexcept;
         [[nodiscard]] ACUSTRA_ALWAYS_INLINE float readDelay(float samples) noexcept;
-        // Switches the second dispersion section in or out under a sounding
-        // wave (see its definition).
-        void switchSecondDispersion(bool active) noexcept;
+        // Move the line's first post-read allpass across the integer tap.
+        void handoffDispersion(SecondOrderAllpass& section, bool active) noexcept;
+        void switchDispersion(bool second, bool upper) noexcept;
         // Read-only point observation of both travelling waves; does not
         // advance the feedback allpass or alter the vibrating string.
         [[nodiscard]] float displacementAt(float fraction) const noexcept;
@@ -1567,7 +1570,7 @@ private:
         // documented 12-semitone panel/Reason bend range; above that the
         // inexpensive bending section still follows the physical pitch.
         // Frequency is positive, so an all-zero key cannot be a valid hit.
-        std::array<double, 13> dispersionDesignArguments {};
+        std::array<double, 14> dispersionDesignArguments {};
         // The string's own bending-loss and constant-loss sections at the
         // physical playing frequency, including beyond the bounded phase-fit
         // band above; both polarisations carry them.
@@ -1599,10 +1602,10 @@ private:
         };
         std::array<CommonTuning, 7> commonTuningHistory {};
         int commonTuningHistoryNext { 0 };
-        // The two dispersion sections' pole pairs relative to the
+        // The dispersion sections' pole pairs relative to the
         // fundamental; a zero decay ratio is an unused section.
-        std::array<float, 2> dispersionDecayRatios { 0.0f, 0.0f };
-        std::array<float, 2> dispersionPoleRatios { 0.0f, 0.0f };
+        std::array<float, stringDispersionSectionCount> dispersionDecayRatios {};
+        std::array<float, stringDispersionSectionCount> dispersionPoleRatios {};
         // Each loop's delay as configureVoice tuned it at 48 kHz, in 48 kHz
         // samples, for a Pick release at another rate (writePickRelease);
         // zero when not tuned for one.
@@ -2161,20 +2164,19 @@ private:
     bool bodyUpdatePending_ { false };
     // Completed dispersion solves by their exact arguments, shared by the
     // six strings: a chord change asks for a handful of designs a playing
-    // hand keeps returning to, and each solve is an iterative 3x3 fit that
-    // made the note-on batch several times a normal one (with a
-    // least-squares refit on the stiffer notes). The solve is a pure
-    // function of its arguments, so a hit is the same result.
+    // hand keeps returning to, and the iterative fits are more expensive
+    // than an ordinary batch. Each solve is a pure function of its inputs.
     struct DispersionSolve
     {
-        std::array<double, 13> arguments {};
-        std::array<float, 2> decayRatios { 0.0f, 0.0f };
-        std::array<float, 2> poleRatios { 0.0f, 0.0f };
+        std::array<double, 14> arguments {};
+        std::array<float, stringDispersionSectionCount> decayRatios {};
+        std::array<float, stringDispersionSectionCount> poleRatios {};
         bool valid { false };
     };
     std::array<DispersionSolve, 64> dispersionSolves_ {};
-    [[nodiscard]] std::pair<std::array<float, 2>, std::array<float, 2>>
-        solvedDispersion(const std::array<double, 13>& arguments) noexcept;
+    [[nodiscard]] std::pair<std::array<float, stringDispersionSectionCount>,
+                            std::array<float, stringDispersionSectionCount>>
+        solvedDispersion(const std::array<double, 14>& arguments) noexcept;
     // History-free open-string branches used only by the base tuning model.
     // The actual junction still carries every played string and retained tail.
     struct RestingStringModel
@@ -2185,8 +2187,8 @@ private:
         float bendingGain { 1.0f }, bendingA1 { 0.0f }, bendingA2 { 0.0f };
         float constantGain { 1.0f }, constantA1 { 0.0f }, constantA2 { 0.0f };
         float constantN2 { 0.0f };
-        std::array<float, 4> dispersion {};
-        bool secondDispersion { false };
+        std::array<float, 2 * stringDispersionSectionCount> dispersion {};
+        std::array<bool, stringDispersionSectionCount> dispersionActive {};
     };
     std::array<RestingStringModel, stringCount> restingStringModels_ {};
     std::array<int, stringCount> restingStringNotes_ {};

@@ -8,14 +8,16 @@
 
 namespace acustra {
 struct AcustraEngineTestAccess {
-    // The bending section's g, a1, a2, the two dispersion sections' a1, a2,
-    // then the constant-loss section's g, a1, a2, n1, n2 (StringLoop).
+    // Match StringLoop's bending, base dispersion, constant-loss and upper
+    // dispersion coefficient order.
     using Coefficients = AcustraEngine::StringLoop::IntrinsicCoefficients;
     static Coefficients applied(const AcustraEngine::StringLoop& l) {
         return {l.bendingLossGain,l.bendingLossA1,l.bendingLossA2,
             l.dispersionA1,l.dispersionA2,l.secondDispersionA1,l.secondDispersionA2,
             l.constantLossGain,l.constantLossA1,l.constantLossA2,
-            l.constantLossN1,l.constantLossN2};
+            l.constantLossN1,l.constantLossN2,
+            l.upperDispersionCoefficients[0],l.upperDispersionCoefficients[1],
+            l.upperDispersionCoefficients[2],l.upperDispersionCoefficients[3]};
     }
     static bool sameBits(const Coefficients& a, const Coefficients& b) {
         return std::memcmp(a.data(), b.data(), sizeof(float) * a.size()) == 0;
@@ -72,20 +74,27 @@ struct AcustraEngineTestAccess {
             const float resetExpected = static_cast<float>(double(initial)
                 + double(smoothing) * (double(target) - initial));
             if (loop->currentDelay != resetExpected) return false;
-            loop->switchSecondDispersion(true);
+            loop->switchDispersion(true, false);
             loop->targetDelay -= 2.0f;
             const float switched = loop->currentDelay;
             loop->advance(smoothing, 1.0f);
             const float switchExpected = static_cast<float>(double(switched)
                 + double(smoothing) * (double(loop->targetDelay) - switched));
             if (loop->currentDelay != switchExpected) return false;
-            loop->switchSecondDispersion(false);
+            loop->switchDispersion(false, false);
             loop->targetDelay += 2.0f;
             const float switchedBack = loop->currentDelay;
             loop->advance(smoothing, 1.0f);
             const float returnExpected = static_cast<float>(double(switchedBack)
                 + double(smoothing) * (double(loop->targetDelay) - switchedBack));
             if (loop->currentDelay != returnExpected) return false;
+            loop->setCurrentDelay(121.5f);
+            loop->switchDispersion(true, true);
+            if (loop->currentDelay != 115.5f || !loop->upperDispersionActive)
+                return false;
+            loop->switchDispersion(false, false);
+            if (loop->currentDelay != 121.5f || loop->upperDispersionActive)
+                return false;
         }
         // At long supported delays the float ULP exceeds the final 1e-4
         // threshold. A hard prescription may therefore write the SAME bits
@@ -160,7 +169,7 @@ struct AcustraEngineTestAccess {
     // g + n1 + n2 = 1 + a1 + a2 for the constant-loss one, which a linear
     // ramp between two sections that have it keeps.
     static bool stable(const Coefficients& c) {
-        for (const int n : {1,3,5,8})
+        for (const int n : {1,3,5,8,12,14})
             if (!(std::abs(c[n+1]) < 1.0f && 1.0f+c[n]+c[n+1] > 0.0f
                   && 1.0f-c[n]+c[n+1] > 0.0f)) return false;
         return std::abs(c[0]-(1.0f+c[1]+c[2])) < 1.0e-6f
@@ -171,11 +180,11 @@ struct AcustraEngineTestAccess {
         // The bending section all-pole and the constant-loss section with
         // zeros as well as poles, each with unit gain at DC.
         const Coefficients initial {.2f,-1.3f,.5f,-.9f,.4f,-.3f,.1f,
-            .35f,-1.3f,.5f,-.25f,.1f};
+            .35f,-1.3f,.5f,-.25f,.1f,-.5f,.2f,-.4f,.25f};
         const Coefficients target {.35f,-1.1f,.45f,-.8f,.3f,-.2f,.1f,
-            .65f,-1.1f,.45f,-.5f,.2f};
+            .65f,-1.1f,.45f,-.5f,.2f,-.6f,.3f,-.3f,.25f};
         const Coefficients revised {.25f,-1.2f,.45f,-.85f,.35f,-.25f,.12f,
-            .5f,-1.2f,.45f,-.4f,.15f};
+            .5f,-1.2f,.45f,-.4f,.15f,-.55f,.25f,-.35f,.24f};
         if (!stable(initial) || !stable(target) || !stable(revised)) return false;
         a->currentDelay=a->targetDelay=101.25f;
         a->setIntrinsicCoefficients(initial,false);

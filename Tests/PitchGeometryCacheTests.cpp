@@ -113,7 +113,13 @@ struct AcustraEngineTestAccess
                 || model.dispersion[0] != loop.dispersionA1 || model.dispersion[1] != loop.dispersionA2
                 || model.dispersion[2] != loop.secondDispersionA1
                 || model.dispersion[3] != loop.secondDispersionA2
-                || model.secondDispersion != loop.secondDispersionActive)
+                || model.dispersion[4] != loop.upperDispersionCoefficients[0]
+                || model.dispersion[5] != loop.upperDispersionCoefficients[1]
+                || model.dispersion[6] != loop.upperDispersionCoefficients[2]
+                || model.dispersion[7] != loop.upperDispersionCoefficients[3]
+                || model.dispersionActive[1] != loop.secondDispersionActive
+                || model.dispersionActive[2] != loop.upperDispersionActive
+                || model.dispersionActive[3] != loop.upperDispersionActive)
             {
                 std::cerr << "FAIL: resting reference drifted from intrinsic open-string builder, string "
                           << string << " at " << engine.sampleRate_ << " Hz\n";

@@ -1628,10 +1628,10 @@ int wrapDelayIndex(int index) noexcept
 struct DispersionCalibration
 {
     double delay { 128.0 };
-    std::array<double, 2> decayRatio { 0.0, 0.0 };
-    std::array<double, 2> poleRatio { 0.0, 0.0 };
-    std::array<double, 2> a1 {};
-    std::array<double, 2> a2 {};
+    std::array<double, stringDispersionSectionCount> decayRatio {};
+    std::array<double, stringDispersionSectionCount> poleRatio {};
+    std::array<double, stringDispersionSectionCount> a1 {};
+    std::array<double, stringDispersionSectionCount> a2 {};
 };
 
 double referenceLossOmega(double omega, double sampleRate) noexcept
@@ -2239,9 +2239,8 @@ double secondOrderAllpassPhase(double a1, double a2,
     return lag;
 }
 
-// The loop's dispersion is two second-order allpass sections in cascade
-// (calibrateDispersion says why two).
-constexpr int dispersionSectionCount = 2;
+// Each active dispersion section is a stable second-order allpass.
+constexpr int dispersionSectionCount = stringDispersionSectionCount;
 
 struct DispersionSections
 {
@@ -2338,42 +2337,43 @@ double tunedLoopDelay(double fundamental, double sampleRate,
     return delay;
 }
 
-bool solveThreeByThree(double matrix[3][3], const double rhs[3],
-                       double result[3]) noexcept
+template <int order>
+bool solveDispersionSystem(double matrix[order][order], const double rhs[order],
+                           double result[order]) noexcept
 {
-    double augmented[3][4] {};
-    for (int row = 0; row < 3; ++row)
+    double augmented[order][order + 1] {};
+    for (int row = 0; row < order; ++row)
     {
-        for (int column = 0; column < 3; ++column)
+        for (int column = 0; column < order; ++column)
             augmented[row][column] = matrix[row][column];
-        augmented[row][3] = rhs[row];
+        augmented[row][order] = rhs[row];
     }
 
-    for (int column = 0; column < 3; ++column)
+    for (int column = 0; column < order; ++column)
     {
         int pivot = column;
-        for (int row = column + 1; row < 3; ++row)
+        for (int row = column + 1; row < order; ++row)
             if (exact::abs(augmented[row][column])
                 > exact::abs(augmented[pivot][column]))
                 pivot = row;
         if (exact::abs(augmented[pivot][column]) < 1.0e-13)
             return false;
         if (pivot != column)
-            for (int item = column; item < 4; ++item)
+            for (int item = column; item <= order; ++item)
                 std::swap(augmented[column][item], augmented[pivot][item]);
-        for (int row = column + 1; row < 3; ++row)
+        for (int row = column + 1; row < order; ++row)
         {
             const double factor = augmented[row][column]
                                 / augmented[column][column];
-            for (int item = column; item < 4; ++item)
+            for (int item = column; item <= order; ++item)
                 augmented[row][item] -= factor * augmented[column][item];
         }
     }
 
-    for (int row = 2; row >= 0; --row)
+    for (int row = order - 1; row >= 0; --row)
     {
-        double value = augmented[row][3];
-        for (int column = row + 1; column < 3; ++column)
+        double value = augmented[row][order];
+        for (int column = row + 1; column < order; ++column)
             value -= augmented[row][column] * result[column];
         result[row] = value / augmented[row][row];
     }
@@ -2504,7 +2504,7 @@ DispersionCalibration collocateDispersion(
 
             const double rhs[] { -residuals[0], -residuals[1], -residuals[2] };
             double update[3] {};
-            if (!solveThreeByThree(jacobian, rhs, update))
+            if (!solveDispersionSystem<3>(jacobian, rhs, update))
                 break;
 
             bool accepted = false;
@@ -2619,14 +2619,20 @@ DispersionCalibration collocateDispersion(
     return calibration;
 }
 
-// The integer partials a dispersion design is fitted to, with everything in
-// the loop's phase that the design does not choose. Up to H12, and only
-// partials below 0.84 pi (0.42 of the host rate), as collocateDispersion
-// has always bounded its points: nearer Nyquist the loss filters' and the
-// Thiran read's own phase dominate, and a partial up there has long gone.
+// Inverse of stretchedPartial for the continuous mode number.
+double continuousPartial(double frequencyRatio, double inharmonicity) noexcept
+{
+    const double square = frequencyRatio * frequencyRatio * (1.0 + inharmonicity);
+    return std::sqrt(2.0 * square
+        / (1.0 + std::sqrt(1.0 + 4.0 * inharmonicity * square)));
+}
+
+// Fit the loop at the stretched partial frequencies, including the phase
+// from its loss filters. The base fit uses up to H12. The upper-register
+// fit also uses the higher partials below 20 kHz and 0.42 of the engine rate.
 struct DispersionPartials
 {
-    static constexpr int capacity = 12;
+    static constexpr int capacity = 24;
     int maximumDelay { 8192 };
     int highest { 0 };
     double omega0 { 0.0 };
@@ -2650,23 +2656,38 @@ DispersionPartials dispersionPartials(
     double highCoefficient, double highMix,
     double bendingA1, double bendingA2,
     double constantA1 = 0.0, double constantA2 = 0.0,
-    double constantN1 = 0.0, double constantN2 = 0.0) noexcept
+    double constantN1 = 0.0, double constantN2 = 0.0,
+    bool upperFit = false) noexcept
 {
     DispersionPartials partials;
     partials.maximumDelay = delayCapacityForRate(sampleRate);
     partials.omega0 = 2.0 * piDouble * fundamental / sampleRate;
-    const auto stretched = [&] (int partial)
+    const auto stretched = [&] (double partial)
     {
-        return partials.omega0 * stretchedPartial(
-            static_cast<double>(partial), inharmonicity);
+        return partials.omega0 * stretchedPartial(partial, inharmonicity);
     };
-    int highest = DispersionPartials::capacity;
-    while (highest > 3 && stretched(highest) > 0.84 * piDouble)
+    constexpr int baseHighest = 12;
+    const double upperHz = std::min(20000.0, 0.42 * sampleRate);
+    const double upperOmega = upperFit
+        ? 2.0 * piDouble * upperHz / sampleRate : 0.84 * piDouble;
+    int highest = baseHighest;
+    while (highest > 3 && stretched(highest) > upperOmega)
         --highest;
-    partials.highest = highest;
-    for (int partial = 1; partial <= highest; ++partial)
+    const double top = upperFit
+        ? continuousPartial(upperHz / fundamental, inharmonicity) : highest;
+    // The upper phase curve is smooth. A fixed quadrature grid limits
+    // solve cost and moves continuously with the pitch, while the first
+    // twelve partials retain their own individual target frequencies.
+    const int upperPoints = upperFit && top > baseHighest
+        ? DispersionPartials::capacity - baseHighest : 0;
+    const double upperStep = upperPoints > 0
+        ? (top - baseHighest) / upperPoints : 0.0;
+    partials.highest = highest + upperPoints;
+    for (int item = 1; item <= partials.highest; ++item)
     {
-        const auto index = static_cast<std::size_t>(partial - 1);
+        const double partial = item <= highest ? item
+            : highest + (item - highest - 0.5) * upperStep;
+        const auto index = static_cast<std::size_t>(item - 1);
         const double omega = stretched(partial);
         const double lossOmega = referenceLossOmega(omega, sampleRate);
         partials.omega[index] = omega;
@@ -2681,8 +2702,25 @@ DispersionPartials dispersionPartials(
         partials.sine[index] = std::sin(omega);
         partials.cosine2[index] = std::cos(2.0 * omega);
         partials.sine2[index] = std::sin(2.0 * omega);
-        partials.weight[index] = partial == 1
-            ? 30.0 : 1.0 / static_cast<double>(partial);
+        partials.weight[index] = partial == 1 ? 30.0
+            : 1.0 / static_cast<double>(partial);
+        if (upperFit && partial != 1)
+        {
+            const double n = static_cast<double>(partial);
+            const double bending = inharmonicity * n * n;
+            const double area = 2.0 * piDouble * n * bending / (1.0 + 2.0 * bending);
+            const double hz = omega * sampleRate / (2.0 * piDouble);
+            const double ramp = std::clamp((upperHz - hz) / 3000.0, 0.0, 1.0);
+            const double taper = ramp * ramp * (3.0 - 2.0 * ramp);
+            // The phase-slope factor converts phase error to local pitch
+            // error. Protect the first twelve partials, and smoothly reduce
+            // the pull of upper modes beyond the finite pole-area budget.
+            const double areaRatio = area / 18.0;
+            const double areaSquared = areaRatio * areaRatio;
+            const double limit = 1.0 + areaSquared * areaSquared;
+            partials.weight[index] *= (1.0 + 2.0 * bending) / (1.0 + bending)
+                * (partial <= baseHighest ? 4.0 : taper * std::sqrt(upperStep) / limit);
+        }
     }
     return partials;
 }
@@ -2693,39 +2731,93 @@ constexpr double centsPerWeightedRadian
 
 // The loop-phase residuals of a design, weighted, at the partials. The
 // design is x = { delay, decayRatio0, poleRatio0, decayRatio1, poleRatio1 }
-// read at tap anchor. When jacobian is given it receives the derivatives in
-// the delay and in the first section's two ratios, the unknowns the fit
-// moves: a section's lag is 2 omega + 2 arg A(e^{j omega}) for its
-// denominator A, whose derivative in a coefficient is Im(z^-k / A), and its
-// coefficients are smooth in the ratios, so only the delay is differenced.
+// read at the given tap. The Jacobian covers the delay and the ratios of
+// the sections the solver moves. For denominator A, allpass lag is
+// 2 omega + 2 arg A(e^{j omega}), and its coefficient derivative is
+// 2 Im(z^-k / A).
 constexpr int dispersionDesignValues = 1 + 2 * dispersionSectionCount;
 
+// atan2 for the iterative upper fit only. Reduce atan's argument to
+// +/- (sqrt(2) - 1), then use the alternating series through x^13. The
+// next omitted term bounds the phase error below 1.3e-7 radians. Exact
+// phases are still used to retune and check the finished filter.
+double fitPhaseAngle(double imaginary, double real) noexcept
+{
+    const double y = exact::abs(imaginary);
+    const double x = exact::abs(real);
+    const bool swap = y > x;
+    double ratio = swap ? x / y : y / x;
+    double offset = 0.0;
+    if (ratio > 0.41421356237309505)
+    {
+        ratio = (ratio - 1.0) / (ratio + 1.0);
+        offset = 0.25 * piDouble;
+    }
+    const double t = ratio * ratio;
+    double angle = offset + ratio * (1.0 + t * (-1.0 / 3.0
+        + t * (1.0 / 5.0 + t * (-1.0 / 7.0
+        + t * (1.0 / 9.0 + t * (-1.0 / 11.0 + t * (1.0 / 13.0)))))));
+    if (swap)
+        angle = 0.5 * piDouble - angle;
+    if (real < 0.0)
+        angle = piDouble - angle;
+    return imaginary < 0.0 ? -angle : angle;
+}
+
+template <int order = 3>
 void dispersionResiduals(
     const DispersionPartials& partials,
     const double x[dispersionDesignValues], int anchor,
     double residuals[DispersionPartials::capacity],
-    double (*jacobian)[3]) noexcept
+    double (*jacobian)[order]) noexcept
 {
+    const auto angleOf = [] (double imaginary, double real)
+    {
+        if constexpr (order == 3)
+            return std::atan2(imaginary, real);
+        else
+            return fitPhaseAngle(imaginary, real);
+    };
     const double omega0 = partials.omega0;
     double a1[dispersionSectionCount] {};
     double a2[dispersionSectionCount] {};
     for (int section = 0; section < dispersionSectionCount; ++section)
         secondOrderAllpassCoefficients(omega0, x[1 + 2 * section],
             x[2 + 2 * section], a1[section], a2[section]);
-    // The first section's coefficients' derivatives in its two ratios.
-    const double radius = std::exp(-omega0 * x[1]);
-    const double angle = omega0 * x[2];
-    const double a1ByDecay = 2.0 * omega0 * radius * std::cos(angle);
-    const double a1ByPole = 2.0 * omega0 * radius * std::sin(angle);
-    const double a2ByDecay = -2.0 * omega0 * radius * radius;
+    double a1ByDecay[dispersionSectionCount] {};
+    double a1ByPole[dispersionSectionCount] {};
+    double a2ByDecay[dispersionSectionCount] {};
+    if (jacobian != nullptr)
+        for (int section = 0; section < (order - 1) / 2; ++section)
+        {
+            const double radius = std::exp(-omega0 * x[1 + 2 * section]);
+            const double angle = omega0 * x[2 + 2 * section];
+            a1ByDecay[section] = -omega0 * a1[section];
+            a1ByPole[section] = 2.0 * omega0 * radius * std::sin(angle);
+            a2ByDecay[section] = -2.0 * omega0 * a2[section];
+        }
     constexpr double delayStep = 1.0e-3;
     double thiran[3][2] {};
-    thiranCoefficients(x[0] - static_cast<double>(anchor),
-                       thiran[0][0], thiran[0][1]);
-    thiranCoefficients(x[0] + delayStep - static_cast<double>(anchor),
-                       thiran[1][0], thiran[1][1]);
-    thiranCoefficients(x[0] - delayStep - static_cast<double>(anchor),
-                       thiran[2][0], thiran[2][1]);
+    const double fraction = x[0] - static_cast<double>(anchor);
+    thiranCoefficients(fraction, thiran[0][0], thiran[0][1]);
+    double firstByDelay = 0.0;
+    double secondByDelay = 0.0;
+    if (jacobian != nullptr)
+    {
+        if constexpr (order == 3)
+        {
+            thiranCoefficients(fraction + delayStep, thiran[1][0], thiran[1][1]);
+            thiranCoefficients(fraction - delayStep, thiran[2][0], thiran[2][1]);
+        }
+        else
+        {
+            const double firstDenominator = fraction + 1.0;
+            const double secondDenominator = firstDenominator * (fraction + 2.0);
+            firstByDelay = -6.0 / (firstDenominator * firstDenominator);
+            secondByDelay = 6.0 * (fraction * fraction - 2.0)
+                / (secondDenominator * secondDenominator);
+        }
+    }
     for (int index = 0; index < partials.highest; ++index)
     {
         const auto item = static_cast<std::size_t>(index);
@@ -2738,7 +2830,7 @@ void dispersionResiduals(
         // Tap plus Thiran allpass: the lag thiranDelayPhase returns.
         const auto read = [&] (const double* coefficients)
         {
-            return static_cast<double>(anchor + 2) * omega + 2.0 * std::atan2(
+            return static_cast<double>(anchor + 2) * omega + 2.0 * angleOf(
                 -coefficients[0] * s1 - coefficients[1] * s2,
                 1.0 + coefficients[0] * c1 + coefficients[1] * c2);
         };
@@ -2746,25 +2838,38 @@ void dispersionResiduals(
         for (int section = 0; section < dispersionSectionCount; ++section)
         {
             // An unused second section is bypassed.
-            if (section == 1 && !(x[3] > 0.0))
+            if (section > 0 && !(x[1 + 2 * section] > 0.0))
                 continue;
             const double real = 1.0 + a1[section] * c1 + a2[section] * c2;
             const double imaginary = -a1[section] * s1 - a2[section] * s2;
-            lag += 2.0 * omega + 2.0 * std::atan2(imaginary, real);
-            if (jacobian != nullptr && section == 0)
+            lag += 2.0 * omega + 2.0 * angleOf(imaginary, real);
+            if (jacobian != nullptr && section < (order - 1) / 2)
             {
                 const double norm = real * real + imaginary * imaginary;
                 const double byA1 = (-s1 * real - c1 * imaginary) / norm;
                 const double byA2 = (-s2 * real - c2 * imaginary) / norm;
-                jacobian[index][1] = 2.0 * weight
-                    * (byA1 * a1ByDecay + byA2 * a2ByDecay);
-                jacobian[index][2] = 2.0 * weight * byA1 * a1ByPole;
+                jacobian[index][1 + 2 * section] = 2.0 * weight
+                    * (byA1 * a1ByDecay[section] + byA2 * a2ByDecay[section]);
+                jacobian[index][2 + 2 * section] = 2.0 * weight * byA1 * a1ByPole[section];
             }
         }
         residuals[index] = weight * lag;
         if (jacobian != nullptr)
-            jacobian[index][0] = weight * (read(thiran[1]) - read(thiran[2]))
-                               / (2.0 * delayStep);
+        {
+            if constexpr (order == 3)
+                jacobian[index][0] = weight * (read(thiran[1]) - read(thiran[2]))
+                                   / (2.0 * delayStep);
+            else
+            {
+                const double real = 1.0 + thiran[0][0] * c1 + thiran[0][1] * c2;
+                const double imaginary = -thiran[0][0] * s1 - thiran[0][1] * s2;
+                const double realSlope = firstByDelay * c1 + secondByDelay * c2;
+                const double imaginarySlope = -firstByDelay * s1 - secondByDelay * s2;
+                jacobian[index][0] = 2.0 * weight
+                    * (imaginarySlope * real - realSlope * imaginary)
+                    / (real * real + imaginary * imaginary);
+            }
+        }
     }
 }
 
@@ -2791,20 +2896,31 @@ double worstPartialCents(const DispersionPartials& partials,
 // across. For the same reason it runs to convergence - until a step improves
 // the fit by less than a part in 1e10 - not to a tolerance: the answer is a
 // function of the arguments, not of how far the iteration happened to get.
+template <int order = 3>
 void refineDispersionDesign(const DispersionPartials& partials,
                             double x[dispersionDesignValues],
                             double pull) noexcept
 {
     constexpr int capacity = DispersionPartials::capacity;
     const int count = partials.highest;
-    const double startDecay = x[1];
-    const double startPole = x[2];
+    double start[order] {};
+    double pullScale[order] {};
+    for (int index = 1; index < order; ++index)
+    {
+        start[index] = x[index];
+        pullScale[index] = pull / start[index];
+    }
     const auto bound = [&partials] (double values[dispersionDesignValues])
     {
         values[0] = std::clamp(values[0], 3.0,
             static_cast<double>(partials.maximumDelay - 3));
-        values[1] = std::clamp(values[1], 0.1, 40.0);
-        values[2] = std::clamp(values[2], 0.05, 20.0);
+        for (int section = 0; section < (order - 1) / 2; ++section)
+        {
+            values[1 + 2 * section] = std::clamp(values[1 + 2 * section], 0.1,
+                order == 3 ? 40.0 : std::min(100.0, 4.0 / partials.omega0));
+            values[2 + 2 * section] = std::clamp(values[2 + 2 * section], 0.05,
+                order == 3 ? 20.0 : 0.95 * piDouble / partials.omega0);
+        }
     };
     const auto cost = [&] (const double residuals[capacity],
                            const double values[dispersionDesignValues])
@@ -2812,60 +2928,64 @@ void refineDispersionDesign(const DispersionPartials& partials,
         double sum = 0.0;
         for (int index = 0; index < count; ++index)
             sum += residuals[index] * residuals[index];
-        const double decayOffset = pull * (values[1] - startDecay) / startDecay;
-        const double poleOffset = pull * (values[2] - startPole) / startPole;
-        return sum + decayOffset * decayOffset + poleOffset * poleOffset;
+        for (int index = 1; index < order; ++index)
+        {
+            const double offset = pullScale[index] * (values[index] - start[index]);
+            sum += offset * offset;
+        }
+        return sum;
     };
-    const double pullScale[3] { 0.0, pull / startDecay, pull / startPole };
     for (int round = 0; round < 4; ++round)
     {
         const int anchor = delayAnchor(x[0]);
         double residuals[capacity] {};
-        double jacobian[capacity][3] {};
+        double jacobian[capacity][order] {};
         dispersionResiduals(partials, x, anchor, residuals, jacobian);
         double current = cost(residuals, x);
         double damping = 1.0e-4;
-        for (int iteration = 0; iteration < 60; ++iteration)
+        for (int iteration = 0; iteration < (order == 3 ? 60 : 8); ++iteration)
         {
-            double normal[3][3] {};
-            double gradient[3] {};
-            for (int row = 0; row < 3; ++row)
+            double normal[order][order] {};
+            double gradient[order] {};
+            for (int row = 0; row < order; ++row)
             {
-                for (int column = 0; column < 3; ++column)
+                for (int column = 0; column <= row; ++column)
+                {
                     for (int index = 0; index < count; ++index)
                         normal[row][column] += jacobian[index][row]
                                              * jacobian[index][column];
+                    normal[column][row] = normal[row][column];
+                }
                 for (int index = 0; index < count; ++index)
                     gradient[row] -= jacobian[index][row] * residuals[index];
-                const double start = row == 1 ? startDecay : startPole;
                 normal[row][row] += pullScale[row] * pullScale[row];
                 if (row > 0)
                     gradient[row] -= pullScale[row] * pullScale[row]
-                                   * (x[row] - start);
+                                   * (x[row] - start[row]);
             }
             bool improved = false;
             double improvement = 0.0;
             for (int attempt = 0; attempt < 10 && !improved; ++attempt)
             {
-                double damped[3][3] {};
-                for (int row = 0; row < 3; ++row)
-                    for (int column = 0; column < 3; ++column)
+                double damped[order][order] {};
+                for (int row = 0; row < order; ++row)
+                    for (int column = 0; column < order; ++column)
                         damped[row][column] = normal[row][column]
                             + (row == column
                                 ? damping * normal[row][row] + 1.0e-15 : 0.0);
-                double step[3] {};
-                if (!solveThreeByThree(damped, gradient, step))
+                double step[order] {};
+                if (!solveDispersionSystem<order>(damped, gradient, step))
                 {
                     damping *= 8.0;
                     continue;
                 }
                 double candidate[dispersionDesignValues] {};
                 std::copy(x, x + dispersionDesignValues, candidate);
-                for (int item = 0; item < 3; ++item)
+                for (int item = 0; item < order; ++item)
                     candidate[item] += step[item];
                 bound(candidate);
                 double candidateResiduals[capacity] {};
-                dispersionResiduals(partials, candidate, anchor,
+                dispersionResiduals<order>(partials, candidate, anchor,
                                     candidateResiduals, nullptr);
                 const double candidateCost = cost(candidateResiduals,
                                                   candidate);
@@ -2890,70 +3010,24 @@ void refineDispersionDesign(const DispersionPartials& partials,
     }
 }
 
-// The loop's dispersion: two second-order allpass sections in cascade,
-// fitted to the stiff-string law f_n = n f0 sqrt((1 + B n^2) / (1 + B)) at
-// the integer partials from H1 to H12 below 0.42 of the host rate
-// (DispersionPartials), the error in each counted in cents. The
-// fundamental is then re-tuned exactly by tunedLoopDelay at every
-// configuration.
+// The base design fits H1 through H12 to the stiff-string law. A second
+// allpass enters gradually as stiffness increases. Legacy collocation at
+// H1/H7/H11.5 otherwise missed up to 18 cents on the wound strings high on
+// the fretboard. Its first pole pair and line delay are refined together.
 //
-// The design before it was one section fitted by collocation at H1, H7 and
-// H11.5 (collocateDispersion), which met the law exactly there and dipped
-// between: E2 at the 20th fret, B N^2 near 0.12 at N = 12 partials, had
-// H3-H5 16-18 cents flat and H9 6 cents sharp at every rate, and every
-// wound string high on the neck missed some partial by more than 3 cents.
-// No single section does much better on those notes - a least-squares or
-// minimax fit of one still misses E2's 20th fret by over 6 cents - because
-// the stiff string's group delay falls smoothly across the whole band and
-// one resonant pole pair bends it in one place. A second pair spreads that
-// bend over the band.
-//
-// Where the collocation was already right the design is left as it was.
-// Up to B N^2 = 0.015 - in the standard tuning at 44.1 kHz and up, every
-// string below its 3rd (low E), 7th (A), 9th (D), 12th (G), 8th (B) or
-// 18th (high E) fret - the collocated section is the design, unchanged,
-// and the second section is unused and bypassed, so the loop is exactly
-// the loop it was. From there to B N^2 = 0.05 the second section is
-// switched in by a smoothstep share of its pole radius - at a vanishing
-// share a two-sample delay, which the loop takes over from its delay line
-// without a step (StringLoop::switchSecondDispersion) - and the first
-// section and the delay are refitted by least squares
-// (refineDispersionDesign) from the collocated section, held to it by a
-// pull that falls with the fourth power of the share left to go, to 0.01
-// from there on. So the design moves continuously from the collocation to
-// the two-section fit as the string stiffens: a bend or a vibrato, which
-// moves B, cannot make it jump. The second section is not fitted but
-// placed from the stiffness alone, at a decay ratio 1.05 D and a pole ratio
-// 2.95 D^0.48 N / 12 for D = 1.45 / (N sqrt B), where full four-ratio fits
-// across the fretboard put both sections' decays near D and the second
-// pole a little above half-way up the band; fitting it too left shallow
-// valleys and separate minima that a small move of B jumped between. If a
-// design still misses some partial by more than 3 cents (at 32 kHz and up
-// that never happens), a spread of starts with the second section fully in
-// is tried and the best of everything kept.
-//
-// Every note of the rate/fret matrix (six strings, frets 0-20, 32 to
-// 384 kHz, every tuning) then places H2 to H12 within 2.0 cents of the law,
-// and within 1.1 cents in the standard tuning at 44.1 to 96 kHz, measured as
-// the loop's own resonances with the bridge off. Below 32 kHz fewer partials
-// fit under Nyquist and the loss filters' own phase dominates the top ones;
-// there some trebles still miss by up to 9 cents at 11 kHz, none by more
-// than the collocation alone missed them. A 0.2% move of B, the step at
-// which the cache re-solves under a bend or a vibrato, moves the tuned delay
-// by at most 1 cent's worth at 44.1 to 96 kHz in every tuning, outside the
-// stalls the collocation already had: the collocation alone moved it by up
-// to 0.3 away from its tap band edge (delayAnchor) and 1 at it, and the rest
-// is the second section switching in. The design costs about 55
-// microseconds a note at 44.1 to 96 kHz, against 80 for the collocation
-// alone before (whose solve now reads the phases it does not move once),
-// and is cached (dispersionSolves_) and redone only when its inputs change.
+// Upper notes use four biquads to cover more of the audible spectrum. A
+// shorter line and stable pole pairs reproduce the falling physical group
+// delay without adding round-trip loss. The exact fundamental is retuned
+// after either fit. Fit resolution, absorption and the antialias band are
+// separate: extending the phase fit does not raise the output bandwidth.
 DispersionCalibration calibrateDispersion(
     double inharmonicity, double fundamental, double sampleRate,
     double broadCoefficient, double broadMix,
     double highCoefficient, double highMix,
     double bendingA1 = 0.0, double bendingA2 = 0.0,
                       double constantA1 = 0.0, double constantA2 = 0.0,
-                      double constantN1 = 0.0, double constantN2 = 0.0) noexcept
+                      double constantN1 = 0.0, double constantN2 = 0.0,
+    bool useUpperDispersion = false) noexcept
 {
     DispersionCalibration calibration;
     const double omega0 = 2.0 * piDouble * fundamental / sampleRate;
@@ -2962,13 +3036,13 @@ DispersionCalibration calibrateDispersion(
     const auto finish = [&] (DispersionCalibration& design)
     {
         DispersionSections sections;
-        for (std::size_t section = 0; section < 2; ++section)
+        for (std::size_t section = 0; section < dispersionSectionCount; ++section)
         {
             secondOrderAllpassCoefficients(omega0, design.decayRatio[section],
                 design.poleRatio[section], sections.a1[section],
                 sections.a2[section]);
+            sections.used[section] = section == 0 || design.decayRatio[section] > 0.0;
         }
-        sections.used[1] = design.decayRatio[1] > 0.0;
         design.a1 = sections.a1;
         design.a2 = sections.a2;
         design.delay = tunedLoopDelay(fundamental, sampleRate,
@@ -2992,16 +3066,97 @@ DispersionCalibration calibrateDispersion(
     const double stiffness = 1.45 / (fitted * exact::sqrt(inharmonicity));
     // The worst integer partial of a design, in cents, with the delay that
     // makes its fundamental exact, as the loop will run it.
+    const auto designValues = [] (const DispersionCalibration& design,
+                                    double (&values)[dispersionDesignValues])
+    {
+        values[0] = design.delay;
+        for (int section = 0; section < dispersionSectionCount; ++section)
+        {
+            values[1 + 2 * section] = design.decayRatio[section];
+            values[2 + 2 * section] = design.poleRatio[section];
+        }
+    };
     const auto worstOf = [&] (DispersionCalibration& design)
     {
         finish(design);
-        const double x[] { design.delay, design.decayRatio[0],
-            design.poleRatio[0], design.decayRatio[1], design.poleRatio[1] };
+        double x[dispersionDesignValues] {};
+        designValues(design, x);
         double residuals[DispersionPartials::capacity] {};
-        dispersionResiduals(partials, x, delayAnchor(design.delay),
-                            residuals, nullptr);
+        dispersionResiduals<3>(partials, x, delayAnchor(design.delay),
+                               residuals, nullptr);
         return worstPartialCents(partials, residuals);
     };
+
+    if (useUpperDispersion && sampleRate >= 32000.0)
+    {
+        DispersionCalibration upperDesign;
+        const double upperHz = std::min(20000.0, 0.42 * sampleRate);
+        auto extended = dispersionPartials(inharmonicity, fundamental,
+            sampleRate, broadCoefficient, broadMix, highCoefficient, highMix,
+            bendingA1, bendingA2, constantA1, constantA2, constantN1, constantN2,
+            true);
+        const double scaledTop = upperHz / fundamental;
+        const double top = continuousPartial(scaledTop, inharmonicity);
+        const double bending = inharmonicity * top * top;
+        // A biquad has one cycle of integrated group delay in the positive
+        // band. Seed the pole centers at quantiles of the phase left after
+        // a constant delay. Place their widths from the surrounding bins,
+        // then refine against the full loop (Abel, Valimaki and Smith,
+        // DOI 10.1109/LSP.2010.2040924).
+        const double excessCycles = std::clamp(
+            0.75 + top * bending / (1.0 + 2.0 * bending),
+            std::min(2.8, top * 0.65), std::min(3.8, top * 0.9));
+        const double base = (top - excessCycles) / scaledTop;
+        const auto excess = [=] (double partial)
+        {
+            return partial - base * stretchedPartial(partial, inharmonicity);
+        };
+        double edge[dispersionSectionCount + 1] {};
+        edge[dispersionSectionCount] = scaledTop;
+        for (int bin = 1; bin < 2 * dispersionSectionCount; ++bin)
+        {
+            const double target = excessCycles * bin / (2 * dispersionSectionCount);
+            double left = 0.0;
+            double right = top;
+            for (int step = 0; step < 16; ++step)
+            {
+                const double middle = 0.5 * (left + right);
+                if (excess(middle) < target)
+                    left = middle;
+                else
+                    right = middle;
+            }
+            const double frequencyRatio = stretchedPartial(
+                0.5 * (left + right), inharmonicity);
+            if (bin % 2 == 1)
+                upperDesign.poleRatio[bin / 2] = frequencyRatio;
+            else
+                edge[bin / 2] = frequencyRatio;
+        }
+        for (int section = 0; section < dispersionSectionCount; ++section)
+            upperDesign.decayRatio[section] = 0.6 * (edge[section + 1] - edge[section]);
+        finish(upperDesign);
+        double values[dispersionDesignValues] {};
+        designValues(upperDesign, values);
+        const auto refine = [&]
+        {
+            refineDispersionDesign<dispersionDesignValues>(extended, values, 0.002);
+            for (int section = 0; section < dispersionSectionCount; ++section)
+            {
+                upperDesign.decayRatio[section] = values[1 + 2 * section];
+                upperDesign.poleRatio[section] = values[2 + 2 * section];
+            }
+            return worstOf(upperDesign);
+        };
+        // Near the fractional tap's phase limit, prioritize the first
+        // twelve modes further before falling back to the base design.
+        if (refine() < 2.6)
+            return upperDesign;
+        for (int partial = 1; partial < partials.highest; ++partial)
+            extended.weight[static_cast<std::size_t>(partial)] *= 4.0;
+        if (refine() < 2.6)
+            return upperDesign;
+    }
     // How far the second section is switched in: none up to B N^2 = 0.015,
     // all of it from 0.05, and a smoothstep between.
     const double stiffnessShare = [&]
@@ -3017,13 +3172,11 @@ DispersionCalibration calibrateDispersion(
             constantN2);
     constexpr double tolerance = 3.0;
     const double collocatedWorst = worstOf(collocated);
-    if (!(stiffnessShare > 0.0) && collocatedWorst <= tolerance)
-        return collocated;
 
     // The second section at a share of its full strength: its pole radius
     // scaled by the share, so a vanishing share is a two-sample delay, the
     // point at which the loop switches it in and out
-    // (StringLoop::switchSecondDispersion).
+    // (StringLoop::switchDispersion).
     const auto fitFrom = [&] (double decay, double pole, double share,
                               double pull)
     {
@@ -3033,7 +3186,7 @@ DispersionCalibration calibrateDispersion(
         design.poleRatio = { pole,
                              2.95 * std::pow(second, 0.48) * fitted / 12.0 };
         finish(design);
-        double x[] { design.delay, design.decayRatio[0], design.poleRatio[0],
+        double x[dispersionDesignValues] { design.delay, design.decayRatio[0], design.poleRatio[0],
                      design.decayRatio[1], design.poleRatio[1] };
         refineDispersionDesign(partials, x, pull);
         design.decayRatio[0] = x[1];
@@ -3391,6 +3544,8 @@ void AcustraEngine::StringLoop::reset() noexcept
     constantLossSeed = false;
     dispersion.reset();
     secondDispersion.reset();
+    for (auto& section : upperDispersion)
+        section.reset();
     bridgeDerivative.reset();
     derivativeNeedsPriming = true;
     derivativeCrossesContact = false;
@@ -3409,14 +3564,18 @@ void AcustraEngine::StringLoop::reset() noexcept
             &bendingLossGain, &bendingLossA1, &bendingLossA2, &dispersionA1,
             &dispersionA2, &secondDispersionA1, &secondDispersionA2,
             &constantLossGain, &constantLossA1, &constantLossA2,
-            &constantLossN1, &constantLossN2 };
+            &constantLossN1, &constantLossN2,
+            &upperDispersionCoefficients[0], &upperDispersionCoefficients[1],
+            &upperDispersionCoefficients[2], &upperDispersionCoefficients[3] };
         for (std::size_t index = 0; index < applied.size(); ++index)
             *applied[index] = intrinsicCoefficientTarget[index];
     }
     intrinsicCoefficientTarget = { bendingLossGain, bendingLossA1,
         bendingLossA2, dispersionA1, dispersionA2,
         secondDispersionA1, secondDispersionA2, constantLossGain,
-        constantLossA1, constantLossA2, constantLossN1, constantLossN2 };
+        constantLossA1, constantLossA2, constantLossN1, constantLossN2,
+        upperDispersionCoefficients[0], upperDispersionCoefficients[1],
+        upperDispersionCoefficients[2], upperDispersionCoefficients[3] };
     intrinsicCoefficientStep.fill(0.0f);
     intrinsicCoefficientSamples = 0;
 }
@@ -3436,7 +3595,9 @@ void AcustraEngine::StringLoop::setIntrinsicCoefficients(
         &bendingLossGain, &bendingLossA1, &bendingLossA2, &dispersionA1,
         &dispersionA2, &secondDispersionA1, &secondDispersionA2,
         &constantLossGain, &constantLossA1, &constantLossA2,
-        &constantLossN1, &constantLossN2 };
+        &constantLossN1, &constantLossN2,
+        &upperDispersionCoefficients[0], &upperDispersionCoefficients[1],
+        &upperDispersionCoefficients[2], &upperDispersionCoefficients[3] };
     bool changed = false;
     for (std::size_t index = 0; index < applied.size(); ++index)
         changed |= *applied[index] != target[index];
@@ -3653,7 +3814,7 @@ float AcustraEngine::StringLoop::displacementAt(float fraction) const noexcept
     return tap(currentDelay - travel) - tap(travel);
 }
 
-// The second dispersion section switches in at a vanishing share of its
+// An optional dispersion section switches in at a vanishing share of its
 // strength (calibrateDispersion), where it is a two-sample delay, and the
 // tuned delay gives those two samples up to it; out again at the same
 // point. It runs directly after the line read, so the handover is exact
@@ -3666,11 +3827,9 @@ float AcustraEngine::StringLoop::displacementAt(float fraction) const noexcept
 // would drop its output for two samples and the delay's slew across the
 // two samples would bend the pitch. A switch anywhere else (a fret change
 // under a sounding wave) is one of many steps that change already makes.
-void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
+void AcustraEngine::StringLoop::handoffDispersion(SecondOrderAllpass& section,
+                                                   bool active) noexcept
 {
-    if (active == secondDispersionActive)
-        return;
-    secondDispersionActive = active;
     const float bounded = AcustraEngine::clamp(
         currentDelay, 3.0f, static_cast<float>(static_cast<int>(delay.size()) - 3));
     const int whole = delayAnchor(bounded);
@@ -3694,20 +3853,43 @@ void AcustraEngine::StringLoop::switchSecondDispersion(bool active) noexcept
             following = second * at(whole - 1) + first * at(whole)
                       + at(whole + 1) - first * next - second * allpassY1;
         }
-        secondDispersion.x1 = following;
-        secondDispersion.x2 = next;
-        secondDispersion.y1 = allpassY1;
-        secondDispersion.y2 = allpassY2;
+        section.x1 = following;
+        section.x2 = next;
+        section.y1 = allpassY1;
+        section.y2 = allpassY2;
         allpassY1 = following;
         allpassY2 = next;
         setCurrentDelay(currentDelay - 2.0f);
     }
     else
     {
-        allpassY1 = secondDispersion.y1;
-        allpassY2 = secondDispersion.y2;
-        secondDispersion.reset();
+        allpassY1 = section.y1;
+        allpassY2 = section.y2;
+        section.reset();
         setCurrentDelay(currentDelay + 2.0f);
+    }
+}
+
+void AcustraEngine::StringLoop::switchDispersion(bool second, bool upper) noexcept
+{
+    // Each handoff acts on the first filter after the read. Remove them
+    // in signal order and insert them in reverse order.
+    if (upperDispersionActive && (!upper || second != secondDispersionActive))
+    {
+        handoffDispersion(upperDispersion[1], false);
+        handoffDispersion(upperDispersion[0], false);
+        upperDispersionActive = false;
+    }
+    if (second != secondDispersionActive)
+    {
+        handoffDispersion(secondDispersion, second);
+        secondDispersionActive = second;
+    }
+    if (upper && !upperDispersionActive)
+    {
+        handoffDispersion(upperDispersion[0], true);
+        handoffDispersion(upperDispersion[1], true);
+        upperDispersionActive = true;
     }
 }
 
@@ -3738,7 +3920,9 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
             &bendingLossGain, &bendingLossA1, &bendingLossA2, &dispersionA1,
             &dispersionA2, &secondDispersionA1, &secondDispersionA2,
             &constantLossGain, &constantLossA1, &constantLossA2,
-            &constantLossN1, &constantLossN2 };
+            &constantLossN1, &constantLossN2,
+            &upperDispersionCoefficients[0], &upperDispersionCoefficients[1],
+            &upperDispersionCoefficients[2], &upperDispersionCoefficients[3] };
         --intrinsicCoefficientSamples;
         for (std::size_t index = 0; index < applied.size(); ++index)
         {
@@ -3777,6 +3961,13 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         delayProgressBits = exact::bits(currentDelay);
     }
     float delayed = readDelay(currentDelay);
+    if (upperDispersionActive)
+    {
+        delayed = upperDispersion[1].process(delayed, upperDispersionCoefficients[2],
+                                              upperDispersionCoefficients[3]);
+        delayed = upperDispersion[0].process(delayed, upperDispersionCoefficients[0],
+                                              upperDispersionCoefficients[1]);
+    }
     if (secondDispersionActive)
         delayed = secondDispersion.process(delayed, secondDispersionA1,
                                            secondDispersionA2);
@@ -4795,7 +4986,8 @@ void AcustraEngine::scaleStoredWaves(Voice& voice, float gain) noexcept
             filter->state *= gain;
             filter->previousInput *= gain;
         }
-        for (auto* section : { &loop.dispersion, &loop.secondDispersion })
+        for (auto* section : { &loop.dispersion, &loop.secondDispersion,
+                               &loop.upperDispersion[0], &loop.upperDispersion[1] })
         {
             section->x1 *= gain;
             section->x2 *= gain;
@@ -5835,8 +6027,9 @@ AcustraEngine::PortMobility AcustraEngine::bridgePortMobility(
 
 // Completed intrinsic fits are shared by real voices and the resting-string
 // reference builder. Reuse requires the complete, exact input tuple.
-std::pair<std::array<float, 2>, std::array<float, 2>> AcustraEngine::solvedDispersion(
-    const std::array<double, 13>& arguments) noexcept
+std::pair<std::array<float, stringDispersionSectionCount>,
+          std::array<float, stringDispersionSectionCount>> AcustraEngine::solvedDispersion(
+    const std::array<double, 14>& arguments) noexcept
 {
     const auto solved = std::find_if(dispersionSolves_.begin(),
         dispersionSolves_.end(), [&arguments] (const DispersionSolve& solve)
@@ -5848,10 +6041,10 @@ std::pair<std::array<float, 2>, std::array<float, 2>> AcustraEngine::solvedDispe
     const auto calibration = calibrateDispersion(
         arguments[0], arguments[1], arguments[2], arguments[3],
         arguments[4], arguments[5], arguments[6], arguments[7], arguments[8],
-        arguments[9], arguments[10], arguments[11], arguments[12]);
+        arguments[9], arguments[10], arguments[11], arguments[12], arguments[13] > 0.0);
     auto& slot = dispersionSolves_[static_cast<std::size_t>(nextDispersionSolve_)];
     slot.arguments = arguments;
-    for (std::size_t section = 0; section < 2; ++section)
+    for (std::size_t section = 0; section < stringDispersionSectionCount; ++section)
     {
         slot.decayRatios[section] = static_cast<float>(calibration.decayRatio[section]);
         slot.poleRatios[section] = static_cast<float>(calibration.poleRatio[section]);
@@ -5919,17 +6112,19 @@ AcustraEngine::restingStringModels() noexcept
         model.highFilter.configureRate(highCoefficient, sampleRate_);
         const auto [decay, pole] = solvedDispersion({ inharmonicity, frequency, sampleRate_,
             0.0, 0.0, highCoefficient, model.highMix, model.bendingA1, model.bendingA2,
-            model.constantA1, model.constantA2, static_cast<float>(constant.n1), model.constantN2 });
+            model.constantA1, model.constantA2, static_cast<float>(constant.n1),
+            model.constantN2, frequency >= 350.0f ? 1.0 : 0.0 });
         DispersionSections dispersion;
         const float omega = twoPi * frequency * inverseSampleRate_;
-        for (std::size_t section = 0; section < 2; ++section)
+        for (std::size_t section = 0; section < stringDispersionSectionCount; ++section)
         {
             secondOrderAllpassCoefficients(static_cast<double>(omega), decay[section], pole[section],
                 dispersion.a1[section], dispersion.a2[section]);
             model.dispersion[2 * section] = static_cast<float>(dispersion.a1[section]);
             model.dispersion[2 * section + 1] = static_cast<float>(dispersion.a2[section]);
+            model.dispersionActive[section] = dispersion.used[section]
+                = section == 0 || decay[section] > 0.0f;
         }
-        model.secondDispersion = dispersion.used[1] = decay[1] > 0.0f;
         const float rawDelay = static_cast<float>(tunedLoopDelay(frequency, sampleRate_,
             0.0, 0.0, highCoefficient, model.highMix, dispersion, model.bendingA1,
             model.bendingA2, model.constantA1, model.constantA2,
@@ -6127,8 +6322,9 @@ float AcustraEngine::coupledPolarisationDetune(
             };
             Complex feedback = double(model.loopGain) * raisedTo(z, resting.anchor)
                 * ap(resting.thiranA1, resting.thiranA2);
-            feedback *= ap(model.dispersion[0], model.dispersion[1]);
-            if (model.secondDispersion) feedback *= ap(model.dispersion[2], model.dispersion[3]);
+            for (std::size_t section = 0; section < stringDispersionSectionCount; ++section)
+                if (model.dispersionActive[section])
+                    feedback *= ap(model.dispersion[2 * section], model.dispersion[2 * section + 1]);
             const double pole = resting.pole;
             const double delayed = resting.delayed;
             feedback *= 1.0 - double(model.highMix) + over(double(model.highMix)
@@ -6791,7 +6987,12 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // for a tension bend; the tiny attack excursion still uses the scaled
     // allpass coefficients without rerunning the iterative solve. The hand
     // only adds loss and does not invalidate this intrinsic string design.
+    // Select the upper-register order at the physical finger stop. A
+    // held bend or vibrato updates its phase targets while keeping the
+    // order selected at contact.
+    const double upperDispersion = pitch.tuningFrequency >= 350.0f ? 1.0 : 0.0;
     const bool dispersionDesignChanged = clearDelay
+        || voice.dispersionDesignArguments.back() != upperDispersion
         || exact::abs(voice.dispersionDesignFrequency - lossDesignFrequency)
                > std::max(1.0e-4f, 0.001f * lossDesignFrequency)
         // A bend or a vibrato moves B continuously, and this design is an
@@ -6885,12 +7086,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         const auto fitConstant = fitAtDesign ? constant
             : constantSection(static_cast<double>(dispersionFitFrequency),
                               sampleRate_);
-        const std::array<double, 13> arguments {
+        const std::array<double, 14> arguments {
             inharmonicity, dispersionFitFrequency, sampleRate_,
             designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
             static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
             static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
-            static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2)
+            static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2),
+            upperDispersion
         };
         // Resetting a wave does not change an otherwise identical design.
         // Keep the existing request tolerances and metadata updates, while
@@ -6910,14 +7112,14 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     }
     const float omega = twoPi * frequency * inverseSampleRate_;
     DispersionSections dispersion;
-    for (std::size_t section = 0; section < 2; ++section)
+    for (std::size_t section = 0; section < stringDispersionSectionCount; ++section)
     {
         secondOrderAllpassCoefficients(static_cast<double>(omega),
             voice.dispersionDecayRatios[section],
             voice.dispersionPoleRatios[section], dispersion.a1[section],
             dispersion.a2[section]);
+        dispersion.used[section] = section == 0 || voice.dispersionDecayRatios[section] > 0.0f;
     }
-    dispersion.used[1] = voice.dispersionDecayRatios[1] > 0.0f;
     const float fretT60Factor = clamp(1.0f
         - physicalCalibration_.steelFretT60Slope * voice.speakingFret,
         0.10f, 2.0f);
@@ -6970,15 +7172,18 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
             static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
             static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
-            static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2) });
+            static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2),
+            upperDispersion });
         const float referenceOmega = twoPi * frequency
             * static_cast<float>(1.0 / referenceRate);
         DispersionSections referenceDispersion;
-        for (std::size_t section = 0; section < 2; ++section)
+        for (std::size_t section = 0; section < stringDispersionSectionCount; ++section)
+        {
             secondOrderAllpassCoefficients(static_cast<double>(referenceOmega),
                 decayRatios[section], poleRatios[section],
                 referenceDispersion.a1[section], referenceDispersion.a2[section]);
-        referenceDispersion.used[1] = decayRatios[1] > 0.0f;
+            referenceDispersion.used[section] = section == 0 || decayRatios[section] > 0.0f;
+        }
         referenceRawDelay = static_cast<float>(tunedLoopDelay(
             frequency, referenceRate, broadLossCoefficient, broadLoss,
             lowpassCoefficient, mutedHighLoss, referenceDispersion,
@@ -7091,17 +7296,21 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             static_cast<float>(dispersion.a1[0]), static_cast<float>(dispersion.a2[0]),
             static_cast<float>(dispersion.a1[1]), static_cast<float>(dispersion.a2[1]),
             voice.constantLossGain, voice.constantLossA1, voice.constantLossA2,
-            voice.constantLossN1, voice.constantLossN2 },
+            voice.constantLossN1, voice.constantLossN2,
+            static_cast<float>(dispersion.a1[2]), static_cast<float>(dispersion.a2[2]),
+            static_cast<float>(dispersion.a1[3]), static_cast<float>(dispersion.a2[3]) },
             performanceRealism_.retuneContinuity
                 && (transitionRetune
                     || (continuousRevision && loop.intrinsicCoefficientSamples == 0))
                 && !clearDelay);
         if (clearDelay)
+        {
             loop.secondDispersionActive = dispersion.used[1];
-        else
-            loop.switchSecondDispersion(dispersion.used[1]);
-        if (clearDelay)
+            loop.upperDispersionActive = dispersion.used[2];
             loop.reset();
+        }
+        else
+            loop.switchDispersion(dispersion.used[1], dispersion.used[2]);
     }
 
     if (referenceTuning)
