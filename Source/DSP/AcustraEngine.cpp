@@ -5976,13 +5976,16 @@ float AcustraEngine::coupledPolarisationDetune(
     if (voice.commonTuningGeneration == voiceConfigurationGeneration_
         && voice.commonTuningKey == key)
         return voice.commonTuningValue;
-    for (const auto& earlier : voice.commonTuningHistory)
+    for (auto& earlier : voice.commonTuningHistory)
         if (earlier.generation == voiceConfigurationGeneration_ && earlier.key == key)
         {
+            // Swap with the front, so two stops played in turn both stay.
+            const float value = earlier.value;
+            earlier = { voice.commonTuningGeneration, voice.commonTuningKey, voice.commonTuningValue };
             voice.commonTuningKey = key;
             voice.commonTuningGeneration = voiceConfigurationGeneration_;
-            voice.commonTuningValue = earlier.value;
-            return earlier.value;
+            voice.commonTuningValue = value;
+            return value;
         }
     if (voice.commonTuningGeneration == voiceConfigurationGeneration_)
     {

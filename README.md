@@ -44,8 +44,8 @@ long per-version notes are in the
 - Each string keeps the tunings of its last eight stops, so a riff or a
   progression that returns to a fret does not solve it again: an E, A and
   D progression strummed round, six note-ons a chord in one 64-sample
-  block at 48 kHz, costs 0.76-1.3 ms the first time round and 0.53-1.2 ms
-  after it on the development machine (1.9.26: 0.87-1.7 and 1.2-1.5 ms;
+  block at 48 kHz, costs 0.78-1.38 ms the first time round and 0.51-0.69
+  ms after it on the development machine (1.9.26: 0.87-1.7 and 1.2-1.5 ms;
   what remains is the attacks' own set-up, not the tuning). The output is
   bit for bit as before.
 

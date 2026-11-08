@@ -219,8 +219,11 @@ and the four chords 0.72, 1.22, 0.72 and 1.16 ms (0.88, 1.45, 0.85 and
 1.44). Then (1.9.28) each string keeps the tunings of its last eight
 stops in a ring beside the one in front, so a progression that comes
 back to a fret finds its solve: an E, A, D progression strummed round
-costs 0.76, 1.3 and 1.26 ms for its three chords the first time and
-0.55, 0.53 and 1.13 ms after it (1.9.26: 0.87, 1.73, 1.53 and then 1.24-1.53).
+costs 0.78, 1.35 and 1.38 ms for its three chords the first time and
+0.51-0.69 ms after it (1.9.26: 0.87, 1.73, 1.53 and then 1.24-1.53). A
+hit swaps the entry with the one in front, so two stops played in turn
+both stay; without the swap the D chord's notes, each replacing a stop
+the next chord came back to, were solved every round.
 What remains on a repeated chord is the attacks' own set-up, 80-220 µs a
 note with its block (highest on the low E's upper frets), which the
 tuning solve was never part of.
