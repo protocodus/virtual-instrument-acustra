@@ -14,6 +14,15 @@
 
 namespace acustra
 {
+namespace
+{
+double expectedForceScale(double velocity)
+{
+    const double t = std::min(velocity * 127.0 / 81.0, 1.0);
+    return 0.2 + 0.8 * t * t * (3.0 - 2.0 * t);
+}
+}
+
 struct AcustraEngineTestAccess
 {
     static void redrawForce(AcustraEngine& engine)
@@ -25,7 +34,7 @@ struct AcustraEngineTestAccess
     struct Release
     {
         double pole, reference, position, displacement, brightness;
-        double absolutePole;
+        double absolutePole, boundaryScale;
     };
     static Release inspect(AcustraEngine& engine, int string = 0)
     {
@@ -60,11 +69,15 @@ struct AcustraEngineTestAccess
             * engine.physicalCalibration_.steelDisplacementScaleMetres;
         const double releaseSpeed = 0.5 * waveSpeed * heldMetres
             * (1.0 / a + 1.0 / (speakingLength - a));
-        // Finger's authored effective release edge shrinks with nominal
-        // playing force; it stays independent of same-velocity force draws.
-        // Use observed MIDI velocity and independently reconstructed held
-        // displacement, rather than the initializer's computed slip pole.
+        // Reconstruct the edge from velocity and speaking geometry. The
+        // boundary factor varies with pluck point but stays fixed between
+        // paired weak and strong draws at that point.
+        const double boundaryScale = engine.performanceRealism_.pluckBoundaryCompliance
+            ? std::clamp(std::pow(speakingLength / 0.648
+                * double(voice.pluckPoint) * (1.0 - voice.pluckPoint) / (0.18 * 0.82),
+                0.22), 0.72, 1.35) : 1.0;
         const double radius = 0.2e-3
+            * boundaryScale * expectedForceScale(voice.velocity)
             * (engine.parameters_.picking == PickingTechnique::Finger
                 ? std::pow(double(voice.velocity), 0.233125)
                 : 1.0 / double(voice.velocity));
@@ -73,7 +86,7 @@ struct AcustraEngineTestAccess
         return { voice.releaseSlipPole, voice.releaseReferencePole,
                  voice.pluckPoint, displacement,
                  length * length * slopes / std::max(variance, 1.0e-30),
-                 absolutePole };
+                 absolutePole, boundaryScale };
     }
     static void seed(AcustraEngine& engine, std::uint32_t seed)
     { engine.voices_[0].randomState = seed; }
@@ -234,10 +247,10 @@ void testPreparedFixtureCopiesMatchFreshSetup()
         {
             const auto a = Access::inspect(*direct, string);
             const auto b = Access::inspect(*copied, string);
-            const std::array<double, 6> aState { a.pole, a.reference, a.position,
-                a.displacement, a.brightness, a.absolutePole };
-            const std::array<double, 6> bState { b.pole, b.reference, b.position,
-                b.displacement, b.brightness, b.absolutePole };
+            const std::array<double, 7> aState { a.pole, a.reference, a.position,
+                a.displacement, a.brightness, a.absolutePole, a.boundaryScale };
+            const std::array<double, 7> bState { b.pole, b.reference, b.position,
+                b.displacement, b.brightness, b.absolutePole, b.boundaryScale };
             const auto finite = [] (const auto& state)
             { return std::all_of(state.begin(), state.end(),
                      [] (double value) { return std::isfinite(value); }); };
@@ -303,7 +316,7 @@ void testContactLawAndForceSensitiveBrightness()
                     auto engine = fresh(rate, technique);
                     Access::seed(*engine, 0x6d2b79f5u * take);
                     // These independent repeat-stream seeds yield opposite
-                    // ends of the bounded one-dB residual. Position, angle,
+                    // ends of the bounded 1.5 dB residual. Position, angle,
                     // velocity, Touch and gesture remain identical in each
                     // pair; random-position groups cannot obscure whether
                     // increased held force actually speeds the contact up.
@@ -319,13 +332,14 @@ void testContactLawAndForceSensitiveBrightness()
                     else
                         expect(state.pole > state.reference && state.reference > 0.0,
                                "soft Thumb did not have a slower release than its reference");
-                    // tau*y/[p(1-p)] stays constant at this velocity's
-                    // authored Finger radius. Thumb's nominal full-force
-                    // reference is independent of its actual force draw.
+                    // Divide the Finger contact time by its actual boundary
+                    // radius factor before checking the force/geometry law.
+                    // Thumb's nominal full-force reference has no such factor.
                     const double observedPole = finger ? state.pole : state.reference;
                     const double nominal = -1.0 / std::log(observedPole)
                         * (finger ? state.displacement
-                            / (state.position * (1.0 - state.position)) : 1.0);
+                            / (state.position * (1.0 - state.position) * state.boundaryScale)
+                            : 1.0);
                     smallestReference = std::min(smallestReference, nominal);
                     largestReference = std::max(largestReference, nominal);
                     releases[std::size_t(force)] = state;
@@ -333,7 +347,7 @@ void testContactLawAndForceSensitiveBrightness()
                 const auto& weak = releases[0];
                 const auto& strong = releases[1];
                 expect(weak.position == strong.position
-                           && strong.displacement > 1.20 * weak.displacement,
+                           && strong.displacement > 1.35 * weak.displacement,
                        "paired force probe failed to isolate a stronger stroke at one position");
                 expect(strong.pole < weak.pole,
                        "firmer same-velocity stroke failed to speed the release contact");
@@ -363,6 +377,11 @@ void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
                    && std::abs(state.pole - state.absolutePole) < 1.0e-6,
                "full-velocity Finger cancelled its absolute physical slip");
         auto thumb = fresh(rate, acustra::PickingTechnique::Thumb);
+        // With the boundary compliance feature enabled, the actual edge
+        // can differ from the nominal full-force reference at unity velocity.
+        auto nominalBoundary = thumb->performanceRealism();
+        nominalBoundary.pluckBoundaryCompliance = false;
+        thumb->setPerformanceRealism(nominalBoundary);
         Access::holdNominalForce(*thumb, 1.0f);
         thumb->noteOn(note, 1.0f, string + 1);
         const auto thumbState = Access::inspect(*thumb, string);
@@ -401,15 +420,13 @@ double renderedLevel(acustra::PickingTechnique technique,
 
 void testPlayableAudibleVelocityRange()
 {
-    // Emitted audio, not the initializer's formula: softer strokes remain
-    // present while their natural contact spectra retain audible dynamics.
-    // Both ends of each RMS span are bounded: a fixed-velocity substitute
-    // and the old over-wide v² force curve must both fail. Pick's slowest
-    // contacts naturally lose more upper-band energy than Finger/Thumb.
+    // Bound the audible RMS contrast through the whole capture path. The
+    // soft notes are further below the full stroke, while the 96–127 range
+    // preserves the established response. Bounds cover the measured range
+    // across the three techniques and captures, with numerical margin.
     constexpr std::array<int, 5> velocities { 16, 32, 64, 96, 127 };
-    constexpr std::array<double, 4> minimumSpan { 14.0, 9.0, 4.0, 1.0 };
-    constexpr std::array<double, 4> maximumSpan { 26.0, 18.0, 9.0, 4.0 };
-    constexpr std::array<double, 4> pickMaximumSpan { 36.0, 20.0, 9.0, 4.0 };
+    constexpr std::array<double, 4> minimumSpan { 28.0, 17.5, 5.5, 1.0 };
+    constexpr std::array<double, 4> maximumSpan { 36.0, 23.0, 10.0, 4.0 };
     int cases = 0;
     for (double rate : { 44100.0, 96000.0 })
         for (auto technique : { acustra::PickingTechnique::Finger,
@@ -426,12 +443,10 @@ void testPlayableAudibleVelocityRange()
                     for (std::size_t v = 1; v < levels.size(); ++v)
                         expect(levels[v] > levels[v - 1] + 1.0,
                                "velocity probes do not rise monotonically in emitted audio");
-                    const auto& upper = technique == acustra::PickingTechnique::Pick
-                        ? pickMaximumSpan : maximumSpan;
                     for (std::size_t v = 0; v < minimumSpan.size(); ++v)
                     {
                         const double span = levels.back() - levels[v];
-                        expect(span >= minimumSpan[v] && span <= upper[v],
+                        expect(span >= minimumSpan[v] && span <= maximumSpan[v],
                                "emitted velocity contrast left the playable RMS bounds");
                     }
                     ++cases;
@@ -453,13 +468,16 @@ void testDenseFloatingVelocityResponse()
         {
             // Finer than MIDI 1.0, passed directly as a float: this would
             // expose either a handful of dynamics or hidden 7-bit rounding.
-            const float velocity = 0.01f + 0.99f * static_cast<float>(index) / (probes - 1);
+            constexpr float firstVelocity = 1.0f / 127.0f;
+            const float velocity = firstVelocity + (1.0f - firstVelocity)
+                * static_cast<float>(index) / (probes - 1);
             auto engine = fresh(48000.0, technique);
             Access::seed(*engine, 0x13579bdu);
             engine->noteOn(40, velocity, 1);
             const auto contact = Access::continuousContact(*engine);
             const double normalized = contact.force
-                / ((0.92 + 0.08 * contact.touch) * double(velocity));
+                / ((0.92 + 0.08 * contact.touch) * double(velocity)
+                   * acustra::expectedForceScale(velocity));
             if (index == 0)
                 reference = normalized;
             const double error = std::abs(normalized / reference - 1.0);
@@ -467,7 +485,7 @@ void testDenseFloatingVelocityResponse()
             expect(std::isfinite(contact.force) && contact.force > previousForce,
                    "floating velocity acquired a plateau or reversed the prescribed force");
             expect(error < 3.0e-6,
-                   "floating velocity departed from the continuous linear force law");
+                   "floating velocity departed from the authored force law");
             expect(std::isfinite(contact.corner) && contact.corner > 0.0
                        && contact.corner >= previousCorner - 2.0e-7,
                    "increasing floating velocity reversed soft-contact release speed");

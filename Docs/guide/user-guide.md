@@ -275,6 +275,7 @@ whichever channel sends them.
 | Notes 24-26 | Stroke-direction keyswitches (strums, and picked notes under Pick): C0, C#0, D0 as the panel names them (C1-D1 with middle C as C4) |
 | Note 27 | Sustain latch (D#0) |
 | Notes 29-30 | Strum keys: F0 strums the held keys down, F#0 up; the first latches Keys mode |
+| Notes 31-35 | G0 Fret Squeak, G#0 Fret Tap, A0 Palm Hit, A#0 Fist Hit, B0 Knock |
 | Pitch bend | Slide; 2 semitones by default (RPN 0 sets 0-96) |
 | CC1 | Vibrato |
 | CC2 | Mute: picking-hand damping at the saddle |
@@ -287,6 +288,10 @@ whichever channel sends them.
 | CC121 | Reset All Controllers (lifts the pedal, not CC2) |
 | CC123-127 | All Notes Off; CC126 = 6 on channel 1 gives each string its own channel, CC127 ends that |
 | Program change, polyphonic pressure | Ignored |
+
+The five guitar noises are synthesized one-shots. Velocity shapes each
+contact's force, colour and duration, and each new hit varies the contact.
+They follow Capture, Room and Output and can play over a held chord.
 
 **MPE.** RPN 6 on channel 1 creates a lower zone: channel 1 then manages
 the member channels above it (default bend 2 semitones on the manager, 48

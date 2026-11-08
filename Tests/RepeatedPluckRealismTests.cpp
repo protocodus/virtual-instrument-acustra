@@ -101,6 +101,11 @@ int failures = 0;
 void expect(bool condition, const char* message)
 { if (!condition) { ++failures; std::cerr << "FAIL: " << message << '\n'; } }
 
+// Linear-mean normalization of a uniform ±1.5 dB draw puts its extrema
+// at 0.837227 and 1.182615. Round these test bounds outward.
+constexpr float minimumForceGain = 0.837f;
+constexpr float maximumForceGain = 1.183f;
+
 void testAlignedIncrementScratchPreservesWorkAndCompleteState()
 {
     // Exercise fractional alignment at both delay bounds and wrapped ring
@@ -250,7 +255,7 @@ void testBoundsMeanAndForceTracking()
     // The first pluck draws its own residual like every later one, so the
     // nominal force is the force it holds without that draw.
     const float first = Access::gain(*engine);
-    expect(first != 1.0f && first > 0.888f && first < 1.121f,
+    expect(first != 1.0f && first > minimumForceGain && first < maximumForceGain,
            "first pluck did not draw its own bounded force");
     const double nominal = Access::heldForce(*engine) / first;
     double sum = 0.0, square = 0.0;
@@ -272,14 +277,14 @@ void testBoundsMeanAndForceTracking()
         expect(forceError < 3.0e-6,
                "repeat force did not reach the string through its point compliance");
         worstForceError = std::max(worstForceError, forceError);
-        expect(gain > 0.888f && gain < 1.121f,
-               "repeat force exceeded its bounded one-dB candidate range");
+        expect(gain > minimumForceGain && gain < maximumForceGain,
+               "repeat force exceeded its bounded 1.5 dB range");
     }
     const double mean = sum / 512;
     const double sd = std::sqrt(square / 512 - mean * mean);
     expect(std::abs(mean - 1.0) < 0.012,
            "repeat variation biased the mean linear force");
-    expect(minimum < 0.91f && maximum > 1.10f && sd > 0.04 && sd < 0.08,
+    expect(minimum < 0.87f && maximum > 1.15f && sd > 0.075 && sd < 0.125,
            "repeated equal-velocity strokes did not produce modest force variety");
     std::cout << "Repeat force gain mean=" << mean << " SD=" << sd
               << " range=" << minimum << ".." << maximum
@@ -298,11 +303,11 @@ void testExplicitPerformanceAndResetBoundaries()
     expect(Access::repeatState(*engine) == initialState,
            "duplicate note-on on one sample advanced the force stream");
     advance(*engine, 128);
-    // 128 samples after the last pluck, a force change past two dB leaves
+    // 128 samples after the last pluck, a force change past 3 dB leaves
     // t^2 (3 - 2t) of the residual, t = 128 / (2 s * 48 kHz): 5.3e-6 of a
-    // draw within 0.121 of one, plus one float rounding.
+    // draw within 0.183 of one, plus one float rounding.
     engine->noteOn(40, 0.85f, 1);
-    expect(std::abs(Access::gain(*engine) - 1.0f) < 8.0e-7f, "explicit accent force changed");
+    expect(std::abs(Access::gain(*engine) - 1.0f) < 1.1e-6f, "explicit accent force changed");
     advance(*engine, 128);
     engine->noteOn(41, 0.85f, 1);
     expect(Access::gain(*engine) != 1.0f,
@@ -361,13 +366,34 @@ void testContinuousCommandForceAndMemory()
                 smallestForceStep = std::min(smallestForceStep,
                     current.force / previousForce - 1.0);
             previousForce = current.force;
-            expect(current.gain > 0.888f && current.gain < 1.121f,
+            expect(current.gain > minimumForceGain && current.gain < maximumForceGain,
                    "continuous repeat envelope exceeded existing force bounds");
         }
-        // With brightness fixed, command force is proportional to v. A
-        // full two-dB force change therefore reaches these velocity ratios.
-        for (const float centre : { 0.5f, 0.5f * float(std::pow(10.0, -2.0 / 20.0)),
-                                          0.5f * float(std::pow(10.0, 2.0 / 20.0)) })
+        // Locate the 3 dB accent boundaries in observed nominal force,
+        // which follows a nonlinear velocity response.
+        const auto nominalForce = [&] (float velocity)
+        {
+            const auto observed = probe(velocity, 2400, seed);
+            return observed.force / observed.gain;
+        };
+        const double centreForce = nominalForce(0.5f);
+        const auto velocityAtOffset = [&] (double db)
+        {
+            const double target = centreForce * std::pow(10.0, db / 20.0);
+            float low = 0.35f, high = 0.7f;
+            for (int step = 0; step < 24; ++step)
+            {
+                const float middle = 0.5f * (low + high);
+                if (nominalForce(middle) < target)
+                    low = middle;
+                else
+                    high = middle;
+            }
+            return 0.5f * (low + high);
+        };
+        const float softBoundary = velocityAtOffset(-3.0);
+        const float loudBoundary = velocityAtOffset(3.0);
+        for (const float centre : { softBoundary, 0.5f, loudBoundary })
         {
             const auto exact = probe(centre, 2400, seed);
             double broad = 0.0, narrow = 0.0;
@@ -382,10 +408,19 @@ void testContinuousCommandForceAndMemory()
                    "repeat force did not converge at command equality or a fade endpoint");
             worstEndpointError = std::max(worstEndpointError, narrow);
         }
-        // 2400 samples after the preceding pluck, a force change past two dB
+        // 2400 samples after the preceding pluck, a force change past 3 dB
         // leaves t^2 (3 - 2t) of the residual, t = 2400 / (2 s * 48 kHz).
         const double recentShare = 0.025 * 0.025 * (3.0 - 2.0 * 0.025);
-        const double recentBound = 0.121 * recentShare + 1.2e-7;
+        const double recentBound = (maximumForceGain - 1.0) * recentShare + 1.2e-7;
+        expect(std::abs(probe(softBoundary, 2400, seed).gain - 1.0f) <= recentBound
+                   && std::abs(probe(loudBoundary, 2400, seed).gain - 1.0f) <= recentBound,
+               "the residual taper shifted its 3 dB force boundaries");
+        const double equalDraw = probe(0.5f, 2400, seed).gain - 1.0;
+        const double halfTaper = equalDraw * (1.0 + recentShare) / 2.0;
+        for (const double db : { -1.5, 1.5 })
+            expect(std::abs(probe(velocityAtOffset(db), 2400, seed).gain - 1.0
+                            - halfTaper) < 1.0e-6,
+                   "the accent taper did not halve the recent residual halfway to its boundary");
         expect(std::abs(probe(0.3f, 2400, seed).gain - 1.0f) <= recentBound
                    && std::abs(probe(0.85f, 2400, seed).gain - 1.0f) <= recentBound,
                "a deliberate large force change retained repeat variation");

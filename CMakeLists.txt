@@ -506,6 +506,11 @@ if(BUILD_TESTING)
     target_compile_features(AcustraOutputStageTests PRIVATE cxx_std_17)
     acustra_add_suite(Acustra.OutputStage AcustraOutputStageTests)
 
+    add_executable(AcustraGuitarNoiseTests Tests/GuitarNoiseTests.cpp)
+    target_link_libraries(AcustraGuitarNoiseTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraGuitarNoiseTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.GuitarNoises AcustraGuitarNoiseTests)
+
     add_executable(AcustraOutputBusTests Tests/OutputBusTests.cpp)
     target_link_libraries(AcustraOutputBusTests PRIVATE AcustraDSP)
     target_compile_features(AcustraOutputBusTests PRIVATE cxx_std_17)

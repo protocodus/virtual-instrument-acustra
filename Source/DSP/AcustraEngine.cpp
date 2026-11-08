@@ -3109,6 +3109,7 @@ AcustraEngine::AcustraEngine() noexcept
 // strums do.
 void AcustraEngine::restartRandomDraws() noexcept
 {
+    guitarNoises_.restart();
     strumRandomState_ = 0x9e3779b9u;
     fingerChordRandomState_ = 0x2545f491u;
     fingerPairRandomState_ = 0x9a735c21u;
@@ -4388,6 +4389,7 @@ void AcustraEngine::resetSoundState() noexcept
 {
     idleQuietSamples_ = 0;
     idleFlushed_ = true;
+    guitarNoises_.clear();
     resetPiezo();
     micDelayLeft_.fill(0.0f);
     micDelayRight_.fill(0.0f);
@@ -4434,6 +4436,19 @@ void AcustraEngine::resetSoundState() noexcept
     lastImpedanceInertia_ = 0.0f;
     bodyBank_.reset();
     fadingBodyBank_.reset();
+}
+
+void AcustraEngine::triggerGuitarNoise(GuitarNoise gesture, float velocity, int channel) noexcept
+{
+    if (!prepared_ || channel < 1 || channel > midiChannelCount)
+        return;
+    guitarNoises_.trigger(gesture, velocity, channel, sampleRate_);
+    if (guitarNoises_.active())
+    {
+        suspended_ = false;
+        idleFlushed_ = false;
+        idleQuietSamples_ = 0;
+    }
 }
 
 void AcustraEngine::setParameters(const EngineParameters& parameters) noexcept
@@ -4974,16 +4989,15 @@ void AcustraEngine::prepareBodyConfigurations() noexcept
 void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
     BodyShape shape, BodyMaterial material, double sampleRate) const noexcept
 {
-    const AnchorTransform& anchor = wideSteelAnchorTransform;
     const auto& bank = detail::measuredSteelBodyModes;
-    const auto shapeMorph = bodyConstructionMorph(bank, anchor, anchorBody(),
-        targetBodyFor(shape), material);
+    const auto shapeMorph = bodyConstructionMorph(bank, wideSteelAnchorTransform,
+        anchorBody(), targetBodyFor(shape), material);
     const auto woodFactors = woodFactorsFor(material);
     // The air mode as this construction places it, from the requested pole
     // (not the damped one, so a Q-only change leaves it exact): the capture
     // dip's centre (CaptureFilter::configure).
-    configuration.airModeHz = radiationPole(bank[0], 0, anchor, shapeMorph,
-                                            woodFactors, physicalCalibration_).frequency;
+    configuration.airModeHz = radiationPole(bank[0], 0, wideSteelAnchorTransform,
+        shapeMorph, woodFactors, physicalCalibration_).frequency;
     // Observation residues include the approved fixed pressure mixture.
     // Its spatial terms remove common arrival delay; renderBody adds none.
 
@@ -5009,8 +5023,8 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
             shapeLevel = morph.a0Level;
         else if (measured.frequency <= morph.t1UpperHz)
             shapeLevel = morph.t1Level;
-        const auto engine = radiationPole(measured, index, anchor, morph,
-            woodFactors, physicalCalibration_);
+        const auto engine = radiationPole(measured, index, wideSteelAnchorTransform,
+            morph, woodFactors, physicalCalibration_);
         float frequency = engine.frequency;
         const float highestMode = 0.46f * static_cast<float>(sampleRate);
         const bool audibleAtThisRate = frequency < highestMode;
@@ -5026,7 +5040,7 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
         mode.poleReal = pole.real();
         mode.poleImaginary = audibleAtThisRate ? pole.imag() : 0.0f;
 
-        const float bassTilt = 1.0f + (anchor.bass - 1.0f)
+        const float bassTilt = 1.0f + (wideSteelAnchorTransform.bass - 1.0f)
             * std::exp(-frequency / 520.0f);
         const float brilliance = std::pow(woodFactors.brightness, upper);
         // Coupled low-mode pressure residues already include the material's
@@ -5038,7 +5052,7 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
             physicalCalibration_.residueTiltDbPerOctave
             * std::log2(frequency / 1000.0f) / 6.02059991f);
         const float drive = audibleAtThisRate
-            ? anchor.volume * shapeLevel
+            ? wideSteelAnchorTransform.volume * shapeLevel
                 * materialRadiation
                 * bassTilt * brilliance
                 * residueTilt
@@ -5132,7 +5146,7 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
     };
     // Steel on its Original guitar plays the blend (SteelBodyBlend.h): g21's
     // bank, then the joint-pole body's kept modes on its own morph.
-    const int ownCount = static_cast<int>(std::min(
+    constexpr int ownCount = static_cast<int>(std::min(
         bank.size(), static_cast<std::size_t>(bodyModeCount)));
     for (int index = 0; index < ownCount; ++index)
         place(bank[static_cast<std::size_t>(index)], index, shapeMorph,
@@ -5140,8 +5154,7 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
               index < 2 ? index : -1);
     if (steelBlendJointShare > 0.0f)
     {
-        const auto jointMorph = steelJointMorph(anchor, shape,
-                                                material);
+        const auto jointMorph = steelJointMorph(wideSteelAnchorTransform, shape, material);
         for (const auto index : steelJointKept)
             place(steelJointRadiationModes[index], static_cast<int>(index),
                   jointMorph, steelBlendJointShare,
@@ -7303,6 +7316,16 @@ float AcustraEngine::mpePressureFor(const Voice& voice) const noexcept
 
 namespace
 {
+float softPluckGain(float velocity) noexcept
+{
+    // Preserve calibrated force from MIDI 81 upward. The gain floor
+    // keeps even the softest strokes playable.
+    constexpr float fullGainVelocity = 81.0f / 127.0f;
+    constexpr float minimumGain = 0.20f;
+    const float t = std::min(velocity / fullGainVelocity, 1.0f);
+    return minimumGain + (1.0f - minimumGain) * t * t * (3.0f - 2.0f * t);
+}
+
 float xorshiftNoise(std::uint32_t& state) noexcept
 {
     state ^= state << 13;
@@ -7503,9 +7526,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // note put their pluck points a median 0.02 of the string length apart
     // (Traube-Smith comb on the soft rows, where the estimate is clean),
     // which for three draws from a uniform spread is the spread's half-width.
-    // Once the coherent hand holds the string only 0.30 of it is the
-    // pluck's own draw; the rest is the hand's slow drift, and both scale
-    // with the spread. A plectrum lands further about its place. On the
+    // Once the coherent hand holds the string, isolated plucks retain
+    // more of their own draw than strings within one strum. The rest is
+    // the hand's slow drift. A plectrum lands further about its place. On the
     // embedded Shinyguitar round robins (a picked flat-top, four takes of
     // each note in four layers) a note's partials scatter 1.70-2.93 dB from
     // take to take once each take's level and tilt are taken out, which a
@@ -7536,24 +7559,24 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     if (gesture.active && !hasTimbre)
     {
         // One hand moves the same physical distance across a fretted chord.
-        // Keep the established open-string travel (takeSpread * 0.70 * 648 mm),
-        // then express it in each string's actual speaking length. Scaling
-        // that shared motion by the stopped length made an octave-fretted
-        // string's hand move only half as far. The independent take spread
+        // Express the shared hand's travel in each string's actual
+        // speaking length. Scaling by the stopped length made the hand
+        // move only half as far at the octave. The independent take spread
         // and explicit member position retain their existing maps.
-        float sharedOffset = 0.70f * gesture.position
+        const float individualShare = voice.strumming ? 0.30f : 0.45f;
+        float sharedOffset = (1.0f - individualShare) * gesture.position
             * (scaleLength / soundingLength);
         // Extreme virtual slides can leave less string than the hand's
         // travel. Approach the available position band smoothly there,
-        // reserving the independent draw's 0.30 share. Ordinary playable
+        // reserving the independent draw's share. Ordinary playable
         // frets remain below this knee and keep exact physical travel.
-        const float sharedLimit = (handLimit - lowestPoint) / takeSpread - 0.30f;
+        const float sharedLimit = (handLimit - lowestPoint) / takeSpread - individualShare;
         const float sharedKnee = 0.5f * sharedLimit;
         const float travel = exact::abs(sharedOffset);
         if (travel > sharedKnee)
             sharedOffset = std::copysign(sharedLimit
                 - sharedKnee * sharedKnee / travel, sharedOffset);
-        takeOffset = takeSpread * (sharedOffset + 0.30f * positionDraw);
+        takeOffset = takeSpread * (sharedOffset + individualShare * positionDraw);
     }
     constexpr float highRegisterFretPivot = 0.793700526f; // 2^(-4/12), 4th fret
     const float highRegisterLength = highRegisterFretPivot * scaleLength;
@@ -7619,15 +7642,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     if (voice.contactTravelEnabled)
         voice.contactTravel.reset(0.5f * position * voice.contactPeriodSamples,
             (1.0f - 0.5f * position) * voice.contactPeriodSamples);
-    // MIDI velocity is an authored playing-force response, independent of
-    // the fitted brightness depth. Linear force keeps softer voices present:
-    // half velocity supplies half the full stroke's force, rather than the
-    // quarter of the 2026-10-10 quadratic curve (the owner asked for less
-    // level contrast on 2026-10-13). The release gesture below retains the
-    // established soft/hard contact-time response, so this does not turn a
-    // soft note into a hard note played through an output fader. Full
-    // velocity is unchanged.
-    const float velocityForce = v;
+    // The velocity-to-force curve is independent of the fitted brightness
+    // depth. The release gesture below keeps its separate contact-time law.
+    const float velocityGain = softPluckGain(v);
+    const float velocityForce = v * velocityGain;
     // Retain small string-contact differences at a fixed strum velocity.
     // GuitarSet's +/-7.74 dB spread (a 4.47 dB std) copied the players'
     // uncontrolled accents into nominally identical MIDI strokes, causing
@@ -7681,16 +7699,16 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // No hand plucks twice with quite the same force: the Eastman
     // same-pitch/style takes' 20-250 ms levels have median within-group SD
     // 1.09 dB (Finger) and 1.47 dB (Pick). Their intended force/string/fret
-    // is unknown, so +/-1 dB (0.58 dB SD) is a conservative authored
+    // is unknown, so +/-1.5 dB (0.87 dB SD) is an authored
     // residual, not a fitted law. Every pluck but a strum's, which has its
     // own bounded variation, draws it: drawn only on a repeated note, a
     // melody of different notes at one velocity plucked every note alike and
     // was heard as robotic (Aculele 0.4.15, chosen by ear there; accepted
     // here without a by-ear verdict, Docs/decisions.md, 2026-10-28). An
     // accent stays the player's: within the hand's memory on this string the
-    // residual fades out as the commanded force changes, nominal beyond the
-    // residual's own two-dB span, so equal and nearly equal velocities are
-    // one continuing gesture rather than switching it on or off. This is an
+    // residual fades out as the commanded force changes. Fade over the
+    // draw's full three-dB span so small velocity increases remain monotone
+    // and nearly equal velocities share a continuous gesture. This is an
     // authored accent-preservation policy, not measured physiology.
     // The independent draw is linear-mean normalised: E[exp(a*U)] = sinh(a)/a;
     // blending it toward one preserves both that mean and its bounds.
@@ -7698,7 +7716,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     voice.pluckForceGain = 1.0f;
     if (!voice.strumming)
     {
-        constexpr double halfWidth = 0.1151292546497022842; // ln(10)/20: 1 dB
+        constexpr double halfWidth = 1.5 * 0.1151292546497022842; // 1.5 dB in log gain
         const auto fade = [] (double distance) noexcept
         {
             const double t = std::clamp(distance, 0.0, 1.0);
@@ -7714,8 +7732,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             const double nominalForce = static_cast<double>(velocityForce)
                 * (0.92 + 0.08 * touch);
             const float previousVelocity = voice.lastPluckVelocity;
-            const double previousForce = static_cast<double>(previousVelocity)
-                * (0.92 + 0.08 * effectiveTouch(voice.lastPluckVelocity));
+            const double previousForce = static_cast<double>(
+                previousVelocity * softPluckGain(previousVelocity))
+                * (0.92 + 0.08 * effectiveTouch(previousVelocity));
             const double forceChange = exact::abs(std::log(nominalForce / previousForce));
             recent = fade(elapsed);
             sameForce = fade(forceChange / (2.0 * halfWidth));
@@ -7881,7 +7900,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Steel Pick's velocity 16 stood 8-16 dB under the linear force law
     // over E2-E5, and stands 1-3 dB under it with the fixed edge
     // (Docs/decisions.md, 2026-10-28). Soft picked notes still darken.
-    const float releaseGestureScale = 1.0f / v;
+    // Scale the effective edge with the new force gain so the edge-to-speed
+    // ratio keeps its established raw-velocity curve.
+    const float releaseGestureScale = velocityGain / v;
     const float contactForce = v * v;
     constexpr float fingerContactForceExponent = 0.6165625f;
     constexpr double releaseBoostLimit = 3.0;
@@ -7899,7 +7920,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         slipPole = plectrumSlipPole(voice, releasedAmplitude, heldDistance,
             soundingLength, scaleLength,
             physicalCalibration_.pickEdgeRadiusMetres * releaseTouch
-                * gestureCompliance * boundaryCompliance);
+                * gestureCompliance * boundaryCompliance * velocityGain);
     else
     {
         // The nominal full-velocity contact bounds release speed. Thumb
@@ -8228,6 +8249,21 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                     sum += (lineAt(sample) - mean) * (lineAt(sample) - mean);
                 return sum;
             };
+            const bool inverseSharpening = !fullSoftSlip && slipPole < unslipPole;
+            const auto slopeEnergy = [&] ()
+            {
+                double sum = 0.0;
+                double previous = lineAt(length - 1);
+                for (int sample = 0; sample < length; ++sample)
+                {
+                    const double current = lineAt(sample);
+                    const double difference = current - previous;
+                    sum += difference * difference;
+                    previous = current;
+                }
+                return sum;
+            };
+            const double beforeEnergy = inverseSharpening ? slopeEnergy() : 0.0;
             const double before = spread();
             // Original Thumb retains its reference slip's inverse.
             applyPadRelease(loop, length, slipPole,
@@ -8236,7 +8272,17 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             const double after = spread();
             if (before > 0.0 && after > 0.0)
             {
-                const float scale = static_cast<float>(exact::sqrt(before / after));
+                double scaleSquared = before / after;
+                if (inverseSharpening)
+                {
+                    // The reference inverse can sharpen a hard Thumb release.
+                    // Preserve its spectral shape without supplying more
+                    // string work than the original displaced string stored.
+                    const double afterEnergy = slopeEnergy();
+                    if (afterEnergy > 0.0)
+                        scaleSquared = std::min(scaleSquared, beforeEnergy / afterEnergy);
+                }
+                const float scale = static_cast<float>(exact::sqrt(scaleSquared));
                 for (int sample = 0; sample < length; ++sample)
                     lineAt(sample) *= scale;
             }
@@ -9169,18 +9215,18 @@ float releaseFallCents(float dropDb) noexcept
 // nearly zero "the pitch drops about a half tone"). GuitarSet's hex channels
 // measure it (releaseFallCurve): nothing in the first 4 dB the note loses,
 // then about 2.3 cents a dB, 29 cents at 12.5 dB and 80 at 35 dB, where open
-// strings, with no fingertip to lift, stay within a few cents. The fall
-// follows that curve against the hand's own damping, 60 dB per T60: at the
-// nominal fretted 0.32 s release, 29 cents after 67 ms and 80 after 187 ms,
-// where the note is 35 dB down and the fall stops, since the rest would keep
-// the loops retuning, at a per-sample cost, under that level. A firmer
-// key-up, which damps faster (beginRelease), falls faster with it. A string
-// fretted only in part (a slide's handover at the nut) falls in proportion.
+// strings, with no fingertip to lift, stay within a few cents. The modeled
+// fall uses 40% of the measured cents against the hand's own damping,
+// 60 dB per T60. At the nominal fretted 0.32 s release it falls 11.6 cents
+// after 67 ms and stops at 32.2 cents after 187 ms, where the note is 35 dB
+// down. A firmer key-up, which damps faster (beginRelease), falls faster
+// with it. A string fretted only in part (a slide's handover at the nut)
+// falls in proportion.
 // The fall adds to each loop's configured delay instead of reconfiguring the
 // string as a slide: re-solving a released string's dispersion and bridge
 // phase every control period cost half again a callback for six strings.
 // Dispersion, bridge compensation and hand loss stay the fretted note's, a
-// period at most 5% shorter than the one sounding, on a note being damped.
+// period at most 2% shorter than the one sounding, on a note being damped.
 // speakingLengthMetres, the stop the hand holds, does not move, so the fall
 // is not a finger sliding along the winding (renderFretMotion).
 void AcustraEngine::beginReleaseFall(Voice& voice) noexcept
@@ -9191,7 +9237,8 @@ void AcustraEngine::beginReleaseFall(Voice& voice) noexcept
         || !(voice.releaseSeconds > 0.0f))
         return;
     constexpr float stopDb = releaseFallCurve.back()[0];
-    voice.releaseFallScale = fretContact;
+    constexpr float releaseFallDepth = 0.4f;
+    voice.releaseFallScale = releaseFallDepth * fretContact;
     voice.releaseFallDrop = 0.0f;
     voice.releaseFallDropPerPeriod = static_cast<float>(60.0 * controlPeriod
         / (static_cast<double>(voice.releaseSeconds) * sampleRate_));
@@ -9413,6 +9460,79 @@ double padReleasePole(double b, bool matchHalfPower) noexcept
     return 1.0 / (1.0 + t + std::sqrt(t) * std::sqrt(2.0 + t));
 }
 
+// The sampled raised cosine has unit centre and support |k| < width.
+// Its cosine sum is the Dirichlet kernel D(theta). The cosine-weighted
+// sum of k^2 is -D''(theta), so the moment takes constant work even on a
+// long string at a high internal rate.
+double padEndpointMoment(double width) noexcept
+{
+    if (width <= 1.0)
+        return 0.0;
+    constexpr double halfTurn = 3.14159265358979323846;
+    const double angle = halfTurn / width;
+    const double radius = std::ceil(width) - 1.0;
+    const double a = radius + 0.5;
+    const double inverseSine = 1.0 / std::sin(0.5 * angle);
+    const double cotangent = std::cos(0.5 * angle) * inverseSine;
+    const double kernel = std::sin(a * angle) * inverseSine;
+    const double cosineTerm = std::cos(a * angle) * inverseSine;
+    const double squareSum = radius * (radius + 1.0) * (2.0 * radius + 1.0) / 3.0;
+    const double negativeSecondDerivative =
+        (a * a - 0.25 - 0.5 * cotangent * cotangent) * kernel
+        + a * cosineTerm * cotangent;
+    return (squareSum + negativeSecondDerivative) / (2.0 * a + kernel);
+}
+
+double padEndpointWidth(double pole, int length) noexcept
+{
+    constexpr double halfTurn = 3.14159265358979323846;
+    constexpr double continuousMoment = 1.0 / 3.0 - 2.0 / (halfTurn * halfTurn);
+    const double cap = 0.5 * length;
+    const double loss = 1.0 - pole;
+    // In this nearly uniform regime the circular kernel's moment is already
+    // beyond the widest possible raised cosine. Avoid subtracting its
+    // near-equal correction from one.
+    if (loss * length < 1.0e-3)
+        return cap;
+
+    // For the periodic two-pass pole, the discrete second difference of
+    // squared circular distance is 2 except at the antipode. The pole's
+    // recurrence therefore gives the unwrapped moment 2q/(1-q)^2 times
+    // (1-N*K_antipode). At odd lengths the same deficit is split between
+    // the two equally weighted antipodal samples.
+    const double middlePower = std::pow(pole, length / 2);
+    const double otherPower = (length & 1) != 0 ? middlePower * pole : middlePower;
+    const double antipode = loss / (1.0 + pole) * (middlePower + otherPower)
+        / (1.0 - middlePower * otherPower);
+    const double target = (2.0 * pole / (loss * loss)) * (1.0 - length * antipode);
+    if (target >= padEndpointMoment(cap))
+        return cap;
+    if (target <= 0.5)
+    {
+        // At widths through two, only the centre and its neighbours can
+        // contribute. Invert their moment directly, including sub-sample
+        // releases that need a very small but nonzero neighbour weight.
+        return halfTurn / (2.0 * std::acos(std::sqrt(target / (2.0 * (1.0 - target)))));
+    }
+
+    const double estimate = std::sqrt(target / continuousMoment);
+    double lower = std::max(2.0, estimate - 1.0);
+    double upper = std::min(cap, estimate + 1.0);
+    if (padEndpointMoment(lower) > target)
+        lower = 2.0;
+    if (padEndpointMoment(upper) < target)
+        upper = cap;
+    for (int step = 0; step < 22; ++step)
+    {
+        const double middle = 0.5 * (lower + upper);
+        if (padEndpointMoment(middle) < target)
+            lower = middle;
+        else
+            upper = middle;
+    }
+    return 0.5 * (lower + upper);
+}
+
 template <typename At>
 void padPass(const At& at, int length, double b, bool inverse) noexcept
 {
@@ -9465,19 +9585,15 @@ void AcustraEngine::applyPadRelease(StringLoop& loop, int length,
         padPass(lineAt, length, padReleasePole(unslipPole, matchHalfPower), true);
     const double c = padReleasePole(slipPole, matchHalfPower);
     padPass(lineAt, length, c, false);
-    // The bridge sample is brought back to rest by a raised cosine as wide
-    // as the slip's own kernel (continuous-time variance: exp(-|k|/tau)
-    // has 2 tau^2, the
-    // cosine over +/-W has W^2 (1/3 - 2/pi^2)). Shifting the whole line, as
-    // the plectrum's slip does, put back much of the treble this slip takes
+    // Bring the bridge sample back to rest with a raised cosine whose
+    // sampled variance matches the slip's own periodic kernel. Shifting the
+    // whole line, as the plectrum's slip does, put back much of the treble this slip takes
     // from soft low notes: a velocity-16 Finger E2 and A2 brightened to 112
     // by 2.9 and 2.3 dB in H5-H12 (Acustra.Engine), against 3.6 and 6.1
     // under the one-pass slip and 4.3 and 5.0 here.
     const double first = lineAt(0);
-    const double tau = -1.0 / std::log(c);
     constexpr double halfTurn = 3.14159265358979323846;
-    const double halfWidth = std::min(0.5 * length, tau
-        * std::sqrt(2.0 / (1.0 / 3.0 - 2.0 / (halfTurn * halfTurn))));
+    const double halfWidth = padEndpointWidth(c, length);
     const int reach = static_cast<int>(std::ceil(halfWidth));
     for (int sample = 0; sample < reach; ++sample)
     {
@@ -10506,7 +10622,7 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     {
         // Bilbao et al., DAFx 2024, Eqs. 9–13: the finger supplies external
         // work; it does not vanish when the held string becomes quiet.
-        // Use the ordinary pluck's authored linear 0.24*v contact-force law at
+        // Use the ordinary pluck's authored velocity-to-force law at
         // its 0.16L open reference, so a hammer or pull keeps its balance
         // against the pluck at every velocity; this is not a calibrated
         // picking-velocity law.
@@ -10520,7 +10636,8 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
         const double tensionRatio = voice.tensionNewtons > 0.0f
             ? std::min(1.0, static_cast<double>(voice.pitchGeometry.value.tension)
                 / voice.tensionNewtons) : 1.0;
-        const double amplitude = 0.24 * velocity * (hammer ? 0.35 : 0.30)
+        const double amplitude = 0.24 * velocity * softPluckGain(velocity)
+            * (hammer ? 0.35 : 0.30)
             * length * p * (1.0 - p) / (0.648 * 0.16 * 0.84) * tensionRatio;
         work = amplitude * amplitude / (contactPeriod * p * (1.0 - p));
     }
@@ -11560,7 +11677,8 @@ void AcustraEngine::setLowerZoneMemberCount(int memberCount) noexcept
         sustainPedals_[static_cast<std::size_t>(midiChannel - 1)] = false;
     }
     lowerZoneMemberCount_ = next;
-    if (getActiveVoiceCount() == 0)
+    guitarNoises_.stopChannels(1, lastAffectedChannel);
+    if (getActiveVoiceCount() == 0 && !guitarNoises_.active())
     {
         for (int string = 0; string < stringCount; ++string)
             returnToOpenString(voices_[static_cast<std::size_t>(string)], string, true);
@@ -11613,7 +11731,11 @@ void AcustraEngine::allSoundOff(int midiChannel) noexcept
         if (voice.played && channelControlsVoice(midiChannel, voice))
             returnToOpenString(voice, string, true);
     }
-    if (getActiveVoiceCount() == 0)
+    // A master All Sound Off stops its member channels as with strings.
+    const int lastNoiseChannel = isLowerZoneMaster(midiChannel)
+        ? 1 + lowerZoneMemberCount_ : midiChannel;
+    guitarNoises_.stopChannels(midiChannel, lastNoiseChannel);
+    if (getActiveVoiceCount() == 0 && !guitarNoises_.active())
     {
         for (int string = 0; string < stringCount; ++string)
             returnToOpenString(voices_[static_cast<std::size_t>(string)], string, true);
@@ -12980,9 +13102,24 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
     axial.lossPole = static_cast<float>(pole);
     axial.lossGain = static_cast<float>(gain);
     // The ring's whole delay, the Thiran allpass and the loss together give
-    // the round trip at the first mode. Thiran's phase delay drifts from its
-    // design value as the mode nears Nyquist, so the fraction is refined on
-    // the exact phase there.
+    // the round trip at the first mode.
+    if (2.0 * omega >= piDouble && omega < piDouble)
+    {
+        // Only the first mode fits below Nyquist, so the loss is scalar.
+        // A first-order allpass supplies at most pi radians of phase delay.
+        // Use at least two whole samples: one would ask it for more than pi.
+        const int whole = std::max(2, static_cast<int>(std::floor(roundTrip - 0.5)));
+        const double phase = (roundTrip - static_cast<double>(whole)) * omega;
+        // Solve arg((a + z^-1) / (1 + a*z^-1)) = -phase at this frequency.
+        const float a = static_cast<float>(std::sin(0.5 * (omega - phase))
+            / std::sin(0.5 * (omega + phase)));
+        // If a rounds to unity near Nyquist, use the same whole-sample
+        // delay with an ordinary one-sample allpass and no marginal pole.
+        axial.ringDelay = a < 1.0f ? whole : whole - 1;
+        axial.thiran = a < 1.0f ? a : 0.0f;
+        return;
+    }
+    // Refine the fractional delay for the existing two-mode fit.
     const auto phaseDelay = [omega] (double real, double imaginary)
     {
         return -std::atan2(imaginary, real) / omega;
@@ -13110,11 +13247,19 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
         stretch += static_cast<double>(period) * static_cast<double>(sum);
     }
     stretch *= static_cast<double>(axial.stretchScale);
-    if (axial.rereference || !exact::isfinite(stretch))
+    if (!exact::isfinite(stretch))
     {
-        axial.lastStretch = exact::isfinite(stretch) ? stretch : 0.0;
-        axial.rereference = false;
+        // An invalid source frame must not enter the passive feedback ring.
+        // Use the next valid observation as the reference so recovery does
+        // not create an artificial impulse.
+        axial.increment = 0.0f;
+        axial.rereference = true;
+        axial.countdown = 1;
+        return;
     }
+    if (axial.rereference)
+        axial.lastStretch = stretch;
+    axial.rereference = false;
     axial.increment = static_cast<float>(stretch - axial.lastStretch);
     axial.lastStretch = stretch;
     axial.countdown = 1;
@@ -14112,7 +14257,7 @@ bool AcustraEngine::suspend() noexcept
     // engine that was never suspended. Clearing the residue sooner, while
     // it was under -120 dBFS at the output, changed a chord struck seconds
     // later by up to 6e-4 (2026-10-12 decision).
-    if (!prepared_ || !idleFlushed_)
+    if (!prepared_ || !idleFlushed_ || guitarNoises_.active())
         return false;
     for (const auto& voice : voices_)
         if (voice.played || voice.keyDown || voice.pedalHeld
@@ -14663,7 +14808,25 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             ? bodyMomentRate : bodyMomentRate + axialBodyMoment;
         lastBodyForceProbe_ = { lastBridgeBodyForce_, bodyMomentRate,
             axialBodyForce, axialBodyMoment, radiationForce, radiationMoment };
-        const BodyOutput body = renderBody(radiationForce, radiationMoment);
+        float pickupForce = axialPiezoForce == 0.0f
+            ? lastPiezoForce_ + 0.0f : lastPiezoForce_ + axialPiezoForce;
+        BodyOutput body;
+        if (guitarNoises_.active())
+        {
+            const auto contact = guitarNoises_.render();
+            lastBodyForceProbe_.contactNormal = contact.force;
+            lastBodyForceProbe_.contactMoment = contact.moment;
+            lastBodyForceProbe_.totalNormal += contact.force;
+            lastBodyForceProbe_.totalMoment += contact.moment;
+            body = renderBody(lastBodyForceProbe_.totalNormal,
+                              lastBodyForceProbe_.totalMoment);
+            body.left += contact.air + contact.airSide;
+            body.right += contact.air - contact.airSide;
+            body.upper += contact.air - contact.airSide;
+            pickupForce += contact.pickup;
+        }
+        else
+            body = renderBody(radiationForce, radiationMoment);
         const float bodyScale = 0.68f + 0.72f * bodyAmount_;
         const float monoBody = 0.5f * (body.left + body.right);
         const float spreadLeft = monoBody + width_ * (body.left - monoBody);
@@ -14690,8 +14853,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // Advance the whole piezo chain even while unheard, so selecting it
         // crossfades to the voltage of the already-ringing instrument. The
         // piezo force keeps the original zero-sign normalization.
-        const float loadedPiezo = renderPiezo(axialPiezoForce == 0.0f
-            ? lastPiezoForce_ + 0.0f : lastPiezoForce_ + axialPiezoForce);
+        const float loadedPiezo = renderPiezo(pickupForce);
         const float idlePeak = std::max({ exact::abs(body.left),
             exact::abs(body.right), exact::abs(body.upper),
             exact::abs(loadedPiezo) });
@@ -15501,7 +15663,7 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
     }
     if (idleFlushed_)
         return;
-    bool idle = true;
+    bool idle = !guitarNoises_.active();
     for (const auto& voice : voices_)
         idle = idle && !voice.played && !voice.keyDown && !voice.pedalHeld
             && !voice.tailActive && voice.pluckDelay == 0

@@ -453,9 +453,9 @@ void longitudinalLossIsPassiveAcrossControls()
 {
     constexpr double rates[] {8000,11025,12000,16000,22050,24000,32000,44100,
         48000,88200,96000,176400,192000,384000,768000};
-    int cases = 0, active = 0, bad = 0, magnitudeBad = 0, phaseBad = 0;
+    int cases = 0, active = 0, upper = 0, bad = 0, magnitudeBad = 0, phaseBad = 0;
     double maximum = 0.0, largestPhase = 0.0, largestMagnitudeError = 0.0,
-        largestMagnitudeTolerance = 0.0;
+        largestMagnitudeTolerance = 0.0, largestUpperPhase = 0.0;
     const auto check = [&] (Engine& engine, double fs, int string) {
         const auto& v = Access::voice(engine, string);
         const auto& a = v.stringAxialForce;
@@ -499,20 +499,28 @@ void longitudinalLossIsPassiveAcrossControls()
               <<" pole "<<p<<" gain "<<b<<" omega "<<omega
               <<" relative error "<<(std::abs(loss)/target-1.0)<<'\n';
         }
-        // Fraction refinement is explicitly constrained to[.25,1.75].
-        // At either stop (or the finite ring-capacity limit), this existing
-        // approximation cannot claim exact fundamental phase. Its loss must
-        // still be passive; the strict phase gate covers interior designs.
-        if (omega < .48*pi && a.thiran > -3.f/11.f+1e-6f
-            && a.thiran < .6f-1e-6f && a.roundTrip < a.ringSize-3)
+        // The low-frequency approximation retains its existing bounded
+        // domain. Above one quarter of the sample rate the second mode
+        // cannot be represented, so require the scalar-loss ring to close
+        // on the first mode to within the stored floats' precision.
+        const bool upperOnly = omega > 0.5 * pi;
+        const bool interior = omega < .48*pi && a.thiran > -3.f/11.f+1e-6f
+            && a.thiran < .6f-1e-6f && a.roundTrip < a.ringSize-3;
+        if (upperOnly || interior)
         {
             // Integer delay + allpass + accepted loss must still close at
             // the designed fundamental. An old loss phase retained after a
             // scalar fallback would shift this resonance.
             const auto loop = std::pow(q, a.ringDelay)*(t+q)/(1.0+t*q)*loss;
             const double phase = std::abs(std::arg(loop));
-            largestPhase = std::max(largestPhase, phase);
-            if (!(phase < 0.035)) {++phaseBad;
+            if (upperOnly)
+            {
+                largestUpperPhase = std::max(largestUpperPhase, phase);
+                ++upper;
+            }
+            else
+                largestPhase = std::max(largestPhase, phase);
+            if (!(phase < (upperOnly ? 1e-5 : 0.035))) {++phaseBad;
                 if(phaseBad<=3)std::cerr<<"phase at "<<fs<<" string "<<string<<" trip "<<a.roundTrip
                  <<" loss "<<a.lossPole<<" delay "<<a.ringDelay<<" Thiran "<<a.thiran<<": "<<phase<<'\n';} // <0.56% of one round trip.
             ++active;
@@ -576,11 +584,14 @@ void longitudinalLossIsPassiveAcrossControls()
     }
     std::cout << "axial passive-loss sweep " << cases << " designs, sup |H| " << maximum
               << ", " << active << " phase checks, maximum error " << largestPhase << " rad"
+              << ", " << upper << " first-mode-only cases with maximum phase error "
+              << largestUpperPhase << " rad"
               << ", magnitude error " << largestMagnitudeError << " within float bound "
               << largestMagnitudeTolerance << ", prepared maximum " << Engine::maximumSupportedSampleRate << " Hz\n";
     expect(bad==0,"stored axial loss is strictly passive over the whole frequency band");
     expect(magnitudeBad==0,"accepted loss retains the physical first-mode attenuation");
     expect(phaseBad==0,"accepted loss and Thiran retain longitudinal round-trip phase");
+    expect(upper>0,"phase sweep exercises first modes above one quarter of the sample rate");
 }
 
 void lowRateAxialRingDecaysWithoutInput()
@@ -623,10 +634,45 @@ void lowRateAxialRingDecaysWithoutInput()
            "already-passive low-rate coefficients remain bit-identical");
 }
 
+void invalidStretchDoesNotEnterAxialFeedback()
+{
+    auto engine = played(true);
+    auto& voice = Access::voice(*engine, 5);
+    auto& axial = voice.stringAxialForce;
+    Access::design(*engine, 5);
+    // Start with a healthy ringing impulse so the observer's fault handling
+    // must retain the existing tail as well as reject the bad source frame.
+    const auto impulseSlot = static_cast<std::size_t>(axial.writeIndex);
+    axial.countdown = 1;
+    axial.increment = 0.125f;
+    Access::render(*engine, 5);
+    auto& loop = voice.loops[0];
+    const auto newest = static_cast<std::size_t>(loop.writeIndex - 1)
+        & (loop.delay.size() - 1);
+    const float validSample = loop.delay[newest];
+    loop.delay[newest] = std::numeric_limits<float>::quiet_NaN();
+    const float afterFault = Access::render(*engine, 5);
+    expect(std::isfinite(afterFault) && std::isfinite(axial.force)
+               && std::isfinite(axial.lastStretch) && axial.increment == 0.0f,
+           "nonfinite axial stretch was written into the feedback state");
+    expect(axial.rereference && axial.ring[impulseSlot] == 0.125f,
+           "invalid stretch did not preserve the healthy ring and request a new reference");
+
+    loop.delay[newest] = validSample;
+    const float afterRecovery = Access::render(*engine, 5);
+    expect(std::isfinite(afterRecovery) && !axial.rereference && axial.increment == 0.0f,
+           "the first valid stretch after an invalid frame emitted a spurious force impulse");
+    bool finiteTail = true;
+    for (int sample = 0; sample < 64; ++sample)
+        finiteTail = std::isfinite(Access::render(*engine, 5)) && finiteTail;
+    expect(finiteTail, "the recovered axial ring retained a nonfinite state");
+}
+
 int main(int argc, char** argv)
 {
     longitudinalLossIsPassiveAcrossControls();
     lowRateAxialRingDecaysWithoutInput();
+    invalidStretchDoesNotEnterAxialFeedback();
     if(argc>1 && std::string(argv[1])=="--passivity-only") return failures==0?0:1;
     slowLimitIsKirchhoffCarrier();
     wavesKeepTheUniformTension();

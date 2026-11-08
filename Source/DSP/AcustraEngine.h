@@ -8,6 +8,7 @@
 #include "FittedPhysicalData.h"
 #include "PerformanceRealism.h"
 #include "OutputStage.h"
+#include "GuitarNoises.h"
 
 #include <array>
 #include <algorithm>
@@ -207,6 +208,7 @@ public:
     // grid steps under 18 kHz.
     static constexpr int radiationContinuationSlots = 19;
     void reset() noexcept;
+    void triggerGuitarNoise(GuitarNoise gesture, float velocity, int channel) noexcept;
     void setParameters(const EngineParameters& parameters) noexcept;
     // A host that suspended rendering after inaudible sleep can adopt its
     // final construction without a fade that would resume on the next strike.
@@ -524,13 +526,14 @@ public:
     [[nodiscard]] float getLastBridgeReactionForce() const noexcept;
     [[nodiscard]] float getLastBridgeBodyForce() const noexcept;
     // The exact force/moment inputs to radiation, split by their source.
-    // All use the common engine force unit. Axial is a one-way observer:
-    // it does not enter the transverse junction or its power ledger.
+    // All use the common engine force unit. Axial and contact contributions
+    // enter radiation without feeding the transverse junction or its ledger.
     struct BodyForceProbe
     {
         float transverseNormal { 0.0f }, transverseMoment { 0.0f };
         float axialNormal { 0.0f }, axialMoment { 0.0f };
         float totalNormal { 0.0f }, totalMoment { 0.0f };
+        float contactNormal { 0.0f }, contactMoment { 0.0f };
     };
     [[nodiscard]] BodyForceProbe getLastBodyForceProbe() const noexcept
     { return lastBodyForceProbe_; }
@@ -2452,6 +2455,7 @@ private:
     // instrument reaches exact zero (processIdleFlush).
     int idleQuietSamples_ { 0 };
     bool idleFlushed_ { true };
+    GuitarNoises guitarNoises_ {};
     void processIdleFlush(float samplePeak) noexcept;
     float bodyModelFade_ { 1.0f };
     float bodyModelFadeStep_ { 1.0f / 1920.0f };

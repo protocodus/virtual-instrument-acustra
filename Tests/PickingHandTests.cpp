@@ -123,9 +123,9 @@ void actualContactsAndIntent()
            "coherent hand never reaches the audible physical contact");
     // 9600 samples after the last stroke, a force change past two dB keeps
     // t^2 (3 - 2t) of the residual, t = 9600 / (2 s * 48 kHz), of a draw
-    // within 0.121 of one.
+    // within 0.183 of one for the normalized 1.5 dB draw.
     a->noteOn(64, 0.9f, 6);
-    expect(std::abs(Access::repeatForce(*a, 5) - 1.0f) <= 0.121f * 0.01f * 2.8f + 1.2e-7f,
+    expect(std::abs(Access::repeatForce(*a, 5) - 1.0f) <= 0.183f * 0.01f * 2.8f + 1.2e-7f,
            "an explicit velocity accent gained unintended force jitter");
     expect(a->outputLatencySamples() == AcustraEngine::outputLatencyForRate(a->sampleRate()),
            "hand humanization added latency beyond the output stage");

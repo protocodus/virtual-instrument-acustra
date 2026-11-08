@@ -5151,8 +5151,8 @@ double releaseSlipRatio(double slipPole, double referencePole, int harmonic, int
 // The released line's DFT coefficients, x[s] = sum_n Y_n exp(2 pi i n s / N),
 // from the contact's bins 1..N-1. The contact starts at rest at the bridge,
 // so its DC is minus the rest. After the slip, the bridge sample y[0] is
-// brought back to rest by a raised cosine over +/-W about it, W = tau
-// sqrt(2 / (1/3 - 2/pi^2)) with c = exp(-1/tau), at most N/2; then the
+// brought back to rest by a raised cosine over +/-W about it. Its sampled
+// variance matches the cyclic slip kernel, with W limited to N/2; then the
 // line's spread about its mean is restored, which by Parseval is the sum of
 // |Y_n|^2 over the bins other than DC.
 std::vector<std::complex<double>> releasedLine(double slipPole, double referencePole,
@@ -5171,9 +5171,38 @@ std::vector<std::complex<double>> releasedLine(double slipPole, double reference
     double first = 0.0;
     for (const auto& bin : line)
         first += bin.real();
-    const double tau = -1.0 / std::log(independentPadPole(slipPole));
-    const double halfWidth = std::min(0.5 * length, tau * std::sqrt(
-        2.0 / (1.0 / 3.0 - 2.0 / (std::numbers::pi * std::numbers::pi))));
+    const double pole = independentPadPole(slipPole);
+    // Directly sum the folded geometric kernel and sampled correction.
+    // Production evaluates their moments analytically instead.
+    double mass = 0.0, moment = 0.0;
+    for (int sample = 0; sample < length; ++sample)
+    {
+        const double distance = std::min(sample, length - sample);
+        const double weight = std::pow(pole, sample) + std::pow(pole, length - sample);
+        mass += weight;
+        moment += weight * distance * distance;
+    }
+    const auto cosineMoment = [] (double width)
+    {
+        double windowMass = 1.0, windowMoment = 0.0;
+        for (int sample = 1; sample < width; ++sample)
+        {
+            const double weight = 1.0 + std::cos(std::numbers::pi * sample / width);
+            windowMass += weight;
+            windowMoment += weight * sample * sample;
+        }
+        return windowMoment / windowMass;
+    };
+    double lower = 1.0, upper = 0.5 * length;
+    for (int step = 0; step < 40; ++step)
+    {
+        const double middle = 0.5 * (lower + upper);
+        if (cosineMoment(middle) < moment / mass)
+            lower = middle;
+        else
+            upper = middle;
+    }
+    const double halfWidth = 0.5 * (lower + upper);
     const int reach = static_cast<int>(std::ceil(halfWidth));
     for (int sample = 0; sample < reach; ++sample)
     {
@@ -5186,13 +5215,22 @@ std::vector<std::complex<double>> releasedLine(double slipPole, double reference
             line[static_cast<std::size_t>(n)] -= first * share * weight / length;
         }
     }
-    double before = 0.0, after = 0.0;
+    double before = 0.0, after = 0.0, beforeEnergy = 0.0, afterEnergy = 0.0;
     for (int n = 1; n < length; ++n)
     {
-        before += std::norm(bins[static_cast<std::size_t>(n)]);
-        after += std::norm(line[static_cast<std::size_t>(n)]);
+        const double input = std::norm(bins[static_cast<std::size_t>(n)]);
+        const double output = std::norm(line[static_cast<std::size_t>(n)]);
+        const double derivative = std::norm(1.0 - std::polar(
+            1.0, 2.0 * std::numbers::pi * n / length));
+        before += input;
+        after += output;
+        beforeEnergy += input * derivative;
+        afterEnergy += output * derivative;
     }
-    const double scale = after > 0.0 ? std::sqrt(before / after) : 1.0;
+    double scaleSquared = after > 0.0 ? before / after : 1.0;
+    if (referencePole > slipPole && afterEnergy > 0.0)
+        scaleSquared = std::min(scaleSquared, beforeEnergy / afterEnergy);
+    const double scale = std::sqrt(scaleSquared);
     for (auto& bin : line)
         bin *= scale;
     return line;
@@ -5209,18 +5247,28 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
     // identity: each bin takes the response and its Parseval-derived scale.
     constexpr int aliases = 64;
     double worstError = 0.0;
-    int referenced = 0, absolute = 0;
-    struct ReleaseDomain { acustra::PickingTechnique picking; float velocity; };
+    int referenced = 0, absolute = 0, energyLimited = 0;
+    double worstSharpEnergyRatio = 0.0;
+    struct ReleaseDomain
+    {
+        acustra::PickingTechnique picking;
+        float velocity;
+        float touch = acustra::EngineParameters {}.touch;
+        int fret = 0;
+    };
     for (const auto domain : {
         ReleaseDomain { acustra::PickingTechnique::Thumb, 0.6f },
         ReleaseDomain { acustra::PickingTechnique::Finger, 0.6f },
-        ReleaseDomain { acustra::PickingTechnique::Finger, 1.0f } })
+        ReleaseDomain { acustra::PickingTechnique::Finger, 1.0f },
+        ReleaseDomain { acustra::PickingTechnique::Thumb, 1.0f, 1.0f, 20 } })
         for (const int rate : { 44100, 48000, 96000 })
-        for (const int string : { 0, 5 })
+        for (const int string : { domain.fret == 0 ? 0 : 4, 5 })
         {
             acustra::AcustraEngineTestAccess::ReleasedContactOptions options;
             options.picking = domain.picking;
             options.velocity = domain.velocity;
+            options.touch = domain.touch;
+            options.fret = domain.fret;
             const auto state = acustra::AcustraEngineTestAccess::releasedContact(
                 rate, string, options);
             const int length = static_cast<int>(state.history.size());
@@ -5229,9 +5277,15 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
                    "released-contact Fourier probe left its resolved domain");
             if (domain.picking == acustra::PickingTechnique::Thumb)
             {
-                expect(state.referencePole > 0.0 && state.slipPole > state.referencePole,
-                       "a velocity 0.6 Thumb was not released through its slower slip");
-                referenced += state.referencePole > 0.0 ? 1 : 0;
+                if (domain.fret == 0)
+                {
+                    expect(state.referencePole > 0.0 && state.slipPole > state.referencePole,
+                           "a velocity 0.6 Thumb was not released through its slower slip");
+                    referenced += state.referencePole > 0.0 ? 1 : 0;
+                }
+                else
+                    expect(state.slipPole > 0.0 && state.slipPole < state.referencePole,
+                           "high-fret Thumb fixture did not exercise inverse sharpening");
             }
             else
             {
@@ -5260,6 +5314,30 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
             for (int n = 1; n < length; ++n)
                 bins[static_cast<std::size_t>(n)] = contact(n);
             const auto released = releasedLine(state.slipPole, state.referencePole, bins);
+            if (domain.fret > 0)
+            {
+                // Independently compare the observed waveform's sampled
+                // gradient energy with the unfiltered displacement's
+                // Fourier-derived gradient energy at the same force.
+                double inputEnergy = 0.0, outputEnergy = 0.0;
+                for (int n = 1; n < length; ++n)
+                    inputEnergy += std::norm(bins[static_cast<std::size_t>(n)])
+                        * std::norm(1.0 - std::polar(1.0,
+                            2.0 * std::numbers::pi * n / length));
+                inputEnergy *= length * state.gain * state.gain;
+                double previous = state.history.back();
+                for (const double current : state.history)
+                {
+                    const double difference = current - previous;
+                    outputEnergy += difference * difference;
+                    previous = current;
+                }
+                const double ratio = outputEnergy / inputEnergy;
+                expect(std::abs(ratio - 1.0) < 2.0e-4,
+                       "sharpened high-fret Thumb exceeded its string work budget or was over-trimmed");
+                worstSharpEnergyRatio = std::max(worstSharpEnergyRatio, ratio);
+                ++energyLimited;
+            }
             double before = 0.0, after = 0.0;
             for (int n = 1; n < length; ++n)
             {
@@ -5317,10 +5395,11 @@ void testReleasedContactPreservesTheLinearFilterSpectrum()
                        + std::to_string(string) + " H" + std::to_string(harmonic));
             }
         }
-    expect(referenced == 6 && absolute == 12,
+    expect(referenced == 6 && absolute == 12 && energyLimited == 6,
            "the released-contact probe missed reference or absolute slip domains");
     std::cout << "Acustra released-contact maximum complex coefficient error: "
-              << worstError << '\n';
+              << worstError << "; high Thumb peak energy ratio: "
+              << worstSharpEnergyRatio << '\n';
 }
 
 void testBroadContactWrapsAndReachesItsUniformLimit()
@@ -5747,16 +5826,20 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
     expect(responsiveHigh.touch - responsiveLow.touch > 0.70,
            "velocity brightness did not reach effective pluck touch");
     // Brightness may change contact shape and the small Touch force factor;
-    // it must leave the independently authored linear force curve intact.
+    // it must leave the independently authored force curve intact.
     const auto forceRatio = [] (const auto& low, const auto& high)
     {
         return (low.heldDisplacement / (0.92 + 0.08 * low.touch))
             / (high.heldDisplacement / (0.92 + 0.08 * high.touch));
     };
+    // Velocity 0.8 is above MIDI 81, where the new force gain is unity.
+    constexpr double softPosition = 0.2 * 127.0 / 81.0;
+    constexpr double expectedRatio = 0.25
+        * (0.2 + 0.8 * softPosition * softPosition * (3.0 - 2.0 * softPosition));
     expect(std::abs(forceRatio(responsiveLow, responsiveHigh)
                        - forceRatio(fixedLow, fixedHigh)) < 1.0e-6
-               && std::abs(forceRatio(responsiveLow, responsiveHigh) - 0.25) < 1.0e-6,
-           "brightness calibration changed the authored linear velocity force");
+               && std::abs(forceRatio(responsiveLow, responsiveHigh) - expectedRatio) < 1.0e-6,
+           "brightness calibration changed the authored velocity force");
 
 
 }

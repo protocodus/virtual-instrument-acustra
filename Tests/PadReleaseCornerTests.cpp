@@ -15,15 +15,15 @@ namespace acustra
 {
 struct AcustraEngineTestAccess
 {
-    static std::vector<float> filter(int length, int harmonic, double pole,
-                                    double reference, bool matched)
+    template <typename Input>
+    static std::vector<float> filterLine(int length, Input input, double pole,
+                                        double reference, bool matched)
     {
         auto loop = std::make_unique<AcustraEngine::StringLoop>();
         for (int sample = 0; sample < length; ++sample)
             loop->delay[static_cast<std::size_t>(
                 AcustraEngine::maximumDelaySamples - sample - 1)]
-                = static_cast<float>(std::sin(6.2831853071795864769
-                    * harmonic * sample / length));
+                = input(sample);
         AcustraEngine::applyPadRelease(*loop, length, pole, reference, matched);
         std::vector<float> result(static_cast<std::size_t>(length));
         for (int sample = 0; sample < length; ++sample)
@@ -31,6 +31,15 @@ struct AcustraEngineTestAccess
                 = loop->delay[static_cast<std::size_t>(
                     AcustraEngine::maximumDelaySamples - sample - 1)];
         return result;
+    }
+
+    static std::vector<float> filter(int length, int harmonic, double pole,
+                                    double reference, bool matched)
+    {
+        return filterLine(length, [=] (int sample) {
+            return static_cast<float>(std::sin(6.2831853071795864769
+                * harmonic * sample / length));
+        }, pole, reference, matched);
     }
 
     struct Contact
@@ -158,6 +167,73 @@ void testReferenceInverseBypassAndEdges()
     std::cout << "Pad reference cancellation max sample error=" << worstInverse << '\n';
 }
 
+void testSampledBridgeCorrection()
+{
+    double worstMomentError = 0.0, worstCappedMomentError = 0.0;
+    int matchedCases = 0, cappedCases = 0;
+    for (const int length : { 8, 9, 19, 64, 257, 4096 })
+        for (const double corner : { 0.01, 0.1, 0.5, 1.0, 2.0, 3.0 })
+        {
+            const double originalPole = poleAtCorner(corner);
+            double lo = 0.0, hi = 1.0;
+            for (int i = 0; i < 80; ++i)
+            {
+                const double mid = 0.5 * (lo + hi);
+                if (onePassMagnitude(mid, corner) > std::sqrt(std::sqrt(0.5)))
+                    lo = mid;
+                else
+                    hi = mid;
+            }
+            const double pole = 0.5 * (lo + hi);
+            const auto response = Access::filterLine(length,
+                [] (int sample) { return sample == 0 ? 1.0f : 0.0f; },
+                originalPole, 0.0, true);
+            std::vector<double> cyclicKernel(static_cast<std::size_t>(length));
+            double kernelMass = 0.0, kernelMoment = 0.0;
+            for (int sample = 0; sample < length; ++sample)
+            {
+                const double weight = std::pow(pole, sample) + std::pow(pole, length - sample);
+                const double distance = std::min(sample, length - sample);
+                cyclicKernel[static_cast<std::size_t>(sample)] = weight;
+                kernelMass += weight;
+                kernelMoment += distance * distance * weight;
+            }
+            double correctionMass = 0.0, correctionMoment = 0.0;
+            double capMass = 0.0, capMoment = 0.0;
+            for (int sample = 0; sample < length; ++sample)
+            {
+                const double distance = std::min(sample, length - sample);
+                const double correction = cyclicKernel[static_cast<std::size_t>(sample)]
+                    / kernelMass - response[static_cast<std::size_t>(sample)];
+                correctionMass += correction;
+                correctionMoment += distance * distance * correction;
+                const double cap = 1.0 + std::cos(2.0 * pi * distance / length);
+                capMass += cap;
+                capMoment += distance * distance * cap;
+            }
+            const double target = kernelMoment / kernelMass;
+            const double cap = capMoment / capMass;
+            const double error = std::abs(correctionMoment / correctionMass
+                / std::min(target, cap) - 1.0);
+            if (target < cap)
+            {
+                ++matchedCases;
+                worstMomentError = std::max(worstMomentError, error);
+            }
+            else
+            {
+                ++cappedCases;
+                worstCappedMomentError = std::max(worstCappedMomentError, error);
+            }
+            expect(error < 2.0e-5, "sampled bridge correction missed the cyclic kernel or its width cap");
+            expect(response.front() == 0.0f, "sampled bridge correction left a nonzero endpoint");
+        }
+    expect(matchedCases > 20 && cappedCases > 5, "sampled width fixture missed its match or cap paths");
+    std::cout << "Sampled bridge correction moment error=" << worstMomentError
+              << " (" << matchedCases << " matched), capped=" << worstCappedMomentError
+              << " (" << cappedCases << " capped)\n";
+}
+
 auto note(int rate, int string, int fret, acustra::PickingTechnique style, bool matched)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
@@ -235,6 +311,7 @@ int main()
 {
     testHalfPowerAndZeroPhase();
     testReferenceInverseBypassAndEdges();
+    testSampledBridgeCorrection();
     testUpperNotesAndPickingIsolation();
     return failures == 0 ? 0 : 1;
 }

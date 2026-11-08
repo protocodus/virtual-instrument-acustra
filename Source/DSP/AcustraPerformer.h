@@ -114,6 +114,13 @@ public:
     // E0 (28) is left out: the Rack Extension's hammer-on cue is that key.
     static constexpr int keyswitchStrumDown = 29;  // F0
     static constexpr int keyswitchStrumUp = 30;    // F#0
+    // G0 through B0 play one-shot noises in GuitarNoise order.
+    static constexpr int firstNoiseKey = 31;
+    static constexpr int lastNoiseKey = 35;
+    [[nodiscard]] static constexpr bool isNoiseKey(int note) noexcept
+    {
+        return note >= firstNoiseKey && note <= lastNoiseKey;
+    }
     // A keyswitch that sounds: a front end that sleeps while silent must
     // wake for it, as for a key.
     [[nodiscard]] static constexpr bool isStrumKey(int note) noexcept

@@ -840,14 +840,23 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     const bool noteOff = size >= 2
         && (status == 0x80u
             || (status == 0x90u && size >= 3 && (data[2] & 0x7fu) == 0u));
-    if ((positiveNoteOn || noteOff) && isKeyswitch(static_cast<int>(data[1] & 0x7fu)))
+    const int key = size >= 2 ? static_cast<int>(data[1] & 0x7fu) : 0;
+    if ((positiveNoteOn || noteOff) && isNoiseKey(key))
+    {
+        if (positiveNoteOn)
+            engine_.triggerGuitarNoise(static_cast<GuitarNoise>(key - firstNoiseKey),
+                                       static_cast<float>(data[2] & 0x7fu) / 127.0f,
+                                       midiChannel);
+        return false;
+    }
+    if ((positiveNoteOn || noteOff) && isKeyswitch(key))
     {
         // A keyswitch is a controller: it acts
         // at once, ahead of its sample's Note Ons, on every channel, and
         // its key-up is nothing.
         if (positiveNoteOn)
         {
-            const int note = static_cast<int>(data[1] & 0x7fu);
+            const int note = key;
             if (note == keyswitchSustain)
                 setKeyswitchSustain(!keyswitchSustain_);
             else if (isStrumKey(note))
@@ -872,7 +881,6 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
         }
         return false;
     }
-    const int key = size >= 2 ? static_cast<int>(data[1] & 0x7fu) : 0;
     const auto keyWord = static_cast<std::size_t>(key / 32);
     const auto keyBit = 1u << (key % 32);
     auto& down = keysDown_[static_cast<std::size_t>(midiChannel - 1)][keyWord];
@@ -976,7 +984,8 @@ void Performer::anticipateHeldNotes() noexcept
         held.fresh = false;
         const int note = static_cast<int>(held.bytes[1] & 0x7fu);
         const int channel = static_cast<int>(held.bytes[0] & 0x0fu) + 1;
-        if (! fingerLookahead_ || isKeyswitch(note) || strokeMode_ == StrokeMode::Keys
+        if (! fingerLookahead_ || isKeyswitch(note) || isNoiseKey(note)
+            || strokeMode_ == StrokeMode::Keys
             || portamentoSwitches_[static_cast<std::size_t>(channel - 1)])
             continue;
         std::array<AcustraEngine::ReleasingKey, AcustraEngine::stringCount> releasing {};
@@ -1048,9 +1057,9 @@ void Performer::gatherChord(int first) noexcept
         if (held.size < 3 || static_cast<int>(held.bytes[0] & 0x0fu) + 1 != channel)
             continue;
         const int note = static_cast<int>(held.bytes[1] & 0x7fu);
-        // A keyswitch is never part of a chord: it comes due on its own,
-        // where it was sent, and a chord gathered across it is unchanged.
-        if (isKeyswitch(note))
+        // A keyswitch or a one-shot noise comes due on its own. Gathering
+        // across it preserves both the chord and the separate event.
+        if (isKeyswitch(note) || isNoiseKey(note))
             continue;
         const auto noteBit = 1u << (note % 32);
         auto& releasedWord = released[static_cast<std::size_t>(note / 32)];
