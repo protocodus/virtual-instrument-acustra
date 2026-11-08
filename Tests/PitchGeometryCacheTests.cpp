@@ -32,6 +32,7 @@ struct AcustraEngineTestAccess
         {
             auto& voice = engine.voices_[static_cast<std::size_t>(string)];
             voice.commonTuningGeneration = 0;
+            voice.commonTuningHistory.fill({});
             voice.configurationKey.generation = 0;
             engine.configureVoice(voice, string, voice.openMidi, false);
         }
@@ -80,9 +81,62 @@ struct AcustraEngineTestAccess
         voice = *saved;
         if (request() != -123.0f)
             return false;
+        // A reset still rebuilds the playing state. Its unchanged reference
+        // load can use the earlier fit, including a distinguishable payload.
+        voice = *original;
+        const float cached = std::nextafter(original->commonTuningValue, INFINITY);
+        voice.commonTuningValue = cached;
         engine.reset();
-        return voice.commonTuningGeneration == engine.voiceConfigurationGeneration_
-            && voice.commonTuningValue != -123.0f;
+        if (voice.commonTuningGeneration != engine.tuningCalibrationGeneration_
+            || voice.commonTuningValue != cached)
+            return false;
+        voice.commonTuningGeneration = 0;
+        voice.commonTuningHistory.fill({});
+        engine.reset();
+        return voice.commonTuningGeneration == engine.tuningCalibrationGeneration_
+            && voice.commonTuningValue == original->commonTuningValue;
+    }
+
+    static bool commonTuningContextContract(AcustraEngine& engine)
+    {
+        auto& voice = engine.voices_[0];
+        std::array<float, 5> args {};
+        for (std::size_t index = 0; index < args.size(); ++index)
+            std::memcpy(&args[index], &voice.commonTuningKey[index + 1], sizeof(float));
+        const auto request = [&]
+        {
+            return engine.coupledPolarisationDetune(voice, 0, args[1], args[0],
+                args[2], args[3], args[4]);
+        };
+        const auto mustMiss = [&] (auto change)
+        {
+            request();
+            const auto key = voice.commonTuningKey;
+            const auto generation = voice.commonTuningGeneration;
+            change();
+            // Setters can replace the front entry themselves. Probe whether
+            // the original entry would be accepted under the new context.
+            voice.commonTuningKey = key;
+            voice.commonTuningGeneration = generation;
+            voice.commonTuningValue = -123.0f;
+            voice.commonTuningHistory.fill({});
+            return request() != -123.0f;
+        };
+        auto parameters = engine.parameters_;
+        const auto apply = [&] { engine.setParameters(parameters); engine.reset(); };
+        auto calibration = engine.physicalCalibration_;
+        auto realism = engine.performanceRealism_;
+        return mustMiss([&] { parameters.stringAge = 0.5f; apply(); })
+            && mustMiss([&] { parameters.tuning = Tuning::DropD; apply(); })
+            && mustMiss([&] { parameters.bodyMaterial = BodyMaterial::Maple; apply(); })
+            && mustMiss([&] { parameters.shape = BodyShape::Jumbo; apply(); })
+            && mustMiss([&] { engine.setMasterTuneCents(17.0f); })
+            && mustMiss([&] { calibration.bridgeMobilityScale *= 0.95f;
+                              engine.setPhysicalCalibration(calibration); })
+            && mustMiss([&] { realism.playerBodyLoading = !realism.playerBodyLoading;
+                              engine.setPerformanceRealism(realism); })
+            && mustMiss([&] { engine.prepare(48000.0, 128); })
+            && mustMiss([&] { engine.setBridgeCouplingEnabled(false); });
     }
 
     static bool restingReferenceParity(AcustraEngine& engine)
@@ -392,6 +446,13 @@ int main()
     }
     auto probe = std::make_unique<Engine>();
     probe->prepare(48000.0, 128);
+    auto context = std::make_unique<Engine>();
+    context->prepare(48000.0, 128);
+    if (!Access::commonTuningContextContract(*context))
+    {
+        std::cerr << "FAIL: common saddle tuning accepted a stale calibration\n";
+        return 1;
+    }
     if (!Access::commonTuningCacheContract(*probe)
         || !Access::hitAndResetContract(*probe) || !Access::rawInputMisses(*probe))
     {

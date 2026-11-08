@@ -1588,8 +1588,9 @@ private:
         float polarisationDetune { 0.0f };
         // Common saddle tuning is a nominal-pitch calibration. The string's
         // small attack glide does not change its frozen reference load.
+        using CommonTuningKey = std::array<std::uint32_t, 13>;
         std::uint64_t commonTuningGeneration { 0 };
-        std::array<std::uint32_t, 7> commonTuningKey {};
+        CommonTuningKey commonTuningKey {};
         float commonTuningValue { 0.0f };
         // The tunings this string had before the one in front, so a riff or
         // a progression that comes back to a fret finds its solve (about
@@ -1597,7 +1598,7 @@ private:
         struct CommonTuning
         {
             std::uint64_t generation { 0 };
-            std::array<std::uint32_t, 7> key {};
+            CommonTuningKey key {};
             float value { 0.0f };
         };
         std::array<CommonTuning, 7> commonTuningHistory {};
@@ -2208,6 +2209,9 @@ private:
     // Advanced whenever engine state that configureVoice reads changes; see
     // VoiceConfigurationKey. Starts past the keys' never-matching zero.
     std::uint64_t voiceConfigurationGeneration_ { 1 };
+    // The common saddle fit survives a playing-state reset. Preparation and
+    // explicit calibration changes invalidate its nominal reference load.
+    std::uint64_t tuningCalibrationGeneration_ { 1 };
     // The coupled body-shape factors configureBridge applies to the bridge
     // bank's A0 group, its modes up to T1 and the plate modes above; all
     // exactly 1 at each bank's anchor shape.
