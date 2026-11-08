@@ -373,13 +373,12 @@ inline std::vector<Scenario> makeBattery()
         b.on(0.6, 1, 47, 90);
         b.scenario.events.back().skew = 100000; // after its block
         // 130 Note Ons on one sample overflow the group; 130 Note Offs too.
-        // From 31: the keyswitches (24-27, and the strum keys 29-30 since
-        // 1.9.13, which also latch Keys mode) are not notes and would not
-        // count. 97 keys keep the top one at 127.
+        // Use 36-127 so neither the keyswitches nor the guitar-noise keys
+        // bypass the pitched-note group whose capacity this exercises.
         for (int index = 0; index < 130; ++index)
-            b.on(0.8, 1 + index / 100, 31 + index % 97, 70);
+            b.on(0.8, 1 + index / 92, 36 + index % 92, 70);
         for (int index = 0; index < 130; ++index)
-            b.off(1.0, 1 + index / 100, 31 + index % 97);
+            b.off(1.0, 1 + index / 92, 36 + index % 92);
         b.raw(1.2, { 0xf8 }).raw(1.2, { 0x90, 64 }).on(1.25, 1, 64);
         result.push_back(std::move(b.scenario));
     }

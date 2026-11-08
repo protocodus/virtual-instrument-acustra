@@ -658,7 +658,7 @@ void testPhysicalStrumPlanningKeepsSpecialNotes()
     expect(unreachable[0] == -1
                && std::equal(ordinary.begin(), ordinary.end(), unreachable.begin() + 1),
            "an unreachable key changed physical string timing");
-    const auto unreachableFlood = delays({ 32, 33, 34, 36, 40, 59, 64 });
+    const auto unreachableFlood = delays({ 36, 37, 38, 39, 40, 59, 64 });
     expect(std::all_of(unreachableFlood.begin(), unreachableFlood.begin() + 4,
                        [](int delay) { return delay == -1; })
                && std::equal(ordinary.begin(), ordinary.end(), unreachableFlood.begin() + 4),
@@ -1713,10 +1713,9 @@ void testUnsoundableNotesMakeNoStrum()
             events.push_back(message(0.01, 0x90, note, 100));
         return render(custom("strum count", 0.6, events), 48000.0, 64, false);
     };
-    // MIDI 30 is F#0, an explicit up-strum control since 1.9.13, not an
-    // unsoundable pitch. Use two genuine non-control notes below the range;
-    // StrumDirection separately proves that F#0 does act on a single note.
-    expect(play({ 32, 33, 52 }) == play({ 52 }),
+    // Notes 36 and 37 are below the standard tuning's open E and outside
+    // the octave-zero strum controls and one-shot noise keys.
+    expect(play({ 36, 37, 52 }) == play({ 52 }),
            "two unreachable notes turned a single note into a strum");
     expect(play({ 36, 48, 52 }) == play({ 48, 52 }),
            "an unreachable note turned two notes into a strum");
