@@ -6000,21 +6000,40 @@ float AcustraEngine::coupledPolarisationDetune(
     const double period = 2.0 * piDouble / omega0;
     const double delayElement = period;
     const auto& table = bridgeMobilityTable();
+    // One reciprocal and four products: the denominators here are modal
+    // and filter polynomials of order one in a well-scaled argument, far
+    // from the under- and overflow exact::divide guards against, and the
+    // solve evaluates about 95 of these a determinant, 140 determinants a
+    // note. The poles move by under 1e-12 of the frequency for it.
+    const auto over = [] (Complex z, Complex w) -> Complex
+    {
+        const double inverse = 1.0 / (w.real() * w.real() + w.imag() * w.imag());
+        return { (z.real() * w.real() + z.imag() * w.imag()) * inverse,
+                 (z.imag() * w.real() - z.real() * w.imag()) * inverse };
+    };
+    // z^n by squaring, 2 log2 n products in place of a complex exponential
+    // for each resting string's whole-sample delay (anchor up to 600).
+    const auto raisedTo = [] (Complex z, int n) -> Complex
+    {
+        Complex result { 1.0, 0.0 };
+        for (; n > 0; n >>= 1, z *= z)
+            if (n & 1) result *= z;
+        return result;
+    };
     // bridgePortMobility at a complex digital frequency s (z = e^s): the same
     // modal sum at the bilinear image of s, which on the unit circle is its
     // j 2 fs tan(w/2).
-    const auto portAt = [&] (Complex s) -> Port
+    const auto portAt = [&] (Complex zInverse) -> Port
     {
         const double bilinear = 2.0 * sampleRate_;
-        const Complex zInverse = std::exp(-s);
-        const Complex analog = bilinear * exact::divide(1.0 - zInverse, 1.0 + zInverse);
+        const Complex analog = bilinear * over(1.0 - zInverse, 1.0 + zInverse);
         const Complex squared = analog * analog;
         const Complex scaled = static_cast<double>(table.scale) * analog;
         Complex heave {}, cross {}, rock {};
         for (int index = 0; index < table.count; ++index)
         {
             const auto& mode = table.modes[static_cast<std::size_t>(index)];
-            const Complex shape = exact::divide(scaled, squared
+            const Complex shape = over(scaled, squared
                 + 2.0 * static_cast<double>(mode.damping) * analog
                 + static_cast<double>(mode.omega) * static_cast<double>(mode.omega));
             heave += static_cast<double>(mode.heave) * shape;
@@ -6023,7 +6042,7 @@ float AcustraEngine::coupledPolarisationDetune(
         }
         if (table.plate)
         {
-            const Complex shape = exact::divide(analog, squared
+            const Complex shape = over(analog, squared
                 + 2.0 * static_cast<double>(table.plateDamping) * analog
                 + static_cast<double>(table.plateOmega) * static_cast<double>(table.plateOmega));
             heave += static_cast<double>(table.plateWeight) * shape;
@@ -6032,43 +6051,65 @@ float AcustraEngine::coupledPolarisationDetune(
         return { heave + 2.0 * arm * cross + arm * arm * rock,
                  -eta * (cross + arm * rock), eta * eta * rock };
     };
-    const auto loadOtherStrings = [&] (const Port& source, Complex s) -> Port
+    // The resting strings' loop models, with what the determinant needs of
+    // them worked out once a solve rather than once an evaluation.
+    struct RestingLoop
     {
-        const Complex z = std::exp(-s);
+        int anchor; double thiranA1, thiranA2, pole, delayed, impedance, leverArm;
+        const RestingStringModel* model;
+    };
+    std::array<RestingLoop, stringCount> restingLoops {};
+    int restingCount = 0;
+    {
+        const auto& references = restingStringModels();
+        for (int other = 0; other < stringCount; ++other)
+        {
+            if (other == stringIndex) continue;
+            const auto& model = references[static_cast<std::size_t>(other)];
+            auto& loop = restingLoops[static_cast<std::size_t>(restingCount++)];
+            loop.anchor = delayAnchor(model.delay);
+            thiranCoefficients(model.delay - loop.anchor, loop.thiranA1, loop.thiranA2);
+            loop.pole = model.highFilter.remapped ? model.highFilter.ratePole : model.highCoefficient;
+            loop.delayed = model.highFilter.remapped ? model.highFilter.delayedInputGain : 0.0;
+            loop.impedance = model.impedance;
+            loop.leverArm = saddleLeverArm(other);
+            loop.model = &model;
+        }
+    }
+    const auto loadOtherStrings = [&] (const Port& source, Complex z) -> Port
+    {
         const Complex y11 = source[2] / (eta * eta);
         const Complex y01 = -source[1] / eta - arm * y11;
         const Complex y00 = source[0] - 2.0 * arm * y01 - arm * arm * y11;
         const Complex zz = z * z;
         Complex g00 {}, g01 {}, g11 {};
-        const auto& references = restingStringModels();
-        for (int other = 0; other < stringCount; ++other) {
-            if (other == stringIndex) continue;
-            const auto& model = references[static_cast<std::size_t>(other)];
-            const double otherImpedance = model.impedance;
+        for (int other = 0; other < restingCount; ++other) {
+            const auto& resting = restingLoops[static_cast<std::size_t>(other)];
+            const auto& model = *resting.model;
+            const double otherImpedance = resting.impedance;
             // Both resting planes share the same immutable loop model.
             // Compute that transfer once, then retain the original normal
             // followed by parallel addition order in the junction load.
-            const int anchor = delayAnchor(model.delay);
-            double a1, a2; thiranCoefficients(model.delay - anchor, a1, a2);
             const auto ap = [&](double first, double second) {
-                return exact::divide(second + first * z + zz, 1.0 + first * z + second * zz);
+                return over(second + first * z + zz, 1.0 + first * z + second * zz);
             };
-            Complex feedback = double(model.loopGain) * std::exp(-s * double(anchor)) * ap(a1, a2);
+            Complex feedback = double(model.loopGain) * raisedTo(z, resting.anchor)
+                * ap(resting.thiranA1, resting.thiranA2);
             feedback *= ap(model.dispersion[0], model.dispersion[1]);
             if (model.secondDispersion) feedback *= ap(model.dispersion[2], model.dispersion[3]);
-            const double pole = model.highFilter.remapped ? model.highFilter.ratePole : model.highCoefficient;
-            const double delayed = model.highFilter.remapped ? model.highFilter.delayedInputGain : 0.0;
-            feedback *= 1.0 - double(model.highMix) + exact::divide(double(model.highMix)
+            const double pole = resting.pole;
+            const double delayed = resting.delayed;
+            feedback *= 1.0 - double(model.highMix) + over(double(model.highMix)
                 * ((1.0 - pole - delayed) + delayed * z), 1.0 - pole * z);
-            feedback *= 1.0 - exact::divide((1.0 - z)
+            feedback *= 1.0 - over((1.0 - z)
                 * (double(1.0f - model.bendingGain) - double(model.bendingA2) * z),
                 1.0 + double(model.bendingA1) * z + double(model.bendingA2) * zz);
-            feedback *= 1.0 - exact::divide((1.0 - z)
+            feedback *= 1.0 - over((1.0 - z)
                 * (double(1.0f - model.constantGain) + double(model.constantN2 - model.constantA2) * z),
                 1.0 + double(model.constantA1) * z + double(model.constantA2) * zz);
             if (exact::magnitude(1.0 - feedback) < 1.0e-9) continue;
-            const Complex load = exact::divide(otherImpedance * (1.0 + feedback), 1.0 - feedback);
-            const double u = saddleLeverArm(other);
+            const Complex load = over(otherImpedance * (1.0 + feedback), 1.0 - feedback);
+            const double u = resting.leverArm;
             g00 += load;
             g01 += load * u;
             g11 += load * u * u;
@@ -6100,7 +6141,8 @@ float AcustraEngine::coupledPolarisationDetune(
     // times the saddle's reflection R = (Y0 I - Y)(Y0 I + Y)^-1, Y symmetric.
     const auto loopMatrix = [&] (Complex s) -> std::array<Complex, 4>
     {
-        const auto loaded = loadOtherStrings(portAt(s), s);
+        const Complex z = std::exp(-s); // z^-1 of the digital frequency s
+        const auto loaded = loadOtherStrings(portAt(z), z);
         const Complex normal = loaded[0], transfer = loaded[1], parallel = loaded[2];
         const Complex b00 = admittance + normal;
         const Complex b11 = admittance + parallel;
@@ -6158,7 +6200,7 @@ float AcustraEngine::coupledPolarisationDetune(
     // eigenvalue seeds, and a start that reaches a pole already found is
     // dropped after a step or two, so the seeds are always tried: a solve
     // costs 140 determinant evaluations on average over every string and
-    // fret, 255 at most, 0.3 ms with the rest of a note-on. The in-phase member sits
+    // fret, 255 at most, 0.25 ms with the rest of a note-on. The in-phase member sits
     // off the resting string's resonance, so it is found in s, not with its
     // frequency held at the nominal and the resting string read at its clamp.
     const auto loopDeterminant = [&] (Complex s, double d)

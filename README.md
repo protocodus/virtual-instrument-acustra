@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.27 — 2026-11-07 — a note-on costs about a sixth less, identical output
+
+- The tuning solve's determinant is evaluated with one reciprocal per
+  division, the resting strings' constants worked out once a solve and one
+  complex exponential an evaluation instead of three: a note-on and its
+  first 64-sample block at 48 kHz cost 253 µs mean, 462 worst on the
+  development machine (1.9.26: 309 and 540), a six-note chord struck in one
+  block 0.72-1.24 ms (0.88-1.5 ms). 378 notes over three tunings, with a
+  slide and a vibrato, render bit for bit as 1.9.26 did.
+
 ### 1.9.26 — 2026-11-07 — the string is tuned to the member you hear
 
 - Every note's two polarisations form a pair of coupled modes through the
@@ -912,11 +922,11 @@ separates verified errors from accepted approximations.
   sideways hold, the string's own asymmetry) is not modelled. It costs
   fingered notes about 1.5 dB of their brightening with velocity
   (Docs/decisions.md, 2026-10-30).
-- A note-on's tuning solve costs 0.1-0.3 ms on the development machine
+- A note-on's tuning solve costs 0.1-0.25 ms on the development machine
   (48 kHz, 64-sample blocks), so six note-ons struck in one block cost
-  0.8-1.5 ms with the block's own rendering, over the block's 1.33 ms on
-  chords that meet open-string unisons (1.9.25: 0.5-0.7 ms, but 0.1-0.9 ms
-  a block for every note held under a vibrato). Spreading a chord's solves
+  0.7-1.25 ms with the block's own rendering, close to the block's 1.33 ms
+  on chords that meet open-string unisons (1.9.25: 0.5-0.7 ms, but 0.1-0.9
+  ms a block for every note held under a vibrato). Spreading a chord's solves
   over its first blocks would close it; the development-machine figures are
   not Reason's (`Docs/research/coupled-tuning-2026-11-07.md`, Cost).
 - Notes near strong lossy body modes sit a few cents from their request, and

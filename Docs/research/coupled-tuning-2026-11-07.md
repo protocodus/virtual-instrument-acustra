@@ -206,7 +206,17 @@ a different family on 45 of 378 notes (up to 5 cents); a 10-cent step
 clamp and the secant slope at convergence saved under a tenth and moved
 one note 0.25 cent. What would close the gap without touching the family
 is spreading a chord's solves over its first blocks, which is a
-scheduling change and was not made.
+scheduling change and was not made. What was done (1.9.27) is arithmetic:
+one reciprocal per complex division in the modal sum and the string loads
+(exact::divide's scaled form guards magnitudes these polynomials never
+reach), the resting strings' anchors, Thiran coefficients and filter
+constants worked out once a solve, each string's whole-sample delay as
+z^n by squaring, and one complex exponential an evaluation shared by the
+bridge and the strings instead of three. The 378 notes render bit for bit
+as before (a hash of 0.5 s of each, with a slide and a vibrato); the
+note-on and its first block cost 253 µs mean, 462 worst (309 and 540),
+and the four chords 0.72, 1.22, 0.72 and 1.16 ms (0.88, 1.45, 0.85 and
+1.44).
 
 ## Not changed
 
