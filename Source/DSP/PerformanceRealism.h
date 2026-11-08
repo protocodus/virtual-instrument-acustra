@@ -101,6 +101,13 @@ struct PerformanceRealism
     // Make position-shift arrivals audible at the presets' 10% Release
     // Noise setting. Continuous slides and key-up noise keep their levels.
     bool audibleShiftArrivals { true };
+    // Scale the contact release arc by the local transverse compliance
+    // (p(1 - p) / (p0(1 - p0)))^0.22 so stiffer bridgeward contacts unload
+    // faster and more compliant soundhole-ward contacts unload more warmly.
+    bool pluckBoundaryCompliance { true };
+    // Smooth unilateral fret-crown grazing when hard downward normal-plane
+    // excursions on fretted strings exceed the fret clearance.
+    bool fretCrownGrazing { true };
 };
 
 } // namespace acustra
