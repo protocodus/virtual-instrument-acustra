@@ -5,6 +5,21 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-08 — owner accepts the physical-model review candidates
+
+The owner instructed: “use all candidates” after receiving the private
+20-pair A/B review for Acustra, Aculele, Aculyre and Acukoto. This accepts
+the B mechanisms in that review, including the combined physical/circuit,
+output-calibration and stability fixes. It is the owner's selection, not an
+inferred listening score or a claim of complete physical-model accuracy.
+
+For this instrument the accepted combined DSP snapshot is `b82663ace0ad0b4b0df5a676589387ed44ab9970`.
+Existing isolated A/B files and their separate keys remain frozen. Earlier
+integration clips do not roll the engine back to their intermediate pins.
+The rejected axial-FIR prototypes and analytical ADAA alternative were never
+part of the listening candidates. Full axial-source anti-aliasing is a new
+investigation; its numerical accuracy and runtime still require validation.
+
 ## 2026-11-08 — passive axial feedback loss, 1.9.33 (local review candidate)
 
 A ten-second extension of the output audit exposed an existing physical
