@@ -43,6 +43,30 @@ struct AcustraEngineTestAccess
     {
         return engine.piezoSaddle_;
     }
+    static void saddleLoad(AcustraEngine& engine, float impedance)
+    { engine.updatePiezoSaddleLoad(impedance); }
+    static auto saddleDesign(double rate, double impedance)
+    { return AcustraEngine::designPiezoSaddle(rate, impedance); }
+    static void saddleBankAtRate(AcustraEngine& engine, double rate)
+    { engine.preparePiezoSaddleBank(rate); }
+    static float saddleLoad(const AcustraEngine& engine) { return engine.piezoSaddleLoad_; }
+    static float maximumSaddleLoad(const AcustraEngine& engine)
+    { return engine.piezoSaddleMaximumLoad_; }
+    static float normalPort(const AcustraEngine& engine) { return engine.lastImpedanceSum_; }
+    static float retainedPort(const AcustraEngine& engine)
+    {
+        float result = 0.0f;
+        for (const auto& voice : engine.voices_)
+            if (voice.tailActive) result += voice.tailCharacteristicImpedance;
+        return result;
+    }
+    static std::array<float, 6> stringPorts(const AcustraEngine& engine)
+    {
+        std::array<float, 6> result {};
+        for (std::size_t i = 0; i < result.size(); ++i)
+            result[i] = engine.voices_[i].characteristicImpedance;
+        return result;
+    }
     // C3's, C4's and C5's voltages (C4 and C5 seven samples back, with the
     // output) and U1B's clipped output seven samples back.
     static std::array<double, 4> slowStates(const AcustraEngine& engine)
@@ -429,6 +453,168 @@ void testSaddleFilter()
            "the 8 kHz saddle filter is not a four-tap FIR");
 }
 
+void testSaddleLoadBank()
+{
+    // Independent analog reference above comes from the force/velocity
+    // circuit, not the interpolation or matched-pole fitting code. The
+    // second comparison isolates interpolation error from that existing fit.
+    for (const int rate : { 8000, 16000, 44100, 48000, 96000, 192000, 384000, 768000 })
+    {
+        auto engine = engineAt(rate);
+        // Exercise the bank's 768 kHz Reason 4x edge independently of the
+        // normal plug-in build's 384 kHz whole-engine preparation clamp.
+        Access::saddleBankAtRate(*engine, rate);
+        const double maximum = Access::maximumSaddleLoad(*engine);
+        expect(maximum >= 11.18445246414241 && maximum - 11.18445246414241 < 0.001,
+               "saddle bank does not cover the derived normal-port bound with outward numerical rounding");
+        double worstInterpolationDb = 0.0, worstInterpolationDegrees = 0.0;
+        double worstAnalogDb = 0.0, worstDc = 0.0;
+        for (int point = 0; point <= 256; ++point)
+        {
+            const float load = static_cast<float>(maximum * point / 256.0);
+            Access::saddleLoad(*engine, load);
+            const auto filter = Access::saddle(*engine);
+            const auto direct = Access::saddleDesign(rate, load);
+            // Jury/Schur inequalities independently cover both real and
+            // complex poles, including every interpolated denominator.
+            expect(std::abs(filter.a2) < 1.0f && 1.0 + filter.a1 + filter.a2 > 0.0
+                       && 1.0 - filter.a1 + filter.a2 > 0.0,
+                   "an interpolated saddle filter has an unstable pole");
+            double numeratorDc = 0.0;
+            for (float b : filter.b) numeratorDc += b;
+            worstDc = std::max(worstDc,
+                std::abs(numeratorDc / (1.0 + filter.a1 + filter.a2) - 1.0));
+            for (double hz = 20.0; hz < std::min(20000.0, 0.45 * rate); hz *= 1.08)
+            {
+                const auto z = std::polar(1.0, -2.0 * pi * hz / rate);
+                const auto response = [&] (const auto& coefficients)
+                {
+                    std::complex<double> num {}, power { 1.0, 0.0 };
+                    for (float b : coefficients.b) { num += static_cast<double>(b) * power; power *= z; }
+                    return num / (1.0 + static_cast<double>(coefficients.a1) * z
+                        + static_cast<double>(coefficients.a2) * z * z);
+                };
+                const auto digital = response(filter);
+                const auto interpolation = digital / response(direct);
+                worstInterpolationDb = std::max(worstInterpolationDb,
+                    std::abs(decibels(std::abs(interpolation))));
+                worstInterpolationDegrees = std::max(worstInterpolationDegrees,
+                    std::abs(std::arg(interpolation)) * 180.0 / pi);
+                worstAnalogDb = std::max(worstAnalogDb,
+                    std::abs(decibels(std::abs(digital / analogSaddle(hz, load)))));
+            }
+        }
+        expect(worstInterpolationDb < 0.005 && worstInterpolationDegrees < 0.05,
+               "saddle load interpolation exceeds its 0.005 dB / 0.05 degree error budget");
+        expect(worstDc < 1.0e-4, "interpolated saddle lost unit DC gain");
+        // Keep the original Standard-specific stricter gates above. Across
+        // the entire load range the normal-rate analog target stays within
+        // 0.6 dB; the existing low-rate FIR fit has a different limitation.
+        if (rate >= 44100)
+            expect(worstAnalogDb < 0.6, "loaded saddle differs from analog by more than 0.6 dB");
+        std::cout << "Saddle bank " << rate << " Hz: interpolation " << worstInterpolationDb
+                  << " dB / " << worstInterpolationDegrees << " deg; analog "
+                  << worstAnalogDb << " dB; DC error " << worstDc << '\n';
+    }
+    auto engine = engineAt(48000);
+    auto largest = Access::stringPorts(*engine);
+    for (float& port : largest)
+        port = port * std::exp2(100.0f / 1200.0f) * std::sqrt(2.0f);
+    std::array<int, 6> order { 0, 1, 2, 3, 4, 5 };
+    do
+    {
+        float normal = 0.0f;
+        for (int index : order)
+            normal += largest[static_cast<std::size_t>(index)] + largest[static_cast<std::size_t>(index)];
+        expect(normal < Access::maximumSaddleLoad(*engine),
+               "twelve maximum float ports exceed the prepared load domain");
+    } while (std::next_permutation(order.begin(), order.end()));
+    for (int n = 0; n < 100; ++n)
+        Access::chain(*engine, static_cast<float>(0.01 * std::sin(0.1 * n)));
+    const auto before = Access::state(*engine);
+    Access::saddleLoad(*engine, 0.5f);
+    Access::saddleLoad(*engine, 9.5f);
+    expect(before == Access::state(*engine),
+           "updating saddle loading changed continuous filter/circuit histories");
+}
+
+void testLiveSaddleLoad()
+{
+    constexpr std::array tensions { 110.759, 128.554, 133.002, 133.892, 103.643, 104.088 };
+    constexpr std::array standard { 40, 45, 50, 55, 59, 64 };
+    constexpr std::array dadgad { 38, 45, 50, 55, 57, 62 };
+    const auto expected = [&] (double cents, bool bent)
+    {
+        double sum = 0.0;
+        for (int string = 0; string < 6; ++string)
+            sum += tensions[string] / (2.0 * 0.648 * 440.0 * std::exp2((standard[string] - 69) / 12.0))
+                * std::exp2((dadgad[string] - standard[string]) / 12.0 + cents / 1200.0)
+                * (bent && string == 3 ? std::exp2(3.0 / 12.0) : 1.0);
+        return sum;
+    };
+    const auto advance = [&] (auto& engine, int samples)
+    {
+        std::array<float, 64> left {}, right {};
+        while (samples > 0)
+        {
+            const int count = std::min(samples, 64);
+            engine.process(left.data(), right.data(), count);
+            for (int n = 0; n < count; ++n)
+                expect(std::isfinite(left[n]) && std::isfinite(right[n]), "live load produced nonfinite audio");
+            expect(Access::saddleLoad(engine) == Access::normalPort(engine),
+                   "sensor load differs from the actual retained normal junction load");
+            samples -= count;
+        }
+    };
+    for (const int rate : { 44100, 48000, 96000 })
+    {
+        auto live = engineAt(rate);
+        auto fresh = std::make_unique<acustra::AcustraEngine>();
+        acustra::EngineParameters target;
+        target.tuning = acustra::Tuning::Dadgad;
+        fresh->setParameters(target);
+        fresh->setMasterTuneCents(100.0f);
+        fresh->prepare(rate, 64);
+        for (auto* engine : { live.get(), fresh.get() })
+        {
+            auto realism = engine->performanceRealism();
+            realism.frettingPitch = false;
+            engine->setPerformanceRealism(realism);
+            engine->setLowerZoneMemberCount(6);
+            engine->setStringPerChannelMode(true);
+        }
+        live->noteOn(57, 0.8f, 4);
+        advance(*live, rate / 10);
+        live->setParameters(target);
+        live->setMasterTuneCents(100.0f);
+        live->setPitchBend(3.0f, 4);
+        fresh->setPitchBend(3.0f, 4);
+        fresh->noteOn(57, 0.8f, 4);
+        advance(*live, rate / 2);
+        advance(*fresh, rate / 2);
+        expect(std::abs(Access::saddleLoad(*live) / expected(100.0, true) - 1.0) < 2.0e-5,
+               "live tuning/master/member bend did not produce the independently derived load");
+        expect(std::abs(Access::saddleLoad(*live) - Access::saddleLoad(*fresh)) < 2.0e-5,
+               "settled live and freshly prepared sensor loads differ");
+        const auto a = Access::saddle(*live), b = Access::saddle(*fresh);
+        for (std::size_t i = 0; i < a.b.size(); ++i)
+            expect(std::abs(a.b[i] - b.b[i]) < 2.0e-6f, "settled sensor numerator depends on control order");
+        expect(std::abs(a.a1 - b.a1) < 2.0e-6f && std::abs(a.a2 - b.a2) < 2.0e-6f,
+               "settled sensor poles depend on control order");
+        live->noteOn(59, 0.8f, 4);
+        advance(*live, 64);
+        expect(Access::retainedPort(*live) > 0.0f, "the load test did not create a retained tail branch");
+        expect(Access::saddleLoad(*live) > expected(100.0, true),
+               "the sensor ignored the junction's retained tail load");
+        live->reset();
+        expect(std::abs(Access::saddleLoad(*live) / expected(100.0, false) - 1.0) < 2.0e-5,
+               "reset retained the previous bent/tail sensor load");
+        const auto state = Access::state(*live);
+        expect(std::all_of(state.begin(), state.end(), [] (double v) { return v == 0.0; }),
+               "reset retained piezo filter or circuit history");
+    }
+}
+
 // ------------------------------------------------------------ 4. harmonics
 void testHarmonics()
 {
@@ -767,6 +953,7 @@ int main(int argc, char** argv)
     };
     if (wanted("dc")) testOperatingPoint();
     if (wanted("saddle")) testSaddleFilter();
+    if (wanted("load")) { testSaddleLoadBank(); testLiveSaddleLoad(); }
     if (wanted("small")) testSmallSignal();
     if (wanted("harmonics")) testHarmonics();
     if (wanted("aliasing")) testAliasing();

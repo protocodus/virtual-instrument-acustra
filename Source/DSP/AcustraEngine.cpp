@@ -4189,11 +4189,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     // sources, Tools/PiezoReference.py simulates the same circuit).
     {
         using D = PiezoDesign;
-        double impedance = 0.0;
-        for (int string = 0; string < stringCount; ++string)
-            impedance += static_cast<double>(stringImpedance(
-                string, standardOpenMidi[static_cast<std::size_t>(string)]));
-        piezoSaddle_ = designPiezoSaddle(sampleRate_, impedance);
+        preparePiezoSaddleBank(sampleRate_);
         // The input section as deviations from its operating point. The jack
         // node carries only capacitors, so its charge stays where it was and
         // V_J = (Cp V_oc + C1 V_IN) / (Cs + C1); the IN node then sees C1 in
@@ -4382,6 +4378,11 @@ void AcustraEngine::reset() noexcept
             configureVoice(voices_[static_cast<std::size_t>(string)], string,
                            voices_[static_cast<std::size_t>(string)].midiNote,
                            false);
+    float impedance = 0.0f;
+    if (sympatheticStringsEnabled_)
+        for (const auto& voice : voices_)
+            impedance += voice.characteristicImpedance * voice.appliedBendImpedanceScale;
+    updatePiezoSaddleLoad(impedance);
 }
 
 void AcustraEngine::resetSoundState() noexcept
@@ -13754,6 +13755,77 @@ AcustraEngine::designPiezoSaddle(double sampleRate, double impedance) noexcept
     return filter;
 }
 
+void AcustraEngine::preparePiezoSaddleBank(double sampleRate) noexcept
+{
+    double standard = 0.0;
+    piezoSaddleStandardLoad_ = 0.0f;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const float port = stringImpedance(
+            string, standardOpenMidi[static_cast<std::size_t>(string)]);
+        standard += static_cast<double>(port);
+        // Match the junction's float accumulation so Standard selects its
+        // existing exact design rather than a neighbouring interpolation.
+        piezoSaddleStandardLoad_ += port;
+    }
+    // Every alternate tuning lowers open pitches. Master tuning stops at
+    // +100 cents; Grimes' bend law bounds Z/Z0 at sqrt(2). The junction can
+    // retain one previous branch per string, each within the same bounds.
+    // This covers its actual normal-port sum, including disabled/empty ports
+    // at zero; sensitivity weights and the parallel rocking port do not add
+    // normal loading. Round the numerical domain outward to 0.001 N s/m
+    // before the final float round, covering accumulation of all twelve
+    // float ports (not changing or rounding any physical port itself).
+    const double maximum = 2.0 * standard
+        * std::sqrt(static_cast<double>(maximumBendRatioSquared))
+        * std::exp2(100.0 / 1200.0);
+    piezoSaddleMaximumLoad_ = std::nextafter(static_cast<float>(
+        std::ceil(maximum * 1000.0) / 1000.0), std::numeric_limits<float>::infinity());
+    for (int point = 0; point <= 2 * piezoSaddleIntervals; ++point)
+    {
+        const double fraction = static_cast<double>(point % piezoSaddleIntervals)
+            / piezoSaddleIntervals;
+        double impedance = point < piezoSaddleIntervals
+            ? standard * fraction
+            : standard + (static_cast<double>(piezoSaddleMaximumLoad_) - standard)
+                * static_cast<double>(point - piezoSaddleIntervals) / piezoSaddleIntervals;
+        if (point == piezoSaddleIntervals)
+            impedance = standard;
+        piezoSaddleBank_[static_cast<std::size_t>(point)]
+            = designPiezoSaddle(sampleRate, impedance);
+    }
+    piezoSaddleLoad_ = -1.0f;
+    updatePiezoSaddleLoad(piezoSaddleStandardLoad_);
+}
+
+void AcustraEngine::updatePiezoSaddleLoad(float impedance) noexcept
+{
+    if (!(piezoSaddleMaximumLoad_ > piezoSaddleStandardLoad_))
+        return; // No prepared bank yet.
+    const float load = exact::isfinite(impedance)
+        ? clamp(impedance, 0.0f, piezoSaddleMaximumLoad_) : 0.0f;
+    if (load == piezoSaddleLoad_)
+        return;
+    piezoSaddleLoad_ = load;
+    const float coordinate = load <= piezoSaddleStandardLoad_
+        ? piezoSaddleIntervals * load / piezoSaddleStandardLoad_
+        : piezoSaddleIntervals + piezoSaddleIntervals
+            * (load - piezoSaddleStandardLoad_)
+            / (piezoSaddleMaximumLoad_ - piezoSaddleStandardLoad_);
+    const int lower = std::min(static_cast<int>(coordinate), 2 * piezoSaddleIntervals - 1);
+    const float mix = clamp(coordinate - static_cast<float>(lower), 0.0f, 1.0f);
+    const auto& a = piezoSaddleBank_[static_cast<std::size_t>(lower)];
+    const auto& b = piezoSaddleBank_[static_cast<std::size_t>(lower + 1)];
+    for (std::size_t tap = 0; tap < piezoSaddle_.b.size(); ++tap)
+        piezoSaddle_.b[tap] = a.b[tap] + mix * (b.b[tap] - a.b[tap]);
+    piezoSaddle_.a1 = a.a1 + mix * (b.a1 - a.a1);
+    piezoSaddle_.a2 = a.a2 + mix * (b.a2 - a.a2);
+    // Second-order Schur stability is a convex region in (a1,a2), and the
+    // unit-DC numerator constraint is linear too. Interpolating these stable
+    // designs preserves both (within float rounding). The direct-form input
+    // and output histories remain intact: changing a load is not a reset.
+}
+
 void AcustraEngine::resetPiezo() noexcept
 {
     piezoSaddleInput_.fill(0.0f);
@@ -14403,6 +14475,11 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             piezoImpedance1 = lastPiezoImpedanceMoment_;
         }
         const bool portIsLoaded = drive.impedance0 > 1.0e-6f;
+        // This observation approximation is loaded by the same normal ports
+        // as the mechanical junction, after its retained-load fallback. No
+        // new impedance is inserted into that junction. Tuning and bend
+        // followers already provide their continuous physical load here.
+        updatePiezoSaddleLoad(drive.impedance0);
         float bridgeDisplacement = 0.0f;
         float bridgeRotation = 0.0f;
         float reactionWave = portIsLoaded ? drive.incidentHeave : 0.0f;

@@ -39,6 +39,15 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.31 — 2026-11-08 — the pickup follows the strings' current load
+
+- The piezo saddle response follows the shared junction's actual normal
+  load, including tuning, host master tuning, member bends and retained
+  branches. Its filter histories continue through those changes. Prepared
+  coefficients keep the fitting work outside the audio callback; the
+  electrical circuit and mechanical junction are unchanged. Local review
+  candidate, with no publication or listening approval claimed.
+
 ### 1.9.30 — 2026-11-08 — the axial source follows every sample
 
 - The nonlinear stretch source is evaluated at the host rate while its

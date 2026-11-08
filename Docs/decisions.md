@@ -5,6 +5,29 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-08 — the piezo saddle follows the current junction load, 1.9.31 (local review candidate)
+
+The saddle observation filter was designed only in prepare(), using Standard
+steel-string impedance even when tuning, host reference tuning or member
+bends changed the load at the actual junction. It now uses that junction's
+normal-port sum after its existing held-load fallback. Retained branches are
+included once, exactly as the junction counts them; sensitivity weights and
+parallel rocking impedance do not become extra normal loads. No mechanical
+port, energy return, circuit component or fitted physical constant is added.
+
+At preparation, 65 designs cover zero to the derived maximum normal load:
+two branches per string, the existing sqrt(2) bend limit, +100-cent master
+tuning and the Standard open-string impedances. Every alternate tuning is
+lower. Two uniform grids meet at the exact previous Standard design. During
+rendering, only changed loads interpolate their coefficients; direct-form
+input/output histories and all electrical states continue unchanged.
+Second-order stability and unit DC gain are convex/linear constraints in
+these coefficients and are tested across the complete range. The
+[validation record](validation/piezo-load-2026-11-08.md) separates the analog
+approximation error from the much smaller interpolation error. This remains
+a one-way sensor observation approximation, not reciprocal saddle mechanics.
+Local A/B review is pending; no listener preference or release is claimed.
+
 ## 2026-11-08 — remove the axial source's reduced-rate folds, 1.9.30 (local review candidate)
 
 The source previously used its spatial quadrature stride as a temporal

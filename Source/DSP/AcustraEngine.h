@@ -729,6 +729,8 @@ private:
     };
     static PiezoSaddleFilter designPiezoSaddle(double sampleRate,
                                                double stringImpedanceSum) noexcept;
+    void preparePiezoSaddleBank(double sampleRate) noexcept;
+    void updatePiezoSaddleLoad(float impedance) noexcept;
 
     struct OnePole
     {
@@ -2212,6 +2214,12 @@ private:
     float lastPiezoForce_ { 0.0f };
     // The saddle filter, in direct form I; histories are force units.
     PiezoSaddleFilter piezoSaddle_ {};
+    // Two uniform grids meet at the exact Standard-tuning design. This is
+    // numerical interpolation resolution, not another physical parameter.
+    static constexpr int piezoSaddleIntervals = 32;
+    std::array<PiezoSaddleFilter, 2 * piezoSaddleIntervals + 1> piezoSaddleBank_ {};
+    float piezoSaddleStandardLoad_ { 0.0f }, piezoSaddleMaximumLoad_ { 0.0f };
+    float piezoSaddleLoad_ { -1.0f };
     std::array<float, 5> piezoSaddleInput_ {};
     std::array<float, 2> piezoSaddleOutput_ {};
     // The preamp's input section, trapezoidal, as deviations from its
