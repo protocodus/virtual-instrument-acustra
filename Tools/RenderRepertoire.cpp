@@ -64,7 +64,8 @@ using acustra::EngineParameters;
 
 constexpr int renderBlockSize = 256;
 constexpr double normalisedPeak = 0.8912509381337456; // -1 dBFS
-// The engine's safety limiter begins here (RenderDemos keeps under it too).
+// Retained legacy render peak bound; a bounded post-guard sample does not
+// establish that the output dynamics remained inactive.
 constexpr double limiterThreshold = 0.89125094;
 constexpr double pi = 3.14159265358979323846;
 
@@ -724,7 +725,7 @@ int renderFile(const std::filesystem::path& input, const std::filesystem::path& 
         }
         if (part.peak > limiterThreshold || part.peak < 1.0e-4)
         {
-            std::fprintf(stderr, "%s: part %s peaks at %.6f, outside the linear range\n",
+            std::fprintf(stderr, "%s: part %s peaks at %.6f, outside the safe peak range\n",
                          input.string().c_str(), part.id.c_str(), part.peak);
             ok = false;
         }

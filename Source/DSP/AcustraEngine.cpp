@@ -103,10 +103,6 @@ inline float floor(float value) noexcept { return __builtin_floorf(value); }
 inline double floor(double value) noexcept { return __builtin_floor(value); }
 inline float sqrt(float value) noexcept { return __builtin_sqrtf(value); }
 inline double sqrt(double value) noexcept { return __builtin_sqrt(value); }
-inline float copysign(float magnitude, float sign) noexcept
-{
-    return __builtin_copysignf(magnitude, sign);
-}
 #else
 inline float abs(float value) noexcept { return std::abs(value); }
 inline double abs(double value) noexcept { return std::abs(value); }
@@ -116,10 +112,6 @@ inline float floor(float value) noexcept { return std::floor(value); }
 inline double floor(double value) noexcept { return std::floor(value); }
 inline float sqrt(float value) noexcept { return std::sqrt(value); }
 inline double sqrt(double value) noexcept { return std::sqrt(value); }
-inline float copysign(float magnitude, float sign) noexcept
-{
-    return std::copysign(magnitude, sign);
-}
 #endif
 // The bits of a float, for keys that must tell -0 from +0 and a NaN from
 // itself; the builtin keeps the copy inline under -fno-builtin.
@@ -1050,20 +1042,22 @@ ModalPole radiationPole(ConstSpan<detail::MeasuredBodyMode> bank, int index,
                          morph, wood, calibration);
 }
 
-float safetyLimit(float sample) noexcept
-{
-    // Exactly linear through -1 dBFS, then C1-continuous into unit headroom.
-    // The former zero-centred knee altered every ordinary guitar transient.
-    constexpr float threshold = 0.89125094f;
-    constexpr float headroom = 1.0f - threshold;
-    const float magnitude = exact::abs(sample);
-    if (magnitude <= threshold)
-        return sample;
-    const float excess = magnitude - threshold;
-    const float limited = threshold
-        + excess / (1.0f + excess / headroom);
-    return exact::copysign(limited, sample);
-}
+// Absolute output-only calibration: the factory Dreadnought patch's median
+// peak300ms stereo-mean RMS over six open singles, two triads and one four-note
+// chord at velocities70/90/110 is -9VU (0VU=-12dBFS). This gain follows the
+// physical sensor/body outputs; it does not retension or renormalize strings.
+// Protocol and measured results: Docs/validation/output-levels-2026-11-08.md.
+constexpr float outputCalibrationGain = 1.30316678f; // +2.3dB
+// At low engine rates the existing model can have substantial near-Nyquist
+// energy. The worst32x reconstruction over the measured8..32kHz controls,
+// using10/64/128/256-lobe Kaiser kernels, was+1.729dBFS. Add0.75dB reserve
+// and round up to0.1dB:2.5dB extra limiter headroom, or a-4dBFS sample ceiling.
+// Reciprocal scaling plus the same compressor-threshold shift preserves
+// its VU transfer and quiet gain. At44.1kHz and above this path is bypassed
+// exactly. No physical sensor scale or latency changes. See the output report.
+constexpr double lowRateOutputReserveDb = 2.5;
+constexpr float lowRateOutputScale = 0.749894209f; // 10^(-2.5/20)
+constexpr float lowRateOutputInverseScale = 1.333521432f; // 10^(+2.5/20)
 
 // D'Addario EJ16 published tensions, low E to high E, converted from pounds
 // force.  Wound-string mass cannot be inferred from its outside diameter as a
@@ -4163,6 +4157,11 @@ void AcustraEngine::prepare(double sampleRate, int)
     if (!exact::isfinite(sampleRate) || sampleRate <= 0.0)
         sampleRate = 48000.0;
     sampleRate_ = std::clamp(sampleRate, 8000.0, maximumSupportedSampleRate);
+    auto outputGuard = protocodus::kVuGuard;
+    if (sampleRate_ < 44100.0)
+        outputGuard.thresholdDb += lowRateOutputReserveDb;
+    mainOutput_.Prepare(sampleRate_, outputGuard);
+    piezoOutput_.Prepare(sampleRate_, outputGuard);
 #if ACUSTRA_EXTENDED_SAMPLE_RATES
     const auto active = static_cast<std::size_t>(delayCapacityForRate(sampleRate_));
     pickReleaseDisplacement_.prepareSize(active);
@@ -4394,6 +4393,8 @@ void AcustraEngine::resetSoundState() noexcept
     micDelayRight_.fill(0.0f);
     micDelayMono_.fill(0.0f);
     micDelayIndex_ = 0;
+    mainOutput_.Reset();
+    piezoOutput_.Reset();
     room_.reset();
     for (auto& voice : voices_)
     {
@@ -14104,6 +14105,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
     if (!prepared_ || left == nullptr || right == nullptr || numSamples <= 0)
         return;
     float* const piezo = buses.piezo;
+    const bool lowRateOutputReserve = sampleRate_ < 44100.0;
     if (suspended_)
     {
         // The control-rate half of the loop below, without its audio. With
@@ -14120,6 +14122,13 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 controlCounter_ = 0;
                 updateControlState();
             }
+            // Suspension follows the idle flush, so both stages contain
+            // exact silence. Keep their frame/control phases advancing as
+            // in an awake silent engine; the next note must be identical.
+            std::array<float, 2> mainFrame {};
+            std::array<float, 1> piezoFrame {};
+            mainOutput_.Process(mainFrame);
+            piezoOutput_.Process(piezoFrame);
             ++sampleClock_;
         }
         return;
@@ -14649,18 +14658,20 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         const float idlePeak = std::max({ exact::abs(body.left),
             exact::abs(body.right), exact::abs(body.upper),
             exact::abs(loadedPiezo) });
+        // Independent output dynamics follow the physical pickup circuit.
+        // Always clock this stage, even without an output pointer, so late
+        // cabling reads warm state and cannot change Main or its detector.
+        // Capture/Piezo Mix never feeds this mono stage back into the mix.
+        const float piezoRaw = (radiationReferenceGain * outputGain_ * loadedPiezo)
+            * outputCalibrationGain;
+        std::array<float, 1> piezoFrame { exact::isfinite(piezoRaw) ? piezoRaw : 0.0f };
+        if (lowRateOutputReserve)
+            piezoFrame[0] *= lowRateOutputInverseScale;
+        piezoOutput_.Process(piezoFrame);
+        if (lowRateOutputReserve)
+            piezoFrame[0] *= lowRateOutputScale;
         if (piezo != nullptr)
-        {
-            // The separate Piezo output observes before Capture chooses, at
-            // the level the mono route below gives it and through its own
-            // copy of the safety limiter; nothing reads it back, so Main is
-            // untouched by wanting it. Written as the mono route's product:
-            // with only the piezo selected that route adds exact zeros to
-            // this, so the two agree.
-            const float piezoOut = safetyLimit(
-                radiationReferenceGain * outputGain_ * loadedPiezo);
-            piezo[sample] = exact::isfinite(piezoOut) ? piezoOut : 0.0f;
-        }
+            piezo[sample] = exact::isfinite(piezoFrame[0]) ? piezoFrame[0] : 0.0f;
         // The microphones wait out the piezo's pipeline (renderPiezo), so a
         // Capture crossfade and Piezo Mix sum the two sensors as the
         // instrument moved them, at every sample rate. Main is seven samples
@@ -14758,12 +14769,23 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             outputRight += blended;
         }
 
-        // Preserve ordinary notes exactly; only the final 1 dB of headroom is
-        // compressed for pathological automation and dense repicks.
-        outputLeft = safetyLimit(outputLeft);
-        outputRight = safetyLimit(outputRight);
-        left[sample] = exact::isfinite(outputLeft) ? outputLeft : 0.0f;
-        right[sample] = exact::isfinite(outputRight) ? outputRight : 0.0f;
+        outputLeft *= outputCalibrationGain;
+        outputRight *= outputCalibrationGain;
+
+        // Final stereo-linked VU guard and sample-peak limiter, after every
+        // capture/room/pickup mix. Its delayed output never enters the string
+        // or body mechanics, sensor volts, or the raw idle detector below.
+        // Reject invalid inputs before they can poison a stateful detector.
+        std::array<float, 2> mainFrame {
+            exact::isfinite(outputLeft) ? outputLeft : 0.0f,
+            exact::isfinite(outputRight) ? outputRight : 0.0f };
+        if (lowRateOutputReserve)
+            for (float& value : mainFrame) value *= lowRateOutputInverseScale;
+        mainOutput_.Process(mainFrame);
+        if (lowRateOutputReserve)
+            for (float& value : mainFrame) value *= lowRateOutputScale;
+        left[sample] = exact::isfinite(mainFrame[0]) ? mainFrame[0] : 0.0f;
+        right[sample] = exact::isfinite(mainFrame[1]) ? mainFrame[1] : 0.0f;
         processIdleFlush(std::max(idlePeak, roomPeak));
         // Scheduled releases run inside this loop. Their repeat history must
         // use the same absolute sample as a note-on issued between blocks.

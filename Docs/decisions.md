@@ -5,6 +5,28 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-08 — output calibration and digital headroom, 1.9.32 (local review candidate)
+
+The user requested usual playing levels and no output overload. Measurements
+found typical factory levels from approximately −11 to −20 VU, and dense
+max-control playing above 0 dBFS after reconstruction (also above 0 dBFS in the
+Reason converter's sampled output). The unchanged portfolio output stage
+now follows the physical model: independent Main/Piezo VU guards and linked
+look-ahead peak limiters. A measured absolute output trim and factory Output
+settings target −9 VU typical. No string, bridge, body or sensor-voltage gain
+is changed. Reason additionally limits after its signed decimation filter,
+with no second compressor. Every delay is reported to its host. A measured
+2.5 dB additional limiter reserve below 44.1 kHz engine rate preserves quiet
+gain and the VU transfer; the final reconstruction corpus retains at least
+0.382 dB headroom, without a universal true-peak guarantee.
+
+This is measured output calibration, not physical parameter fitting. The
+[validation record](validation/output-levels-2026-11-08.md) defines the meter,
+normal/hard cases, sampled ceiling and independent reconstruction protocol.
+The shared limiter is not claimed to guarantee continuous-time true peaks.
+Local frozen-shipping/output-only A/B remains pending review; no user
+preference, push or release is claimed.
+
 ## 2026-11-08 — the piezo saddle follows the current junction load, 1.9.31 (local review candidate)
 
 The saddle observation filter was designed only in prepare(), using Standard

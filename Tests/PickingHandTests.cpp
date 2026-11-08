@@ -127,8 +127,8 @@ void actualContactsAndIntent()
     a->noteOn(64, 0.9f, 6);
     expect(std::abs(Access::repeatForce(*a, 5) - 1.0f) <= 0.121f * 0.01f * 2.8f + 1.2e-7f,
            "an explicit velocity accent gained unintended force jitter");
-    expect(AcustraEngine::outputLatencySamples() == 7,
-           "hand humanization added latency");
+    expect(a->outputLatencySamples() == AcustraEngine::outputLatencyForRate(a->sampleRate()),
+           "hand humanization added latency beyond the output stage");
 
     auto queued = fresh();
     queued->beginStrum();

@@ -199,7 +199,7 @@ std::vector<float> rapidPhrase(double rate, int frames, bool reverse, bool gathe
         }
         performer->endBlock();
     }
-    expect(performer->latencySamples() == acustra::AcustraEngine::outputLatencySamples()
+    expect(performer->latencySamples() == acustra::AcustraEngine::outputLatencyForRate(rate)
         + (gather ? Performer::gatherWindowSamples(rate) : 0),
         "rhythmic stroke fitting changed host latency");
     left.insert(left.end(), right.begin(), right.end());

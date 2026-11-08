@@ -161,6 +161,9 @@ private:
     std::atomic<int> gatherWindowSamples { 0 };
     // And its Finger Lookahead window, likewise.
     std::atomic<int> lookaheadWindowSamples { 0 };
+    // The prepared sensor plus output-stage latency. Parameter listeners
+    // read this cache rather than mutable state inside the audio engine.
+    std::atomic<int> engineOutputLatencySamples { 0 };
     void reportLatency() noexcept;
     int currentProgram { 0 };
     std::atomic<bool> panicRequested { false };

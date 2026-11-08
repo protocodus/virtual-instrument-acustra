@@ -193,24 +193,28 @@ public:
     // Effective sustain for a front end's indicator, including any CC64
     // pedal, the panel switch and the backup keyswitch.
     [[nodiscard]] bool isSustainActive() const noexcept;
-    // Everything the host must be told: the engine's own fixed output
-    // latency (AcustraEngine::outputLatencySamples) plus, while gathering,
-    // the window.
+    // Everything the host must be told: the engine's complete prepared
+    // output latency plus the optional event-holding windows.
     [[nodiscard]] int latencySamples() const noexcept
     {
-        return latencySamples(gatherChords_, gatherWindow_)
-            + (fingerLookahead_ ? lookaheadWindow_ : 0);
+        return latencySamples(gatherChords_, gatherWindow_, fingerLookahead_,
+                              lookaheadWindow_, engine_.outputLatencySamples());
     }
+    // A front end reporting from a parameter callback supplies its cached
+    // prepared latency; it need not read mutable audio-thread engine state.
     [[nodiscard]] static constexpr int latencySamples(bool gather,
-                                                      int gatherWindow) noexcept
+                                                      int gatherWindow,
+                                                      int engineLatency) noexcept
     {
-        return AcustraEngine::outputLatencySamples() + (gather ? gatherWindow : 0);
+        return engineLatency + (gather ? gatherWindow : 0);
     }
     [[nodiscard]] static constexpr int latencySamples(bool gather, int gatherWindow,
                                                       bool lookahead,
-                                                      int lookaheadWindow) noexcept
+                                                      int lookaheadWindow,
+                                                      int engineLatency) noexcept
     {
-        return latencySamples(gather, gatherWindow) + (lookahead ? lookaheadWindow : 0);
+        return latencySamples(gather, gatherWindow, engineLatency)
+            + (lookahead ? lookaheadWindow : 0);
     }
 
     // A host's global reference tuning (Reason's master tune). Retensions

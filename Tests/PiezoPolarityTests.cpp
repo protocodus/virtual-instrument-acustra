@@ -53,9 +53,13 @@ void verify(int rate, CaptureType capture) {
     // endpoint settlement differs only below the engine's tiny snap bound.
     const double decay = std::exp(-1.0 / (0.020 * rate));
     double polarity = 1.0, target = 1.0;
+    const int outputDelay = protocodus::OutputStage<2>::DelayFor(rate);
     for (std::size_t i = 0; i < normal.l.size(); ++i) {
-        if (i == static_cast<std::size_t>(rate/10) || i == static_cast<std::size_t>(rate*13/100)
-            || i == static_cast<std::size_t>(rate/5)) target = -target;
+        // The polarity control acts before the final output FIFO. Its physical
+        // 20ms transition therefore appears this known delay later at the jack.
+        if (i == static_cast<std::size_t>(rate/10 + outputDelay)
+            || i == static_cast<std::size_t>(rate*13/100 + outputDelay)
+            || i == static_cast<std::size_t>(rate/5 + outputDelay)) target = -target;
         polarity = target + decay * (polarity - target);
         const double blend = capture == CaptureType::Piezo ? 0.0 : 0.35 * normal.p[i];
         for (const auto side : {0, 1}) {

@@ -7,6 +7,7 @@
 
 #include "FittedPhysicalData.h"
 #include "PerformanceRealism.h"
+#include "OutputStage.h"
 
 #include <array>
 #include <algorithm>
@@ -177,14 +178,25 @@ public:
     void prepare(double sampleRate, int maximumBlockSize);
     // The rate prepare() settled on, which every time constant follows.
     [[nodiscard]] double sampleRate() const noexcept { return sampleRate_; }
-    // Main and the Piezo output are this many samples later than the
-    // strings, at every rate and for every Capture: the piezo chain's
-    // pipeline (renderPiezo), which the microphones wait out so the two
-    // sensors blend on one time base. A front end reports it to the host.
+    // The piezo chain's fixed pipeline (renderPiezo), which the microphones
+    // wait out so the sensors blend on one time base. This remains separate
+    // from the final output stage's sample-rate-dependent look-ahead.
     static constexpr int outputLatency = 7;
-    [[nodiscard]] static constexpr int outputLatencySamples() noexcept
+    // Main and separate Piezo share this complete output latency. Using
+    // the prepared rate also gives the default 48 kHz contract before
+    // prepare(), when there are no output samples yet.
+    [[nodiscard]] int outputLatencySamples() const noexcept
     {
-        return outputLatency;
+        return outputLatencyForRate(sampleRate_);
+    }
+    // Reporting/tests without an engine instance use the same supported-rate
+    // sanitation as prepare(), including its default for an invalid rate.
+    [[nodiscard]] static int outputLatencyForRate(double sampleRate) noexcept
+    {
+        if (!std::isfinite(sampleRate) || sampleRate <= 0.0)
+            sampleRate = 48000.0;
+        return outputLatency + protocodus::OutputStage<2>::DelayFor(
+            std::clamp(sampleRate, 8000.0, maximumSupportedSampleRate));
     }
     // The slots after a bank (and the steel blend's parts) that continue its
     // radiation above the fitted band (configureBody). Every construction at
@@ -451,10 +463,11 @@ public:
     //     AcustraEngine.cpp), mono, whatever Capture selects.
     // It is at the level Main has when Capture selects Piezo (the same
     // construction loudness reference and Output gain) and passes its own
-    // copy of Main's safety limiter; it shares no state with Main, so Main is
-    // bit-for-bit what it would be without it. Main with Capture on Piezo
-    // equals the Piezo output on both sides, once a Capture change's
-    // crossfade (a 20 ms time constant) has settled.
+    // VU guard and look-ahead sample-peak limiter. Its independent state is
+    // always clocked, including when uncabled; requesting it never changes
+    // Main. With Capture held on Piezo from reset, Main equals this output
+    // on both sides. A live capture change can leave different output-gain
+    // histories while the two independent dynamics stages settle.
     struct OutputBuses
     {
         float* piezo { nullptr };
@@ -2420,6 +2433,10 @@ private:
     std::array<float, piezoPipelineSamples> micDelayRight_ {};
     std::array<float, piezoPipelineSamples> micDelayMono_ {};
     int micDelayIndex_ { 0 };
+    // Final output-only dynamics. The pickup has its own detector and delay,
+    // clocked independently of whether its output pointer is requested.
+    protocodus::OutputStage<2> mainOutput_ {};
+    protocodus::OutputStage<1> piezoOutput_ {};
     // The output reference's per-material and per-construction factor
     // (outputReferenceFor in AcustraEngine.cpp), smoothed like the output
     // control, and the mono microphone's own (monoReferenceFor).

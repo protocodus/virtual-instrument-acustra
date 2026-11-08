@@ -35,8 +35,9 @@ establish silence.
 
 The wrapper must scale event offsets and block lengths by the actual factor,
 decimate every output bus and report its resulting host latency. The engine's
-seven-sample output latency and Gather's additional 30 ms are expressed in
-internal samples; querying them does not include a wrapper's FIR latency.
+reported latency includes seven sensor-alignment samples and approximately
+2 ms of output look-ahead; Gather adds 30 ms. These are expressed in internal
+samples and exclude a wrapper's FIR or final host-output guard latency.
 
 ## Validation
 

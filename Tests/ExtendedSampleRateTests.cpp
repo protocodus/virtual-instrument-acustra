@@ -224,7 +224,8 @@ void lowPitchAndStability(double rate)
     expect(renderFinite(*performer, static_cast<int>(0.12 * rate), energy),
            "high-rate release or room tail became unstable");
     performer->setGatherChords(true);
-    expect(performer->latencySamples() == 7 + static_cast<int>(std::lround(0.030 * rate)),
+    expect(performer->latencySamples() == acustra::AcustraEngine::outputLatencyForRate(rate)
+               + static_cast<int>(std::lround(0.030 * rate)),
            "performer gather latency is not measured in internal samples");
 }
 

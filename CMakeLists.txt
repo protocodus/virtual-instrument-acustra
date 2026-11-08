@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.9.31 LANGUAGES C CXX)
+project(Acustra VERSION 1.9.32 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -489,6 +489,22 @@ if(BUILD_TESTING)
     target_compile_features(AcustraContactTravelTests PRIVATE cxx_std_20)
     acustra_add_suite(Acustra.ContactTravel AcustraContactTravelTests)
     set_tests_properties(Acustra.ContactTravel PROPERTIES TIMEOUT 90)
+
+    add_executable(AcustraLowRateOutputStateTests Tests/LowRateOutputStateTests.cpp)
+    target_link_libraries(AcustraLowRateOutputStateTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraLowRateOutputStateTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.LowRateOutputState AcustraLowRateOutputStateTests)
+
+    add_executable(AcustraOutputLevelTests Tests/OutputLevelTests.cpp)
+    target_link_libraries(AcustraOutputLevelTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraOutputLevelTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.OutputLevels AcustraOutputLevelTests)
+    set_tests_properties(Acustra.OutputLevels PROPERTIES TIMEOUT 300)
+
+    add_executable(AcustraOutputStageTests Tests/OutputStageTests.cpp)
+    target_link_libraries(AcustraOutputStageTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraOutputStageTests PRIVATE cxx_std_17)
+    acustra_add_suite(Acustra.OutputStage AcustraOutputStageTests)
 
     add_executable(AcustraOutputBusTests Tests/OutputBusTests.cpp)
     target_link_libraries(AcustraOutputBusTests PRIVATE AcustraDSP)

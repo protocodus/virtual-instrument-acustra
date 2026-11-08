@@ -338,8 +338,10 @@ AcustraAudioProcessor::AcustraAudioProcessor()
     }
     parameters.addParameterListener (ids::gatherChords, this);
     parameters.addParameterListener (ids::fingerLookahead, this);
-    // The engine's own output latency holds before prepareToPlay too.
-    setLatencySamples (acustra::Performer::latencySamples (false, 0));
+    // Before prepareToPlay the engine reports its default 48 kHz contract.
+    const int outputLatency = performer.engine().outputLatencySamples();
+    engineOutputLatencySamples.store (outputLatency, std::memory_order_relaxed);
+    setLatencySamples (outputLatency);
     if (wrapperType == wrapperType_Standalone)
         standaloneMidiInputs = std::make_unique<StandaloneMidiInputs>();
 }
@@ -369,7 +371,8 @@ void AcustraAudioProcessor::reportLatency() noexcept
         parameterPointers[slotGatherChords]->load (std::memory_order_relaxed) >= 0.5f,
         gatherWindowSamples.load (std::memory_order_relaxed),
         parameterPointers[slotFingerLookahead]->load (std::memory_order_relaxed) >= 0.5f,
-        lookaheadWindowSamples.load (std::memory_order_relaxed)));
+        lookaheadWindowSamples.load (std::memory_order_relaxed),
+        engineOutputLatencySamples.load (std::memory_order_relaxed)));
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout
@@ -591,6 +594,8 @@ void AcustraAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     lookaheadWindowSamples.store (acustra::Performer::fingerLookaheadSamples (
                                       performer.engine().sampleRate()),
                                   std::memory_order_relaxed);
+    engineOutputLatencySamples.store (performer.engine().outputLatencySamples(),
+                                      std::memory_order_relaxed);
     reportLatency();
     displaySampleRate.store (sampleRate, std::memory_order_relaxed);
     activeVoiceCount.store (0, std::memory_order_relaxed);

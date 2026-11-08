@@ -351,7 +351,11 @@ int main(int argc, char** argv)
             << "{\n  \"schema\":3,\"sample_rate\":" << rate << ",\"channels\":2,\"block_size\":" << block
             << ",\"format\":\"little-endian IEEE float32 interleaved stereo\",\"tempo_bpm\":120"
             << ",\"gather_chords\":false,\"post_gain\":1,\"latency_samples\":"
+#ifdef ACUSTRA_NATURAL_BASELINE
             << acustra::AcustraEngine::outputLatencySamples()
+#else
+            << acustra::AcustraEngine::outputLatencyForRate(rate)
+#endif
             << ",\"explicit_string_mode_cc126_value\":6"
             << ",\"event_partition\":\"split before each event time; one-sample grouped event blocks; physical string/attack/fret checked immediately\""
             << ",\"randomness\":\"Engine reset seed; no random MIDI; identical written score across variants\""

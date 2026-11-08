@@ -2608,9 +2608,8 @@ void testGatheredChordsVoiceLikeSequencedChords()
     int latency = 0;
     const auto gatheredRoll = renderTimeline (rolled, length, true, &latency);
     const auto gatheredChord = renderTimeline (together, length, true);
-    // The engine's own seven samples (the microphones wait out the piezo's
-    // pipeline) plus the 30 ms window.
-    expect (latency == 1440 + acustra::AcustraEngine::outputLatencySamples(),
+    // The engine's sensor pipeline and output-stage delay, plus the 30 ms window.
+    expect (latency == 1440 + acustra::AcustraEngine::outputLatencyForRate(sampleRate),
             "Gather Chords did not report its 30 ms window as latency");
     {
         // Below the modelled range the engine is prepared at 8 kHz (the
@@ -2622,7 +2621,7 @@ void testGatheredChordsVoiceLikeSequencedChords()
         lowRateOwner->prepareToPlay (4000.0, blockSize);
         expect (lowRateOwner->getLatencySamples()
                     == acustra::Performer::gatherWindowSamples (8000.0)
-                           + acustra::AcustraEngine::outputLatencySamples(),
+                           + acustra::AcustraEngine::outputLatencyForRate(8000.0),
                 "Gather Chords reported its latency at the host's rate, not the engine's");
     }
     expect (gatheredRoll == gatheredChord,
@@ -2755,7 +2754,7 @@ void testGatherSwitchAndPanicReleaseHeldNotes()
     processor.processBlock (audio, note);
     setValue (processor, acustra::parameters::gatherChords, 0.0f);
     expect (processor.getLatencySamples()
-                == acustra::AcustraEngine::outputLatencySamples(),
+                == acustra::AcustraEngine::outputLatencyForRate(sampleRate),
             "switching Gather Chords off kept its latency");
     expect (sound (2) > 0.001f,
             "switching Gather Chords off lost the note it was holding");
@@ -2767,20 +2766,20 @@ void testGatherSwitchAndPanicReleaseHeldNotes()
             "a note released after Gather Chords went off stayed held");
     setValue (processor, acustra::parameters::gatherChords, 1.0f);
     expect (processor.getLatencySamples()
-                == 1440 + acustra::AcustraEngine::outputLatencySamples(),
+                == 1440 + acustra::AcustraEngine::outputLatencyForRate(sampleRate),
             "switching Gather Chords back on did not restore its latency");
     // Finger Lookahead's 50 ms adds to it, and goes with it.
     setValue (processor, acustra::parameters::fingerLookahead, 1.0f);
     expect (processor.getLatencySamples()
-                == 1440 + 2400 + acustra::AcustraEngine::outputLatencySamples(),
+                == 1440 + 2400 + acustra::AcustraEngine::outputLatencyForRate(sampleRate),
             "Finger Lookahead did not add its 50 ms to the reported latency");
     setValue (processor, acustra::parameters::gatherChords, 0.0f);
     expect (processor.getLatencySamples()
-                == 2400 + acustra::AcustraEngine::outputLatencySamples(),
+                == 2400 + acustra::AcustraEngine::outputLatencyForRate(sampleRate),
             "Finger Lookahead's latency did not stand alone");
     setValue (processor, acustra::parameters::fingerLookahead, 0.0f);
     expect (processor.getLatencySamples()
-                == acustra::AcustraEngine::outputLatencySamples(),
+                == acustra::AcustraEngine::outputLatencyForRate(sampleRate),
             "switching Finger Lookahead off kept its latency");
 }
 

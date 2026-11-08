@@ -170,8 +170,8 @@ void cancellationAndBlockInvariance()
     for (int block : { 17, 127, 511 })
         expect(repeat(48000.0, 74.0, block, endpoint, true) == sampleWise,
                "joining depended on the host block partition");
-    expect(acustra::AcustraEngine::outputLatencySamples() == 7,
-           "the release window changed reported attack latency");
+    expect(acustra::AcustraEngine::outputLatency == 7,
+           "the release window changed the sensor pipeline latency");
 }
 
 void tempoChangesAndFallback()
@@ -449,7 +449,7 @@ Stereo performance(int block, bool keyUp)
     expect(Access::voice(p->engine()).lastPluckSample == static_cast<std::uint64_t>(onAt)
                && !Access::voice(p->engine()).releaseJoinPending,
            "Performer did not forward tempo or preserve the joined MIDI attack sample");
-    expect(p->latencySamples() == acustra::AcustraEngine::outputLatencySamples()
+    expect(p->latencySamples() == acustra::AcustraEngine::outputLatencyForRate(48000.0)
                && p->droppedEventCount() == 0,
            "joining added player latency or lost MIDI events");
     return audio;

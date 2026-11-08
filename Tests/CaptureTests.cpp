@@ -841,6 +841,7 @@ void testPiezoSwitchingIsClickFree()
                 {
                     acustra::EngineParameters parameters;
                     parameters.capture = starts[index];
+                    parameters.outputGain = .02f; // isolate capture algebra below the VU guard knee
                     engines[index] = std::make_unique<acustra::AcustraEngine>();
                     engines[index]->setParameters(parameters);
                     engines[index]->prepare(rate, 64);
@@ -848,12 +849,16 @@ void testPiezoSwitchingIsClickFree()
                 }
                 std::array<std::vector<float>, 3> outputs;
                 std::vector<float> crossfade;
+                const int outputDelay = protocodus::OutputStage<2>::DelayFor(rate);
+                std::vector<std::array<float, 8>> mixes(static_cast<std::size_t>(outputDelay + 1),
+                                                       Access::captureMix(*engines[0]));
                 for (int sample = 0; sample < rate * 7 / 10; ++sample)
                 {
                     if (sample == rate / 2)
                     {
                         acustra::EngineParameters parameters;
                         parameters.capture = to;
+                        parameters.outputGain = .02f;
                         engines[0]->setParameters(parameters);
                     }
                     for (std::size_t index = 0; index < 3; ++index)
@@ -862,7 +867,10 @@ void testPiezoSwitchingIsClickFree()
                         engines[index]->process(&left, &right, 1);
                         outputs[index].push_back(left);
                     }
-                    const auto mix = Access::captureMix(*engines[0]);
+                    mixes[static_cast<std::size_t>(sample % mixes.size())]
+                        = Access::captureMix(*engines[0]);
+                    const auto mix = mixes[static_cast<std::size_t>(
+                        std::max(0, sample - outputDelay)) % mixes.size()];
                     crossfade.push_back(mix[0] * outputs[1].back()
                                         + mix[6] * outputs[2].back());
                     worstError = std::max(worstError, static_cast<double>(
@@ -1390,13 +1398,14 @@ void testOutputGainScalesTheWholeCapture()
     using namespace acustra;
     constexpr float referenceGain = .03f;
     constexpr float piezoMix = .4f;
-    constexpr int latency = AcustraEngine::outputLatencySamples();
     double worstRelativeError = 0.0;
     for (const int rate : { 44100, 96000 })
         for (const auto capture : { CaptureType::StereoMic, CaptureType::MonoMic,
                                     CaptureType::Piezo })
             for (const bool initiallyMuted : { false, true })
             {
+                const int latency = AcustraEngine::outputLatencyForRate(rate);
+                const int outputDelay = latency - AcustraEngine::outputLatency;
                 EngineParameters p;
                 p.capture = capture;
                 p.room = .8f;
@@ -1412,8 +1421,7 @@ void testOutputGainScalesTheWholeCapture()
                 for (auto* engine : { reference.get(), moved.get() })
                     for (const int note : { 40, 47, 55, 64 })
                         engine->noteOn(note, .65f);
-                std::array<float, latency + 1> gains;
-                gains.fill(p.outputGain);
+                std::vector<float> gains(static_cast<std::size_t>(latency + 1), p.outputGain);
                 double peak = 0.0, error = 0.0;
                 for (int n = 0; n < rate / 3; ++n)
                 {
@@ -1429,7 +1437,12 @@ void testOutputGainScalesTheWholeCapture()
                     moved->process(&ml, &mr, AcustraEngine::OutputBuses { &mp }, 1);
                     gains[static_cast<std::size_t>(n % gains.size())]
                         = Access::outputGain(*moved);
-                    const double current = double(Access::outputGain(*moved)) / referenceGain;
+                    // Output gain enters the pickup after its sensor delay,
+                    // and the microphones before theirs. Both then pass the
+                    // final output delay; compare their corresponding gains.
+                    const int pickupAt = n >= outputDelay ? n - outputDelay : 0;
+                    const double current = double(gains[static_cast<std::size_t>(
+                        pickupAt % gains.size())]) / referenceGain;
                     const int delayed = n >= latency ? n - latency : 0;
                     const double held = double(gains[static_cast<std::size_t>(
                         delayed % gains.size())]) / referenceGain;

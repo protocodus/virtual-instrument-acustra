@@ -55,6 +55,9 @@ Render play(bool enabled, float room, float width, acustra::CaptureType capture,
     parameters.room = room;
     parameters.stereoWidth = width;
     parameters.capture = capture;
+    // Measure the linear room/mid algebra below the output dynamics knee.
+    // A linked compressor intentionally responds to changed channel levels.
+    parameters.outputGain = 0.02f;
     engine->setParameters(parameters);
     engine->prepare(48000.0, blockSize);
     for (int note : { 40, 47, 52, 56, 59, 64 })

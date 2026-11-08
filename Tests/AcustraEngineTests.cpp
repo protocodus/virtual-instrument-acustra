@@ -6884,11 +6884,14 @@ void testBodyChangesPreserveAnUnfinishedFade()
         engine->noteOn(52, 0.8f);
         continueConstructionProbe(*engine, 48000);
     }
-    const auto compare = [&] (int samples, const char* message)
+    const auto compare = [&] (int samples, const char* message, int outputPrefix = 0)
     {
         const auto expected = continueConstructionProbe(reference, samples);
         const auto actual = continueConstructionProbe(changed, samples);
-        expect(actual.left == expected.left && actual.right == expected.right, message);
+        expect(std::equal(actual.left.begin() + outputPrefix, actual.left.end(),
+                          expected.left.begin() + outputPrefix)
+                   && std::equal(actual.right.begin() + outputPrefix, actual.right.end(),
+                                 expected.right.begin() + outputPrefix), message);
     };
 
     auto first = parameters;
@@ -6941,7 +6944,11 @@ void testBodyChangesPreserveAnUnfinishedFade()
     changed.setParameters(latest);
     reference.setParameters(latest);
     Access::copyOutputLevels(changed, reference);
-    compare(2000, "the queued body fade did not reach the final requested construction");
+    // The quiet output guard is transparent but retains the prior construction
+    // samples for its look-ahead delay. Compare the complete new fade after
+    // that known output prefix without extending the40ms body-fade deadline.
+    compare(2000, "the queued body fade did not reach the final requested construction",
+            protocodus::OutputStage<2>::DelayFor(sampleRate));
     expect(Access::bodyFade(changed) == 1.0f,
            "the queued body's own 40 ms fade did not finish");
 

@@ -373,7 +373,7 @@ void testLiveRollKeepsItsOriginalAttacks()
             const auto audio = render(roll, rate, frames, false);
             expect(audio == reference,
                    "a committed roll changed with block size " + std::to_string(frames));
-            expect(audio.latency == acustra::AcustraEngine::outputLatencySamples(),
+            expect(audio.latency == acustra::AcustraEngine::outputLatencyForRate(rate),
                    "committing a sounded string added player latency");
             auto performer = std::make_unique<Performer>();
             performer->prepare(rate, frames);
@@ -612,7 +612,7 @@ void testStrumsFollowPhysicalStrings()
                 const auto audio = render(phrase(true), 48000.0, blockSize, gather);
                 expect(audio == reference,
                        "physical strum timing changed with insertion order/block size");
-                expect(audio.latency == acustra::AcustraEngine::outputLatencySamples()
+                expect(audio.latency == acustra::AcustraEngine::outputLatencyForRate(48000.0)
                            + (gather ? Performer::gatherWindowSamples(48000.0) : 0),
                        "physical strum timing added host latency");
             }
@@ -697,10 +697,9 @@ void testGatheredRollSoundsAsOneSampleChord()
     for (const double sampleRate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto gathered = render(rolled, sampleRate, 64, true);
-        // The host is told the engine's own fixed output latency (the
-        // microphones wait out the piezo's pipeline) plus, while gathering,
-        // the 30 ms window.
-        constexpr int engineLatency = acustra::AcustraEngine::outputLatencySamples();
+        // The host is told the sensor plus rate-dependent output-stage
+        // latency and, while gathering, the 30 ms window.
+        const int engineLatency = acustra::AcustraEngine::outputLatencyForRate(sampleRate);
         expect(gathered.latency
                        == Performer::gatherWindowSamples(sampleRate) + engineLatency
                    && gathered.latency
@@ -1612,7 +1611,7 @@ void testPlayerKeepsTheEnginesSampleRate()
         expect(performer->engine().sampleRate() == modelled
                    && performer->latencySamples()
                           == Performer::gatherWindowSamples(modelled)
-                                 + acustra::AcustraEngine::outputLatencySamples(),
+                                 + acustra::AcustraEngine::outputLatencyForRate(modelled),
                "the gathering window did not follow the engine's rate at "
                    + std::to_string(host) + " Hz");
     }

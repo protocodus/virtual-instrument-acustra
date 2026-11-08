@@ -369,8 +369,8 @@ void testFullVelocityFingerStillSlipsAndThumbKeepsItsShape()
         expect(thumbState.pole == 0.0 && thumbState.reference == 0.0,
                "nominal full-velocity Thumb no longer keeps its approved shape");
     }
-    expect(acustra::AcustraEngine::outputLatencySamples() == 7,
-           "release correction changed output latency");
+    expect(acustra::AcustraEngine::outputLatency == 7,
+           "release correction changed the sensor pipeline latency");
 }
 
 double renderedLevel(acustra::PickingTechnique technique,

@@ -39,6 +39,16 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.32 — 2026-11-08 — calibrated output with peak headroom
+
+- Factory playing is calibrated around −9 VU; independent Main and Piezo
+  output guards set a −1.5 dBFS nominal sampled ceiling, with additional
+  reserve below 44.1 kHz. The physical
+  strings, body and pickup circuit keep their original energy and voltage
+  scales. The output guard adds approximately 2 ms of reported latency.
+- [Output calibration and validation](Docs/validation/output-levels-2026-11-08.md).
+  Local review candidate; no release or listening verdict is claimed.
+
 ### 1.9.31 — 2026-11-08 — the pickup follows the strings' current load
 
 - The piezo saddle response follows the shared junction's actual normal
@@ -711,7 +721,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Touch** | Contact width, transient colour and brightness, and how fast every technique lets the string go. |
 | **Body Amount** | Scales microphone radiation. |
 | **Stereo Width** | The stereo pair toward mono. |
-| **Output** | Final gain; linear through −1 dBFS, then a headroom-only safety limiter. |
+| **Output** | Final gain; linked VU guard and look-ahead peak limiter, nominal −1.5 dBFS sampled ceiling (−4 dBFS below 44.1 kHz). |
 
 ### The top's spring-back
 
@@ -751,8 +761,8 @@ and the [room report](Docs/research/room-2026-10-10.md).
 | **Main** (`Output`) | stereo, always on | Whatever Capture selects, with the piezo beneath it at Piezo Mix. |
 | **Piezo** | mono, optional | The under-saddle piezo and its preamp, whatever Capture selects. |
 
-Both outputs are seven samples behind the strings at every rate, so the two
-sensors sum as the instrument moved them; the plug-in reports that latency,
+Both sensors align at seven samples behind the strings. Independent output
+guards then add approximately 2 ms, so the plug-in reports the combined latency,
 plus 30 ms while Gather Chords is on and 50 ms while Finger Lookahead is on. In VST3 the Piezo bus is optional and
 off by default. The plug-in plays at host rates from 8 kHz to 384 kHz and stays
 silent, showing UNSUPPORTED RATE, at any other. An idle instance stops
@@ -994,11 +1004,11 @@ separates verified errors from accepted approximations.
   measured where a recording is made, and a measured room, would replace them.
 - The piezo's saddle bending modes, slot friction and real string balance are
   not modelled, and there is no matched piezo recording.
-- The hardest playing (velocity 127, Pick, Touch 1, Pluck Position 0) reaches
-  the safety limiter on most constructions; keeping it under the knee would
-  lower every construction by 2.6 dB, which is the user's choice. Loudness is
-  matched over a phrase set, so one strum can sit up to about 6.6 dB from the
-  default construction's.
+- The hardest playing and dense retriggers engage the output compressor and
+  limiter. Normal factory levels are calibrated over singles and chords,
+  not every possible gesture. The nominal sampled ceiling is subject to
+  floating-point rounding; reconstructed peak headroom is independently measured and
+  is not a certified true-peak limiter guarantee.
 
 **Evidence**
 

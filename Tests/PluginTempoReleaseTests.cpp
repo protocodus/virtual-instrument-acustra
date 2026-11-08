@@ -100,7 +100,7 @@ Rendered renderAudio (const RenderSettings& settings, int blockSize)
     }
     processor->prepareToPlay (sampleRate, blockSize);
     expect (playHead.queries == 0, "prepare queried a host playhead outside processBlock");
-    expect (processor->getLatencySamples() == acustra::AcustraEngine::outputLatencySamples(),
+    expect (processor->getLatencySamples() == acustra::AcustraEngine::outputLatencyForRate(sampleRate),
             "tempo release joining added reported attack latency");
 
     auto reference = std::make_unique<acustra::Performer>();
@@ -184,7 +184,7 @@ void checkDeadline (const Rendered& released, const Rendered& held,
                     int inclusiveEndSample, const std::string& description)
 {
     const int earliestOutputChange = inclusiveEndSample + 1
-        + acustra::AcustraEngine::outputLatencySamples();
+        + acustra::AcustraEngine::outputLatencyForRate(sampleRate);
     const int changed = firstDifference (released, held);
     expect (changed >= earliestOutputChange,
             description + " damped before the inclusive release-joining deadline");

@@ -302,10 +302,10 @@ MPE controllers usually send it again when they connect.
   a VST3 host enable the second output in the track's output or bus
   settings; an Audio Unit host always sees both outputs.
 
-Acustra reports 7 samples of latency to the host, at every sample rate,
-30 ms more while CHORDS is on (1447 samples at 48 kHz) and 50 ms more
-while FINGERS is on (2407 samples at 48 kHz; 3847 with both). Hosts
-compensate it on playback; live playing hears it.
+Acustra reports seven sensor-alignment samples plus approximately 2 ms of
+output look-ahead: 103 samples at 48 kHz. CHORDS adds 30 ms (1543 samples
+total at 48 kHz); FINGERS adds 50 ms (2503 samples total, or 3943 with both).
+Hosts compensate this delay on playback; live playing hears it.
 
 ## CPU
 

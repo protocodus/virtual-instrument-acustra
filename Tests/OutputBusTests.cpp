@@ -394,6 +394,9 @@ Buses renderPiezoMix(CaptureType capture, float mix, std::vector<float> moves = 
     EngineParameters parameters;
     parameters.capture = capture;
     parameters.piezoMix = mix;
+    // Routing algebra is measured below the new VU guard knee, so output
+    // dynamics cannot change the sum being tested.
+    parameters.outputGain = 0.02f;
     auto engine = std::make_unique<AcustraEngine>();
     engine->setParameters(parameters);
     engine->prepare(rate, blockSize);
@@ -637,8 +640,8 @@ BlendBands blendBands(double rate, float mix)
 
 void testPiezoMixBlendsOnOneTimeBase()
 {
-    expect(AcustraEngine::outputLatencySamples() == 7,
-           "the engine's output latency is not the piezo chain's seven samples");
+    expect(AcustraEngine::outputLatency == 7,
+           "the sensor alignment is not the piezo chain's seven samples");
     for (const float mix : { 0.5f, 1.0f })
     {
         const auto low = blendBands(48000.0, mix);

@@ -444,7 +444,7 @@ void testIndependentRateAndBlockInvariantSequence()
     a->noteOn(40, 0.6f, 1); d->noteOn(40, 0.6f, 1);
     expect(Access::gain(*a) == Access::gain(*d),
            "prepare did not restart deterministic per-string repeat draws");
-    expect(acustra::AcustraEngine::outputLatencySamples() == 7,
+    expect(a->outputLatencySamples() == acustra::AcustraEngine::outputLatencyForRate(48000.0),
            "repeat variation changed output latency");
 }
 
@@ -1033,7 +1033,7 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
                 }
             const double isolatedEnergy = *std::max_element(
                 isolatedEnergies.begin(), isolatedEnergies.end());
-            const int latency = acustra::AcustraEngine::outputLatencySamples();
+            const int latency = acustra::AcustraEngine::outputLatencyForRate(rate);
             const int contactWindow = static_cast<int>(0.002 * rate);
             for (const auto& channel : audio)
                 for (std::size_t i = 0; i < channel.size(); ++i)
