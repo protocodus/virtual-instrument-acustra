@@ -5922,7 +5922,6 @@ AcustraEngine::restingStringModels() noexcept
         model.delay = clamp(rawDelay - bridgePhaseDelay(bridgePortMobility(frequency, string), frequency, string),
             3.0f, static_cast<float>(activeDelaySamples() - 3));
         model.impedance = stringImpedance(string, notes[index]) * masterTuneRatio_;
-        model.frequency = frequency;
         const float fundamentalT60 = 5.4f * (1.0f - 0.12f * age) * physical.fundamentalT60Scale;
         const float desiredGain = std::pow(0.001f, 1.0f / std::max(fundamentalT60 * frequency, 1.0f));
         const float lossOmega = static_cast<float>(referenceLossOmega(omega, sampleRate_));

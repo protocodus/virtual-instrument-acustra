@@ -2149,7 +2149,6 @@ private:
     struct RestingStringModel
     {
         float delay { 3.0f }, impedance { 1.0f }, loopGain { 1.0f };
-        float frequency { 1.0f }; // the open string's fundamental, Hz
         float highCoefficient { 0.0f }, highMix { 0.0f };
         OnePole highFilter {};
         float bendingGain { 1.0f }, bendingA1 { 0.0f }, bendingA2 { 0.0f };
