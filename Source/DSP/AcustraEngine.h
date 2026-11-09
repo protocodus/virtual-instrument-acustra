@@ -1271,6 +1271,9 @@ private:
         int remaining { 0 };
         bool overflow { false };
         void clear() noexcept;
+        // This queue's pending arrivals become the retained wave's, as a
+        // copy and a clear would leave both, touching only the pending span.
+        void moveTo(RepluckArrivals& retained) noexcept;
         void add(int offset, float normal, float parallel) noexcept;
         std::array<float, 2> process() noexcept;
     };

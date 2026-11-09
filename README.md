@@ -39,6 +39,18 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.40 — 2026-11-09 — a string struck again moves less memory, identical output
+
+- A note on a string that was still sounding copied and cleared the whole
+  queue of its old contact waves' arrivals, 256 KB, though the queue is
+  nearly always empty; the retained wave's retirement cleared it again. Only
+  the pending arrivals are moved now. A first-time six-note chord's block is
+  6% fewer instructions (24.4 M to 22.8 M; 24.0 M to 23.2 M compiled as the
+  Rack device is), and its worst block fell from 46-48% to 40-42% of the
+  period on the shared development machine.
+- The output is bit for bit as before.
+- [Benchmark](Docs/benchmarks/cpu-consolidation-2026-11-09.md).
+
 ### 1.9.39 — 2026-11-09 — an instrument at rest computes on nothing small
 
 - Once the instrument had come to rest, each string's level observer went on

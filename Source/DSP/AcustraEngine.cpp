@@ -9085,7 +9085,34 @@ void AcustraEngine::mergeRepluckLoop(StringLoop& fresh, StringLoop& previous,
 
 void AcustraEngine::RepluckArrivals::clear() noexcept
 {
-    for (auto& plane : wave) plane.fill(0.0f);
+    // Only the pending span can hold anything: add() writes inside it and
+    // process() zeroes each slot it reads. Clearing both whole planes was
+    // 128 KB on every note that follows another on its string, and again
+    // when the retained wave retires (cpu-consolidation-2026-11-09.md).
+    for (int offset = 0; offset < remaining; ++offset)
+    {
+        const auto slot = static_cast<std::size_t>((readIndex + offset) % capacity);
+        wave[0][slot] = wave[1][slot] = 0.0f;
+    }
+    readIndex = remaining = 0;
+    overflow = false;
+}
+
+void AcustraEngine::RepluckArrivals::moveTo(RepluckArrivals& retained) noexcept
+{
+    retained.clear();
+    for (int offset = 0; offset < remaining; ++offset)
+    {
+        const auto slot = static_cast<std::size_t>((readIndex + offset) % capacity);
+        for (std::size_t plane = 0; plane < wave.size(); ++plane)
+        {
+            retained.wave[plane][slot] = wave[plane][slot];
+            wave[plane][slot] = 0.0f;
+        }
+    }
+    retained.readIndex = readIndex;
+    retained.remaining = remaining;
+    retained.overflow = overflow;
     readIndex = remaining = 0;
     overflow = false;
 }
@@ -9214,8 +9241,7 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     voice.tailLoop = voice.loops[0];
     voice.tailParallelLoop = voice.loops[1];
     voice.tailExcitationParallelGain = voice.excitationParallelGain;
-    voice.tailRepluckArrivals = voice.repluckArrivals;
-    voice.repluckArrivals.clear();
+    voice.repluckArrivals.moveTo(voice.tailRepluckArrivals);
     if (voice.legatoContactTravel.active || voice.legatoContactSamples > 0)
     {
         voice.tailLegatoContactTravel = voice.legatoContactTravel;

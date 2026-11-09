@@ -136,3 +136,75 @@ six-string release cost 9-11% with flush-to-zero on and off):
 - In a held chord's last 2.4 s above the idle floor the quietest string's
   stretch sum meets differences that cancel to one bit near 1e-20, whose
   squares are subnormal: 26 groups of four samples over that time.
+
+## A note-on moved a megabyte it did not need to (1.9.40)
+
+**Baseline (1.9.38, Dreadnought Steel, best of three runs a block).**
+
+| Phrase | Mean | Median | 99th percentile | Worst block |
+| --- | --- | --- | --- | --- |
+| Stress: a full-velocity chord under the pedal, re-struck note by note, then eight more chords on top | 10.0% | 9.9% | 14.6% | 34.6% (six events), others 18-25% |
+| Twelve first-time six-note chords, 0.4 s apart | 10.0% | 11.4% | 20-25% | 35-40% |
+| A ringing chord while each preset is selected in turn | 11.3% | 11.1% | 15-17% | 27-37% (the preset blocks) |
+
+**Profile.** Callgrind on one block of the first-time chords (six note-ons,
+every tuning and dispersion design a miss): 24.36 M instructions against a
+held block's 8.0 M. `noteOn` is 12.7 M: the tuning solve
+(`coupledPolarisationDetune`) 7.8 M, `captureTail` 2.07 M, the dispersion
+design 1.74 M, `StringLoop::reset` 0.53 M, `firePluck` 0.53 M. libc's
+`memset` and `memcpy` were 1.34 M and 1.19 M bytes: 224 KB cleared and 198 KB
+copied a note.
+
+**Where the bytes went.** A note on a string that still sounds moves the old
+wave into its retained branch (`captureTail`): two loops' rings (64 KB) and
+`RepluckArrivals`, the queue of the old contact waves' remaining arrivals,
+two planes of 16384 floats. The queue was copied whole (128 KB) and then
+cleared whole (128 KB), and cleared whole again when the retained wave
+retired. It holds nothing outside its pending span: `add()` writes only
+inside it and `process()` zeroes each slot it reads. Nearly always the span
+is empty.
+
+**Change.** `RepluckArrivals::clear()` zeroes the pending span only, and
+`moveTo()` moves it: both queues end as the copy and the clear left them,
+every slot (`Acustra.ContactTravel` and the fret-motion checks compare the
+whole planes).
+
+| First-time chord block | 1.9.38 | 1.9.40 |
+| --- | --- | --- |
+| Instructions, gcc -O3 | 24,361,001 | 22,811,032 |
+| Instructions, clang -O2 -fno-builtin -DJUKEBOX_SDK -msse3 | 24,004,436 | 23,161,210 |
+| Worst block of the phrase, alternating pairs, gcc | 48.1%, 46.1% | 42.3%, 40.4% |
+| Worst block of the stress phrase, alternating pairs, gcc | 42.6%, 38.0% | 40.7%, 35.6% |
+
+The wall-clock pairs were taken with four other builds on the machine and
+read 5-10 points above the quiet baseline table; the instruction counts do
+not depend on that. The clang line is the closest stand-in here for the Rack
+device's build (the Jukebox SDK compiles with clang at -O2 with no builtins,
+to SSE3 or NEON, never AVX2); its lanes are the engine's `JUKEBOX_SDK` path.
+
+**Null test.** The eight demos (hashes above), the stress phrase
+(`a2ce53d367ec24b9`), the first-time chords (`55a3a685898ba91c`) and the
+preset walk (`e8df7a9981226198`) hash as in 1.9.38.
+
+**What a note-on still moves.** The two rings into the retained branch
+(64 KB), the two fresh rings cleared (64 KB) and the contact transport's
+history cleared (32 KB): 0.4 M of the block's 22.8 M instructions. Each ring
+is dirty all round 170 ms after any string sounds, so a shorter clear would
+need the loops to carry how far back they may read; not done.
+
+**Library calls on the audio path, compiled as the Rack device is.** Under
+`-fno-builtin` a libm call is a real call. A held block of the clang build
+above is 9.08 M instructions, the stretch sum 57.8% of it, and makes one
+kind of library call: `atan2`, once a control period, in
+`bridgePortMobility` (6 K instructions). Nothing per sample: the engine's
+`exact::` wrappers and inlined complex division already keep `fabs`, `floor`,
+`sqrt` and the complex helpers inline. A note-on block calls `atan2`, `cos`,
+`sin`, `cexp`, `exp`, `log1p`, `sqrt` and `pow` from the tuning solve and the
+designs, 1.8 M of its 23.2 M instructions.
+
+**What the 10% target would still take.** Unchanged from
+[worst-block-profile-2026-11-09.md](worst-block-profile-2026-11-09.md): a
+held chord is 8-12% of the period, half of it the stretch sum the owner kept
+at four cells by ear, and each first-time note adds its tuning solve (1.3 M
+instructions on a six-string shape) and dispersion design. No exact change
+found here reaches 10% on a chord's attack block.
