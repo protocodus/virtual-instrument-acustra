@@ -848,7 +848,6 @@ private:
 
     struct StringLoop
     {
-        DelayHistory<maximumDelaySamples> delay {};
         int writeIndex { 0 };
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
@@ -985,6 +984,10 @@ private:
             void withdraw(int remainingSamples) noexcept;
             void scatter(float& first, float& second) noexcept;
         } gestureContact {};
+
+        // Keep per-sample scalar and filter state close to the loop base.
+        // The large delay storage retains its size and alignment.
+        DelayHistory<maximumDelaySamples> delay {};
 
         void reset() noexcept;
         void setCurrentDelay(float samples) noexcept;
@@ -1350,7 +1353,6 @@ private:
                 return result;
             }
         };
-        AxialContactArrivals axialContactArrivals {};
         // The string's own lengthwise force at the saddle: the stretch its
         // vibration adds, carried there by its longitudinal waves
         // (renderStringAxialForce). The ring holds the longitudinal round
@@ -1402,34 +1404,23 @@ private:
             }
             void clear() noexcept { *this = StringAxialForce {}; }
         };
-        StringAxialForce stringAxialForce {};
         std::uint32_t fretMotionNoiseState { 1 };
         // Per-shift draws, and the slide's wander on its own sequence, so
         // a slide's length never shifts the next shift's draws.
         std::uint32_t fretGestureState { 1 };
         std::uint32_t fretWanderState { 1 };
-        std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
         // Key and payload follow whole-voice copies. Waveform resets may retain
         // these pure values: pitch/rate changes miss the exact key, while
         // calibration and bridge changes still use configurationKey below it.
         PitchGeometryCache pitchGeometry {};
-        // A string taken for a new note is still vibrating. This carries that
-        // vibration on under the hand damping the model already uses for a
-        // stopped note, instead of deleting it, in both planes: the parallel
-        // one holds most of a pluck and radiates through the rocking saddle.
-        StringLoop tailLoop {};
-        StringLoop tailParallelLoop {};
-        ContactTravel tailContactTravel {};
         // The connected finger's already emitted and remaining contact and
         // fret-friction source belongs to this retained wave on a re-pluck.
-        ContactTravel tailLegatoContactTravel {};
         float tailLegatoContactAmplitude { 0.0f };
         float tailLegatoNormalGain { 1.0f };
         float tailLegatoParallelGain { 0.0f };
         int tailLegatoContactAge { 0 };
         int tailLegatoContactSamples { 0 };
-        std::array<float, maximumLegatoContactSamples + 1> tailLegatoContactPulse {};
         float tailDamping { 1.0f };
         // Intrinsic loss and pitch belong to the captured string. The bridge
         // hand remains live CC2 expression while that old wave is retained.
@@ -1452,8 +1443,6 @@ private:
         // A tail being let go: its port fades out of the junction on the
         // delay's time constant before the branch is dropped (finishVoice).
         bool tailRetiring { false };
-        RepluckArrivals repluckArrivals {};
-        RepluckArrivals tailRepluckArrivals {};
         int openMidi { 40 };
         int midiNote { 40 };
         // 1 is a stopped note. Above that the string sounds open in its nth
@@ -1520,7 +1509,6 @@ private:
         std::uint32_t excitationCoefficientRate { 0xffffffffu };
         float excitationCoefficient { 0.0f };
         float excitationReleaseCoefficient { 0.0f };
-        ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
         // Where each plane's release shape put its kink, as a share of the
         // line it was written on (initialisePluck).
@@ -1713,9 +1701,7 @@ private:
         float legatoParallelGain { 0.0f };
         int legatoContactAge { 0 };
         int legatoContactSamples { 0 };
-        std::array<float, maximumLegatoContactSamples + 1> legatoContactPulse {};
         std::uint32_t legatoFrictionState { 1 };
-        ContactTravel legatoContactTravel {};
         float releaseVelocity { -1.0f };
         float peakLevel { 0.0f };
         float releaseNoiseTouch { 0.0f };
@@ -1743,6 +1729,27 @@ private:
         float releaseNoiseParallel { 0.0f };
         int releaseNoiseSamples { 0 };
         std::uint32_t releaseNoiseState { 1 };
+
+        // Keep the voice's per-sample scalar state ahead of the large
+        // histories. Their storage, active lengths and copy rules stay local
+        // to the same voice and contact as before.
+        AxialContactArrivals axialContactArrivals {};
+        StringAxialForce stringAxialForce {};
+        std::array<StringLoop, 2> loops {};
+        // A string taken for a new note is still vibrating. This carries that
+        // vibration on under the hand damping the model already uses for a
+        // stopped note, instead of deleting it, in both planes: the parallel
+        // one holds most of a pluck and radiates through the rocking saddle.
+        StringLoop tailLoop {};
+        StringLoop tailParallelLoop {};
+        ContactTravel tailContactTravel {};
+        ContactTravel tailLegatoContactTravel {};
+        std::array<float, maximumLegatoContactSamples + 1> tailLegatoContactPulse {};
+        RepluckArrivals repluckArrivals {};
+        RepluckArrivals tailRepluckArrivals {};
+        ContactTravel contactTravel {};
+        std::array<float, maximumLegatoContactSamples + 1> legatoContactPulse {};
+        ContactTravel legatoContactTravel {};
         ContactTravel releaseNoiseTravel {};
     };
 
