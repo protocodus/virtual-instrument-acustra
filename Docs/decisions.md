@@ -5,6 +5,30 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-09 — contact coordinates and bent-string consistency, 1.9.35 (local review candidate)
+
+The physical hand position now survives its conversion to the numerical
+string frame, including bridgeward normal-plane and upper-fret MPE contacts.
+Bent pick unloading distinguishes wave speed from impedance; extended bends
+retain the same per-second loss law beyond the former two-octave cap.
+A contact-reference frequency omitted from the configuration key now
+participates in memoization, so a re-pluck after a slide matches a fresh
+contact design. Independent waveform, force/impedance, loss-rate and
+cached-versus-fresh oracles establish these corrections.
+
+The old fret-crown clip is removed because it acted on an arbitrary absolute
+traveling-wave potential at the bridge. A common potential offset is not
+physical string motion. No replacement contact is claimed: the proposed
+fixed-port scattering proof did not settle moving-contact geometry and
+physical clearance. Ordinary factory notes in its ablation are unchanged.
+
+A short shipping-path review compares 1.9.34 with the corrected candidate,
+including upper-fret MPE positions and pre-bends where the differences are
+substantial. It uses one peak-safe whole-file RMS gain per letter; it is not
+a listening preference. The [validation record](validation/realism-audit-2026-11-09.md)
+separates model corrections, keyboard/guard measurements, scorer repairs,
+reference-library limits and final CPU evidence. No push or release is claimed.
+
 ## 2026-11-08 — owner accepts the physical-model review candidates
 
 The owner instructed: “use all candidates” after receiving the private

@@ -1,172 +1,251 @@
-# Acustra realism audit — 2026-11-09 (work in progress)
+# Acustra physical realism and CPU audit — 2026-11-09
 
-This work starts from shipping `8e195a9` (1.9.34-build.90). The environment
-initially exposed 1.9.28 (`25c3d64`); those preliminary binaries and partial
-results are explicitly retained as stale and are not the comparison baseline.
-Frozen source, renderers and raw evidence are outside the checkout under
-`/workspace/scratch/acustra-20261109/`.
+Final DSP is **5553984, version 1.9.35**, with acoustic checkpoint **0b835e8**,
+compared with shipping
+source **8e195a9, version 1.9.34-build.90**. The initially supplied checkout was
+older; it was fast-forwarded before implementation and the old measurements
+were labelled stale. No release, push, reference-library reproduction or
+listening preference is claimed.
 
-## Scope and evidence standard
+Evidence is retained under `/workspace/scratch/acustra-20261109/`. The
+`baseline-1.9.34` and `pre-optimization` directories contain independent
+source/header/library snapshots and immutable renderers. DSP and Performer
+remain framework-free; parameter ranges, saved controls, voice counts,
+sample rates, modal counts and RNG chronology are unchanged.
 
-Focus: physical attack/contact, sustain and velocity response, overall model
-consistency, full MIDI-key classification and outliers, then CPU profiling.
-The supplied external-library comparison is a set of diagnostic hypotheses;
-its source recordings and scoring script are not available here. This audit
-does not reproduce those measurements or claim a listening preference.
-Nylon reference timbre is not a target for this steel-string instrument.
+## Accepted model corrections
 
-## Confirmed findings
+**Physical pluck coordinates.** The physical hand fraction is transformed by
+`contactPeriodSamples / writtenLineLength` before the released triangle is
+written. The old second clamp, 0.05–0.60 in that numerical coordinate, moved
+valid bridgeward/neckward contacts. The four triangle/reference-grid endpoint
+guards now use 0.01–0.95; the physical panel and MPE hand ranges remain
+0.05–0.36 and 0.05–0.46. A curvature-centroid oracle independently recovers
+the kink from emitted samples: 1,616 resolved cases at 44.1/48/96 kHz, with
+maximum position error reduced from 0.1261 to 0.0001042 of string length.
+It covers 88 upper-bound and 48 lower-bound failures. The 112 cases whose
+endpoint and contact curvature overlap are unsuitable for that estimator;
+separate extended-rate renders cover their finite operation.
 
-1. The plectrum unloading calculation used the bent characteristic-impedance
-   ratio as the wave-speed ratio. With stretched mass per length
-   `mu = mu0/(1+strain)`, `Z/Z0 = sqrt((T/T0)/(1+strain))`, while
-   `c/c0 = sqrt((T/T0)*(1+strain))`. The candidate caches the distinct speed
-   ratio. An independent force/impedance oracle fails the shipping binary
-   with a maximum 0.722636% release-time discrepancy and passes the correction.
-   Unbent arithmetic is retained. Existing expected-value tests that repeated
-   the same incorrect substitution are corrected using `c=T/Z`.
+**Bent pick unloading.** Wave speed `c = sqrt(T/mu)` and characteristic
+impedance `Z = sqrt(T*mu)` differ when stretching changes linear density.
+The release had reused `Z/Z0` for `c/c0`. It now caches
+`c/c0 = (Z/Z0) * stretchedMass`, consistent with `c Z = T` and the two outgoing
+string impedances' release velocity `F/(2Z)`. Independent force/impedance
+oracles expose up to 0.7226% release-time error in shipping. Unbent arithmetic
+keeps its existing fast path; this chiefly changes pre-bent contacts.
 
-2. Shipping fret-crown grazing clips one outgoing travelling displacement
-   potential at the bridge. A constant potential is physically silent because
-   local string displacement is the difference of the two folded travelling
-   waves. At a common potential of -0.5 the shipping clip writes a +0.378 kink
-   despite zero physical displacement. The reaction therefore depends on an
-   arbitrary potential reference and is not located at a fret.
+**Upper-loss retention.** A former 0.25–4 clamp on `f_open/f` changed the
+chosen per-second loss law beyond 24 effective semitones, inside the
+20-fret plus 12-semitone bend range. Positive validated frequencies and a
+bounded base retention need no extra octave cap. The existing final loss-mix
+ceiling still protects extreme downward virtual pitches. Live and retained
+waves use the same law. The bounded dispersion fit evaluates its complete
+loss tuple at its bounded fit frequency, while actual-frequency delay tuning
+uses the actual running shelf. This preserves the original high-slide
+solve-count contract instead of repeatedly fitting beyond its useful band.
+The existing upper-partial approximation outside that band remains explicit.
 
-   A first replacement experiment projects the local next-fret displacement
-   onto a unilateral soft bound using coalesced fractional gather/scatter
-   weights. It passes gauge, locality and fixed-port increment-contraction
-   checks. That proof alone does **not** establish the energy behaviour of a
-   connected waveguide whose overlapping historical cells are rewritten.
-   Independent review is investigating the connected ring; this prototype is
-   not approved as a physical-energy-conserving replacement.
+**Contact-reference cache dependency.** A re-pluck after a held slide can
+establish a new physical stopping reference without changing its current
+sounding pitch. The exact configuration key now includes that reference
+frequency, which controls dispersion order and polarization tuning. Eighteen
+public re-pluck cases match an otherwise identical engine with memoization
+invalidated before contact, sample for sample. Shipping differed by up to
+0.0727242 per sample. The isolating fixture disables fretting-pitch randomness
+and settles the previous attack: ordinary random contact offsets can mask
+this missing dependency by changing another key field.
 
-## Validation in progress
+**Invalid fret-crown clip removed.** Clipping an absolute traveling-wave
+potential at the bridge is not a contact law: physical string displacement
+is a difference of the two traveling potentials and is invariant under a
+common constant offset. Shipping could turn a constant, physically motionless
+field into an impulse. The clip is removed; its setup flag is a retired no-op
+for source compatibility, not a saved/UI control. Fifty-four live/retained
+rate/fret/common-reference cases pass. A 108-note factory ablation is
+sample-identical with the old clip enabled/disabled, so its removal is not
+presented as an audible improvement to those ordinary notes.
 
-- Pristine 1.9.34 per-string/fret baseline completed: all eight factory
-  constructions, six strings, frets 0–20, MIDI velocities 48/112, 48 kHz,
-  2-second renders with 1.2-second holds (2,016 notes).
-- Full public-Performer MIDI 0–127 scanner added. It distinguishes fretted
-  notes, six intentional gesture noises, silent keyswitches and out-of-range
-  silence; default matrix uses Finger/Thumb/Pick plus DADGAD/Open G at
-  velocities 16/64/112 (1,920 independently reset notes).
-- The fretboard tool's numerous diagnostic flags require investigation;
-  finite-window decay fits, stereo cancellation, partial leakage and physical
-  construction changes are not themselves evidence for flattening the model.
+The unused `attackPitchDecay` member, its six inert writes and its unused test
+snapshot member are removed. Actual attack pitch already follows inferred
+slope energy.
 
-## Limitations to retain in the final receipt
+## Audible scope and keyboard results
 
-Signal analysis cannot establish listener preference or market-leading
-realism. The external sample-library corpus is absent. CPU measurements will
-be native DSP measurements, not Reason/DAW CPU claims. The final paired WAVs
-must use one identical shipping performance path and whole-file RMS matching,
-with raw gain information and an identification key kept separately.
+The main three-velocity keyboard and per-string surveys use the frozen
+acoustic checkpoint; the remaining-bank supplement uses final DSP. The CPU
+transform is qualified separately by exact audio/state comparisons.
+The review performance uses the shipping Performer, Jumbo Steel Pick, 48 kHz,
+256-frame blocks, Room 0 and identical deterministic MIDI. Before RMS
+matching, its ordinary
+0–6-second phrase changes by about −102 dB relative RMS. Neckward upper-fret
+MPE contacts differ by about −20 dB; upper-fret octave bends by about −11 dB.
+These differences establish where the correction is substantial, not a
+listener preference. The lettered files and whole-file gain metadata
+are in `review/A.wav`, `review/B.wav`, `review/key.md` and `review/levels.json`.
+Both matched files have stereo RMS 0.05302517; their four-times-oversampled
+peaks are at most 0.79. No per-note normalization, EQ or extra dynamics is
+used. A final-source
+render is byte-identical to the acoustic B render, so the same matched
+lettered files represent final DSP.
 
-## Subsequent evidence and decisions
+| Evaluation | Coverage | Result |
+| --- | --- | --- |
+| Shipping public MIDI | 0–127, five representative factory presets, velocities 16/64/112: 1,920 keys | 675 pitched, 90 noise gestures, 90 silent keyswitches, 1,065 intentional silent keys; no missing/unexpected sound or non-finite output |
+| Remaining actual bank | Parlor/Palm/Piezo, 0–127 at velocity 64: 384 keys | 135 pitched, 18 noise, 18 silent keyswitches, 213 intentional silences; all finite and all 33 flag locations already present in shipping |
+| Quiet MIDI edge | Finger/Pick, 0–127, velocities 1/2: 512 keys | 180 pitched notes emit finite sound; peaks −77.595 to −52.803 dBFS; velocity 2 raises sustain by 5.993–12.260 dB |
+| Every string and fret | Eight preset-derived configurations, six strings, frets 0–20, velocities 48/112: 2,016 notes | Maximum changes: 0.198 dB attack, 0.111 dB sustain, 0.436 dB peak, 0.00956 s finite fundamental T60, 0.00321 cents settled pitch |
+| Extended geometry | Three picking techniques, four shapes, six strings at fret 20, MPE position extremes, 0/+12 member bends, 8–384 kHz: 2,016 cases | Main and initial/final traveling-wave storage finite; maxima 0.784606 and 0.227590 respectively |
 
-The bridge-potential clip is removed rather than replaced by an unvalidated
-moving contact. Its setup flag remains an explicitly retired no-op for source
-compatibility; it is not a saved/UI parameter. The new regression exercises
-54 rate/fret/common-reference cases, including both live and retained planes.
-A shipping-library ablation of 108 individual factory notes (Finger, Thumb,
-Pick; nine pitches; velocities 16/64/112/127) is sample-identical with the clip
-enabled/disabled. This removal is therefore a correctness/cleanup result,
-not an asserted audible improvement for those ordinary notes.
+The extended-rate check establishes finite operation, not exact pitch at every
+extreme: the existing shortest-delay limit still bounds very high notes at
+8 kHz. Ordinary keyboard level and decay comparisons use 48 kHz.
 
-A further confirmed excitation-coordinate issue affects the actual release:
-physical hand position was transformed into the shorter delay-line frame,
-then clipped again to 0.05–0.60. MPE neckward contacts on stiff upper frets can
-need a numerical position above 0.60; the authored normal-plane offset can
-put bridgeward contacts below 0.05. Those numerical limits moved the released
-kink away from the physical hand and also changed the released saddle force.
-Only numerical triangle endpoint guards become 0.01–0.95, in the main shape
-and Pick reference-grid paths. The physical hand maps are unchanged.
+Together the shipping-path scans cover all eight factory presets across
+MIDI 0–127 at velocity 64, plus five presets at 16/112: 2,304 key cases.
+The three remaining presets are not claimed to have the same three-velocity
+coverage. Fresh isolated notes supply no CC2 palm gesture, including the
+preset named Palm Muted Steel Pick.
 
-An independent curvature-centroid oracle recovers the kink from the emitted
-waveform, without reading the stored release-position diagnostic. Across
-1,616 resolved construction/string/fret/MPE/bend cases at 44.1/48/96 kHz,
-shipping error reaches 0.1261 of the string; candidate error is at most
-0.0001042. This covers 88 upper-bound and 48 lower-bound cases. A further 112
-very short, bridgeward cases have overlapping endpoint/contact curvature and
-are explicitly outside this separated-centroid estimator; audio/rate checks
-cover their finite output and continuity instead.
+Attack, sustain and stereo peak increase strictly with velocity throughout the
+five-preset, three-velocity subset, independently checked rather than relying
+only on the scorer's 1 dB reversal-warning threshold. All 410 public neighbour
+flags (377 main plus 33 supplemental) already exist in shipping. They include
+documented measured-body/capture
+structure around C5/C#5 and Auditorium C#5/D5, with holes also present in
+stereo power. No clear new model inconsistency justified arbitrary level EQ.
 
-The existing fretboard stiffness scorer also had a verified mode-identity
-bug: its sixth-partial search window included the seventh harmonic. A stronger
-seventh could be labelled H6, giving low-E velocity-48 B about 0.0093 instead
-of the corrected 0.00017758. Search cells now do not overlap, peaks must be
-resolved, and a poor six-mode stiff-string fit returns unavailable. Synthetic
-known-mode tests cover a seventh 100 times stronger than the sixth, a missing
-sixth, and a spectrum too stretched to label safely. All 2,016 baseline raw
-renders were rescored to a separate corrected report; the original report is
-retained as a measurement-provenance record, not DSP evidence.
+The per-string diagnostic sets shape, material, tuning, technique, capture,
+Touch and pluck position from the bank; other controls remain at renderer
+defaults. It does not restore complete factory patches or supply CC2 gestures.
+The separate public MIDI scan uses the actual factory Performer path.
 
-The full public MIDI baseline completed 1,920 keys: 675 pitched, 90 intentional
-noise gestures, 90 silent keyswitches and 1,065 intentional out-of-range silent
-keys. No non-finite output, missing expected sound, unexpected silent-key
-output, or lower sustained level at the next tested velocity was found. The
-loudest pitched sample is -2.03035 dBFS. Three MIDI-35 gesture noises reach the
--1.5 dBFS output ceiling; raw/guarded comparisons are still required before
-asserting even internal levels. The 377 level-neighbour flags remain leads
-for body/string/capture attribution, not automatic defects.
+The per-string scan adds one threshold flag at the unchanged open A in the
+configuration derived from Palm Muted Steel Pick (without a CC2 mute gesture).
+Its peak remains exactly −13.645 dBFS; its first two
+fretted neighbours peak 0.290/0.111 dB lower, moving its neighbour deviation
+from 2.892 to 3.093 dB across the arbitrary 3 dB threshold. Attack and sustain
+remain continuous there. This is not a new loud-note spike.
 
-The upper-loss retention helper contained another numerical-domain mistake:
-`f_open/f` was clipped to 0.25–4, so crossing 24 effective semitones changed
-the chosen per-second loss law, even within the supported 20-fret plus
-12-semitone bend range. No replacement octave limit is needed: validated
-frequencies are positive/finite and the base retention is in [0.05,1], so its
-positive power is bounded. The existing final loss-mix ceiling remains for
-extreme downward virtual pitches. Ordinary ratios inside the former range
-retain the same arithmetic, including the exact open-string fast path.
+**Output guard accounted for.** An offline diagnostic bypasses only Main's
+compressor/limiter and aligns its 96-sample lookahead at 48 kHz. Across all
+810 pitched and 108 noise cases, raw pitched peak is at most −1.67074 dBFS;
+154 pitched cases engage more than 0.01 dB gain reduction, with maximum
+2.47014 dB. The loudest intentional noise, MIDI 35, peaks at +0.06006 dBFS raw
+and −1.5 dBFS guarded, with 1.56006 dB reduction; 11 noise cases engage.
+Reconstruction using one common stereo gain leaves less than 3.1e−8 sample
+error. The ceiling is not hiding a runaway pitched note in this matrix;
+this does not mean the guard is inactive or physical body levels are flat.
+See `raw-guard/report.json`, `raw-guard-bank-supplement/report.json` and their
+`notes.csv` files. The supplemental source is verified to differ from the
+acoustic checkpoint only at the two Main guard calls.
 
-The independent retention test compares configured live and retained loss
-parameters against a double-precision logarithmic reference. Its 8,424 cases
-cover 8/22.05/44.1/48/96/384 kHz, master tune +/-100 cents, four tunings, all
-six strings, open/20th fret, global/member wheel corners through +/-96
-semitones, and a continuous sweep through the old two-octave boundary.
-Shipping fails 3,665 cases. The candidate passes; maximum loss-mix error is
-1.645e-7 and normal-range per-second retention-rate error is 2.364e-6.
-This verifies the shelf's retention parameter, not an exact decay fit of the
-whole frequency-dependent, coupled guitar. It chiefly changes extended bends.
+## Measurement fixes and reference limits
 
-Cleanup removes the unused `attackPitchDecay` member, its six inert writes
-and the unused test-snapshot member. Actual attack pitch already follows the
-inferred slope-energy envelope. The retired crown flag is intentionally kept
-for setup-source compatibility; neither change creates an audio-thread cost.
+The existing stiffness scorer could label a strong seventh partial as the
+sixth, giving low-E velocity-48 B about 0.0093 instead of 0.00017758. Search
+cells now do not overlap, peaks must be resolved, and an inconsistent six-mode
+fit returns unavailable. Synthetic known-mode tests include a seventh 100
+times stronger than the sixth, a missing sixth and ambiguous stiff spectra.
+All 2,016 baseline diagnostic raw files were rescored without changing their audio.
 
-Stage-one validation passed all 119 unit tests other than the large Engine
-contract, which was separately deferred after the shared-machine wall-time
-limit. That batch took 1,098.7 seconds under concurrent team load. No signal
-thresholds were changed. Final gates and CPU evidence remain pending.
+F2's ±6% fundamental band contained no bin in the legacy 4096-point FFT.
+The scorer doubles its window only when a band is empty; existing nonempty
+bands keep their arithmetic. A known four-second exponential verifies
+E2/F2/F#2/A4. F2 was remeasured from retained audio into separately named
+`decay-resolved` reports, with metric-source hashes and the original reports
+retained. Independent 8192/16384-window fits also show ordinary decays with
+R² at least 0.994. This was a measurement gap, not abnormal sustain.
 
-The retention correction initially failed the existing high-slide solve-count
-contract: the bounded dispersion fit still accepted the actual-pitch shelf,
-which now changed beyond the old cap. The complete fit tuple now uses the
-shelf at its bounded fit frequency, as its bending and constant-loss sections
-already do. The actual running shelf remains in the actual-frequency delay
-phase calculation. The original solve-count gate passes again; 48 uncached
-recomputations reproduce all fitted coefficients exactly and independently
-check the fit-frequency shelf. The bounded fit remains an approximation
-outside the documented physical pitch band, not a claim of exact high-partial
-tuning there.
+The supplied seven-gap comparison is useful as a set of diagnostic questions,
+but its raw libraries and original scorer were unavailable. Fixed-frequency
+HF bands change harmonic membership by register; short-window interharmonic
+energy includes leakage and cannot prove missing noise. Three selected takes
+do not establish a variance distribution. Fixed absolute bridge distance
+correctly weakens the fret dependence of compliance; it is not itself a bug.
+The steel library's published autopitch processing also complicates beating
+and inharmonicity comparisons. No nylon target, register gain curve, arbitrary
+noise floor or suggested unmeasured physical constants were fitted.
 
-Independent dependency review found one additional incomplete configuration
-cache key: the contact tuning frequency was absent, although dispersion order
-and polarization tuning use it. A re-pluck after a held slide can establish a
-new contact reference without moving the current sounding pitch. The key now
-includes that exact frequency. Eighteen public note/controller re-pluck cases
-compare memoized execution with an otherwise identical engine whose cache is
-invalidated before contact. The pre-fix maximum sample disagreement was
-0.0727242; the correction is sample-identical to the fresh configuration.
-The isolating fixture disables fretting-pitch randomness and settles the prior
-attack: ordinary random contact offsets can otherwise invalidate the cache
-through another field and mask this missing dependency. This is a correctness
-fix; broad default-phrase audibility is not inferred from that witness.
+| Supplied lead | Disposition in this audit |
+| --- | --- |
+| Upper-register two-stage HF decay | Corrected the independently demonstrated loss-law cap under extended bends. The unbent reference-library slope claim remains unverified; finite-window decay estimates do not establish its proposed cause. |
+| Flat attack crest | Corrected release geometry and bent unloading using waveform and force/impedance oracles. No global sustain shortening was justified by the reported crest alone. |
+| Interharmonic transient floor | No noise was added. A noiseless harmonic reference can show a large register-dependent change under a fixed short window; the unavailable original scoring method was not reproduced. |
+| Narrow take variation | Existing correlated hand travel remains. Three selected takes do not justify broadening the distribution; this audit does not claim a new population-variance estimate. |
+| Pick/Finger velocity brightness | Public amplitude response is strictly monotone in the measured matrix, and force/release oracles pass. That does not by itself settle spectral brightness or prove equivalence to sampler velocity layers. |
+| Weak low/mid beating | The missing contact-reference cache dependency is fixed. No extra detuning is fitted to processed reference recordings, and no matched beating comparison is claimed. |
+| Pick register level slope | The physical fixed-distance compliance law is retained. Full-keyboard, per-string and pre-guard checks distinguish existing capture/body structure from new level defects. |
 
-The current targeted batch passes StringPitchRealism, RetuneContinuity,
-BentRetention, PluckFrameGeometry and ContactReferenceCache with unchanged
-existing tolerances. A second full public-keyboard survey before the contact
-cache fix again produced exactly 377 diagnostic neighbour flags and no new
-support/finite/velocity problems. A concurrent renderer rebuild interrupted
-the velocity-1/2 supplement (executable was temporarily unavailable); that
-partial run is retained, and subsequent surveys use a frozen executable.
+A proposed replacement fret contact was rejected before shipping: fixed-port
+passivity did not establish moving-contact energy and physical clearance.
+The useful derivation and limitations are in
+[the contact research note](../research/fret-contact-scattering-2026-11-09.md).
+
+## CPU and validation
+
+CPU work follows the acoustic/source freeze. Initial Callgrind captures of two
+seconds of shipping Finger/Pick phrases attribute 51.3%/42.2% of instrumented
+instructions to axial stretch quadrature, 17.0%/19.4% to the main process and
+16.9%/20.7% to body/bridge modal work. Two exact adjacent-pair load prototypes
+preserve phrase sample hashes but increase instructions (about 4–5%, then
+0.7–0.9%); both are rejected and archived outside the checkout. Profiling is
+not a native wall-time or host CPU claim. Those instruction totals include
+the render loop's hash and observation bookkeeping as well as the callback.
+
+The retained optimization separates the exact axial-design key check from the
+large redesign body. Rounded inputs, key dependencies, miss-side state order
+and coefficient arithmetic are unchanged. In 123 configurations plus 67
+alternate callback partitions, 165,634,428 Main/Piezo sample values and
+8,728,538 public-state words match exactly. Callgrind counts fall
+0.388%/0.344% on the Finger/Pick excerpts. This is a modest optimization,
+not a model reduction.
+
+The paired callback benchmark now records calling-thread CPU and steady wall
+for the same callback, with snapshot restore/checksum outside. Thread CPU
+includes the nested wall-clock reads; that overhead is not subtracted.
+Factory phrase timing also includes MIDI dispatch. Each measured phrase uses
+a fresh prepared instance and includes its initial attacks; the separate warm
+run does not make it a steady-state engine snapshot. Measurements used a
+coordinated idle-machine slot and three alternating
+paired rounds. The exact axial guard saves about 0.5–0.8% across the two native
+protocols; full factory CPU is 0.99968 times shipping overall. Per-case variation
+is wider than that small aggregate effect. See the [CPU record](../benchmarks/cpu-optimization-2026-11-09.md)
+for raw-clock scope, ratios and the inherited callback deadline limitations.
+
+**Inherited CPU limit remains.** Palm Muted has 113 repeatable callback
+positions above the 5.333 ms period at 48 kHz/256 in shipping, acoustic and
+final builds. First-second profiling assigns 70.42% of instructions to the
+coupled-polarization damped-pole solve during smoothed palm-control changes.
+The cost is present with FTZ/DAZ enabled; six on/off diagnostic renders have
+identical hashes and no consistent denormal penalty. Removing the loss input
+would change the acoustic calibration policy, so no such shortcut is made.
+The deliberate 24-event Gather stress and some live transitions also exceed
+one callback period. Passing the average CPU budget does not establish
+universal real-time safety.
+
+| Validation | Status |
+| --- | --- |
+| Physical contact, release and pitch contracts | Passed focused contracts, including independent waveform/force/cache oracles |
+| Retention across rates/tunings/wheels | 8,424 live/tail cases pass; maximum mix error 1.645e−7; normal retention-rate error 2.364e−6 |
+| Bounded phase-design cache | 48 complete-tuple uncached comparisons reproduce coefficients exactly; original high-slide solve bound passes |
+| Measurement oracles | Mode identity, missing/ambiguous partials and empty-band decay checks pass |
+| Complete Release build | Passed |
+| Engine contract | Acoustic freeze passes in 218.495 s; final DSP passes in 235.94 s, both under the unchanged 600 s limit |
+| Performance gates | Both pass unchanged on final DSP; factory median factors 0.09265–0.18661 at 48 kHz/256, below the 0.28 average budget |
+| Complete unit/audio gates | Final 122/122 unit tests pass in 1482.87 s; 3/3 audio tests pass in 13.12 s |
+| Focused ASan/UBSan gates | All 9 affected suites pass in 369.86 s, including deterministic fuzz replay and the cross-translation-unit axial design call |
+| Final native CPU and exact optimization comparison | Three factory/callback rounds complete; 123 configurations plus 67 alternate partitions match 165,634,428 sample values and 8,728,538 state words exactly |
+| Strict C++17 DSP portability | Final Clang 19 x86-64/AArch64 compilation passes with `-Werror -fno-exceptions -fno-builtin -ffp-contract=off`; no actual ARM execution claimed |
+| Native wrapper-host contracts | Final Clang 19 authored native host-mock suite and separate StringAxialForce cross-translation-unit link/run pass; no Reason SDK integration claimed |
+
+An earlier Engine run hit its unchanged 600-second wall limit during concurrent
+team workloads, without a logged assertion failure. The exclusive rerun passed in
+218.495 s; no timeout or signal threshold has been relaxed. One quiet-key
+survey was interrupted by a concurrent executable rebuild; subsequent runs
+use immutable binaries and the failed partial receipt is retained.
+
+Integration receipts are under
+`/workspace/scratch/instrument-realism-20261109/portability-runs/final-three-clang19/`
+and `wrapper-runs/final-acustra-clang19/`. They freeze and hash the final source;
+portable compilation and native host-mock execution are distinct validations.

@@ -150,6 +150,9 @@ def main() -> int:
     report = {"renderer": str(renderer), "renderer_sha256": hashlib.sha256(renderer.read_bytes()).hexdigest(),
               "sample_rate": 48000, "block_size": 256, "hold_seconds": 1.2,
               "render_seconds": 2.0, "room": 0.0, "presets": presets,
+              "metric_tools_sha256": {name: hashlib.sha256(
+                  Path(__file__).with_name(name).read_bytes()).hexdigest()
+                  for name in ("MeasureKeyboardResponse.py", "MeasureFretboardSweep.py")},
               "velocities": velocities, "rows": rows, "flags": flags}
     (args.output / "report.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     fields = list(dict.fromkeys(k for row in rows for k in row))

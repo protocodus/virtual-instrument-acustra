@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Tools"))
-from MeasureFretboardSweep import RATE, inharmonicity
+from MeasureFretboardSweep import RATE, inharmonicity, band_t60
 
 
 def signal(fundamental, stiffness, missing_sixth=False):
@@ -33,3 +33,13 @@ for fundamental in (82.406889, 164.813778, 440.0, 1046.502261):
 ambiguous = inharmonicity(signal(82.406889, 0.03), 82.406889, 0.1, 0.6)
 assert np.isnan(ambiguous), ("strongly stretched modes were guessed", ambiguous)
 print("Fretboard mode identity, absent partial and ambiguous stiffness checks passed")
+
+# The F2 fundamental band lies strictly between the original 4096-point bins.
+# Its known exponential envelope must still produce a usable decay estimate.
+time = np.arange(2 * RATE) / RATE
+for fundamental in (82.406889, 87.307058, 92.498606, 440.0):
+    target = 4.0
+    wave = np.sin(2 * np.pi * fundamental * time) * np.exp(-np.log(1000) * time / target)
+    measured = band_t60(wave, 0.94 * fundamental, 1.06 * fundamental, 0.1, 1.1)
+    assert np.isfinite(measured) and abs(measured / target - 1) < 0.001, (fundamental, measured)
+print("Fundamental decay remains resolved across the low-register FFT-bin boundary")

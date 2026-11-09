@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Measure every playable note of the fretboard at two velocities.
 
-Protocol. For one factory preset (or every preset) this renders each string at
-every fret 0-20 through AcustraPerformanceRenderer, one fresh engine per note,
+Protocol. For one preset-derived configuration (or every configuration) this
+renders each string at every fret 0-20 through AcustraPerformanceRenderer, one fresh engine per note,
 the string fixed by the performance channel, held 1.2 s in a 2.0 s render at
-48 kHz, at each velocity asked for (default 48 and 112, the two layers a
-sample library would hold). Room is left at the renderer's 0 so the string,
+48 kHz, at each velocity asked for (default MIDI 48 and 112). These are
+diagnostic configurations, not full factory patches: shape, material, tuning,
+technique, capture, Touch and pluck position follow the bank; age, body amount,
+width, piezo blend and Output retain renderer defaults. No CC2 palm gesture
+is supplied by an isolated note. Use MeasureKeyboardResponse for the shipping
+Performer/factory path. Room is left at the renderer's 0 so the string,
 bridge, body and capture are measured and not the ambience. The mono sum is
 measured for:
 
@@ -78,8 +82,9 @@ OPEN_NOTES = {
     "open_g": (38, 43, 50, 55, 59, 62),
 }
 
-# The factory bank (Source/DSP/AcustraPresets.h) as renderer options; the
-# Room and Output controls are left out on purpose.
+# Preset-derived diagnostic configurations. Only the fields passed by
+# preset_options are set; the remaining controls retain renderer defaults.
+# Names identify the originating factory timbre, not a complete patch restore.
 PRESETS = [
     ("dreadnought-steel", "stereo_mic", "finger", "standard", "dreadnought", "spruce", 0.58, 0.28, 0.0),
     ("parlor-steel-fingerstyle", "stereo_mic", "finger", "standard", "parlor", "mahogany", 0.46, 0.22, 0.0),
@@ -148,9 +153,21 @@ def centroid(x: np.ndarray) -> float:
 def band_t60(mono: np.ndarray, low: float, high: float, start: float,
              end: float) -> float:
     """T60 from a line through the log energy of a band over a window."""
-    frequencies, times, z = stft(mono, fs=RATE, nperseg=4096, noverlap=3072,
-                                 window="hann", boundary=None, padded=False)
-    band = (frequencies >= low) & (frequencies <= high)
+    if len(mono) < 4 or not 0 <= low < high <= RATE / 2:
+        return float("nan")
+    window = min(4096, len(mono))
+    while True:
+        frequencies, times, z = stft(mono, fs=RATE, nperseg=window,
+                                     noverlap=3 * window // 4,
+                                     window="hann", boundary=None, padded=False)
+        band = (frequencies >= low) & (frequencies <= high)
+        if band.any() or window == len(mono):
+            break
+        # A narrow low-note band can fall between every FFT bin (F2's
+        # +/-6% fundamental band at 48 kHz did). Resolve an actual bin with
+        # a longer analysis window rather than reporting an empty-band decay.
+        # Existing nonempty bands keep their original window and arithmetic.
+        window = min(2 * window, len(mono))
     energy = (np.abs(z[band]) ** 2).sum(axis=0)
     keep = (times >= start) & (times <= end) & (energy > 1e-20)
     if keep.sum() < 4:
