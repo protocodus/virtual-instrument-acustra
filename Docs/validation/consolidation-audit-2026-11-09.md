@@ -167,6 +167,18 @@ Aculele took the held-chord flush (1.9.38) and the denormal tracer from here.
   history (0.4 M of a chord block's 22.8 M instructions).
 - **96 kHz against 48 kHz at the top string's last frets**, above.
 
+## Tests on the final tree
+
+Release, gcc 13.3, `build-dsp`, rebuilt after the last source change
+(`998c5df`):
+
+| Tier | Result |
+| --- | --- |
+| `unit` (122) | 121 passed in the full run. `Acustra.StrummingRealism` hit its 60 s limit while the shared machine's load average stood at 11.8 on four cores; run alone straight after, it passed in 21.5 s, as it had in the full run before the rebuild (29.9 s, same engine source). |
+| `audio` (3) | All passed. |
+| `perf` (2) | `Acustra.EnginePerformance` passed. `Acustra.CpuBudget` fails on the 10% worst-block ceiling on all 16 rows, as 1.9.37 does ([CPU document](../benchmarks/cpu-consolidation-2026-11-09.md), the last section). |
+| `AcustraDSPCxx17` | Builds. |
+
 ## Not run here
 
 The plug-in build could not be made in this session (the pinned JUCE archive

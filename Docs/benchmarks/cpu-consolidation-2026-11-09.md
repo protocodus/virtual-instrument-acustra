@@ -137,7 +137,7 @@ six-string release cost 9-11% with flush-to-zero on and off):
   stretch sum meets differences that cancel to one bit near 1e-20, whose
   squares are subnormal: 26 groups of four samples over that time.
 
-## A note-on moved a megabyte it did not need to (1.9.40)
+## A note on a sounding string moved 256 KB it did not need to (1.9.40)
 
 **Baseline (1.9.38, Dreadnought Steel, best of three runs a block).**
 
@@ -208,3 +208,24 @@ held chord is 8-12% of the period, half of it the stretch sum the owner kept
 at four cells by ear, and each first-time note adds its tuning solve (1.3 M
 instructions on a six-string shape) and dispersion design. No exact change
 found here reaches 10% on a chord's attack block.
+
+## The CpuBudget gate, 1.9.37 against 1.9.40
+
+`Acustra.CpuBudget` times the eight demos and their stress variants in
+256-frame blocks (median of three renders) and fails a row whose worst block
+is over 10% of its period. It was run as 1.9.37 (`23e9b2c`), 1.9.40, 1.9.40,
+1.9.37, with the machine's other builds still going (load average 3-6 on four
+cores):
+
+| 16 rows | 1.9.37 | 1.9.40 |
+| --- | --- | --- |
+| Real-time factor, mean | 0.098 | 0.098 |
+| Demos, worst block (the better of two runs) | 17.8-28.9% | 17.9-28.9% |
+| Stress variants, worst block (the better of two runs) | 33.0-43.3% | 32.7-43.1% |
+| Rows over the 10% ceiling | 16 | 16 |
+
+The gate fails on every row before and after, and the two versions do not
+separate at this noise: single rows moved by up to 10 points between two
+runs of the same binary. The 6% fewer instructions in a first-time chord
+block are real and below what this clock resolves. The ceiling value belongs
+to the shared harness and was not changed.
