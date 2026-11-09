@@ -10276,7 +10276,9 @@ void AcustraEngine::applyPickBendingCompliance(StringLoop& loop, int length,
     // Apply the same plectrum slip to this displacement increment and
     // leave the already written velocity wave alone.
     const double endpoint = increment(1);
-    for (int sample = 1; sample <= length; ++sample)
+    if (length > 0)
+        pickReleaseDisplacement_[0] = static_cast<float>(endpoint - endpoint);
+    for (int sample = 2; sample <= length; ++sample)
         pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)]
             = static_cast<float>(increment(sample) - endpoint);
     if (slipPole > 0.0)

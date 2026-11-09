@@ -24,12 +24,20 @@ public:
     {
         if (!(width_ > 0.0))
             return 0.0;
+        // Use the full-domain IEEE operations directly on the SDK,
+        // which compiles with -fno-builtin.
+#if defined(__clang__) || defined(__GNUC__)
+        const double wrapped = phase - __builtin_floor(phase + 0.5);
+        const double distance = __builtin_fabs(wrapped);
+#else
         const double wrapped = phase - std::floor(phase + 0.5);
-        double sum = atDistance(std::abs(wrapped));
+        const double distance = std::abs(wrapped);
+#endif
+        double sum = atDistance(distance);
         // Outside this range the normal-Laplace density is bounded by
         // (exp(-40) + P(|Z| > 12))/(2 width). Sum nearby periodic images
         // for broad footprints and retain the same bound at either edge.
-        for (int image = 1; image - std::abs(wrapped) < reach_; ++image)
+        for (int image = 1; image - distance < reach_; ++image)
             sum += atDistance(image + wrapped) + atDistance(image - wrapped);
         return sum;
     }
