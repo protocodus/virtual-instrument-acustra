@@ -2765,7 +2765,15 @@ double fitPhaseAngle(double imaginary, double real) noexcept
     return imaginary < 0.0 ? -angle : angle;
 }
 
-template <int order = 3>
+// Keep the derivative's sine separate from the denominator's cosine in
+// Jacobian-only builds. The SDK backend can fuse them into a sincos call
+// whose rounding differs from the original full evaluation.
+[[maybe_unused]] ACUSTRA_NOINLINE double dispersionJacobianPoleSine(double angle) noexcept
+{
+    return std::sin(angle);
+}
+
+template <int order = 3, bool evaluateResiduals = true>
 void dispersionResiduals(
     const DispersionPartials& partials,
     const double x[dispersionDesignValues], int anchor,
@@ -2782,7 +2790,9 @@ void dispersionResiduals(
     const double omega0 = partials.omega0;
     double a1[dispersionSectionCount] {};
     double a2[dispersionSectionCount] {};
-    for (int section = 0; section < dispersionSectionCount; ++section)
+    constexpr int sections = evaluateResiduals
+        ? dispersionSectionCount : (order - 1) / 2;
+    for (int section = 0; section < sections; ++section)
         secondOrderAllpassCoefficients(omega0, x[1 + 2 * section],
             x[2 + 2 * section], a1[section], a2[section]);
     double a1ByDecay[dispersionSectionCount] {};
@@ -2794,13 +2804,18 @@ void dispersionResiduals(
             const double radius = std::exp(-omega0 * x[1 + 2 * section]);
             const double angle = omega0 * x[2 + 2 * section];
             a1ByDecay[section] = -omega0 * a1[section];
-            a1ByPole[section] = 2.0 * omega0 * radius * std::sin(angle);
+            if constexpr (evaluateResiduals)
+                a1ByPole[section] = 2.0 * omega0 * radius * std::sin(angle);
+            else
+                a1ByPole[section] = 2.0 * omega0 * radius
+                    * dispersionJacobianPoleSine(angle);
             a2ByDecay[section] = -2.0 * omega0 * a2[section];
         }
     constexpr double delayStep = 1.0e-3;
     double thiran[3][2] {};
     const double fraction = x[0] - static_cast<double>(anchor);
-    thiranCoefficients(fraction, thiran[0][0], thiran[0][1]);
+    if constexpr (evaluateResiduals || order != 3)
+        thiranCoefficients(fraction, thiran[0][0], thiran[0][1]);
     double firstByDelay = 0.0;
     double secondByDelay = 0.0;
     if (jacobian != nullptr)
@@ -2835,15 +2850,18 @@ void dispersionResiduals(
                 -coefficients[0] * s1 - coefficients[1] * s2,
                 1.0 + coefficients[0] * c1 + coefficients[1] * c2);
         };
-        double lag = read(thiran[0]) + partials.fixedLag[item];
-        for (int section = 0; section < dispersionSectionCount; ++section)
+        double lag = 0.0;
+        if constexpr (evaluateResiduals)
+            lag = read(thiran[0]) + partials.fixedLag[item];
+        for (int section = 0; section < sections; ++section)
         {
             // An unused second section is bypassed.
             if (section > 0 && !(x[1 + 2 * section] > 0.0))
                 continue;
             const double real = 1.0 + a1[section] * c1 + a2[section] * c2;
             const double imaginary = -a1[section] * s1 - a2[section] * s2;
-            lag += 2.0 * omega + 2.0 * angleOf(imaginary, real);
+            if constexpr (evaluateResiduals)
+                lag += 2.0 * omega + 2.0 * angleOf(imaginary, real);
             if (jacobian != nullptr && section < (order - 1) / 2)
             {
                 const double norm = real * real + imaginary * imaginary;
@@ -2854,7 +2872,8 @@ void dispersionResiduals(
                 jacobian[index][2 + 2 * section] = 2.0 * weight * byA1 * a1ByPole[section];
             }
         }
-        residuals[index] = weight * lag;
+        if constexpr (evaluateResiduals)
+            residuals[index] = weight * lag;
         if (jacobian != nullptr)
         {
             if constexpr (order == 3)
@@ -2995,6 +3014,10 @@ void refineDispersionDesign(const DispersionPartials& partials,
                     improvement = (current - candidateCost) / current;
                     std::copy(candidate, candidate + dispersionDesignValues,
                               x);
+#if defined(JUKEBOX_SDK)
+                    std::copy(candidateResiduals, candidateResiduals + capacity,
+                              residuals);
+#endif
                     current = candidateCost;
                     damping = std::max(damping * 0.2, 1.0e-12);
                     improved = true;
@@ -3004,7 +3027,14 @@ void refineDispersionDesign(const DispersionPartials& partials,
             }
             if (!improved || improvement < 1.0e-10)
                 break;
+#if defined(JUKEBOX_SDK)
+            // The accepted trial already evaluated the residuals at this tap.
+            // Keep native builds on the original libm call path.
+            dispersionResiduals<order, false>(partials, x, anchor, nullptr,
+                                               jacobian);
+#else
             dispersionResiduals(partials, x, anchor, residuals, jacobian);
+#endif
         }
         if (delayAnchor(x[0]) == anchor)
             break;
