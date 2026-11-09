@@ -76,6 +76,9 @@ medians moved by -9% to +29% between rounds, which is this machine's noise.
 ## Not addressed
 
 A slide moves `speakingFret`, and the fret's T60 slope enters the same
-tuning gain, so by the code a manager-wheel slide still re-solves while it
-moves. That was not measured here. The 24-event Gather burst at
-96 kHz/64 frames is the other open deadline limit in the 1.9.35 audit.
+tuning gain, so a wheel slide was measured too. Sliding a ringing note two
+semitones over 40 blocks with `setPitchBend` costs 0.40-0.43 ms a block on
+average (worst 0.86 ms) against 0.25-0.29 ms held, at MIDI 40, 52, 64 and
+76. That is well inside the period, so it was left alone. The 24-event
+Gather burst at 96 kHz/64 frames is the other open deadline limit in the
+1.9.35 audit.
