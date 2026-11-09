@@ -39,6 +39,27 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.36 — 2026-11-09 — the pick carries the string as it lets go
+
+- A plectrum now always releases the string moving the way it carried it.
+  The release velocity's direction used to follow a sampled cross term: on
+  most notes it pointed back toward rest, and on some it turned round as the
+  stroke hardened, so Jumbo Steel Pick's C6 lost 40% of its attack
+  brightness between velocity 78 and 80, and B5 27% between 84 and 86. Picked
+  notes now brighten steadily with velocity. From velocity 16 to 112, Jumbo
+  Steel Pick's attack centroid rises by a median of 1348 cents (it was 1104),
+  and no note rises by less than 737 (it was 169). Finger and Thumb are
+  unchanged.
+- Jumbo Steel Pick's Output is now −0.1 dB (it was −0.9) and Palm Muted
+  Steel Pick's is 5.5 dB (it was 4.5). This holds both at their 1.9.35 level
+  on the factory level check.
+- A fast picked tremolo whose rate nearly divides the note's partials (C4 at
+  12 strokes a second) now swells for about two seconds before it settles,
+  where 1.9.35 settled within one. It never holds more energy than its
+  strokes would ringing on alone.
+- [Validation](Docs/validation/pick-release-direction-2026-11-09.md). This is
+  a local review candidate. A level-matched A/B set is waiting to be heard.
+
 ### 1.9.35 — 2026-11-09 — physical pluck coordinates and bent release
 
 - Bridgeward and neckward plucks retain their physical contact location when

@@ -105,11 +105,11 @@ struct PerformanceRealism
     // (p(1 - p) / (p0(1 - p0)))^0.22 so stiffer bridgeward contacts unload
     // faster and more compliant soundhole-ward contacts unload more warmly.
     bool pluckBoundaryCompliance { true };
-    // Retired: clipping an absolute travelling potential at the bridge is
-    // not a physical fret contact. Retain this trailing setup field for
-    // source compatibility with existing offline aggregate initializers;
-    // neither value now changes the wave. No saved/user parameter uses it.
-    bool fretCrownGrazing { true };
+    // A plectrum's release velocity points the way the pick carried the
+    // string, and its own kinetic energy is the fitted share of the pluck's
+    // (AcustraEngine::writePickRelease). Off, the direction follows the sign
+    // of a sampled cross term, which flips with velocity on some notes.
+    bool pickReleaseDirection { true };
 };
 
 } // namespace acustra

@@ -1,6 +1,8 @@
 // Finger uses the actual release slip; Thumb retains its nominal reference
 // ratio. Both keep force-sensitive brightness without fitting new parameters.
 #include "DSP/AcustraEngine.h"
+#include "DSP/AcustraPerformer.h"
+#include "DSP/AcustraPresets.h"
 
 #include <algorithm>
 #include <array>
@@ -498,6 +500,72 @@ void testDenseFloatingVelocityResponse()
               << " probes, worst force-law error=" << worstForceError << '\n';
 }
 
+// The string leaves a plectrum moving the way the pick carried it, so a
+// harder stroke is never a darker one. When the release velocity's sign
+// followed a sampled cross term instead, the slip moved that term through
+// zero as the stroke hardened and the hump turned round: through the
+// shipping MIDI path Jumbo Steel Pick's C6 lost 40% of its 5-80 ms
+// spectral centroid between velocity 78 and 80, and B5 27% between 84 and 86
+// (Docs/decisions.md, 2026-11-09). The observer is the attack's RMS
+// frequency, sqrt(sum dx^2 / sum x^2), which reads no model state; a 5%
+// fall over two velocity steps is far outside the string's own rise there.
+double attackRmsFrequency(int midi, int velocity)
+{
+    constexpr double rate = 48000.0;
+    constexpr int block = 256;
+    auto parameters = acustra::engineParameters(acustra::factoryPresets[3]);
+    parameters.room = 0.0f;
+    auto performer = std::make_unique<acustra::Performer>();
+    performer->setParameters(parameters);
+    performer->prepare(rate, block);
+    performer->setParameters(parameters);
+    const int first = int(0.005 * rate), last = int(0.080 * rate);
+    std::array<float, block> left {}, right {};
+    double previous = 0.0, slope = 0.0, power = 0.0;
+    for (int start = 0; start < last; start += block)
+    {
+        performer->beginBlock(left.data(), right.data(), block);
+        if (start == 0)
+        {
+            const std::array<unsigned char, 3> on { 0x90, static_cast<unsigned char>(midi),
+                                                    static_cast<unsigned char>(velocity) };
+            performer->handleMidi(0, on.data(), 3);
+        }
+        performer->endBlock();
+        for (int n = 0; n < block; ++n)
+        {
+            const double x = 0.5 * (double(left[std::size_t(n)]) + double(right[std::size_t(n)]));
+            const int at = start + n;
+            if (at > first && at < last)
+            {
+                slope += (x - previous) * (x - previous);
+                power += x * x;
+            }
+            previous = x;
+        }
+    }
+    return rate / (2.0 * 3.14159265358979323846) * std::sqrt(slope / std::max(power, 1.0e-30));
+}
+
+void testPickBrightensSmoothlyWithVelocity()
+{
+    double worstFall = 0.0;
+    for (const int midi : { 83, 84 })
+    {
+        double previous = attackRmsFrequency(midi, 60);
+        for (int velocity = 62; velocity <= 120; velocity += 2)
+        {
+            const double frequency = attackRmsFrequency(midi, velocity);
+            worstFall = std::max(worstFall, 1.0 - frequency / previous);
+            expect(frequency > 0.95 * previous,
+                   "a harder pick stroke came out darker than the one before it");
+            previous = frequency;
+        }
+    }
+    std::cout << "Jumbo Steel Pick B5/C6 attack RMS frequency, velocity 60-120 in steps of 2: "
+              << "worst fall " << 100.0 * worstFall << "%\n";
+}
+
 void testRepeatedContactConvergesAcrossExactVelocity()
 {
     struct Probe
@@ -619,6 +687,7 @@ int main()
     testPlayableAudibleVelocityRange();
     testDenseFloatingVelocityResponse();
     testRepeatedContactConvergesAcrossExactVelocity();
+    testPickBrightensSmoothlyWithVelocity();
     expect(regressionFixtureCount == 1467,
            "velocity fixture optimization changed the original probe inventory");
     testPreparedFixtureCopiesMatchFreshSetup();

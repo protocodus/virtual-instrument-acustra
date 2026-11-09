@@ -1111,11 +1111,24 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
                            * (onsetSteps[0] + backgroundSteps[stroke - 1]),
                        "ringing contact introduced a large latency-aligned onset step");
             }
-            double settledEnergy = 0.0, lateEnergy = 0.0;
-            for (int stroke = 8; stroke < 16; ++stroke) settledEnergy += energies[stroke];
-            for (int stroke = 24; stroke < 32; ++stroke) lateEnergy += energies[stroke];
-            expect(lateEnergy < 1.5 * settledEnergy,
-                   "rapid tremolo continued accumulating energy after its warmup");
+            // A stroke supplies its own release's work and no more (the
+            // merge's work bound), so the train can hold no more energy per
+            // stroke than the same strokes would if each rang on alone: the
+            // sum of the isolated stroke's energy over the train. Until
+            // 2026-11-09 this compared strokes 24-31 with 8-15 (1.5 times),
+            // which reads where a beat falls, not accumulation: at 12 Hz a
+            // C4 partial near 109 times the stroke rate beats over seconds.
+            // 1.9.35 failed it 0.2 Hz away (1.64 at 44.1 kHz, 1.70 at 48 kHz,
+            // 12.2 Hz), and a merge with its work bound removed passed it
+            // (0.77) while holding 1.4 times the strokes' own energy, which
+            // this bound fails. With the release velocity pointing the way
+            // the pick carried the string (writePickRelease) the coherent
+            // 12 Hz train holds up to 0.80 of it before it decays, 1.9.35 0.23.
+            double incoherentEnergy = 0.0, lateEnergy = 0.0;
+            for (const double energy : isolatedEnergies) incoherentEnergy += energy;
+            for (int stroke = 24; stroke < 32; ++stroke) lateEnergy += energies[stroke] / 8.0;
+            expect(lateEnergy < incoherentEnergy,
+                   "rapid tremolo held more than its strokes' own energy after its warmup");
             // Exact event positions are kept while only process partitions
             // differ; compare both actual audio channels, not gain observers.
             if (rate == 48000.0 && seconds == 0.03)
@@ -1126,7 +1139,7 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
                       << " stroke Hz=" << 1.0 / seconds
                       << " isolated peak ratio=" << *std::max_element(peaks.begin(), peaks.end()) / isolatedPeak
                       << " isolated energy ratio=" << *std::max_element(energies.begin(), energies.end()) / isolatedEnergy
-                      << " late/settled energy=" << lateEnergy / settledEnergy
+                      << " late stroke/incoherent energy=" << lateEnergy / incoherentEnergy
                       << '\n';
         }
 }

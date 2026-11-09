@@ -1844,8 +1844,6 @@ private:
         return midiFrequency(midiNote) * masterTuneRatio_;
     }
     static float clamp(float value, float low, float high) noexcept;
-    static float phaseDelayForOnePoleMix(float coefficient, float mix,
-                                         float omega) noexcept;
     static float magnitudeForOnePoleMix(float coefficient, float mix,
                                         float omega) noexcept;
     static float registeredPluckAperture(float apertureSamples,
@@ -1966,9 +1964,6 @@ private:
                                          float speakingLength) const noexcept;
     void initialisePluck(Voice& voice, int stringIndex, float velocity,
                          bool merge = false) noexcept;
-    // Scale every state a string's two loops store of the travelling wave -
-    // the delay line and each filter's memory - by gain.
-    static void scaleStoredWaves(Voice& voice, float gain) noexcept;
     void returnToOpenString(Voice& voice, int stringIndex,
                             bool clearDelay) noexcept;
     void firePluck(Voice& voice, int stringIndex) noexcept;

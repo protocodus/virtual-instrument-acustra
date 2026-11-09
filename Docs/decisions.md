@@ -5,6 +5,62 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-09 — the pick carries the string as it lets go, 1.9.36 (a correction; adopted under the owner's standing rule, an A/B set rendered, key unread)
+
+**What was decided.** Which way a picked string moves as it leaves the tip.
+1.9.35 took the sign of a sampled cross term, which the source called
+inaudible. It is audible once the slip leads the rest's partials, and it
+turned round between adjacent velocities on some notes: Jumbo Steel Pick's
+C6 lost 40% of its attack centroid between velocity 78 and 80, and B5 lost 27%
+between 84 and 86. The direction is settled by the physics: a tip carries
+the string the way it pushed it. That is a correction, not a by-ear
+choice. What it does to the Pick's whole timbre is audible, and on most
+notes the velocity now points the other way. The by-ear share (Set 14) was
+chosen with the old direction. It ships under the owner's standing rule that
+the candidate wins unless they say otherwise. It has not been heard.
+
+**The letters.** A is 1.9.35 and B is 1.9.36, played on Jumbo Steel Pick
+through the Performer. The material is a treble line rising from velocity 40
+to 127, B5 re-picked from 60 to 120, three bass notes, an E major strum and
+a C4 tremolo at 12 strokes a second, 19.5 s in all. B is matched to A on
+whole-file RMS with a +0.02 dB trim. The set
+is in the project files
+(`acustra/listening-tests/2026-11-09-pick-release-direction/`), and its key
+is unread.
+
+**What it licensed.** The share is now the hump's own kinetic energy, as
+FittedPhysicalData.h defines it, and the slip's interference stays in what
+is written. Jumbo Steel Pick's Output moves from −0.9 to −0.1 dB, and Palm
+Muted Steel Pick's from 4.5 to 5.5 dB, which holds both at their 1.9.35
+median on `OutputLevels`. That is the owner's −9 VU calibration, not a
+fitted value. Three contracts were re-derived, with their reasons beside
+them. `Engine` now checks the velocity's own energy (1.0) where it checked
+the whole line's (2.0). `PickRoughness`'s shipping median bound went from
+−0.5 to −0.4 dB, because the outward velocity fills more of that band on a
+loud stroke (−0.68 then, −0.47 now), and a new check holds the burst's own
+change to −2.5 dB (it measures −3.17). That bound is a loosening the owner
+can veto with the candidate. `RepeatedPluckRealism`'s tremolo check compared
+strokes 24-31 with 8-15, which reads where a beat falls: 1.9.35 failed it at
+12.2 strokes a second, and a merge without its work bound passed it. It now
+holds the late train to the energy its strokes would have ringing alone
+(candidate 0.79, 1.9.35 0.41, the bound-free merge 1.42). A tremolo whose
+rate nearly divides the note's partials now swells for about two seconds
+before it settles. The
+[validation record](validation/pick-release-direction-2026-11-09.md)
+has the measurements.
+
+**If the owner chooses A,** turn `pickReleaseDirection` off and put the
+two Output values and the `Engine` and `PickRoughness` contracts back (the
+tremolo check's repair holds for both). The new velocity-smoothness
+check in `VelocityRealism` would then fail by design: A's worst fall is
+25.8%, against a 5% bound.
+
+**Tried and not kept.** A plane split that grows with open length over
+speaking length, which is what a fixed termination end correction gives. It
+beats E3's H5 at the 12th fret 9-22 dB against `ChorusRegression`'s 2 dB,
+which is the guard kept when the owner chose 0.75 cent on 2026-10-30. It also
+moved B4's settled pitch by −5.2 cents. It was reverted and not offered.
+
 ## 2026-11-09 — contact coordinates and bent-string consistency, 1.9.35 (local review candidate)
 
 The physical hand position now survives its conversion to the numerical

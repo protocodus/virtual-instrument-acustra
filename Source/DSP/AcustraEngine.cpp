@@ -3472,29 +3472,6 @@ float AcustraEngine::midiFrequency(int midiNote) noexcept
     return 440.0f * std::exp2((static_cast<float>(midiNote) - 69.0f) / 12.0f);
 }
 
-float AcustraEngine::phaseDelayForOnePoleMix(float coefficient, float mix,
-                                             float omega) noexcept
-{
-    if (!(omega > 1.0e-7f))
-        return mix * coefficient / std::max(1.0f - coefficient, 1.0e-5f);
-
-    // H = (1-m) + m(1-c)/(1-c z^-1), evaluated directly so the
-    // fractional-delay target includes the loss filter's actual phase.
-    const float cosine = std::cos(omega);
-    const float sine = std::sin(omega);
-    const float denominatorReal = 1.0f - coefficient * cosine;
-    const float denominatorImag = coefficient * sine;
-    const float denominatorNorm = denominatorReal * denominatorReal
-                                + denominatorImag * denominatorImag;
-    const float lowReal = (1.0f - coefficient) * denominatorReal
-                        / denominatorNorm;
-    const float lowImag = -(1.0f - coefficient) * denominatorImag
-                        / denominatorNorm;
-    const float real = (1.0f - mix) + mix * lowReal;
-    const float imaginary = mix * lowImag;
-    return -std::atan2(imaginary, real) / omega;
-}
-
 float AcustraEngine::magnitudeForOnePoleMix(float coefficient, float mix,
                                             float omega) noexcept
 {
@@ -4994,41 +4971,6 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
             voice.appliedBendImpedanceScale *= before / after;
             voice.bendImpedanceStage *= before / after;
         }
-}
-
-void AcustraEngine::scaleStoredWaves(Voice& voice, float gain) noexcept
-{
-    for (auto& loop : voice.loops)
-    {
-        for (auto& sample : loop.delay)
-            sample *= gain;
-        loop.bendingLossX1 *= gain;
-        loop.bendingLossX2 *= gain;
-        loop.bendingLossY1 *= gain;
-        loop.bendingLossY2 *= gain;
-        loop.constantLossX1 *= gain;
-        loop.constantLossX2 *= gain;
-        loop.constantLossY1 *= gain;
-        loop.constantLossY2 *= gain;
-        loop.allpassY1 *= gain;
-        loop.allpassY2 *= gain;
-        for (auto* filter : { &loop.broadLossFilter, &loop.lossFilter })
-        {
-            filter->state *= gain;
-            filter->previousInput *= gain;
-        }
-        for (auto* section : { &loop.dispersion, &loop.secondDispersion,
-                               &loop.upperDispersion[0], &loop.upperDispersion[1] })
-        {
-            section->x1 *= gain;
-            section->x2 *= gain;
-            section->y1 *= gain;
-            section->y2 *= gain;
-        }
-        // What the junction read last from this loop moves with it.
-        for (auto& value : loop.bridgeDerivative.history)
-            value *= gain;
-    }
 }
 
 void AcustraEngine::updateControlState() noexcept
@@ -10148,13 +10090,40 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
     // jump it samples at different offsets on the two halves, so the cross
     // term is kept and the hump solved for exactly: h^2 V + 2 h X = share D.
     // Of its two roots the one that vanishes with the share is taken, in
-    // the form that stays stable when X dominates; its sign follows X's,
-    // which the string does not hear (the components are in quadrature).
-    const auto solvedHump = [] (double added, double cross, double velocity)
+    // the form that stays stable when X dominates; its sign follows X's.
+    //
+    // That sign is the direction the string moves as it leaves the tip, and
+    // the string hears it once the slip has turned the rest's partials out
+    // of quadrature with the hump's. A tip carries the string the way it
+    // pushed it, so the contact leaves moving away from rest, with the
+    // displacement. In the rest frame (y = s(1 - phase) - s(phase), the line
+    // moving toward larger phase) the box's edges at p/2 and 1 - p/2 then
+    // give the contact a velocity of the displacement's sign exactly when
+    // hump / rest > 0. The sampled X is mostly negative, so most picked notes
+    // left the tip moving back toward rest, and where the slip moves X
+    // through zero as the stroke hardens the hump flipped: Jumbo Steel Pick's
+    // C6 lost 40% of its 5-80 ms centroid between velocity 78 and 80, and
+    // B5 27% between 84 and 86 (2026-11-09). pickReleaseDirection takes the
+    // physical sign always. No root of the equation with that sign vanishes
+    // with the share when X opposes it, so the share is the hump's own
+    // kinetic energy, h^2 V = share D, as FittedPhysicalData.h defines it;
+    // the cross term stays in what is written and in the energy reported.
+    const bool physicalDirection = performanceRealism_.pickReleaseDirection;
+    const auto solvedHump = [physicalDirection] (double added, double cross, double velocity)
     {
+        if (physicalDirection)
+            return exact::sqrt(added / velocity);
         const double magnitude = added
             / (exact::abs(cross) + exact::sqrt(cross * cross + added * velocity));
         return cross < 0.0 ? -magnitude : magnitude;
+    };
+    // The slope energy the written waves carry, per unit height, for the
+    // attack pitch cue: D + h^2 V + 2 h X. With the direction following X,
+    // the solve above makes it exactly (1 + share) D.
+    const auto writtenEnergy = [] (double displacement, double hump,
+                                   double cross, double velocity)
+    {
+        return displacement + hump * (hump * velocity + 2.0 * cross);
     };
     // The share is solved on the 48 kHz grid at every host rate. The waves
     // are continuous, so the hump's height over the rest's is a property of
@@ -10208,9 +10177,12 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
         if (reference.velocity > 0.0)
         {
             const double share = static_cast<double>(releaseShare);
-            // The solved hump adds exactly share * D to the displacement
-            // energy D. Convert summed differences on the reference grid
-            // to normalized spatial slope and restore the actual height.
+            // The written energy (writtenEnergy), or, with the direction
+            // following X, exactly (1 + share) D. Convert summed differences
+            // on the reference grid to normalized spatial slope and restore
+            // the actual height.
+            const double heightScale = grid
+                * static_cast<double>(rest) * static_cast<double>(rest);
             const double energyScale = (1.0 + share) * grid
                 * static_cast<double>(rest) * static_cast<double>(rest);
             if (referencePole > 0.0)
@@ -10236,13 +10208,19 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
                     });
                 referenceHump = solvedHump(share * slipped.displacement,
                                            slipped.cross, reference.velocity);
-                referenceSlopeEnergy = energyScale * slipped.displacement;
+                referenceSlopeEnergy = physicalDirection
+                    ? heightScale * writtenEnergy(slipped.displacement,
+                        referenceHump, slipped.cross, reference.velocity)
+                    : energyScale * slipped.displacement;
             }
             else
             {
                 referenceHump = solvedHump(share * reference.displacement,
                                            reference.cross, reference.velocity);
-                referenceSlopeEnergy = energyScale * reference.displacement;
+                referenceSlopeEnergy = physicalDirection
+                    ? heightScale * writtenEnergy(reference.displacement,
+                        referenceHump, reference.cross, reference.velocity)
+                    : energyScale * reference.displacement;
             }
         }
     }

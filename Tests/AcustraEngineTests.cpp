@@ -8738,9 +8738,23 @@ void testAPlectrumReleasesWithVelocity()
         }
         expect(deviation < 1.0e-4 * peak,
                "the plectrum's rest frame is not the fitted pluck's frame");
-        const double ratio = lineEnergy(released) / lineEnergy(legacy);
-        expect(std::abs(ratio - 2.0) < 0.02,
-               "a unit release share did not add the displacement's own energy");
+        // The share is the velocity's own energy (FittedPhysicalData.h): at
+        // a unit share the line less the rest it was written over carries the
+        // displacement's energy. The whole line does not carry twice it, since
+        // the slip has turned the rest's partials out of quadrature with the
+        // velocity's, and the velocity points the way the pick carried the
+        // string (writePickRelease, 2026-11-09); before that the hump was
+        // solved for a whole of exactly 2 and took the sign that made it so.
+        std::vector<double> velocityPart(released.size());
+        for (std::size_t sample = 0; sample < released.size(); ++sample)
+            velocityPart[sample] = released[sample] - trace[sample];
+        const double ratio = lineEnergy(velocityPart) / lineEnergy(trace);
+        std::cout << "Acustra unit release share at MIDI " << midi
+                  << ": velocity/displacement energy " << ratio
+                  << ", whole line/displacement " << lineEnergy(released) / lineEnergy(trace)
+                  << '\n';
+        expect(std::abs(ratio - 1.0) < 0.01,
+               "a unit release share's velocity did not carry the displacement's own energy");
         // The velocity's partials fall 6 dB/octave slower than the
         // displacement's, so the top of the band rises against the bottom.
         double lowLegacy = 0.0, lowReleased = 0.0, highLegacy = 0.0, highReleased = 0.0;
