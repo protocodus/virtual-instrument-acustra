@@ -60,6 +60,11 @@ speaking length, which is what a fixed termination end correction gives. It
 beats E3's H5 at the 12th fret 9-22 dB against `ChorusRegression`'s 2 dB,
 which is the guard kept when the owner chose 0.75 cent on 2026-10-30. It also
 moved B4's settled pitch by −5.2 cents. It was reverted and not offered.
+Also tried: tuning the coupled pair on the palm's loss at contact, which
+removes Palm Muted Steel Pick's callback overruns (worst block 2.7 to 0.6
+times its period). It leaves a note struck under the palm up to 9.3 cents
+out of tune once the palm lifts (MIDI 42; median 0.42), so it was reverted.
+The validation record describes the fix that keeps the pitch.
 
 ## 2026-11-09 — contact coordinates and bent-string consistency, 1.9.35 (local review candidate)
 
