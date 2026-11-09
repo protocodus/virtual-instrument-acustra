@@ -13359,7 +13359,8 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 // away from the top, so a tension rise pushes the saddle into it. The
 // along-string push on the saddle top, which turns the bridge about its
 // long axis, has no measured path here and is left out.
-void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexcept
+ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexcept
 {
     auto& axial = voice.stringAxialForce;
     const float length = std::max(voice.speakingLengthMetres, 0.05f);
@@ -13377,6 +13378,23 @@ void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexce
         && axial.tensionBits == tensionBits && axial.scaleBits == scaleBits
         && axial.lossBits == lossBits)
         return;
+    redesignStringAxialForce(voice, stringIndex, length, tension, excursion, loss);
+}
+ACUSTRA_FORCED_INLINE_END
+
+// Keep the every-sample exact-key check small enough to inline. All design
+// arithmetic and miss-side state changes stay here, with the same already
+// rounded float inputs; no observer or coefficient update is skipped.
+ACUSTRA_NOINLINE void AcustraEngine::redesignStringAxialForce(
+    Voice& voice, int stringIndex, float length, float tension,
+    float excursion, float loss) noexcept
+{
+    auto& axial = voice.stringAxialForce;
+    constexpr float scaleLength = 0.648f;
+    const auto lengthBits = exact::bits(length);
+    const auto tensionBits = exact::bits(tension);
+    const auto scaleBits = exact::bits(excursion);
+    const auto lossBits = exact::bits(loss);
     // A new fret or excursion scale rescales the whole stretch at once:
     // count its changes from the new scale rather than step by all of it. A
     // bend's tension moves beta by a percent or two, smoothly, and keeps

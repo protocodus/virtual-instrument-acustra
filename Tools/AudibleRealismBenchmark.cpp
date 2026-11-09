@@ -1,4 +1,7 @@
 // Paired, hot native-DSP callback diagnostic; timings are observations, not tests.
+// Steady wall and calling-thread CPU clocks bracket the same callback. The
+// thread clock includes the two nested wall-clock reads; no overhead is
+// subtracted. Snapshot restoration and validation remain outside both clocks.
 // Build main normally. Build this file, AcustraEngine.cpp and AcustraPerformer.cpp
 // for each frozen tree with -DACUSTRA_REALISM_ADAPTER=baseline/current and
 // -Dacustra=acustra_baseline/acustra_current, using that tree's Source headers.
@@ -31,6 +34,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -447,6 +451,19 @@ struct PlayerApi
     realism_##name##_destroy, realism_##name##_restore, realism_##name##_run, \
     realism_##name##_checksum, realism_##name##_release_poles, realism_##name##_intrinsic_ramps }
 
+double threadCpuMicroseconds()
+{
+#if defined(CLOCK_THREAD_CPUTIME_ID)
+    timespec value {};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &value) != 0)
+        throw std::runtime_error("calling-thread CPU clock unavailable");
+    return static_cast<double>(value.tv_sec) * 1.0e6
+        + static_cast<double>(value.tv_nsec) * 1.0e-3;
+#else
+    throw std::runtime_error("timing requires CLOCK_THREAD_CPUTIME_ID");
+#endif
+}
+
 struct PlayerInstance
 {
     PlayerApi api;
@@ -454,7 +471,7 @@ struct PlayerInstance
     std::uint64_t expectedHash {};
     bool hasHash {};
     bool requireSingleSlipProof {}, baseline {};
-    double slipPole {}, referencePole {};
+    double slipPole {}, referencePole {}, cpuMicroseconds {};
     PlayerInstance(PlayerApi selected, int rate, int frames, float room, int scenario,
                    int technique, int velocity, int capture, float touch)
         : api(selected), state(api.create(rate, frames, room, scenario, technique, velocity, capture, touch)),
@@ -466,9 +483,11 @@ struct PlayerInstance
     double measure()
     {
         api.restore(state);
+        const double cpuStart = threadCpuMicroseconds();
         const auto start = Clock::now();
         api.run(state);
         const auto stop = Clock::now();
+        cpuMicroseconds = threadCpuMicroseconds() - cpuStart;
         const auto hash = api.checksum(state);
         if (requireSingleSlipProof)
         {
@@ -620,6 +639,7 @@ int main(int argc, char** argv)
                    : "paired_hot_native_performer_callback_v2") << "\","
                   "\n\"scope\":\"native Performer and DSP; excludes host/JUCE overhead\","
                   "\n\"ordering\":\"baseline first on even trials, current first on odd trials\","
+                  "\n\"cpu_clock\":\"CLOCK_THREAD_CPUTIME_ID, with nested steady wall-clock reads; uncorrected overhead\","
                   "\n\"setup\":\"prepared fixed-storage player snapshot restored before each timed callback; warms instance memory\","
                   "\n\"timing_excludes\":[\"construction\",\"prepare\",\"preroll\",\"snapshot_restore\",\"checksum\",\"output\"],"
                   "\n\"quantiles\":\"nearest-rank\",\n\"untimed_validation_only\":" << (untimedCheck ? "true" : "false")
@@ -703,9 +723,11 @@ int main(int argc, char** argv)
                             std::cout << "Untimed validated: " << rate << '/' << frames << '/' << room << '/' << scenario << '\n';
                             continue;
                         }
-                        std::vector<double> before, after;
+                        std::vector<double> before, after, beforeCpu, afterCpu;
                         before.reserve(static_cast<std::size_t>(repeats));
                         after.reserve(static_cast<std::size_t>(repeats));
+                        beforeCpu.reserve(static_cast<std::size_t>(repeats));
+                        afterCpu.reserve(static_cast<std::size_t>(repeats));
                         for (int trial = -warmups; trial < repeats; ++trial)
                         {
                             double b {}, c {};
@@ -723,6 +745,8 @@ int main(int argc, char** argv)
                             {
                                 before.push_back(b);
                                 after.push_back(c);
+                                beforeCpu.push_back(baseline.cpuMicroseconds);
+                                afterCpu.push_back(current.cpuMicroseconds);
                             }
                         }
                         const double deadline = 1.0e6 * frames / rate;
@@ -737,6 +761,16 @@ int main(int argc, char** argv)
                         statistics(output, before, deadline, baseline.expectedHash);
                         output << ",\"current\":";
                         statistics(output, after, deadline, current.expectedHash);
+                        output << ",\"baseline_thread_cpu\":";
+                        statistics(output, beforeCpu, deadline, baseline.expectedHash);
+                        output << ",\"current_thread_cpu\":";
+                        statistics(output, afterCpu, deadline, current.expectedHash);
+                        std::vector<double> cpuRatios;
+                        cpuRatios.reserve(beforeCpu.size());
+                        for (std::size_t index = 0; index < beforeCpu.size(); ++index)
+                            cpuRatios.push_back(afterCpu[index] / beforeCpu[index]);
+                        output << ",\"paired_thread_cpu_current_over_baseline_p50\":"
+                               << percentile(cpuRatios, 0.5);
                         if (singleLowEOnly)
                             output << ",\"release_path_proof\":{\"verified\":true,\"baseline_slip_pole\":"
                                    << baseline.slipPole << ",\"baseline_reference_pole\":" << baseline.referencePole

@@ -2156,7 +2156,9 @@ private:
     void advanceAnticipation(Voice& voice, int stringIndex) noexcept;
     void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     [[nodiscard]] float excursionMetres(const Voice& voice) const noexcept;
-    void designStringAxialForce(Voice& voice, int stringIndex) noexcept;
+    ACUSTRA_ALWAYS_INLINE void designStringAxialForce(Voice& voice, int stringIndex) noexcept;
+    void redesignStringAxialForce(Voice& voice, int stringIndex, float length,
+                                 float tension, float excursion, float loss) noexcept;
     void evaluateStringAxialStretch(Voice& voice, int stringIndex) noexcept;
     ACUSTRA_ALWAYS_INLINE float renderStringAxialForce(Voice& voice, int stringIndex) noexcept;
     float renderReleaseNoise(Voice& voice) noexcept;
