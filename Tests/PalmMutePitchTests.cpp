@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <utility>
+#include <vector>
 #include <memory>
 
 namespace acustra
@@ -210,6 +211,50 @@ void testAPalmThatMovesLeavesTheStringTunedForWhereItRests()
     std::cout << "Palm moved after contact: worst tuning difference from a note struck there "
               << worstCents << " cents\n";
 }
+
+// The pair now reads the palm's target as soon as CC2 sets it, between
+// control periods, so a palm moved mid-note (including in the same sample
+// as a note-on) must render the same bits at every host block size.
+std::vector<float> renderMovingPalm(int block)
+{
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    acustra::EngineParameters parameters;
+    parameters.picking = acustra::PickingTechnique::Pick;
+    engine->setParameters(parameters);
+    engine->prepare(48000.0, 512);
+    struct Event { int at; bool note; float value; };
+    constexpr std::array<Event, 8> events { {
+        { 0, true, 52.0f }, { 0, true, 59.0f }, { 3001, false, 1.0f }, { 3001, true, 64.0f },
+        { 9000, false, 0.3f }, { 9137, true, 47.0f }, { 15000, false, 0.0f }, { 15011, false, 0.8f } } };
+    constexpr int frames = 30000;
+    std::vector<float> left(frames), right(frames);
+    std::size_t next = 0;
+    for (int frame = 0; frame < frames;)
+    {
+        for (; next < events.size() && events[next].at == frame; ++next)
+        {
+            if (events[next].note)
+                engine->noteOn(static_cast<int>(events[next].value), 0.7f);
+            else
+                engine->setPalmMutePressure(events[next].value);
+        }
+        int count = std::min(block, frames - frame);
+        if (next < events.size())
+            count = std::min(count, events[next].at - frame);
+        engine->process(left.data() + frame, right.data() + frame, count);
+        frame += count;
+    }
+    left.insert(left.end(), right.begin(), right.end());
+    return left;
+}
+
+void testAMovingPalmIsBlockPartitionInvariant()
+{
+    const auto reference = renderMovingPalm(256);
+    for (int block : { 1, 17, 64, 333, 512 })
+        expect(renderMovingPalm(block) == reference,
+               "a moving palm's audio depended on the host block size");
+}
 }
 
 int main()
@@ -217,6 +262,7 @@ int main()
     testSlideAndPhysicalFretHaveTheSameHandLoss();
     testHandLossKeepsItsTimeScaleOnBendsAndRetainedWaves();
     testAPalmThatMovesLeavesTheStringTunedForWhereItRests();
+    testAMovingPalmIsBlockPartitionInvariant();
     if (failures == 0) std::cout << "Palm-mute pitch tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

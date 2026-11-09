@@ -52,6 +52,10 @@ swing at MIDI 42) and usually under half a cent, for about 0.2 s.
   string's coupled detune must equal that of a note struck where the palm
   came to rest, on eight notes from MIDI 40 to 76. 1.9.37 matches exactly
   (0 cents). Tuning at contact differs by up to 9.3 cents on this check.
+- New, `Acustra.PalmMutePitch`: the pair now reads the palm's target as soon
+  as CC2 sets it, between control periods, so a phrase that moves the palm
+  mid-note, once in the same sample as a note-on, must render the same bits
+  at block sizes 1, 17, 64, 256, 333 and 512. It does, as 1.9.36 does.
 - Seven of the eight factory demos and both presets of the 1.9.36 A/B set
   render byte-identical to 1.9.36. Only the Palm Muted demo changes, because
   only it moves CC2.
