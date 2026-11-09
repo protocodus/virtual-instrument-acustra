@@ -1,6 +1,6 @@
-# CPU consolidation, 1.9.38 — 2026-11-09
+# CPU consolidation, 1.9.38 to 1.9.40 — 2026-11-09
 
-Sources 1.9.37 (`5ce09eb`) and 1.9.38. Measurements are at 48 kHz in
+Sources 1.9.37 (`5ce09eb`) to 1.9.40. Measurements are at 48 kHz in
 256-frame blocks (5.33 ms) through `acustra::Performer` on one development
 machine (gcc 13.3, 4-thread Xeon at 2.1 GHz) that four other builds shared,
 so wall-clock figures carry several percent of noise and their worst blocks
@@ -88,3 +88,51 @@ flush-to-zero and denormals-are-zero off raises neither the
 denormal-operand nor the underflow flag; a string struck again sounds; let go,
 the strings are handed back and the instrument flushed as one. On 1.9.37 it
 fails at the first step: the held chord never comes to rest.
+
+## At rest the level observers stayed in subnormal numbers (1.9.39)
+
+**Scenarios.** Three more states a session sits in, each traced the same way
+with the underflow exception unmasked as well (Dreadnought Steel, 48 kHz, no
+flush-to-zero): one string of a held chord let go, a chord let go and left to
+die away, and a held chord with another guitar selected under it.
+
+**Found.** After the flush `voice.level` (`finishVoice`) went on decaying
+over the cleared strings, was subnormal 0.5 s later and stayed at 1.4e-45:
+one subnormal multiply and subtract a string every sample. A suspended
+instrument's observers were already set to zero (`suspend`), and the Rack
+adapter sleeps a quiet instrument, but not one with a key or the pedal down,
+and the tools never do.
+
+| Mean block cost at rest, no flush-to-zero | 1.9.38 | 1.9.39 | With flush-to-zero |
+| --- | --- | --- | --- |
+| A chord let go, engine kept awake | 4.9-5.0% | 3.7-3.9% | 3.3-3.7% |
+| Five strings held, one let go | 9.0-9.6% | 7.9-8.6% | 7.7-7.8% |
+
+**Fix.** The flush sets every string's level observer to zero, held or not.
+Zero changes nothing the observer decides, which is why a suspension could
+already do it.
+
+**Null test.** The eight demos, the stress phrase, twelve first-time chords
+and a walk through the presets hash as in 1.9.38; so does a chord let go,
+left 13 s to come to rest, and two more chords struck after it, one let go
+20 ms after its strike (`e9c9f2a7eb388a94` with and without flush-to-zero,
+1.9.38 and 1.9.39).
+
+**Test.** `testQuietStatesStayOutOfSubnormals` (`Acustra.Engine`) renders the
+three scenarios with flush-to-zero and denormals-are-zero off and requires
+the denormal-operand and underflow flags clear from one second after the last
+key or preset event, and for two seconds from the moment of rest. On 1.9.38
+all three fail at rest.
+
+**Left as they are.** Two kinds of subnormal operation remain, neither a
+state and neither with a measurable cost here (the 43 blocks after a
+six-string release cost 9-11% with flush-to-zero on and off):
+
+- An attack and a key-up start from and die through arbitrarily small
+  numbers: the release noise's envelopes for 0.2 s after a key-up
+  (`renderReleaseNoise`), and the last samples of the contact transport's
+  fractional delays (`ContactTravel`), about 0.12 s of samples a six-string
+  release in all.
+- In a held chord's last 2.4 s above the idle floor the quietest string's
+  stretch sum meets differences that cancel to one bit near 1e-20, whose
+  squares are subnormal: 26 groups of four samples over that time.

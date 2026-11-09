@@ -16178,12 +16178,15 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
         {
             for (auto& loop : voice.loops)
                 loop.settle();
-            // Zero changes nothing the observers decide (suspend).
-            voice.level = 0.0f;
             voice.observedSlopeEnergy = voice.attackSlopeEnergy = 0.0f;
         }
         else
             returnToOpenString(voice, string, true);
+        // Zero changes nothing the observer decides (suspend). Left to
+        // decay over a cleared string it reached subnormal numbers half a
+        // second on and stuck at the smallest, for as long as a host kept
+        // the instrument awake.
+        voice.level = 0.0f;
     }
     resetSoundState();
     idleFlushHeld_ = held;

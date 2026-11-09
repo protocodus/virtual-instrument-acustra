@@ -39,6 +39,19 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.39 — 2026-11-09 — an instrument at rest computes on nothing small
+
+- Once the instrument had come to rest, each string's level observer went on
+  decaying, reached numbers too small for the processor to handle at speed
+  half a second later and stayed at the smallest. Where the host neither
+  flushes them to zero nor puts the instrument to sleep (a key or the pedal
+  still down in the Rack device), that cost 1.3% of a block for as long as it
+  lasted. The observers are now zero from the moment of rest, as a suspended
+  instrument's already were.
+- The output is bit for bit as before, on the eight demos and on notes struck
+  after a rest.
+- [Benchmark](Docs/benchmarks/cpu-consolidation-2026-11-09.md).
+
 ### 1.9.38 — 2026-11-09 — a chord held for minutes no longer stalls the host
 
 - A chord kept under its keys, the pedal or the Sustain switch used to run

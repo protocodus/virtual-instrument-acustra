@@ -9317,6 +9317,27 @@ void testIdleFlushIsIndependentOfBlockSize()
                    + std::to_string(blockSize));
 }
 
+// As a host that has set neither flush-to-zero nor denormals-are-zero (the
+// Reason adapter sets neither, and Reason is not known to): true when nothing
+// `work` computed took a subnormal operand or produced a subnormal result.
+// Not a timing: the processor's own sticky flags say so.
+template <typename Work>
+bool computesWithoutSubnormals(Work&& work)
+{
+#if defined(ACUSTRA_TEST_HAS_MXCSR)
+    const unsigned hostState = _mm_getcsr();
+    _mm_setcsr(hostState & ~0x8040u & ~0x003Fu);
+    work();
+    const unsigned raised = _mm_getcsr();
+    _mm_setcsr(hostState);
+    constexpr unsigned denormalOperand = 0x0002u, underflow = 0x0010u;
+    return (raised & (denormalOperand | underflow)) == 0u;
+#else
+    work();
+    return true;
+#endif
+}
+
 // A chord held by a key, the pedal or the Sustain switch is cleared with the
 // rest of the instrument once everything is under the idle floor, and stays
 // held. Left to decay it ran down into subnormal numbers - the loops' double
@@ -9360,22 +9381,13 @@ void testHeldChordComesToRest()
     expect(engine->getActiveVoiceCount() == 6, "the idle flush let go of held strings");
     expect(Access::stringsAtRest(*engine),
            "a held string at rest kept a wave or a filter's memory of one");
-#if defined(ACUSTRA_TEST_HAS_MXCSR)
-    // As a host that has set neither flush-to-zero nor denormals-are-zero:
-    // nothing computed at rest may take or produce a subnormal number.
-    const unsigned hostState = _mm_getcsr();
-    _mm_setcsr(hostState & ~0x8040u & ~0x003Fu);
-#endif
     float restPeak = 0.0f;
-    for (int block = 0; block < 12; ++block)
-        restPeak = std::max(restPeak, render());
-#if defined(ACUSTRA_TEST_HAS_MXCSR)
-    const unsigned raised = _mm_getcsr();
-    _mm_setcsr(hostState);
-    constexpr unsigned denormalOperand = 0x0002u, underflow = 0x0010u;
-    expect((raised & (denormalOperand | underflow)) == 0u,
+    expect(computesWithoutSubnormals([&]
+           {
+               for (int block = 0; block < 12; ++block)
+                   restPeak = std::max(restPeak, render());
+           }),
            "a held chord at rest computed on subnormal numbers");
-#endif
     expect(restPeak == 0.0f, "a held chord at rest was not exact silence");
     // Still held: struck again the string sounds among six played strings,
     // and let go they are all handed back and the instrument flushed as one.
@@ -9398,6 +9410,79 @@ void testHeldChordComesToRest()
     expect(Access::idleFlushed(*engine) && engine->getActiveVoiceCount() == 0,
            "strings let go after a held rest were not handed back and flushed");
     expect(Access::stringsAtRest(*engine), "the final flush left a wave on a string");
+}
+
+// The states a session sits in for seconds must not compute on subnormal
+// numbers either: a string let go while the others ring, a chord let go and
+// left to die away, and a chord ringing on after another guitar is selected.
+// Each is watched from a second after its last key or preset event (an
+// attack and a key-up start from and die through arbitrarily small numbers
+// for a few hundred milliseconds, at no measurable cost:
+// Docs/benchmarks/cpu-consolidation-2026-11-09.md), and again for two seconds
+// from the moment the instrument comes to rest. The level observers used to
+// decay on over the cleared strings, reach subnormal numbers half a second
+// after the flush and stay at the smallest for as long as the host kept the
+// engine awake.
+//
+// Held strings are not watched through their last seconds above the idle
+// floor. There the quietest string's stretch sum meets differences that
+// cancel to a single bit near 1e-20, whose squares are subnormal: isolated
+// samples, a few a second, and no state keeps them.
+void testQuietStatesStayOutOfSubnormals()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    const std::array<int, 6> chord { 40, 47, 52, 56, 59, 64 };
+    constexpr int blockSize = 4096;
+    const int second = static_cast<int>(sampleRate / blockSize) + 1;
+    const auto watch = [&] (const std::string& name, bool keepKeys, bool changeGuitar)
+    {
+        auto engine = std::make_unique<acustra::AcustraEngine>();
+        engine->prepare(sampleRate, blockSize);
+        std::vector<float> left(blockSize), right(blockSize);
+        const auto render = [&] (int blocks)
+        {
+            for (int block = 0; block < blocks; ++block)
+                engine->process(left.data(), right.data(), blockSize);
+        };
+        // Up to 40 s; true once the instrument has come to rest.
+        const auto renderToRest = [&]
+        {
+            for (int block = 0; block < 40 * second && !Access::idleFlushed(*engine); ++block)
+                render(1);
+            return Access::idleFlushed(*engine);
+        };
+        for (const int note : chord)
+            engine->noteOn(note, 0.8f);
+        render(6);
+        if (changeGuitar)
+        {
+            acustra::EngineParameters parameters;
+            parameters.shape = acustra::BodyShape::Jumbo;
+            engine->setParameters(parameters);
+        }
+        // One string let go with its neighbours still held, or all of them.
+        for (std::size_t index = 0; index < chord.size(); ++index)
+            if (!keepKeys || index == 2)
+                engine->noteOff(chord[index]);
+        render(second);
+        bool rested = false;
+        expect(computesWithoutSubnormals([&]
+               {
+                   if (keepKeys)
+                       render(4 * second);
+                   else
+                       rested = renderToRest();
+               }),
+               name + " computed on subnormal numbers while it rang");
+        if (keepKeys)
+            rested = renderToRest();
+        expect(rested, name + " never came to rest");
+        expect(computesWithoutSubnormals([&] { render(2 * second); }),
+               name + " computed on subnormal numbers at rest");
+    };
+    watch("a string let go among held strings", true, false);
+    watch("a chord let go", false, false);
+    watch("a held chord after another guitar was selected", true, true);
 }
 
 // The bridge hand shortens the top by the 0.62 high-to-fundamental T60
@@ -10250,6 +10335,7 @@ int main(int argc, char** argv)
     testStringAgeReachesTheWoundStrings();
     testIdleFlushIsIndependentOfBlockSize();
     testHeldChordComesToRest();
+    testQuietStatesStayOutOfSubnormals();
     testThePlateFloorDampsAlikeAtEveryRate();
     testBodyRadiationKeepsItsLevelAcrossRates();
     testASecondConstructionChangeDoesNotStepTheBridge();
