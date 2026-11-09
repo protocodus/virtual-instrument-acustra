@@ -351,6 +351,15 @@ if(BUILD_TESTING)
         endif()
     endfunction()
 
+    if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+        add_executable(AcustraNativeComplexDivisionTests Tests/NativeComplexDivisionTests.cpp)
+        target_include_directories(AcustraNativeComplexDivisionTests PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+        target_compile_features(AcustraNativeComplexDivisionTests PRIVATE cxx_std_17)
+        acustra_add_suite(Acustra.NativeComplexDivision AcustraNativeComplexDivisionTests)
+        set_tests_properties(Acustra.NativeComplexDivision PROPERTIES TIMEOUT 30)
+    endif()
+
     add_executable(AcustraEngineTests Tests/AcustraEngineTests.cpp)
     target_link_libraries(AcustraEngineTests PRIVATE AcustraDSP)
     target_compile_features(AcustraEngineTests PRIVATE cxx_std_20)

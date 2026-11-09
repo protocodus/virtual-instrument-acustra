@@ -496,6 +496,83 @@ struct AcustraEngineTestAccess
                  voice.dispersionDesignInharmonicity, rate }, loop);
     }
 
+    static double drivenLoopTransferError(double rate, int stringIndex, int fret)
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->prepare(rate, 64);
+        engine->setBridgeCouplingEnabled(false);
+        auto& voice = engine->voices_[static_cast<std::size_t>(stringIndex)];
+        const int note = voice.openMidi + fret;
+        engine->configureVoice(voice, stringIndex, note, true);
+        auto& loop = voice.loops[0];
+        loop.setCurrentDelay(loop.targetDelay);
+        loop.designReadDelay(loop.currentDelay);
+        const auto snapshot = withBendingLoss({}, loop);
+        const auto transfer = [&] (double omega)
+        {
+            const auto z = std::polar(1.0, -omega);
+            const auto allpass = [&] (double a1, double a2)
+            {
+                return (a2 + a1 * z + z * z) / (1.0 + a1 * z + a2 * z * z);
+            };
+            const auto shelf = [&] (float pole, float mix, const auto& filter)
+            {
+                const double p = filter.remapped ? filter.ratePole : pole;
+                const double b1 = filter.remapped ? filter.delayedInputGain : 0.0;
+                const auto low = (1.0 - p - b1 + b1 * z) / (1.0 - p * z);
+                return 1.0 - mix + static_cast<double>(mix) * low;
+            };
+            auto gain = std::polar(double(loop.loopGain), -loop.readDelayWhole * omega)
+                * allpass(loop.thiranFirst, loop.thiranSecond)
+                * allpass(loop.dispersionA1, loop.dispersionA2)
+                * shelf(loop.lowpassCoefficient, loop.highLossMix, loop.lossFilter)
+                * shelf(loop.broadLossCoefficient, loop.broadLossMix, loop.broadLossFilter)
+                * lossSectionResponse(snapshot, omega);
+            if (loop.secondDispersionActive)
+                gain *= allpass(loop.secondDispersionA1, loop.secondDispersionA2);
+            if (loop.upperDispersionActive)
+            {
+                const auto& c = loop.upperDispersionCoefficients;
+                gain *= allpass(c[0], c[1]) * allpass(c[2], c[3]);
+            }
+            return gain;
+        };
+        const double fundamental = 440.0 * std::exp2((note - 69) / 12.0);
+        const std::array<double, 3> multiples { 0.81, 4.33, 13.07 };
+        const std::array<double, 3> levels { 0.31, 0.073, 0.019 };
+        std::array<std::complex<double>, 3> phase, step, gains;
+        for (std::size_t n = 0; n < multiples.size(); ++n)
+        {
+            const double omega = 2.0 * std::numbers::pi * fundamental * multiples[n] / rate;
+            phase[n] = std::polar(levels[n], 0.31 * n);
+            step[n] = std::polar(1.0, omega);
+            gains[n] = transfer(omega);
+        }
+        double errorEnergy = 0.0, referenceEnergy = 0.0;
+        const int warmup = static_cast<int>(0.13 * rate);
+        const int end = warmup + static_cast<int>(0.025 * rate);
+        for (int sample = 0; sample < end; ++sample)
+        {
+            double input = 0.047;
+            double expected = input * loop.loopGain;
+            for (std::size_t n = 0; n < phase.size(); ++n)
+            {
+                input += phase[n].real();
+                expected += (phase[n] * gains[n]).real();
+                phase[n] *= step[n];
+            }
+            const double actual = loop.advance(1.0f, 1.0f);
+            loop.write(static_cast<float>(input));
+            if (sample >= warmup)
+            {
+                const double error = actual - expected;
+                errorEnergy += error * error;
+                referenceEnergy += expected * expected;
+            }
+        }
+        return std::sqrt(errorEnergy / referenceEnergy);
+    }
+
     // Every string at every fret from open to the 20th at one rate, in the
     // standard tuning, configured the way configuredLoop configures a note.
     static std::vector<StringLoopSnapshot> fretboardLoops(double rate)
@@ -1586,6 +1663,23 @@ struct AcustraEngineTestAccess
 
     // The normal-polarisation line a fresh note writes, newest sample first,
     // over its round trip: what the bridge will read over the first period.
+    static std::vector<float> staticPickRelease(AcustraEngine& engine, int length,
+                                                 float position, float aperture,
+                                                 float velocityShare, double slipPole,
+                                                 double inharmonicity)
+    {
+        auto& loop = engine.voices_[0].loops[0];
+        loop.reset();
+        engine.writePickRelease(loop, length, 0.25f, position, aperture, 1,
+                                velocityShare, slipPole, 0.0f);
+        engine.applyPickBendingCompliance(loop, length, 0.25f, position, aperture,
+            std::sqrt(inharmonicity) / (2.0 * std::numbers::pi), slipPole);
+        std::vector<float> result(static_cast<std::size_t>(length));
+        for (int sample = 0; sample < length; ++sample)
+            result[sample] = loop.delay[AcustraEngine::maximumDelaySamples - sample - 1];
+        return result;
+    }
+
     static std::vector<double> pluckedLine(PhysicalCalibration calibration,
                                            PickingTechnique picking,
                                            int midiNote, float velocity,
@@ -3588,6 +3682,30 @@ void testLossFiltersPreserveTheReferenceTransfer()
         }
 }
 
+void testTheDrivenStringLoopMatchesItsTransfer()
+{
+    // Apply an independent multitone to the configured production loop
+    // without feeding the result back. The closed-form cascade predicts
+    // its phase and magnitude with the same stored physical coefficients.
+    // The final float read/write rounds, but extra arithmetic errors inside
+    // the near-unit-pole chain must not dominate those two conversions.
+    using Access = acustra::AcustraEngineTestAccess;
+    double worst = 0.0;
+    for (const double rate : { 48000.0, 96000.0,
+                              acustra::AcustraEngine::maximumSupportedSampleRate })
+        for (const auto& [stringIndex, fret] :
+             { std::pair { 0, 0 }, std::pair { 4, 9 }, std::pair { 5, 16 } })
+        {
+            const auto error = Access::drivenLoopTransferError(rate, stringIndex, fret);
+            worst = std::max(worst, error);
+            expect(error < 1.0e-7,
+                   "the driven string loop moved its complex transfer at "
+                       + std::to_string(static_cast<int>(rate)) + " Hz, string "
+                       + std::to_string(stringIndex + 1) + ", fret " + std::to_string(fret));
+        }
+    std::cout << "Acustra driven loop relative transfer error " << worst << '\n';
+}
+
 void testTheFractionalDelayReadIsLossless()
 {
     // A fractional read must not add interpolation-dependent loss: the
@@ -3688,12 +3806,9 @@ void testTheFractionalDelayReadIsLossless()
 
 void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
 {
-    // The loop's integer tap moves whenever a slewing delay carries the
-    // Thiran allpass's own delay out of its band, and the allpass's
-    // coefficients move with it. Read in direct form I from the line, the
-    // filter's memory of its input is the memory the new tap would have had,
-    // so the move costs no transient. Measured where a transient would show:
-    // the top band, in 5 ms frames, against the same string held still.
+    // A slewing delay crosses integer taps and changes the Thiran
+    // coefficients. Compare the top band in 5 ms frames against the same
+    // string held still to bound high-band transients in this fixture.
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const int block = 64;
@@ -8830,6 +8945,71 @@ void testAPickReleaseKeepsItsHumpAcrossRates()
               << worst << " dB from 48 kHz\n";
 }
 
+void testAStaticPickRespectsBendingCompliance()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    engine->prepare(48000.0, 64);
+    constexpr int length = 2048;
+    constexpr float point = 0.23f;
+    double worstModalError = 0.0;
+    double worstVelocityChange = 0.0;
+    for (const float aperture : { 0.0007f, 0.004f, 0.07f })
+        for (const double slip : { 0.0, 0.29 })
+        {
+            const auto flexible = Access::staticPickRelease(*engine, length, point,
+                aperture, 0.0f, slip, 0.0);
+            const auto flexibleWithVelocity = Access::staticPickRelease(*engine, length,
+                point, aperture, 0.58f, slip, 0.0);
+            const auto nearlyFlexible = Access::staticPickRelease(*engine, length,
+                point, aperture, 0.58f, slip, 1.0e-19);
+            expect(nearlyFlexible == flexibleWithVelocity,
+                   "vanishing stiffness changed a Pick release");
+            for (const double B : { 0.00005, 0.0008, 0.004 })
+            {
+                const auto stiff = Access::staticPickRelease(*engine, length, point,
+                    aperture, 0.0f, slip, B);
+                const auto stiffWithVelocity = Access::staticPickRelease(*engine, length,
+                    point, aperture, 0.58f, slip, B);
+                expect(stiff.front() == 0.0f && stiffWithVelocity.front() == 0.0f,
+                       "bending compliance moved the Pick release endpoint");
+                for (int sample = 0; sample < length; ++sample)
+                {
+                    const double before = double(flexibleWithVelocity[sample]) - flexible[sample];
+                    const double after = double(stiffWithVelocity[sample]) - stiff[sample];
+                    worstVelocityChange = std::max(worstVelocityChange, std::abs(after - before));
+                }
+                double fundamental = 0.0;
+                for (int n = 1; n <= 40; ++n)
+                {
+                    std::complex<double> before {}, after {};
+                    const auto step = std::polar(1.0, -2.0 * std::numbers::pi * n / length);
+                    std::complex<double> phase { 1.0, 0.0 };
+                    for (int sample = 0; sample < length; ++sample)
+                    {
+                        before += static_cast<double>(flexible[sample]) * phase;
+                        after += static_cast<double>(stiff[sample]) * phase;
+                        phase *= step;
+                    }
+                    if (n == 1)
+                        fundamental = std::abs(before);
+                    // The pinned static equation under the same Gaussian force
+                    // has the flexible eigenvectors and stiffness T*k²+EI*k⁴.
+                    // Slip acts linearly on both shapes and cannot change this ratio.
+                    const double error = std::abs(after - before / (1.0 + B * n * n))
+                        / fundamental;
+                    worstModalError = std::max(worstModalError, error);
+                }
+            }
+        }
+    std::cout << "Acustra Pick static compliance modal error " << worstModalError
+              << ", velocity residual " << worstVelocityChange << '\n';
+    expect(worstModalError < 2.0e-6,
+           "the Pick's static deflection did not satisfy the pinned stiff-string law");
+    expect(worstVelocityChange < 6.0e-8,
+           "static bending compliance changed the authored Pick velocity component");
+}
+
 // A Shape is the measured body's A0 and T1 re-coupled through Christensen and
 // Vistisen's two-oscillator model for a published box, with the plate modes
 // above T1 on the equal-thickness plate law. The anchor - the Dreadnought,
@@ -9986,6 +10166,7 @@ int main(int argc, char** argv)
     testUpperDispersionTracksAudibleHighPartials();
     testUpperDispersionFollowsHeldBends();
     testTheFractionalDelayReadIsLossless();
+    testTheDrivenStringLoopMatchesItsTransfer();
     testASlewingDelayDoesNotClickAboveFourteenKilohertz();
     testAMemberBendIsATensionBendByGrimes();
     testABendMovesTheTwelfthPartialStretch();
@@ -10041,6 +10222,7 @@ int main(int argc, char** argv)
     testBodyShapesFollowTheCoupledTopAndCavity();
     testAPlectrumReleasesWithVelocity();
     testAPickReleaseKeepsItsHumpAcrossRates();
+    testAStaticPickRespectsBendingCompliance();
     testAPlectrumSlipsOffItsEdgeFasterWhenHarder();
     testTheParallelPolarisationRadiatesThroughTheRockingSaddle();
     if (!contractsOnly)

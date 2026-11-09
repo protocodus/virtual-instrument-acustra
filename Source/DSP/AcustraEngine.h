@@ -750,16 +750,22 @@ private:
     void preparePiezoSaddleBank(double sampleRate) noexcept;
     void updatePiezoSaddleLoad(float impedance) noexcept;
 
-    struct OnePole
+    struct OnePoleCoefficients
     {
-        float state { 0.0f };
-        float previousInput { 0.0f };
         float delayedInputGain { 0.0f };
         float ratePole { 0.0f };
         bool remapped { false };
 
         void configureRate(float referencePole, double sampleRate) noexcept;
-        float process(float input, float coefficient) noexcept
+    };
+
+    template <typename Sample>
+    struct OnePoleState : OnePoleCoefficients
+    {
+        Sample state { 0.0 };
+        Sample previousInput { 0.0 };
+
+        Sample process(Sample input, float coefficient) noexcept
         {
             if (remapped)
             {
@@ -774,15 +780,22 @@ private:
         void reset() noexcept { state = previousInput = 0.0f; }
     };
 
+    using OnePole = OnePoleState<float>;
+    using StringLossShelf = OnePoleState<double>;
+
+    // Direct-form arithmetic error is amplified by the same all-pole
+    // denominator that delays the wave. Its poles approach 1 at high
+    // engine rates. Retain the same coefficients, cascade and float line,
+    // while carrying each section's arithmetic and history in double.
     struct SecondOrderAllpass
     {
-        float x1 { 0.0f };
-        float x2 { 0.0f };
-        float y1 { 0.0f };
-        float y2 { 0.0f };
-        float process(float input, float a1, float a2) noexcept
+        double x1 { 0.0f };
+        double x2 { 0.0f };
+        double y1 { 0.0f };
+        double y2 { 0.0f };
+        double process(double input, float a1, float a2) noexcept
         {
-            const float output = a2 * input + a1 * x1 + x2
+            const double output = a2 * input + a1 * x1 + x2
                                - a1 * y1 - a2 * y2;
             x2 = x1;
             x1 = input;
@@ -835,7 +848,6 @@ private:
 
     struct StringLoop
     {
-        DelayHistory<maximumDelaySamples> delay {};
         int writeIndex { 0 };
         float currentDelay { 128.0f };
         float targetDelay { 128.0f };
@@ -880,10 +892,10 @@ private:
         float bendingLossGain { 1.0f };
         float bendingLossA1 { 0.0f };
         float bendingLossA2 { 0.0f };
-        float bendingLossX1 { 0.0f };
-        float bendingLossX2 { 0.0f };
-        float bendingLossY1 { 0.0f };
-        float bendingLossY2 { 0.0f };
+        double bendingLossX1 { 0.0f };
+        double bendingLossX2 { 0.0f };
+        double bendingLossY1 { 0.0f };
+        double bendingLossY2 { 0.0f };
         // Its constant loss angles, dislocation and a wound string's winding
         // friction (constantLossSection in AcustraEngine.cpp), in cascade:
         // (g + n1 z^-1 + n2 z^-2) / (1 + a1 z^-1 + a2 z^-2), unit gain at
@@ -896,10 +908,10 @@ private:
         float constantLossA2 { 0.0f };
         float constantLossN1 { 0.0f };
         float constantLossN2 { 0.0f };
-        float constantLossX1 { 0.0f };
-        float constantLossX2 { 0.0f };
-        float constantLossY1 { 0.0f };
-        float constantLossY2 { 0.0f };
+        double constantLossX1 { 0.0f };
+        double constantLossX2 { 0.0f };
+        double constantLossY1 { 0.0f };
+        double constantLossY2 { 0.0f };
         // A discrete refret/retune changes intrinsic sections over the same
         // one-roundtrip physical transition as its feedback loss. Histories
         // stay intact; target revisions retain a finite completion deadline.
@@ -912,14 +924,14 @@ private:
         int intrinsicCoefficientSamples { 0 };
         void setIntrinsicCoefficients(const IntrinsicCoefficients& target,
                                       bool transition) noexcept;
-        OnePole broadLossFilter {};
-        OnePole lossFilter {};
+        StringLossShelf broadLossFilter {};
+        StringLossShelf lossFilter {};
         SecondOrderAllpass dispersion {};
         SecondOrderAllpass secondDispersion {};
         std::array<SecondOrderAllpass, 2> upperDispersion {};
         // The fractional-delay allpass's state: its two previous outputs.
-        float allpassY1 { 0.0f };
-        float allpassY2 { 0.0f };
+        double allpassY1 { 0.0f };
+        double allpassY2 { 0.0f };
         // Its coefficients for the last fraction read: once a delay has
         // slewed to its target the fraction repeats, and the two double
         // divisions that design it give the same coefficients again.
@@ -973,10 +985,14 @@ private:
             void scatter(float& first, float& second) noexcept;
         } gestureContact {};
 
+        // Keep per-sample scalar and filter state close to the loop base.
+        // The large delay storage retains its size and alignment.
+        DelayHistory<maximumDelaySamples> delay {};
+
         void reset() noexcept;
         void setCurrentDelay(float samples) noexcept;
         void designReadDelay(float samples) noexcept;
-        [[nodiscard]] ACUSTRA_ALWAYS_INLINE float readDelay(float samples) noexcept;
+        [[nodiscard]] ACUSTRA_ALWAYS_INLINE double readDelay(float samples) noexcept;
         // Move the line's first post-read allpass across the integer tap.
         void handoffDispersion(SecondOrderAllpass& section, bool active) noexcept;
         void switchDispersion(bool second, bool upper) noexcept;
@@ -1337,7 +1353,6 @@ private:
                 return result;
             }
         };
-        AxialContactArrivals axialContactArrivals {};
         // The string's own lengthwise force at the saddle: the stretch its
         // vibration adds, carried there by its longitudinal waves
         // (renderStringAxialForce). The ring holds the longitudinal round
@@ -1389,34 +1404,23 @@ private:
             }
             void clear() noexcept { *this = StringAxialForce {}; }
         };
-        StringAxialForce stringAxialForce {};
         std::uint32_t fretMotionNoiseState { 1 };
         // Per-shift draws, and the slide's wander on its own sequence, so
         // a slide's length never shifts the next shift's draws.
         std::uint32_t fretGestureState { 1 };
         std::uint32_t fretWanderState { 1 };
-        std::array<StringLoop, 2> loops {};
         VoiceConfigurationKey configurationKey {};
         // Key and payload follow whole-voice copies. Waveform resets may retain
         // these pure values: pitch/rate changes miss the exact key, while
         // calibration and bridge changes still use configurationKey below it.
         PitchGeometryCache pitchGeometry {};
-        // A string taken for a new note is still vibrating. This carries that
-        // vibration on under the hand damping the model already uses for a
-        // stopped note, instead of deleting it, in both planes: the parallel
-        // one holds most of a pluck and radiates through the rocking saddle.
-        StringLoop tailLoop {};
-        StringLoop tailParallelLoop {};
-        ContactTravel tailContactTravel {};
         // The connected finger's already emitted and remaining contact and
         // fret-friction source belongs to this retained wave on a re-pluck.
-        ContactTravel tailLegatoContactTravel {};
         float tailLegatoContactAmplitude { 0.0f };
         float tailLegatoNormalGain { 1.0f };
         float tailLegatoParallelGain { 0.0f };
         int tailLegatoContactAge { 0 };
         int tailLegatoContactSamples { 0 };
-        std::array<float, maximumLegatoContactSamples + 1> tailLegatoContactPulse {};
         float tailDamping { 1.0f };
         // Intrinsic loss and pitch belong to the captured string. The bridge
         // hand remains live CC2 expression while that old wave is retained.
@@ -1439,8 +1443,6 @@ private:
         // A tail being let go: its port fades out of the junction on the
         // delay's time constant before the branch is dropped (finishVoice).
         bool tailRetiring { false };
-        RepluckArrivals repluckArrivals {};
-        RepluckArrivals tailRepluckArrivals {};
         int openMidi { 40 };
         int midiNote { 40 };
         // 1 is a stopped note. Above that the string sounds open in its nth
@@ -1507,7 +1509,6 @@ private:
         std::uint32_t excitationCoefficientRate { 0xffffffffu };
         float excitationCoefficient { 0.0f };
         float excitationReleaseCoefficient { 0.0f };
-        ContactTravel contactTravel {};
         float contactPeriodSamples { 0.0f };
         // Where each plane's release shape put its kink, as a share of the
         // line it was written on (initialisePluck).
@@ -1588,8 +1589,9 @@ private:
         float polarisationDetune { 0.0f };
         // Common saddle tuning is a nominal-pitch calibration. The string's
         // small attack glide does not change its frozen reference load.
+        using CommonTuningKey = std::array<std::uint32_t, 13>;
         std::uint64_t commonTuningGeneration { 0 };
-        std::array<std::uint32_t, 7> commonTuningKey {};
+        CommonTuningKey commonTuningKey {};
         float commonTuningValue { 0.0f };
         // The tunings this string had before the one in front, so a riff or
         // a progression that comes back to a fret finds its solve (about
@@ -1597,7 +1599,7 @@ private:
         struct CommonTuning
         {
             std::uint64_t generation { 0 };
-            std::array<std::uint32_t, 7> key {};
+            CommonTuningKey key {};
             float value { 0.0f };
         };
         std::array<CommonTuning, 7> commonTuningHistory {};
@@ -1699,9 +1701,7 @@ private:
         float legatoParallelGain { 0.0f };
         int legatoContactAge { 0 };
         int legatoContactSamples { 0 };
-        std::array<float, maximumLegatoContactSamples + 1> legatoContactPulse {};
         std::uint32_t legatoFrictionState { 1 };
-        ContactTravel legatoContactTravel {};
         float releaseVelocity { -1.0f };
         float peakLevel { 0.0f };
         float releaseNoiseTouch { 0.0f };
@@ -1729,6 +1729,27 @@ private:
         float releaseNoiseParallel { 0.0f };
         int releaseNoiseSamples { 0 };
         std::uint32_t releaseNoiseState { 1 };
+
+        // Keep the voice's per-sample scalar state ahead of the large
+        // histories. Their storage, active lengths and copy rules stay local
+        // to the same voice and contact as before.
+        AxialContactArrivals axialContactArrivals {};
+        StringAxialForce stringAxialForce {};
+        std::array<StringLoop, 2> loops {};
+        // A string taken for a new note is still vibrating. This carries that
+        // vibration on under the hand damping the model already uses for a
+        // stopped note, instead of deleting it, in both planes: the parallel
+        // one holds most of a pluck and radiates through the rocking saddle.
+        StringLoop tailLoop {};
+        StringLoop tailParallelLoop {};
+        ContactTravel tailContactTravel {};
+        ContactTravel tailLegatoContactTravel {};
+        std::array<float, maximumLegatoContactSamples + 1> tailLegatoContactPulse {};
+        RepluckArrivals repluckArrivals {};
+        RepluckArrivals tailRepluckArrivals {};
+        ContactTravel contactTravel {};
+        std::array<float, maximumLegatoContactSamples + 1> legatoContactPulse {};
+        ContactTravel legatoContactTravel {};
         ContactTravel releaseNoiseTravel {};
     };
 
@@ -1995,6 +2016,9 @@ private:
                             float position, float aperture, int modes,
                             float releaseShare, double slipPole,
                             float referenceDelay) noexcept;
+    void applyPickBendingCompliance(StringLoop& loop, int length, float height,
+                                    float position, float aperture,
+                                    double width, double slipPole) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
                             float scaleLength, float edgeRadius) const noexcept;
@@ -2208,6 +2232,9 @@ private:
     // Advanced whenever engine state that configureVoice reads changes; see
     // VoiceConfigurationKey. Starts past the keys' never-matching zero.
     std::uint64_t voiceConfigurationGeneration_ { 1 };
+    // The common saddle fit survives a playing-state reset. Preparation and
+    // explicit calibration changes invalidate its nominal reference load.
+    std::uint64_t tuningCalibrationGeneration_ { 1 };
     // The coupled body-shape factors configureBridge applies to the bridge
     // bank's A0 group, its modes up to T1 and the plate modes above; all
     // exactly 1 at each bank's anchor shape.

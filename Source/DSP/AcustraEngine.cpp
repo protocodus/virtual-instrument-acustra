@@ -15,6 +15,10 @@
 #include "StudioCaptureLoudnessData.h"
 #include "PiezoBlampTable.h"
 #include "PlayerBodyLoading.h"
+#include "PickBendingProfile.h"
+#if !defined(JUKEBOX_SDK)
+#include "NativeComplexDivision.h"
+#endif
 
 #include <algorithm>
 #include <cassert>
@@ -319,7 +323,7 @@ inline std::complex<float> divide(const std::complex<float>& z,
 inline std::complex<double> divide(const std::complex<double>& z,
                                    const std::complex<double>& w) noexcept
 {
-    return z / w;
+    return nativeComplexDivision::divide(z, w);
 }
 
 inline double magnitude(const std::complex<double>& value) noexcept
@@ -2764,7 +2768,15 @@ double fitPhaseAngle(double imaginary, double real) noexcept
     return imaginary < 0.0 ? -angle : angle;
 }
 
-template <int order = 3>
+// Keep the derivative's sine separate from the denominator's cosine in
+// Jacobian-only builds. The SDK backend can fuse them into a sincos call
+// whose rounding differs from the original full evaluation.
+[[maybe_unused]] ACUSTRA_NOINLINE double dispersionJacobianPoleSine(double angle) noexcept
+{
+    return std::sin(angle);
+}
+
+template <int order = 3, bool evaluateResiduals = true>
 void dispersionResiduals(
     const DispersionPartials& partials,
     const double x[dispersionDesignValues], int anchor,
@@ -2781,7 +2793,9 @@ void dispersionResiduals(
     const double omega0 = partials.omega0;
     double a1[dispersionSectionCount] {};
     double a2[dispersionSectionCount] {};
-    for (int section = 0; section < dispersionSectionCount; ++section)
+    constexpr int sections = evaluateResiduals
+        ? dispersionSectionCount : (order - 1) / 2;
+    for (int section = 0; section < sections; ++section)
         secondOrderAllpassCoefficients(omega0, x[1 + 2 * section],
             x[2 + 2 * section], a1[section], a2[section]);
     double a1ByDecay[dispersionSectionCount] {};
@@ -2793,13 +2807,18 @@ void dispersionResiduals(
             const double radius = std::exp(-omega0 * x[1 + 2 * section]);
             const double angle = omega0 * x[2 + 2 * section];
             a1ByDecay[section] = -omega0 * a1[section];
-            a1ByPole[section] = 2.0 * omega0 * radius * std::sin(angle);
+            if constexpr (evaluateResiduals)
+                a1ByPole[section] = 2.0 * omega0 * radius * std::sin(angle);
+            else
+                a1ByPole[section] = 2.0 * omega0 * radius
+                    * dispersionJacobianPoleSine(angle);
             a2ByDecay[section] = -2.0 * omega0 * a2[section];
         }
     constexpr double delayStep = 1.0e-3;
     double thiran[3][2] {};
     const double fraction = x[0] - static_cast<double>(anchor);
-    thiranCoefficients(fraction, thiran[0][0], thiran[0][1]);
+    if constexpr (evaluateResiduals || order != 3)
+        thiranCoefficients(fraction, thiran[0][0], thiran[0][1]);
     double firstByDelay = 0.0;
     double secondByDelay = 0.0;
     if (jacobian != nullptr)
@@ -2834,15 +2853,18 @@ void dispersionResiduals(
                 -coefficients[0] * s1 - coefficients[1] * s2,
                 1.0 + coefficients[0] * c1 + coefficients[1] * c2);
         };
-        double lag = read(thiran[0]) + partials.fixedLag[item];
-        for (int section = 0; section < dispersionSectionCount; ++section)
+        double lag = 0.0;
+        if constexpr (evaluateResiduals)
+            lag = read(thiran[0]) + partials.fixedLag[item];
+        for (int section = 0; section < sections; ++section)
         {
             // An unused second section is bypassed.
             if (section > 0 && !(x[1 + 2 * section] > 0.0))
                 continue;
             const double real = 1.0 + a1[section] * c1 + a2[section] * c2;
             const double imaginary = -a1[section] * s1 - a2[section] * s2;
-            lag += 2.0 * omega + 2.0 * angleOf(imaginary, real);
+            if constexpr (evaluateResiduals)
+                lag += 2.0 * omega + 2.0 * angleOf(imaginary, real);
             if (jacobian != nullptr && section < (order - 1) / 2)
             {
                 const double norm = real * real + imaginary * imaginary;
@@ -2853,7 +2875,8 @@ void dispersionResiduals(
                 jacobian[index][2 + 2 * section] = 2.0 * weight * byA1 * a1ByPole[section];
             }
         }
-        residuals[index] = weight * lag;
+        if constexpr (evaluateResiduals)
+            residuals[index] = weight * lag;
         if (jacobian != nullptr)
         {
             if constexpr (order == 3)
@@ -2994,6 +3017,10 @@ void refineDispersionDesign(const DispersionPartials& partials,
                     improvement = (current - candidateCost) / current;
                     std::copy(candidate, candidate + dispersionDesignValues,
                               x);
+#if defined(JUKEBOX_SDK)
+                    std::copy(candidateResiduals, candidateResiduals + capacity,
+                              residuals);
+#endif
                     current = candidateCost;
                     damping = std::max(damping * 0.2, 1.0e-12);
                     improved = true;
@@ -3003,7 +3030,14 @@ void refineDispersionDesign(const DispersionPartials& partials,
             }
             if (!improved || improvement < 1.0e-10)
                 break;
+#if defined(JUKEBOX_SDK)
+            // The accepted trial already evaluated the residuals at this tap.
+            // Keep native builds on the original libm call path.
+            dispersionResiduals<order, false>(partials, x, anchor, nullptr,
+                                               jacobian);
+#else
             dispersionResiduals(partials, x, anchor, residuals, jacobian);
+#endif
         }
         if (delayAnchor(x[0]) == anchor)
             break;
@@ -3492,7 +3526,7 @@ float AcustraEngine::registeredPluckAperture(
         * std::pow(referenceDelay / boundedLength, exponent);
 }
 
-void AcustraEngine::OnePole::configureRate(float referencePole,
+void AcustraEngine::OnePoleCoefficients::configureRate(float referencePole,
                                            double sampleRate) noexcept
 {
     remapped = sampleRate != 48000.0;
@@ -3758,7 +3792,7 @@ void AcustraEngine::StringLoop::designReadDelay(float samples) noexcept
 }
 
 ACUSTRA_FORCED_INLINE_BEGIN
-ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::readDelay(float samples) noexcept
+ACUSTRA_FORCED_INLINE double AcustraEngine::StringLoop::readDelay(float samples) noexcept
 {
     if (!readDelayValid || exact::bits(samples) != readDelayBits)
         designReadDelay(samples);
@@ -3769,19 +3803,14 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::readDelay(float samples) 
             wrapDelayIndex(writeIndex - samplesAgo))];
     };
 
-    // Second-order Thiran allpass, exactly lossless at every frequency (see
-    // delayAnchor). Direct form I: the only state is the two previous
-    // outputs, and the previous inputs are read from the line at whichever
-    // tap is current, so when a slewing delay crosses a band edge and moves
-    // the tap and the coefficients together, the filter's memory of its input
-    // is already the memory it would have had at the new tap - the transient
-    // elimination of Valimaki, Laakso and Mackenzie, "Elimination of
-    // transients in time-varying allpass fractional delay filters with
-    // application to digital waveguide modeling", ICMC 1995, 327-334, which
-    // for a line-read section is exactly this signal-valued state.
-    const float first = thiranFirst;
-    const float second = thiranSecond;
-    const float output = second * at(whole) + first * at(whole + 1)
+    // The second-order Thiran read has unit magnitude at a fixed tap and
+    // coefficients. All three inputs come from the current tap, so the input
+    // history follows a reanchor. The two recursive output histories carry
+    // across reads. For state reconstruction during coefficient changes,
+    // see Valimaki, Laakso and Mackenzie, ICMC 1995, Sections 3.1-3.4.
+    const double first = thiranFirst;
+    const double second = thiranSecond;
+    const double output = second * at(whole) + first * at(whole + 1)
                        + at(whole + 2)
                        - first * allpassY1 - second * allpassY2;
     allpassY2 = allpassY1;
@@ -3842,10 +3871,10 @@ void AcustraEngine::StringLoop::handoffDispersion(SecondOrderAllpass& section,
             return delay[static_cast<std::size_t>(
                 wrapDelayIndex(writeIndex - samplesAgo))];
         };
-        const float first = thiranFirst;
-        const float second = thiranSecond;
-        float next = allpassY1;
-        float following = allpassY2;
+        const double first = thiranFirst;
+        const double second = thiranSecond;
+        double next = allpassY1;
+        double following = allpassY2;
         if (whole >= 2)
         {
             next = second * at(whole) + first * at(whole + 1) + at(whole + 2)
@@ -3960,7 +3989,7 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         currentDelay = static_cast<float>(delayProgress);
         delayProgressBits = exact::bits(currentDelay);
     }
-    float delayed = readDelay(currentDelay);
+    double delayed = readDelay(currentDelay);
     if (upperDispersionActive)
     {
         delayed = upperDispersion[1].process(delayed, upperDispersionCoefficients[2],
@@ -3973,14 +4002,14 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
                                            secondDispersionA2);
     // The broad shelf is retired (configureVoice): with its mix at zero the
     // wave passes it exactly and its one-pole is not run.
-    float reflected = delayed;
+    double reflected = delayed;
     if (broadLossMix != 0.0f)
     {
-        const float broad = broadLossFilter.process(
+        const double broad = broadLossFilter.process(
             delayed, broadLossCoefficient);
         reflected += broadLossMix * (broad - delayed);
     }
-    const float low = lossFilter.process(reflected, lowpassCoefficient);
+    const double low = lossFilter.process(reflected, lowpassCoefficient);
     reflected += highLossMix * (low - reflected);
     if (bendingLossActive)
     {
@@ -3997,8 +4026,8 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         // rounding of g = 1 + a1 + a2. At the highest host rates its poles
         // close on z = 1 and g falls under 0.01, where rounding the sum alone
         // put the direct form's gain at DC 4e-6 above one at 768 kHz.
-        const float difference = reflected - bendingLossX1;
-        const float taken = (1.0f - bendingLossGain) * difference
+        const double difference = reflected - bendingLossX1;
+        const double taken = (1.0f - bendingLossGain) * difference
             - bendingLossA2 * bendingLossX2
             - bendingLossA1 * bendingLossY1 - bendingLossA2 * bendingLossY2;
         bendingLossX1 = reflected;
@@ -4020,8 +4049,8 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         // H = 1 - (1 - z^-1)(g0 + g1 z^-1) / A(z) (constantLossSection): the
         // part taken from the wave is driven by its first difference, so the
         // section passes DC exactly whatever the coefficients' rounding.
-        const float difference = reflected - constantLossX1;
-        const float taken = (1.0f - constantLossGain) * difference
+        const double difference = reflected - constantLossX1;
+        const double taken = (1.0f - constantLossGain) * difference
             + (constantLossN2 - constantLossA2) * constantLossX2
             - constantLossA1 * constantLossY1 - constantLossA2 * constantLossY2;
         constantLossX1 = reflected;
@@ -4043,7 +4072,7 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
     else if (appliedReleaseGain > requestedReleaseGain)
         appliedReleaseGain = std::max(requestedReleaseGain,
                                       appliedReleaseGain - releaseGainStep);
-    return reflected * loopGain * appliedReleaseGain;
+    return static_cast<float>(reflected * loopGain * appliedReleaseGain);
 }
 ACUSTRA_FORCED_INLINE_END
 
@@ -4373,6 +4402,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     }
 #endif
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
     releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
     releaseStepSamples_ = static_cast<int>(std::ceil(0.4 * sampleRate_));
@@ -4788,6 +4818,7 @@ void AcustraEngine::setPhysicalCalibration(
     // which the mobility table's key does not hold.
     bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     if (!prepared_)
         return;
     prepareBodyConfigurations();
@@ -4804,6 +4835,7 @@ void AcustraEngine::setPerformanceRealism(
         bodyConfigurationsReady_ = false;
     bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     restartRandomDraws();
     if (prepared_)
     {
@@ -6175,28 +6207,35 @@ float AcustraEngine::coupledPolarisationDetune(
     Voice& voice, int stringIndex, float impedance, float frequency,
     float normalGain, float parallelGain, float normalShare) noexcept
 {
-    const std::array<std::uint32_t, 7> key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
+    // The fit sees the current bridge during a queued construction change
+    // and the nominal resting strings. A playing-state reset leaves these
+    // inputs unchanged unless a different construction is adopted.
+    const Voice::CommonTuningKey key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
         exact::bits(normalGain), exact::bits(parallelGain), exact::bits(normalShare),
-        exact::bits(static_cast<float>(sampleRate_)) };
+        exact::bits(static_cast<float>(sampleRate_)),
+        static_cast<std::uint32_t>(configuredBridgeShape_),
+        static_cast<std::uint32_t>(configuredBridgeMaterial_),
+        static_cast<std::uint32_t>(parameters_.tuning), exact::bits(parameters_.stringAge),
+        exact::bits(masterTuneSemitones_), bridgeCouplingEnabled_ ? 1u : 0u };
     // The tuning is the whole guitar's, with every idle string on its
     // bridge: the sympathetic switch takes their sound out of the mix, not
     // the string out of tune (testSympatheticStringsAreAudibleButBounded
     // compares the two renders and must see only their sound).
-    if (voice.commonTuningGeneration == voiceConfigurationGeneration_
+    if (voice.commonTuningGeneration == tuningCalibrationGeneration_
         && voice.commonTuningKey == key)
         return voice.commonTuningValue;
     for (auto& earlier : voice.commonTuningHistory)
-        if (earlier.generation == voiceConfigurationGeneration_ && earlier.key == key)
+        if (earlier.generation == tuningCalibrationGeneration_ && earlier.key == key)
         {
             // Swap with the front, so two stops played in turn both stay.
             const float value = earlier.value;
             earlier = { voice.commonTuningGeneration, voice.commonTuningKey, voice.commonTuningValue };
             voice.commonTuningKey = key;
-            voice.commonTuningGeneration = voiceConfigurationGeneration_;
+            voice.commonTuningGeneration = tuningCalibrationGeneration_;
             voice.commonTuningValue = value;
             return value;
         }
-    if (voice.commonTuningGeneration == voiceConfigurationGeneration_)
+    if (voice.commonTuningGeneration == tuningCalibrationGeneration_)
     {
         voice.commonTuningHistory[static_cast<std::size_t>(voice.commonTuningHistoryNext)]
             = { voice.commonTuningGeneration, voice.commonTuningKey, voice.commonTuningValue };
@@ -6204,7 +6243,7 @@ float AcustraEngine::coupledPolarisationDetune(
             % static_cast<int>(voice.commonTuningHistory.size());
     }
     voice.commonTuningKey = key;
-    voice.commonTuningGeneration = voiceConfigurationGeneration_;
+    voice.commonTuningGeneration = tuningCalibrationGeneration_;
     const auto finish = [&voice] (float result)
     {
         voice.commonTuningValue = result;
@@ -6367,7 +6406,8 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain), -ownPhase);
     // The loop's round-trip matrix at s, less its delay: the plane gains
     // times the saddle's reflection R = (Y0 I - Y)(Y0 I + Y)^-1, Y symmetric.
-    const auto loopMatrix = [&] (Complex s) -> std::array<Complex, 4>
+    using Matrix = std::array<Complex, 4>;
+    const auto loopMatrix = [&] (Complex s) -> Matrix
     {
         const Complex z = std::exp(-s); // z^-1 of the digital frequency s
         const auto loaded = loadOtherStrings(portAt(z), z);
@@ -6431,11 +6471,22 @@ float AcustraEngine::coupledPolarisationDetune(
     // fret, 255 at most, 0.25 ms with the rest of a note-on. The in-phase member sits
     // off the resting string's resonance, so it is found in s, not with its
     // frequency held at the nominal and the resting string read at its clamp.
-    const auto loopDeterminant = [&] (Complex s, double d)
+    const auto determinant = [&] (Complex s, double d, const Matrix& a)
     {
-        const auto a = loopMatrix(s);
         const Complex scale = std::exp(-(s - atNominal) * period - s * d * delayElement);
         return 1.0 - scale * (a[0] + a[3]) + scale * scale * (a[0] * a[3] - a[1] * a[2]);
+    };
+    const auto loopDeterminant = [&] (Complex s, double d)
+    {
+        return determinant(s, d, loopMatrix(s));
+    };
+    // The mechanical matrix depends on s, while the common delay factor
+    // in the determinant also depends on d. Keep the final two evaluations
+    // for the residue and for the next unshifted start at this same pole.
+    struct PoleMatrices
+    {
+        Matrix atPole;
+        Matrix atSlopeSample;
     };
     // Poles closer than this are one pole: the members of a doublet or a
     // unison sit cents apart, and a start that comes within it of a pole
@@ -6443,6 +6494,7 @@ float AcustraEngine::coupledPolarisationDetune(
     // a unison's eighteen end on one of its three or four poles).
     const double samePole = 1.0e-4 * omega0;
     std::array<Complex, 24> found {};
+    std::array<PoleMatrices, 24> foundMatrices {};
     std::size_t foundCount = 0;
     const auto alreadyFound = [&] (Complex s)
     {
@@ -6459,15 +6511,21 @@ float AcustraEngine::coupledPolarisationDetune(
     // seed on the far side of a resting string's resonance does not fly
     // off. False when it leaves the neighbourhood, stalls or reaches a pole
     // already found.
-    const auto solvePole = [&] (Complex& s, double d, Complex& slope)
+    const auto solvePole = [&] (Complex& s, double d, Complex& slope,
+                               const PoleMatrices* initial, PoleMatrices& result)
     {
         constexpr double h = 1.0e-7;
         const auto finite = [] (Complex value)
         {
             return exact::isfinite(value.real()) && exact::isfinite(value.imag());
         };
-        Complex value = loopDeterminant(s, d);
-        slope = (loopDeterminant(s + h, d) - value) / h;
+        Complex value = initial ? determinant(s, d, initial->atPole)
+                                : loopDeterminant(s, d);
+        const Complex initialSlopeSample = s + h;
+        const Complex initialSlope = initial
+            ? determinant(initialSlopeSample, d, initial->atSlopeSample)
+            : loopDeterminant(initialSlopeSample, d);
+        slope = (initialSlope - value) / h;
         for (int step = 0; step < 16; ++step)
         {
             if (!finite(value) || !finite(slope) || std::norm(slope) < 1.0e-36)
@@ -6483,8 +6541,11 @@ float AcustraEngine::coupledPolarisationDetune(
             {
                 if (!(s.real() < 0.0))
                     return false;
-                value = loopDeterminant(s, d);
-                slope = (loopDeterminant(s + h, d) - value) / h;
+                result.atPole = loopMatrix(s);
+                value = determinant(s, d, result.atPole);
+                const Complex slopeSample = s + h;
+                result.atSlopeSample = loopMatrix(slopeSample);
+                slope = (determinant(slopeSample, d, result.atSlopeSample) - value) / h;
                 return finite(slope) && std::norm(slope) >= 1.0e-36;
             }
             const Complex next = loopDeterminant(s, d);
@@ -6544,6 +6605,8 @@ float AcustraEngine::coupledPolarisationDetune(
         std::array<Complex, 64> starts {};
         std::size_t startCount = 0;
         const std::size_t followed = foundCount;
+        std::array<PoleMatrices, 24> previousMatrices;
+        std::copy_n(foundMatrices.begin(), followed, previousMatrices.begin());
         for (std::size_t pole = 0; pole < followed; ++pole)
         {
             starts[startCount++] = found[pole];
@@ -6568,10 +6631,14 @@ float AcustraEngine::coupledPolarisationDetune(
                     break;
             }
             Complex s = starts[start], slope {};
-            if (!solvePole(s, d, slope))
+            const PoleMatrices* initial = start < 2 * followed && start % 2 == 0
+                ? &previousMatrices[start / 2] : nullptr;
+            PoleMatrices result;
+            if (!solvePole(s, d, slope, initial, result))
                 continue;
+            foundMatrices[foundCount] = result;
             found[foundCount++] = s;
-            auto a = loopMatrix(s);
+            auto a = result.atPole;
             const Complex scale = std::exp(-(s - atNominal) * period - s * d * delayElement);
             for (auto& entry : a) entry *= scale;
             // The pluck's wave in our string circulates in the mode with the
@@ -8172,6 +8239,24 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // zero-velocity release: before smoothing it is phase-equivalent
     // to a rest pluck, with the same modal magnitudes. Unlike the fretting
     // primitives below, it is not combined with a prescribed velocity state.
+    const auto slopeEnergyOf = [] (const StringLoop& loop, int length)
+    {
+        const auto at = [&] (int sample)
+        {
+            return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+                loop.writeIndex - sample))];
+        };
+        float previous = at(length);
+        double squaredDifferences = 0.0;
+        for (int sample = 1; sample <= length; ++sample)
+        {
+            const float current = at(sample);
+            const double difference = static_cast<double>(current - previous);
+            squaredDifferences += difference * difference;
+            previous = current;
+        }
+        return static_cast<double>(length) * squaredDifferences;
+    };
     double pickReferenceSlopeEnergy = 0.0;
     for (int polarisation = 0; polarisation < 2; ++polarisation)
     {
@@ -8279,12 +8364,31 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             contactSamples, physical.apertureScale, apertureReferenceDelay,
             currentReferenceLength,
             physicalCalibration_.apertureRegisterExponent);
+        // Express the bending length in the written frame, the same
+        // physical-to-line conversion as the contact's position.
+        const double bendingWidth = pick && modes == 1 && voice.dispersionDesignInharmonicity > 0.0f
+            ? exact::sqrt(static_cast<double>(voice.dispersionDesignInharmonicity))
+                * frameScale / (2.0 * piDouble)
+            : 0.0;
+        const auto bendRest = [&] (double referenceEnergy)
+        {
+            if (!(bendingWidth > 0.0))
+                return referenceEnergy;
+            // Keep the calibrated attack pitch cue. At 48 kHz the original
+            // observer read the just-written flexible shape directly.
+            if (!(referenceEnergy > 0.0) && !merge)
+                referenceEnergy = slopeEnergyOf(loop, length);
+            applyPickBendingCompliance(loop, length,
+                releasedAmplitude * polarisationGain, localPosition, aperture,
+                bendingWidth, slipPole);
+            return referenceEnergy;
+        };
         if (releaseShare > 0.0f)
         {
-            pickReferenceSlopeEnergy += writePickRelease(
+            pickReferenceSlopeEnergy += bendRest(writePickRelease(
                 loop, length, releasedAmplitude * polarisationGain, localPosition,
                 aperture, modes, releaseShare, slipPole,
-                voice.referencePickDelay[static_cast<std::size_t>(polarisation)]);
+                voice.referencePickDelay[static_cast<std::size_t>(polarisation)]));
             continue;
         }
         const auto triangleAt = [localPosition] (double phase)
@@ -8498,7 +8602,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             }
         }
         else if (pick)
+        {
             applyPlectrumSlip(loop, length, slipPole);
+            pickReferenceSlopeEnergy += bendRest(0.0);
+        }
         else
             applyPadRelease(loop, length, slipPole, 0.0,
                             performanceRealism_.matchedPadRelease);
@@ -8556,22 +8663,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             const int length = std::clamp(
                 static_cast<int>(std::round(merge ? loop.currentDelay : loop.targetDelay)), 8,
                 activeDelaySamples() - 3);
-            const auto at = [&] (int sample)
-            {
-                return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-                    loop.writeIndex - sample))];
-            };
-            float previous = at(length);
-            double squaredDifferences = 0.0;
-            for (int sample = 1; sample <= length; ++sample)
-            {
-                const float current = at(sample);
-                const double difference
-                    = static_cast<double>(current - previous);
-                squaredDifferences += difference * difference;
-                previous = current;
-            }
-            slopeEnergy += static_cast<double>(length) * squaredDifferences;
+            slopeEnergy += slopeEnergyOf(loop, length);
         }
     }
     voice.attackSlopeEnergy = exact::isfinite(slopeEnergy)
@@ -10215,6 +10307,44 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
             loop.writeIndex - sample))] += humpFrame(sample) - humpEndpoint;
     return referenceSlopeEnergy;
+}
+
+void AcustraEngine::applyPickBendingCompliance(StringLoop& loop, int length,
+                                                float height, float position,
+                                                float aperture, double width,
+                                                double slipPole) noexcept
+{
+    if (!(width > 0.0))
+        return;
+    const double p = position;
+    const double cornerA = 0.5 * p;
+    const double cornerB = 1.0 - 0.5 * p;
+    const double scale = -static_cast<double>(height) / (p * (1.0 - p));
+    const pickBending::Profile profile(std::max(static_cast<double>(aperture), 1.0e-9), width);
+    const auto increment = [&] (int sample)
+    {
+        const double phase = static_cast<float>(sample - 1) / static_cast<float>(length)
+            - 0.5f * position;
+        return scale * (profile.corner(phase - cornerA) - profile.corner(phase - cornerB));
+    };
+    // At fixed hand force the static saddle reaction is unchanged,
+    // while bending rounds the released displacement near the contact.
+    // Apply the same plectrum slip to this displacement increment and
+    // leave the already written velocity wave alone.
+    const double endpoint = increment(1);
+    if (length > 0)
+        pickReleaseDisplacement_[0] = static_cast<float>(endpoint - endpoint);
+    for (int sample = 2; sample <= length; ++sample)
+        pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)]
+            = static_cast<float>(increment(sample) - endpoint);
+    if (slipPole > 0.0)
+        slipPeriod([this] (int sample) -> float&
+        {
+            return pickReleaseDisplacement_[static_cast<std::size_t>(sample)];
+        }, length, slipPole);
+    for (int sample = 1; sample <= length; ++sample)
+        loop.delay[static_cast<std::size_t>(wrapDelayIndex(loop.writeIndex - sample))]
+            += pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)];
 }
 
 void AcustraEngine::freezeMemberPitchBend(Voice& voice) noexcept
@@ -13024,10 +13154,9 @@ namespace
 // renderStringAxialForce: cell k reads the outgoing wave's sample k strides
 // back and the returning wave at its own age, and adds the square of the two
 // waves' slopes over the cell. `outgoing`, `returning` and `sum` carry the
-// previous cell's reads and the running sum in and out. Four cells go at once
-// where the compiler has 4-wide float vectors; each cell's reads and slope are
-// the one-at-a-time arithmetic, and only the order the squares are added in
-// differs (four partial sums, joined last), a change in the sum's last bits.
+// previous cell's reads and the running sum in and out. The SDK evaluates four
+// cells at once and adds their squares in the scalar order. Native SSE2 builds
+// retain their existing four partial sums.
 void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                    int stride, int first, int end, float period,
                    float returningSpan, float outgoingScale,
@@ -13044,7 +13173,8 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         return a + part * (b - a);
     };
     int cell = first;
-#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+#if (defined(JUKEBOX_SDK) || (defined(__SSE2__) && defined(__x86_64__))) \
+    && (defined(__clang__) || defined(__GNUC__))
     typedef float Floats __attribute__((vector_size(16)));
     typedef int Ints __attribute__((vector_size(16)));
     if (end - cell >= 4)
@@ -13059,7 +13189,19 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         const Floats four = { 4.0f, 4.0f, 4.0f, 4.0f };
         Floats cells = { static_cast<float>(cell), static_cast<float>(cell + 1),
                          static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
+#if defined(JUKEBOX_SDK)
+        const auto addSquares = [&sum] (Floats slope)
+        {
+            const Floats squares = slope * slope;
+            sum += squares[0];
+            sum += squares[1];
+            sum += squares[2];
+            sum += squares[3];
+        };
+#else
         Floats partial = { 0.0f, 0.0f, 0.0f, 0.0f };
+        const auto addSquares = [&partial] (Floats slope) { partial += slope * slope; };
+#endif
         // Mostly the cells' reads lie in one unbroken run of the ring, up
         // to `newest`: read them there without masking. The deepest is the
         // outgoing wave's last full group, or the returning wave's first
@@ -13075,9 +13217,9 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             && static_cast<unsigned>(lastCell * stride) <= newest)
         {
             const float* const head = line + newest;
-            const float* outgoingAt = head - cell * stride;
             for (int group = 0; group < groups; ++group, cell += 4)
             {
+                const float* const outgoingAt = head - cell * stride;
                 const Floats age = periodV - spanV * cells;
                 const Ints whole = __builtin_convertvector(age, Ints);
                 const Floats part = age - __builtin_convertvector(whole, Floats);
@@ -13091,14 +13233,13 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                 const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-stride],
                                               outgoingAt[-2 * stride],
                                               outgoingAt[-3 * stride] };
-                outgoingAt -= 4 * stride;
                 const Floats previousOutgoing = { outgoing, nextOutgoing[0],
                                                   nextOutgoing[1], nextOutgoing[2] };
                 const Floats previousReturning = { returning, nextReturning[0],
                                                    nextReturning[1], nextReturning[2] };
                 const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                     + (nextReturning - previousReturning) * returningScaleV;
-                partial += slope * slope;
+                addSquares(slope);
                 outgoing = nextOutgoing[3];
                 returning = nextReturning[3];
                 cells += four;
@@ -13129,12 +13270,14 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                                                nextReturning[1], nextReturning[2] };
             const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                 + (nextReturning - previousReturning) * returningScaleV;
-            partial += slope * slope;
+            addSquares(slope);
             outgoing = nextOutgoing[3];
             returning = nextReturning[3];
             cells += four;
         }
+#if !defined(JUKEBOX_SDK)
         sum += (partial[0] + partial[1]) + (partial[2] + partial[3]);
+#endif
     }
 #endif
     for (; cell < end; ++cell)
