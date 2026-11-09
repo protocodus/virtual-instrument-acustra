@@ -5,7 +5,7 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-09 — the pair is tuned where the palm comes to rest, 1.9.37 (measured; no listening test)
+## 2026-11-09 — the pair is tuned where the palm comes to rest, 1.9.37 (measured; no listening test; accepted by the owner)
 
 While the palm settled after a CC2 change, the coupled pair's tuning was
 re-solved on all six strings every control period, which put Palm Muted
@@ -21,7 +21,7 @@ the pair's path during the palm's 0.2 s move differs. The worst block is now
 [benchmark record](benchmarks/palm-tuning-cpu-2026-11-09.md) has the
 numbers.
 
-## 2026-11-09 — the pick carries the string as it lets go, 1.9.36 (a correction; adopted under the owner's standing rule, an A/B set rendered, key unread)
+## 2026-11-09 — the pick carries the string as it lets go, 1.9.36 (a correction; the owner took the candidate, B)
 
 **What was decided.** Which way a picked string moves as it leaves the tip.
 1.9.35 took the sign of a sampled cross term, which the source called
@@ -41,8 +41,12 @@ to 127, B5 re-picked from 60 to 120, three bass notes, an E major strum and
 a C4 tremolo at 12 strokes a second, 19.5 s in all. B is matched to A on
 whole-file RMS with a +0.02 dB trim. The set
 is in the project files
-(`acustra/listening-tests/2026-11-09-pick-release-direction/`), and its key
-is unread.
+(`acustra/listening-tests/2026-11-09-pick-release-direction/`).
+
+**The owner's choice.** On 2026-11-09 the owner answered "take candidate":
+B, with the three re-derived contracts below, including the loosened
+`PickRoughness` bound. The record does not say whether the set was heard
+first, so this is the owner's acceptance, not a recorded listening verdict.
 
 **What it licensed.** The share is now the hump's own kinetic energy, as
 FittedPhysicalData.h defines it, and the slip's interference stays in what

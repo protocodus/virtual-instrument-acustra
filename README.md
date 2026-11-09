@@ -47,8 +47,8 @@ long per-version notes are in the
   Palm Muted Steel Pick's factory demo used to have blocks that took up to
   2.7 times as long to compute as they last. Its worst block now takes
   under 0.9 of that time.
-- [Benchmark](Docs/benchmarks/palm-tuning-cpu-2026-11-09.md). This is a
-  local review candidate.
+- [Benchmark](Docs/benchmarks/palm-tuning-cpu-2026-11-09.md). The owner
+  accepted it on 2026-11-09.
 
 ### 1.9.36 — 2026-11-09 — the pick carries the string as it lets go
 
@@ -68,8 +68,8 @@ long per-version notes are in the
   12 strokes a second) now swells for about two seconds before it settles,
   where 1.9.35 settled within one. It never holds more energy than its
   strokes would ringing on alone.
-- [Validation](Docs/validation/pick-release-direction-2026-11-09.md). This is
-  a local review candidate. A level-matched A/B set is waiting to be heard.
+- [Validation](Docs/validation/pick-release-direction-2026-11-09.md). The
+  owner took the candidate (B of a level-matched A/B set) on 2026-11-09.
 
 ### 1.9.35 — 2026-11-09 — physical pluck coordinates and bent release
 
