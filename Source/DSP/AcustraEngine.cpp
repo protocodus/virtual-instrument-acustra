@@ -6521,10 +6521,10 @@ float AcustraEngine::coupledPolarisationDetune(
         };
         Complex value = initial ? determinant(s, d, initial->atPole)
                                 : loopDeterminant(s, d);
-        const Complex slopeSample = s + h;
+        const Complex initialSlopeSample = s + h;
         const Complex initialSlope = initial
-            ? determinant(slopeSample, d, initial->atSlopeSample)
-            : loopDeterminant(slopeSample, d);
+            ? determinant(initialSlopeSample, d, initial->atSlopeSample)
+            : loopDeterminant(initialSlopeSample, d);
         slope = (initialSlope - value) / h;
         for (int step = 0; step < 16; ++step)
         {
