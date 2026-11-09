@@ -93,8 +93,8 @@ their mean worst block from 25.6% to 22.7%; at three cells, to 8.49% and
 null: against the shipping engine the demos' residual is 28-65 dB below the
 signal at two cells, and on full-velocity pick strokes 24.8 dB below at two
 cells and 37.3 dB at three. A level-matched A/B/C set on those strokes went
-to the owner on 2026-11-09; the choice, if any, goes in
-[decisions.md](../decisions.md).
+to the owner on 2026-11-09, who kept A, the shipping four cells
+([decisions.md](../decisions.md)).
 
 ## What the target would take
 

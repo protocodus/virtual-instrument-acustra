@@ -5,6 +5,27 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-09 — the axial stretch keeps four cells per cut-off period (chosen by ear; the owner took A)
+
+**What was decided.** Whether the axial stretch sum, about half of every
+block's CPU, could sample the string more coarsely. Its cell count is a
+numerical convention: four cells per period of the cut-off (the first
+longitudinal mode or 5 kHz, whichever is lower).
+
+**The letters.** A was the shipping engine (1.9.37, four cells). B had two
+cells per period (the cut-off's Nyquist rate): 19% less mean CPU on the
+factory demos, mean worst block 25.6% to 22.7% of the period. C had three
+cells: 10% less, worst block 24.5%. Neither nulls against A: on
+full-velocity Jumbo Steel Pick strokes B's residual is 24.8 dB below the
+signal and C's 37.3 dB. The three were level-matched on whole-file RMS
+(trims B -0.021 dB, C -0.015 dB) and not committed.
+
+**The choice.** The owner chose A by ear, so the convention stays. This
+licenses no coarser quadrature; a later CPU change to this sum has to null
+against A or go back to the ear. The
+[profile record](benchmarks/worst-block-profile-2026-11-09.md) has the
+measurements.
+
 ## 2026-11-09 — the pair is tuned where the palm comes to rest, 1.9.37 (measured; no listening test; accepted by the owner)
 
 While the palm settled after a CC2 change, the coupled pair's tuning was
