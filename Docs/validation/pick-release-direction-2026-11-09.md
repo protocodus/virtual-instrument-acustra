@@ -210,27 +210,4 @@ exceeds its period (2.1-2.5 times in both versions). That is the inherited
 limit the 1.9.35 CPU audit traced to the damped-pole solve re-running while
 the hand's loss smooths after a CC2 change
 ([cpu-optimization-2026-11-09](../benchmarks/cpu-optimization-2026-11-09.md)).
-
-## Tried and not kept: tuning the pair on the palm at contact
-
-`tuningPeriodGain` reads the live palm loss, and the coupled solve is keyed
-on it, so while the palm smooths after a CC2 change all six strings re-solve
-every control period. A single Pick note at 48 kHz costs 6.5-9.5 ms a
-256-frame block for the 39 blocks the palm takes to go from none to full,
-against 0.3 ms held. Tuning the pair on the palm's loss at contact, as it is
-already tuned on the finger's stop, removes that. On the Palm Muted demo the
-median real-time factor fell from 0.180 to 0.101 and the worst block from
-2.7 to 0.6 times its period. The other seven demos and every render without
-a moving palm were byte-identical, and the `unit` and `audio` tiers passed.
-
-It was reverted because of the pitch it leaves. Between no palm and full
-palm, the played string's coupled detune moves by a median of 0.42
-cents over MIDI 40-86, and by 9.3 cents at MIDI 42. Tuned at contact, a note
-struck under the palm would ring up to 9 cents out of tune once the palm
-lifted. No test caught it, because none plays a palm lift on a ringing
-note. A correct fix solves once at the palm's new target when CC2 moves,
-about 1 ms for six strings, and lets the detune follow the palm's own
-smoothing between the two solved values. That needs a transition with the
-engine's deadline and parity rules, and a contract that lifts the palm off
-a ringing note and checks its pitch. It is the first lead for the next
-pass.
+1.9.37 removes it ([palm-tuning-cpu-2026-11-09](../benchmarks/palm-tuning-cpu-2026-11-09.md)).

@@ -39,6 +39,17 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.37 — 2026-11-09 — the palm no longer overruns the audio callback
+
+- Moving the palm (CC2) no longer re-tunes all six strings on every control
+  period while the hand settles. Each change tunes once, at the pressure the
+  palm is moving to, and once it arrives the tuning is exactly as before.
+  Palm Muted Steel Pick's factory demo used to have blocks that took up to
+  2.7 times as long to compute as they last. Its worst block now takes
+  under 0.9 of that time.
+- [Benchmark](Docs/benchmarks/palm-tuning-cpu-2026-11-09.md). This is a
+  local review candidate.
+
 ### 1.9.36 — 2026-11-09 — the pick carries the string as it lets go
 
 - A plectrum now always releases the string moving the way it carried it.

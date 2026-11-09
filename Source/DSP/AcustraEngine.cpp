@@ -6957,10 +6957,14 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // string set; they are not refitted here, since the reference corpus holds
     // no muted notes. Pressure scales the rate, so zero is an exact no-op
     // rather than a four-second floor.
-    const float handRate = palmMute_ > 0.0f
-        ? palmMute_ / std::exp(std::log(4.0f)
-            + palmMute_ * (std::log(0.080f) - std::log(4.0f)))
-        : 0.0f;
+    const auto handRateAt = [] (float pressure)
+    {
+        return pressure > 0.0f
+            ? pressure / std::exp(std::log(4.0f)
+                + pressure * (std::log(0.080f) - std::log(4.0f)))
+            : 0.0f;
+    };
+    const float handRate = handRateAt(palmMute_);
     // A soft contact damps the top faster than the fundamental. Adding exactly
     // the extra per-round-trip loss that a 0.62 high-to-fundamental T60 ratio
     // implies keeps the shelf's shape and leaves it untouched at zero pressure.
@@ -7150,6 +7154,22 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         * (1.0f - 0.12f * age)
         * fretT60Factor
         * physical.fundamentalT60Scale;
+    // The coupled pair is tuned on the palm's target, not on its smoothed
+    // value (tuningPeriodGain below). The palm's loss enters the damped-pole
+    // solve, so tuning on the smoothed loss re-solved all six strings every
+    // control period for the ~0.2 s the palm takes to settle after a CC2
+    // change: 6.5-9.5 ms a 256-frame block at 48 kHz against 0.3 held, which
+    // put Palm Muted Steel Pick's worst block at 2.7 times its period. The
+    // target solves once per change, and once the palm settles the pair is
+    // tuned exactly as before. Tuning on the palm at contact instead was
+    // rejected: from no palm to full the played string's detune moves by up
+    // to 9.3 cents (MIDI 42, median 0.42 over MIDI 40-86), so a note struck
+    // under the palm would have rung that far out once the palm lifted.
+    const float tuningHandRate = targetPalmMute_ == palmMute_
+        ? handRate : handRateAt(targetPalmMute_);
+    const float tuningT60 = tuningHandRate > 0.0f
+        ? 1.0f / (1.0f / fundamentalT60 + tuningHandRate)
+        : fundamentalT60;
     if (handRate > 0.0f)
         fundamentalT60 = 1.0f / (1.0f / fundamentalT60 + handRate);
     const float rawDelay = static_cast<float>(tunedLoopDelay(
@@ -7230,7 +7250,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // in one and missed in the next (2026-11-07); a wheel sweep on a chord
     // would have paid that six times a control period.
     const float tuningPeriodGain = std::pow(0.001f,
-        1.0f / std::max(fundamentalT60 * pitch.tuningFrequency, 1.0f));
+        1.0f / std::max(tuningT60 * pitch.tuningFrequency, 1.0f));
     const float coupledDetune = coupledPolarisationDetune(
         voice, stringIndex, unbentImpedance, pitch.tuningFrequency,
         tuningPeriodGain * stringRoundTripGain,

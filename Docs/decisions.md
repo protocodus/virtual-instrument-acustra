@@ -5,6 +5,22 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-09 — the pair is tuned where the palm comes to rest, 1.9.37 (measured; no listening test)
+
+While the palm settled after a CC2 change, the coupled pair's tuning was
+re-solved on all six strings every control period, which put Palm Muted
+Steel Pick's demo blocks at up to 2.7 times their period. The pair is now
+tuned on the palm's target, so a CC2 change solves once. Once the palm
+settles the tuning is exactly 1.9.36's, and a new `PalmMutePitch` contract
+checks that on a palm lifted off a ringing note. Tuning on the palm at
+contact was tried first and reverted: it left a note struck under the palm
+up to 9.3 cents out of tune once the palm lifted (MIDI 42, median 0.42).
+Measurement decides this: the steady tuning is unchanged (0 cents), and only
+the pair's path during the palm's 0.2 s move differs. The worst block is now
+0.35-0.85 of its period. The
+[benchmark record](benchmarks/palm-tuning-cpu-2026-11-09.md) has the
+numbers.
+
 ## 2026-11-09 — the pick carries the string as it lets go, 1.9.36 (a correction; adopted under the owner's standing rule, an A/B set rendered, key unread)
 
 **What was decided.** Which way a picked string moves as it leaves the tip.
@@ -60,11 +76,6 @@ speaking length, which is what a fixed termination end correction gives. It
 beats E3's H5 at the 12th fret 9-22 dB against `ChorusRegression`'s 2 dB,
 which is the guard kept when the owner chose 0.75 cent on 2026-10-30. It also
 moved B4's settled pitch by −5.2 cents. It was reverted and not offered.
-Also tried: tuning the coupled pair on the palm's loss at contact, which
-removes Palm Muted Steel Pick's callback overruns (worst block 2.7 to 0.6
-times its period). It leaves a note struck under the palm up to 9.3 cents
-out of tune once the palm lifts (MIDI 42; median 0.42), so it was reverted.
-The validation record describes the fix that keeps the pitch.
 
 ## 2026-11-09 — contact coordinates and bent-string consistency, 1.9.35 (local review candidate)
 

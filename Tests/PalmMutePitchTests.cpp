@@ -6,6 +6,8 @@
 #include <complex>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
+#include <utility>
 #include <memory>
 
 namespace acustra
@@ -64,6 +66,26 @@ struct AcustraEngineTestAccess
         result.held = loss(voice.loops[0]);
         result.frequency = rate / voice.contactPeriodSamples;
         return result;
+    }
+    // The played string's coupled detune once the palm has moved from where
+    // the note was struck to where it is held, and settled there.
+    static float settledDetune(int note, float struck, float held)
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        engine->setPalmMutePressure(struck);
+        engine->prepare(48000.0, 256);
+        engine->noteOn(note, 0.6f);
+        std::array<float, 256> left {}, right {};
+        engine->process(left.data(), right.data(), 256);
+        engine->setPalmMutePressure(held);
+        for (int block = 0; block < 60; ++block)
+            engine->process(left.data(), right.data(), 256);
+        if (engine->palmMute_ != held)
+            return std::numeric_limits<float>::quiet_NaN();
+        for (const auto& voice : engine->voices_)
+            if (voice.played && voice.midiNote == note)
+                return voice.polarisationDetune;
+        return std::numeric_limits<float>::quiet_NaN();
     }
 };
 }
@@ -162,12 +184,39 @@ void testHandLossKeepsItsTimeScaleOnBendsAndRetainedWaves()
     expect(worstTimeError < 0.0001, "bending changed the hand's time scale");
     expect(worstTailError < 0.02, "the retained wave uses a different hand loss");
 }
+
+void testAPalmThatMovesLeavesTheStringTunedForWhereItRests()
+{
+    // The coupled pair is tuned on the palm's target and solves once per
+    // change (configureVoice). Once the palm settles, a note must be tuned
+    // as one struck there: tuning on the palm at contact left MIDI 42 9.3
+    // cents out once a full palm lifted, and nothing else plays that.
+    using Access = acustra::AcustraEngineTestAccess;
+    double worstCents = 0.0;
+    for (int note : { 40, 42, 47, 52, 57, 64, 71, 76 })
+        for (const auto& [struck, held] : { std::pair { 1.0f, 0.0f },
+                                            std::pair { 0.0f, 0.6f },
+                                            std::pair { 1.0f, 0.3f } })
+        {
+            const float moved = Access::settledDetune(note, struck, held);
+            const float rested = Access::settledDetune(note, held, held);
+            expect(std::isfinite(moved) && std::isfinite(rested),
+                   "the palm did not settle on a sounding note");
+            const double cents = 1200.0 * std::log2((1.0 + double(moved)) / (1.0 + double(rested)));
+            worstCents = std::max(worstCents, std::abs(cents));
+            expect(moved == rested,
+                   "a palm that moved left the string tuned for where it was struck");
+        }
+    std::cout << "Palm moved after contact: worst tuning difference from a note struck there "
+              << worstCents << " cents\n";
+}
 }
 
 int main()
 {
     testSlideAndPhysicalFretHaveTheSameHandLoss();
     testHandLossKeepsItsTimeScaleOnBendsAndRetainedWaves();
+    testAPalmThatMovesLeavesTheStringTunedForWhereItRests();
     if (failures == 0) std::cout << "Palm-mute pitch tests passed\n";
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
