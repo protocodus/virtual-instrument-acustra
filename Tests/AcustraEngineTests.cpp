@@ -3806,12 +3806,9 @@ void testTheFractionalDelayReadIsLossless()
 
 void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
 {
-    // The loop's integer tap moves whenever a slewing delay carries the
-    // Thiran allpass's own delay out of its band, and the allpass's
-    // coefficients move with it. Read in direct form I from the line, the
-    // filter's memory of its input is the memory the new tap would have had,
-    // so the move costs no transient. Measured where a transient would show:
-    // the top band, in 5 ms frames, against the same string held still.
+    // A slewing delay crosses integer taps and changes the Thiran
+    // coefficients. Compare the top band in 5 ms frames against the same
+    // string held still to bound high-band transients in this fixture.
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const int block = 64;

@@ -16,6 +16,9 @@
 #include "PiezoBlampTable.h"
 #include "PlayerBodyLoading.h"
 #include "PickBendingProfile.h"
+#if !defined(JUKEBOX_SDK)
+#include "NativeComplexDivision.h"
+#endif
 
 #include <algorithm>
 #include <cassert>
@@ -320,7 +323,7 @@ inline std::complex<float> divide(const std::complex<float>& z,
 inline std::complex<double> divide(const std::complex<double>& z,
                                    const std::complex<double>& w) noexcept
 {
-    return z / w;
+    return nativeComplexDivision::divide(z, w);
 }
 
 inline double magnitude(const std::complex<double>& value) noexcept
@@ -3800,16 +3803,11 @@ ACUSTRA_FORCED_INLINE double AcustraEngine::StringLoop::readDelay(float samples)
             wrapDelayIndex(writeIndex - samplesAgo))];
     };
 
-    // Second-order Thiran allpass, exactly lossless at every frequency (see
-    // delayAnchor). Direct form I: the only state is the two previous
-    // outputs, and the previous inputs are read from the line at whichever
-    // tap is current, so when a slewing delay crosses a band edge and moves
-    // the tap and the coefficients together, the filter's memory of its input
-    // is already the memory it would have had at the new tap - the transient
-    // elimination of Valimaki, Laakso and Mackenzie, "Elimination of
-    // transients in time-varying allpass fractional delay filters with
-    // application to digital waveguide modeling", ICMC 1995, 327-334, which
-    // for a line-read section is exactly this signal-valued state.
+    // The second-order Thiran read has unit magnitude at a fixed tap and
+    // coefficients. All three inputs come from the current tap, so the input
+    // history follows a reanchor. The two recursive output histories carry
+    // across reads. For state reconstruction during coefficient changes,
+    // see Valimaki, Laakso and Mackenzie, ICMC 1995, Sections 3.1-3.4.
     const double first = thiranFirst;
     const double second = thiranSecond;
     const double output = second * at(whole) + first * at(whole + 1)
@@ -6408,7 +6406,8 @@ float AcustraEngine::coupledPolarisationDetune(
     const Complex gainParallel = std::polar(static_cast<double>(parallelGain), -ownPhase);
     // The loop's round-trip matrix at s, less its delay: the plane gains
     // times the saddle's reflection R = (Y0 I - Y)(Y0 I + Y)^-1, Y symmetric.
-    const auto loopMatrix = [&] (Complex s) -> std::array<Complex, 4>
+    using Matrix = std::array<Complex, 4>;
+    const auto loopMatrix = [&] (Complex s) -> Matrix
     {
         const Complex z = std::exp(-s); // z^-1 of the digital frequency s
         const auto loaded = loadOtherStrings(portAt(z), z);
@@ -6472,11 +6471,22 @@ float AcustraEngine::coupledPolarisationDetune(
     // fret, 255 at most, 0.25 ms with the rest of a note-on. The in-phase member sits
     // off the resting string's resonance, so it is found in s, not with its
     // frequency held at the nominal and the resting string read at its clamp.
-    const auto loopDeterminant = [&] (Complex s, double d)
+    const auto determinant = [&] (Complex s, double d, const Matrix& a)
     {
-        const auto a = loopMatrix(s);
         const Complex scale = std::exp(-(s - atNominal) * period - s * d * delayElement);
         return 1.0 - scale * (a[0] + a[3]) + scale * scale * (a[0] * a[3] - a[1] * a[2]);
+    };
+    const auto loopDeterminant = [&] (Complex s, double d)
+    {
+        return determinant(s, d, loopMatrix(s));
+    };
+    // The mechanical matrix depends on s, while the common delay factor
+    // in the determinant also depends on d. Keep the final two evaluations
+    // for the residue and for the next unshifted start at this same pole.
+    struct PoleMatrices
+    {
+        Matrix atPole;
+        Matrix atSlopeSample;
     };
     // Poles closer than this are one pole: the members of a doublet or a
     // unison sit cents apart, and a start that comes within it of a pole
@@ -6484,6 +6494,7 @@ float AcustraEngine::coupledPolarisationDetune(
     // a unison's eighteen end on one of its three or four poles).
     const double samePole = 1.0e-4 * omega0;
     std::array<Complex, 24> found {};
+    std::array<PoleMatrices, 24> foundMatrices {};
     std::size_t foundCount = 0;
     const auto alreadyFound = [&] (Complex s)
     {
@@ -6500,15 +6511,21 @@ float AcustraEngine::coupledPolarisationDetune(
     // seed on the far side of a resting string's resonance does not fly
     // off. False when it leaves the neighbourhood, stalls or reaches a pole
     // already found.
-    const auto solvePole = [&] (Complex& s, double d, Complex& slope)
+    const auto solvePole = [&] (Complex& s, double d, Complex& slope,
+                               const PoleMatrices* initial, PoleMatrices& result)
     {
         constexpr double h = 1.0e-7;
         const auto finite = [] (Complex value)
         {
             return exact::isfinite(value.real()) && exact::isfinite(value.imag());
         };
-        Complex value = loopDeterminant(s, d);
-        slope = (loopDeterminant(s + h, d) - value) / h;
+        Complex value = initial ? determinant(s, d, initial->atPole)
+                                : loopDeterminant(s, d);
+        const Complex slopeSample = s + h;
+        const Complex initialSlope = initial
+            ? determinant(slopeSample, d, initial->atSlopeSample)
+            : loopDeterminant(slopeSample, d);
+        slope = (initialSlope - value) / h;
         for (int step = 0; step < 16; ++step)
         {
             if (!finite(value) || !finite(slope) || std::norm(slope) < 1.0e-36)
@@ -6524,8 +6541,11 @@ float AcustraEngine::coupledPolarisationDetune(
             {
                 if (!(s.real() < 0.0))
                     return false;
-                value = loopDeterminant(s, d);
-                slope = (loopDeterminant(s + h, d) - value) / h;
+                result.atPole = loopMatrix(s);
+                value = determinant(s, d, result.atPole);
+                const Complex slopeSample = s + h;
+                result.atSlopeSample = loopMatrix(slopeSample);
+                slope = (determinant(slopeSample, d, result.atSlopeSample) - value) / h;
                 return finite(slope) && std::norm(slope) >= 1.0e-36;
             }
             const Complex next = loopDeterminant(s, d);
@@ -6585,6 +6605,8 @@ float AcustraEngine::coupledPolarisationDetune(
         std::array<Complex, 64> starts {};
         std::size_t startCount = 0;
         const std::size_t followed = foundCount;
+        std::array<PoleMatrices, 24> previousMatrices;
+        std::copy_n(foundMatrices.begin(), followed, previousMatrices.begin());
         for (std::size_t pole = 0; pole < followed; ++pole)
         {
             starts[startCount++] = found[pole];
@@ -6609,10 +6631,14 @@ float AcustraEngine::coupledPolarisationDetune(
                     break;
             }
             Complex s = starts[start], slope {};
-            if (!solvePole(s, d, slope))
+            const PoleMatrices* initial = start < 2 * followed && start % 2 == 0
+                ? &previousMatrices[start / 2] : nullptr;
+            PoleMatrices result;
+            if (!solvePole(s, d, slope, initial, result))
                 continue;
+            foundMatrices[foundCount] = result;
             found[foundCount++] = s;
-            auto a = loopMatrix(s);
+            auto a = result.atPole;
             const Complex scale = std::exp(-(s - atNominal) * period - s * d * delayElement);
             for (auto& entry : a) entry *= scale;
             // The pluck's wave in our string circulates in the mode with the
