@@ -22,6 +22,11 @@
 #include <utility>
 #include <vector>
 
+#if defined(__SSE2__) || defined(_M_X64)
+#include <xmmintrin.h>
+#define ACUSTRA_TEST_HAS_MXCSR 1
+#endif
+
 namespace acustra
 {
 // These checks hold a note to its exact reference geometry, which the
@@ -185,6 +190,31 @@ struct AcustraEngineTestAccess
     static bool idleFlushed(const AcustraEngine& engine)
     {
         return engine.idleFlushed_;
+    }
+    // Every string's line and each loop filter's memory are exactly zero.
+    static bool stringsAtRest(const AcustraEngine& engine)
+    {
+        for (const auto& voice : engine.voices_)
+            for (const auto& loop : voice.loops)
+            {
+                for (std::size_t index = 0; index < loop.delay.size(); ++index)
+                    if (loop.delay[index] != 0.0f)
+                        return false;
+                const auto atRest = [] (const AcustraEngine::SecondOrderAllpass& section)
+                {
+                    return section.x1 == 0.0 && section.x2 == 0.0
+                        && section.y1 == 0.0 && section.y2 == 0.0;
+                };
+                if (loop.allpassY1 != 0.0 || loop.allpassY2 != 0.0
+                    || loop.lossFilter.state != 0.0 || loop.broadLossFilter.state != 0.0
+                    || loop.bendingLossY1 != 0.0 || loop.bendingLossY2 != 0.0
+                    || loop.constantLossY1 != 0.0 || loop.constantLossY2 != 0.0
+                    || !atRest(loop.dispersion) || !atRest(loop.secondDispersion)
+                    || !atRest(loop.upperDispersion[0]) || !atRest(loop.upperDispersion[1])
+                    || loop.gestureContact.memory != 0.0f)
+                    return false;
+            }
+        return true;
     }
     static float saddleHeightRatio(const AcustraEngine& engine)
     {
@@ -9287,6 +9317,89 @@ void testIdleFlushIsIndependentOfBlockSize()
                    + std::to_string(blockSize));
 }
 
+// A chord held by a key, the pedal or the Sustain switch is cleared with the
+// rest of the instrument once everything is under the idle floor, and stays
+// held. Left to decay it ran down into subnormal numbers - the loops' double
+// filter states stuck at 4.9e-324 for good - and where the host had not set
+// flush-to-zero a block then cost 8 to 14 times its usual for as long as the
+// strings were held (Docs/benchmarks/cpu-consolidation-2026-11-09.md).
+void testHeldChordComesToRest()
+{
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    engine->prepare(sampleRate, 4096);
+    std::vector<float> left(4096), right(4096);
+    const auto render = [&]
+    {
+        engine->process(left.data(), right.data(), 4096);
+        float peak = 0.0f;
+        for (std::size_t index = 0; index < left.size(); ++index)
+            peak = std::max({ peak, std::abs(left[index]), std::abs(right[index]) });
+        return peak;
+    };
+    // The low string stays under its key, the other five under the pedal.
+    const std::array<int, 6> chord { 40, 47, 52, 56, 59, 64 };
+    for (const int note : chord)
+        engine->noteOn(note, 0.8f);
+    render();
+    engine->setSustainPedal(true);
+    for (std::size_t index = 1; index < chord.size(); ++index)
+        engine->noteOff(chord[index]);
+    render();
+    expect(engine->getActiveVoiceCount() == 6, "the held chord is not six played strings");
+    using Access = acustra::AcustraEngineTestAccess;
+    const int limit = static_cast<int>(40.0 * sampleRate / 4096.0);
+    int blocks = 0;
+    while (blocks < limit && !Access::idleFlushed(*engine))
+    {
+        render();
+        ++blocks;
+    }
+    expect(Access::idleFlushed(*engine), "a held chord never came to rest");
+    if (!Access::idleFlushed(*engine))
+        return;
+    expect(engine->getActiveVoiceCount() == 6, "the idle flush let go of held strings");
+    expect(Access::stringsAtRest(*engine),
+           "a held string at rest kept a wave or a filter's memory of one");
+#if defined(ACUSTRA_TEST_HAS_MXCSR)
+    // As a host that has set neither flush-to-zero nor denormals-are-zero:
+    // nothing computed at rest may take or produce a subnormal number.
+    const unsigned hostState = _mm_getcsr();
+    _mm_setcsr(hostState & ~0x8040u & ~0x003Fu);
+#endif
+    float restPeak = 0.0f;
+    for (int block = 0; block < 12; ++block)
+        restPeak = std::max(restPeak, render());
+#if defined(ACUSTRA_TEST_HAS_MXCSR)
+    const unsigned raised = _mm_getcsr();
+    _mm_setcsr(hostState);
+    constexpr unsigned denormalOperand = 0x0002u, underflow = 0x0010u;
+    expect((raised & (denormalOperand | underflow)) == 0u,
+           "a held chord at rest computed on subnormal numbers");
+#endif
+    expect(restPeak == 0.0f, "a held chord at rest was not exact silence");
+    // Still held: struck again the string sounds among six played strings,
+    // and let go they are all handed back and the instrument flushed as one.
+    engine->noteOn(chord[5], 0.8f);
+    float struckPeak = 0.0f;
+    for (int block = 0; block < 4; ++block)
+        struckPeak = std::max(struckPeak, render());
+    expect(struckPeak > 0.01f, "a held string struck after its rest did not sound");
+    expect(engine->getActiveVoiceCount() == 6, "a strike after the rest changed what is held");
+    engine->noteOff(chord[5]);
+    engine->noteOff(chord[0]);
+    engine->setSustainPedal(false);
+    blocks = 0;
+    while (blocks < limit
+           && !(Access::idleFlushed(*engine) && engine->getActiveVoiceCount() == 0))
+    {
+        render();
+        ++blocks;
+    }
+    expect(Access::idleFlushed(*engine) && engine->getActiveVoiceCount() == 0,
+           "strings let go after a held rest were not handed back and flushed");
+    expect(Access::stringsAtRest(*engine), "the final flush left a wave on a string");
+}
+
 // The bridge hand shortens the top by the 0.62 high-to-fundamental T60
 // ratio its comment gives: its extra shelf loss per round trip is
 // 0.001^((1/0.62 - 1) R / f) for its 1/T60 rate R. The shelf used exp in
@@ -10136,6 +10249,7 @@ int main(int argc, char** argv)
     testEachReleaseGivesBackTheForceItHeld();
     testStringAgeReachesTheWoundStrings();
     testIdleFlushIsIndependentOfBlockSize();
+    testHeldChordComesToRest();
     testThePlateFloorDampsAlikeAtEveryRate();
     testBodyRadiationKeepsItsLevelAcrossRates();
     testASecondConstructionChangeDoesNotStepTheBridge();

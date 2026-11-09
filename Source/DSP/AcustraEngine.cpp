@@ -3591,6 +3591,25 @@ void AcustraEngine::StringLoop::reset() noexcept
     intrinsicCoefficientSamples = 0;
 }
 
+void AcustraEngine::StringLoop::settle() noexcept
+{
+    delay.fill(0.0f);
+    allpassY1 = allpassY2 = 0.0f;
+    broadLossFilter.reset();
+    lossFilter.reset();
+    bendingLossX1 = bendingLossX2 = bendingLossY1 = bendingLossY2 = 0.0f;
+    constantLossX1 = constantLossX2 = constantLossY1 = constantLossY2 = 0.0f;
+    dispersion.reset();
+    secondDispersion.reset();
+    for (auto& section : upperDispersion)
+        section.reset();
+    bridgeDerivative.reset();
+    // A hand still on the string keeps its contact; what it remembers of
+    // the wave goes with the wave.
+    gestureContact.memory = 0.0f;
+    gestureContact.previousIncoming = {};
+}
+
 void AcustraEngine::StringLoop::setIntrinsicCoefficients(
     const IntrinsicCoefficients& target, bool transition) noexcept
 {
@@ -4587,6 +4606,7 @@ void AcustraEngine::resetSoundState() noexcept
 {
     idleQuietSamples_ = 0;
     idleFlushed_ = true;
+    idleFlushHeld_ = false;
     guitarNoises_.clear();
     resetPiezo();
     micDelayLeft_.fill(0.0f);
@@ -16088,9 +16108,19 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
     // static displacement, so flushing any one state alone does not hold.
     // Every instrument signal before the output gain (body and piezo)
     // under 1e-11, about 190 dB under a played note, for 80 ms with
-    // no string played, held, sounding a tail or about to be plucked, is
+    // no string let go, sounding a tail or about to be plucked, is
     // that residue: clear the whole instrument once, as All Sound Off does
     // when nothing is playing, and again only after it has sounded.
+    //
+    // A string still held by its key, the pedal or the Sustain switch is
+    // cleared where it is, and stays held. Left to decay, a held chord's
+    // waves, their filters' memories and the level observers ran down into
+    // subnormal numbers, where each operation costs a hundred times its
+    // usual on x86 unless the host has set flush-to-zero: from 40 s on a
+    // block took 6 times as long, and from 90 s on, with the loops' double
+    // states stuck at 4.9e-324, 8 to 14 times, for as long as the Sustain
+    // switch stayed on (Docs/benchmarks/cpu-consolidation-2026-11-09.md).
+    // An open chord is under this floor after 21 s, long before either.
     constexpr float idleFloor = 1.0e-11f;
     constexpr float idleFlushSeconds = 0.08f;
     // Counted sample by sample, so the flush lands on the same sample
@@ -16101,34 +16131,62 @@ void AcustraEngine::processIdleFlush(float samplePeak) noexcept
         idleFlushed_ = false;
         return;
     }
-    if (idleFlushed_)
+    // Flushed with nothing held, the instrument is at rest until it sounds.
+    if (idleFlushed_ && !idleFlushHeld_)
         return;
     bool idle = !guitarNoises_.active();
+    bool held = false;
     for (const auto& voice : voices_)
-        idle = idle && !voice.played && !voice.keyDown && !voice.pedalHeld
+    {
+        const bool holding = voice.keyDown || voice.pedalHeld;
+        held = held || holding;
+        // A string let go is handed back within its hand's T60 and 80 ms
+        // (finishVoice), and is cleared then. A held string's stretch force
+        // rings for as long as it is played.
+        idle = idle && (holding || !voice.played)
             && !voice.tailActive && voice.pluckDelay == 0
             && !voice.repluckPending && !voice.contactTravel.active
             && !voice.tailContactTravel.active
             && voice.repluckArrivals.remaining == 0
             && voice.tailRepluckArrivals.remaining == 0
             && voice.axialContactArrivals.remaining == 0
-            && !voice.stringAxialForce.ringing
+            && (holding || !voice.stringAxialForce.ringing)
             && !voice.legatoContactTravel.active && voice.legatoContactSamples == 0
             && !voice.tailLegatoContactTravel.active && voice.tailLegatoContactSamples == 0;
+    }
     if (!idle)
     {
         idleQuietSamples_ = 0;
         idleFlushed_ = false;
         return;
     }
-    ++idleQuietSamples_;
-    if (static_cast<float>(idleQuietSamples_)
-        < idleFlushSeconds * static_cast<float>(sampleRate_))
+    if (idleFlushed_)
+    {
+        // Cleared, and still held. Once nothing is, the instrument is
+        // flushed again as one with nothing held: its strings open, so that
+        // a suspension keeps exactly what an awake engine would hold.
+        if (held)
+            return;
+    }
+    else if (static_cast<float>(++idleQuietSamples_)
+             < idleFlushSeconds * static_cast<float>(sampleRate_))
         return;
     for (int string = 0; string < stringCount; ++string)
-        returnToOpenString(voices_[static_cast<std::size_t>(string)], string, true);
+    {
+        auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (voice.keyDown || voice.pedalHeld)
+        {
+            for (auto& loop : voice.loops)
+                loop.settle();
+            // Zero changes nothing the observers decide (suspend).
+            voice.level = 0.0f;
+            voice.observedSlopeEnergy = voice.attackSlopeEnergy = 0.0f;
+        }
+        else
+            returnToOpenString(voice, string, true);
+    }
     resetSoundState();
-    idleFlushed_ = true;
+    idleFlushHeld_ = held;
 }
 
 int AcustraEngine::getActiveVoiceCount() const noexcept

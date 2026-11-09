@@ -39,6 +39,20 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.38 — 2026-11-09 — a chord held for minutes no longer stalls the host
+
+- A chord kept under its keys, the pedal or the Sustain switch used to run
+  down into numbers too small for the processor to handle at speed. In a host
+  that does not flush them to zero, a block then took 6 times as long from
+  40 s after the strike and 8 to 14 times as long from 90 s on, more than the
+  block lasts, for as long as the strings stayed held. A held chord is now
+  brought to exact rest with the rest of the instrument once everything is
+  under the idle floor (190 dB under a played note, 21 s after an open E
+  chord), and stays held. Its cost stays level, at 11% of a block.
+- Every factory demo renders bit for bit as before. On the held chord the
+  output differs only after that moment, by at most 3e-10 of full scale.
+- [Benchmark](Docs/benchmarks/cpu-consolidation-2026-11-09.md).
+
 ### 1.9.37 — 2026-11-09 — the palm no longer overruns the audio callback
 
 - Moving the palm (CC2) no longer re-tunes all six strings on every control
@@ -824,7 +838,8 @@ plus 30 ms while Gather Chords is on and 50 ms while Finger Lookahead is on. In 
 off by default. The plug-in plays at host rates from 8 kHz to 384 kHz and stays
 silent, showing UNSUPPORTED RATE, at any other. An idle instance stops
 computing the strings and wakes with output bit for bit that of one that never
-slept.
+slept. Strings still held when everything has fallen under the idle floor are
+brought to exact rest where they are, and stay held.
 
 ### Why this architecture
 
