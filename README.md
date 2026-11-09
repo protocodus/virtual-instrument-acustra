@@ -1016,6 +1016,11 @@ separates verified errors from accepted approximations.
   also changes the approximate initial wave projection and some attack
   harmonics; it does not establish a measured match to a real pluck.
   The rendered H8 decay spread across 44.1-96 kHz remains about 4.3%.
+  Run at 96 kHz against 48 kHz (the Rack device's 2x setting), 60 notes
+  over two presets keep their settled pitch within 0.1 cent and the
+  fundamental's decay within 1% on 54 of 59; the top string's 20th fret (C6)
+  is 1.5 dB quieter at 96 kHz, its second partial 4 dB lower
+  (`Docs/validation/consolidation-audit-2026-11-09.md`).
 - Where the pluck nearly nulls a partial, the random release burst decides its
   level.
 - A slow release still keeps a little of the treble it should lose on the
@@ -1086,6 +1091,13 @@ separates verified errors from accepted approximations.
   its tuning without the solve (1.9.28). Spreading a chord's solves
   over its first blocks would close it; the development-machine figures are
   not Reason's (`Docs/research/coupled-tuning-2026-11-07.md`, Cost).
+- The target of no 256-sample block above 10% of one core is not met. On
+  the development machine at 48 kHz a held six-string chord takes 8-12% of a
+  block, the block in which a six-note chord is first struck 35-40%, and a
+  held chord that has come to rest still 7.7%. Half of a held block is the
+  stretch sum at the four cells kept by ear; no change that leaves the
+  output exact reaches the target
+  (`Docs/benchmarks/cpu-consolidation-2026-11-09.md`).
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over
