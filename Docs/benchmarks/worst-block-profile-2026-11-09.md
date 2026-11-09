@@ -3,8 +3,8 @@
 Source `1e26fc4` (1.9.37-build.93). One development machine: 4-thread Xeon
 at 2.1 GHz, gcc 13.3, Linux, Release (`-O3`), 48 kHz in 256-frame blocks.
 These are not Reason or DAW CPU figures. No source change is kept: this
-records a one-hour profile against the portfolio's target of under 10% of
-the period on worst-case blocks.
+records a profile against the portfolio's target of under 10% of the period
+on worst-case blocks, and the rewrites tried against it.
 
 ## Method
 
@@ -60,12 +60,45 @@ but per-block CPU did not move beyond noise (medians 10.9/11.0%, 7.7/7.6%,
 10.9/10.8%; worst blocks within 1-2 points either way), so it was reverted.
 The loop is not bound by its loads on this machine.
 
-## Next candidates
+A second rewrite ran each run of 16 groups in three passes: tap indices and
+fractions as vectors, the reads and interpolation lane by lane, then the
+slopes from the runs shifted by one, with no per-group shuffles. It was also
+bit-identical on all eight demos, and slower (Dreadnought mean 11.4% against
+10.2%), so it was reverted too.
 
-- Solve `coupledPolarisationDetune` off the attack: the cache already holds
-  exact keys, so solving each string's frets ahead (at prepare and after a
-  construction change, off the audio thread) would make a note-on a cache
-  hit with identical bits, provided the keys at contact match.
-- Clear only the part of a delay line that the previous note wrote.
-- The axial sum's cell count follows the longitudinal mode or 5 kHz. Any
-  coarser quadrature changes the sound and needs an A–Z listening test.
+## The attack's design work is already cached as far as it can be
+
+Counting every `coupledPolarisationDetune` call over the eight demos, the
+solve misses 13-20 times a demo (84 in Open G, whose slides move the stop),
+and no miss repeats an earlier key: the eight-entry history already catches
+every revisit. The dispersion design (`solvedDispersion`) misses 47-122
+times a demo, 37-109 of them on new inputs, because its design frequency
+carries each note's fretting detune (`noteDetuneCents`); a longer history
+would catch only the 10-30 repeats. The delay copies and clears already
+cover only the ring the sample rate uses (`DelayHistory`).
+
+Solving fret tunings ahead was considered and not built. Reason's adapter
+prepares the engine with the default controls and receives the song's
+values in its first batch, so a solve at prepare would key on the wrong
+controls; and the adapter does not run the engine while it sleeps, so there
+is no idle time on the audio thread to solve in either.
+
+## Coarser axial quadrature: a sound change, put to the ear
+
+The one lever left is the axial sum's cell count, a numerical convention
+(four cells per period of the cut-off). At two cells (the cut-off's Nyquist
+rate) the eight demos' mean CPU falls from 9.44% to 7.61% of the period and
+their mean worst block from 25.6% to 22.7%; at three cells, to 8.49% and
+24.5% (best of three runs per block, best of two rounds). Neither is a
+null: against the shipping engine the demos' residual is 28-65 dB below the
+signal at two cells, and on full-velocity pick strokes 24.8 dB below at two
+cells and 37.3 dB at three. A level-matched A/B/C set on those strokes went
+to the owner on 2026-11-09; the choice, if any, goes in
+[decisions.md](../decisions.md).
+
+## What the target would take
+
+Held blocks already take 8-12% of the period, and each chord attack adds
+10-20% more for its per-note design work. Under 10% on worst-case blocks
+needs both halves reduced well beyond what the exact rewrites above found,
+so it is not reachable without changing the sound.
