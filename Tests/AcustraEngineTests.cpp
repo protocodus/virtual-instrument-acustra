@@ -458,7 +458,6 @@ struct AcustraEngineTestAccess
     {
         double energy;
         double cents;
-        double decay;
     };
 
     struct BendLifecycleSnapshot
@@ -1285,8 +1284,7 @@ struct AcustraEngineTestAccess
             return {};
 
         std::vector<AttackPitchSnapshot> trace {{
-            selected->attackSlopeEnergy, selected->attackPitchCents,
-            selected->attackPitchDecay
+            selected->attackSlopeEnergy, selected->attackPitchCents
         }};
         for (int sample = 0; sample < samples; ++sample)
         {
@@ -1295,8 +1293,7 @@ struct AcustraEngineTestAccess
             engine.process(&left, &right, 1);
             if ((sample + 1) % AcustraEngine::controlPeriod == 0)
                 trace.push_back({ selected->attackSlopeEnergy,
-                                  selected->attackPitchCents,
-                                  selected->attackPitchDecay });
+                                  selected->attackPitchCents });
         }
         return trace;
     }

@@ -4923,7 +4923,6 @@ void AcustraEngine::applyDiscreteParameters(bool force) noexcept
         if (force)
         {
             voice.attackPitchCents = 0.0f;
-            voice.attackPitchDecay = 1.0f;
             voice.attackSlopeEnergy = 0.0f;
             voice.observedSlopeEnergy = 0.0f;
         }
@@ -6741,7 +6740,12 @@ namespace
 // the round-trip rates. Raising the retention to f_open/f keeps a partial's
 // lifetime independent of the fret; 1.9.15 did this only on the plain
 // strings above MIDI 66 and with an exponent of 0.65, neither from physics.
-// The exponent is bounded for virtual strings two octaves off their tuning.
+// The validated frequencies are positive, and the base loss is in [0,0.95],
+// so (1-base)^exponent is bounded for every supported fret, wheel, master
+// tune and sample rate. A former [0.25,4] exponent guard introduced a new
+// loss slope above the 24th effective fret, inside the documented 20-fret
+// plus 12-semitone bend range. The final mix bound already protects extreme
+// downward virtual pitches; no extra octave bound belongs in this ratio.
 // A voice with no pitch geometry yet keeps the open string's loss, and so,
 // bit for bit, does an unbent open string: 1 - (1 - b) is not always b in
 // float, and the resting-string references are built from b.
@@ -6749,7 +6753,7 @@ float fretHighLoss(float baseHighLoss, float openFrequency, float lossDesignFreq
 {
     if (!(lossDesignFrequency > 0.0f))
         return baseHighLoss;
-    const float exponent = std::clamp(openFrequency / lossDesignFrequency, 0.25f, 4.0f);
+    const float exponent = openFrequency / lossDesignFrequency;
     if (exponent == 1.0f)
         return baseHighLoss;
     return std::clamp(1.0f - std::pow(1.0f - baseHighLoss, exponent), 0.0f, 0.95f);
@@ -6945,12 +6949,15 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // an unchanged key - an idle string, or a held one once its attack glide
     // has settled below a float step of its pitch - keeps what it has. Only
     // the two assignments that depend on arguments outside the key remain.
+    // The contact tuning reference is independent of the sounding pitch:
+    // re-plucking an already settled slide refreshes it, changing dispersion
+    // order and polarization tuning even if every running pitch bit matches.
     // clearDelay always runs: it also resets the loops.
     const VoiceConfigurationKey configurationKey {
         voiceConfigurationGeneration_, stoppedMidi, voice.openMidi,
         exact::bits(frequency), exact::bits(tensionSemitones),
         exact::bits(soundingLength), exact::bits(pitch.speakingFret),
-        exact::bits(lossDesignFrequency),
+        exact::bits(lossDesignFrequency), exact::bits(pitch.tuningFrequency),
         exact::bits(parameters_.stringAge), exact::bits(palmMute_) };
     const bool usePickReference = (clearDelay || refreshPickReference)
         && sampleRate_ != 48000.0 && parameters_.picking == PickingTechnique::Pick;
@@ -7047,6 +7054,13 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             / stretchedPartial(3.0, inharmonicity)));
     const float dispersionFitFrequency = std::min(lossDesignFrequency,
                                                    highestFitFrequency);
+    // Every section in the bounded phase fit must be evaluated at its
+    // design pitch. The running shelf still follows the actual pitch above;
+    // passing that shelf here would invalidate an otherwise fixed fit on
+    // every extreme slide, beyond the fit's useful frequency band.
+    const float fitHighLoss = dispersionFitFrequency == lossDesignFrequency
+        ? highLoss : fretHighLoss(baseHighLoss,
+            tunedMidiFrequency(voice.openMidi), dispersionFitFrequency);
     constexpr float designBroadLossCoefficient = broadLossCoefficient;
     // Inside that supported band dispersion includes the loss section's
     // phase at the physical playing frequency. A 0.1% pitch change (1.73 cents)
@@ -7155,7 +7169,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                               sampleRate_);
         const std::array<double, 14> arguments {
             inharmonicity, dispersionFitFrequency, sampleRate_,
-            designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
+            designBroadLossCoefficient, broadLoss, lowpassCoefficient, fitHighLoss,
             static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
             static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
             static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2),
@@ -7236,7 +7250,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                               referenceRate);
         const auto [decayRatios, poleRatios] = solvedDispersion({
             inharmonicity, dispersionFitFrequency, referenceRate,
-            designBroadLossCoefficient, broadLoss, lowpassCoefficient, highLoss,
+            designBroadLossCoefficient, broadLoss, lowpassCoefficient, fitHighLoss,
             static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
             static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
             static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2),
@@ -7400,6 +7414,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     voice.tensionNewtons = bentTension;
     voice.bendImpedanceScale = exact::sqrt((bentTension / tension)
                                          / stretchedMass);
+    // c*Z=T. Grimes' stretched mass per length falls by 1/stretchedMass,
+    // so c/c0=(Z/Z0)*stretchedMass, not Z/Z0. Reusing the impedance ratio
+    // made a pre-bent contact unload too slowly even though its held force
+    // was correct. Cache the speed beside the unchanged junction scale.
+    voice.bendWaveSpeedScale = voice.bendImpedanceScale * stretchedMass;
     if (clearDelay)
         voice.appliedBendImpedanceScale = voice.bendImpedanceStage
             = voice.bendImpedanceScale;
@@ -8275,12 +8294,16 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // then sat that much bridgeward of p on the string, and its partials
         // 6-9 dB rms off the rest pluck's law. Scaled by the period over the
         // written length it lands at p of the string, which a blind listener
-        // preferred on 2026-09-30 (Docs/decisions.md); the bound leaves room
-        // for that scale past the 0.48 the position itself stops at.
+        // preferred on 2026-09-30 (Docs/decisions.md). These are coordinates
+        // of the numerical triangle, not another physical hand-position
+        // limit. Its apex may pass 0.60 on stiff upper frets/MPE bends, or
+        // fall below 0.05 for the normal plane's bridgeward offset. Keep
+        // only endpoint guards for the triangle's divisions; the physical
+        // hand bands remain 0.05-0.36 (panel) and 0.05-0.46 (MPE).
         const float frameScale = voice.contactPeriodSamples > 0.0f
             ? voice.contactPeriodSamples / static_cast<float>(length) : 1.0f;
         const float localPosition = clamp((position
-            + (polarisation == 0 ? -0.006f : 0.009f)) * frameScale, 0.05f, 0.60f);
+            + (polarisation == 0 ? -0.006f : 0.009f)) * frameScale, 0.01f, 0.95f);
         voice.releaseShapePosition[static_cast<std::size_t>(polarisation)] = localPosition;
         const float polarisationGain = polarisation == 0
             ? exact::sqrt(voice.polarisationMix)
@@ -8810,7 +8833,6 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
             = voice.releaseStepLevel = 0.0f;
     }
     voice.attackPitchCents = 0.0f;
-    voice.attackPitchDecay = 1.0f;
     voice.frozenMemberPitchBendSemitones = 0.0f;
     voice.noteDetuneCents = 0.0f;
     voice.attackSlopeEnergy = 0.0f;
@@ -9668,10 +9690,12 @@ double AcustraEngine::plectrumSlipPole(const Voice& voice,
     // wave speed.
     const float unbentWaveSpeed = 2.0f * scaleLength * tunedMidiFrequency(voice.openMidi);
     // A member's lateral bend raises wave speed at the same stopped length.
-    // This is the same sqrt(T/mu) ratio already used by the junction, with
-    // stretched mass included; a slide leaves the ratio exactly one.
-    const float waveSpeed = voice.bendImpedanceScale == 1.0f
-        ? unbentWaveSpeed : unbentWaveSpeed * voice.bendImpedanceScale;
+    // The force unloads into two string impedances: u=F/(2Z). In this
+    // geometric form that requires c=T/Z=sqrt(T/mu), while the junction
+    // uses Z=sqrt(T*mu). The ratios differ by the bend's stretch. A slide
+    // leaves the speed scale exactly one and keeps the calibrated arithmetic.
+    const float waveSpeed = voice.bendWaveSpeedScale == 1.0f
+        ? unbentWaveSpeed : unbentWaveSpeed * voice.bendWaveSpeedScale;
     const float heldMetres = exact::abs(releasedAmplitude)
         * std::max(physicalCalibration_.steelDisplacementScaleMetres, 1.0e-4f);
     const float a = clamp(heldDistance, 1.0e-3f, 0.999f * soundingLength);
@@ -9939,7 +9963,7 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
 {
     // As the shape's own bound (initialisePluck): p of the written line.
     // The reference grid below moves it (setApex) and puts it back.
-    float p = clamp(position, 0.05f, 0.60f);
+    float p = clamp(position, 0.01f, 0.95f);
     double apex = static_cast<double>(p);
     const auto bridgeFraction = [] (double phase)
     {
@@ -10178,7 +10202,7 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
         // the same point on the string is its own share of the 48 kHz line.
         const float hostShare = p;
         setApex(clamp(static_cast<float>(static_cast<double>(hostShare) * length
-            * (48000.0 / sampleRate_) / grid), 0.05f, 0.60f));
+            * (48000.0 / sampleRate_) / grid), 0.01f, 0.95f));
         const auto reference = energiesOn(grid, true);
         referenceSolved = true;
         if (reference.velocity > 0.0)
@@ -10224,7 +10248,7 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
     }
 
     if (referenceSolved)
-        setApex(clamp(position, 0.05f, 0.60f));
+        setApex(clamp(position, 0.01f, 0.95f));
 
     // Kept for the write pass below, which reads the same phases.
     const bool kept = length >= 1
@@ -11025,7 +11049,6 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
     voice.releaseSeconds = 0.0f;
     voice.returnSamples = 0;
     voice.attackPitchCents = 0.0f;
-    voice.attackPitchDecay = 1.0f;
     voice.noteDetuneCents = noteDetuneRangeCents * parameters_.detune
         * xorshiftNoise(voice.noteDetuneState)
         + frettingPitchCents(voice, targetMidiNote);
@@ -11093,7 +11116,6 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     const float v = clamp(velocity, 0.001f, 1.0f);
     voice.velocity = v;
     voice.attackPitchCents = 0.0f;
-    voice.attackPitchDecay = 1.0f;
     if (!continuing)
         voice.noteDetuneCents = 0.0f;
     clearReleaseFall(voice);
@@ -11544,7 +11566,6 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         merge = voice.attackFired && voice.harmonic == 1
             && sampleClock_ > voice.lastPluckSample;
         voice.attackPitchCents = 0.0f;
-        voice.attackPitchDecay = 1.0f;
         // The pick reaches this held string now. Keep its preceding wave
         // intact until then, and carry it under the hand while the new pluck
         // is released, exactly as for an immediate re-pluck.
@@ -11772,7 +11793,6 @@ void AcustraEngine::muteStroke(int string, int delaySamples, float velocity,
     voice.startOrder = ++noteOrder_;
     voice.velocity = clamp(velocity, 0.001f, 1.0f);
     voice.attackPitchCents = 0.0f;
-    voice.attackPitchDecay = 1.0f;
     voice.noteDetuneCents = 0.0f;
     clearReleaseFall(voice);
     configureVoice(voice, string, voice.openMidi, true);
@@ -13783,17 +13803,14 @@ ACUSTRA_FORCED_INLINE void AcustraEngine::finishVoice(Voice& voice, int stringIn
     // The local-contact paths have already entered incident waves before
     // the junction solve. Writing this source again would duplicate energy.
     const float boundaryExcitation = voice.contactTravelEnabled ? 0.0f : excitation;
-    float normalOut = verticalIncident - bridgeDisplacement
-                    + 0.76f * boundaryExcitation;
-    if (performanceRealism_.fretCrownGrazing && voice.speakingFret > 0
-        && voice.harmonic <= 1 && normalOut < -0.072f)
-    {
-        constexpr float clearance = 0.072f;
-        constexpr float knee = 0.050f;
-        const float excess = -normalOut - clearance;
-        normalOut = -(clearance + knee * std::tanh(excess / knee));
-    }
-    voice.loops[0].write(normalOut);
+    // Do not clip the absolute travelling potential as a fret collision:
+    // adding one constant to both folded waves leaves the physical string
+    // displacement unchanged, y(x)=s(D-x/c)-s(x/c). Such a clip manufactured
+    // a kink even on a physically silent constant field. A real crown needs
+    // a local two-port contact with consistent velocity/energy state;
+    // this bridge junction is not that contact (FretCrownTests).
+    voice.loops[0].write(verticalIncident - bridgeDisplacement
+                         + 0.76f * boundaryExcitation);
     // The crown's sideways motion is (h/a) times the rocking; on a bridge
     // whose rocking was not measured it never moves, and the parallel loop
     // reflects rigidly as it always did.

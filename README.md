@@ -39,6 +39,20 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.35 — 2026-11-09 — physical pluck coordinates and bent release
+
+- Bridgeward and neckward plucks retain their physical contact location when
+  mapped to the shorter numerical string, including upper-fret MPE positions
+  and bends. The playable hand-position ranges are unchanged.
+- Bent strings unload the pick using their wave speed and characteristic
+  impedance as distinct quantities. A retired bridge-wave clip no longer
+  mistakes an arbitrary displacement-potential offset for fret contact.
+- Extended bends retain the same per-second upper-loss law across the former
+  two-octave numerical cap. Re-plucks refresh their contact tuning reference
+  even when the sounding pitch has already settled at the new stop.
+- [Physical audit and validation](Docs/validation/realism-audit-2026-11-09.md).
+  Local review candidate; no release or listening verdict is claimed.
+
 ### 1.9.33 — 2026-11-08 — passive longitudinal damping
 
 - A low-rate axial damping fit could feed energy into its own feedback loop

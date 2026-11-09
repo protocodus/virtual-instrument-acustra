@@ -62,9 +62,10 @@ struct AcustraEngineTestAccess
         // consulting plectrumSlipPole or the initializer's pole metadata.
         const double speakingLength = voice.speakingLengthMetres;
         const double a = voice.pluckPoint * speakingLength;
-        const double waveSpeed = 2.0 * 0.648 * 440.0
-            * std::exp2((voice.openMidi - 69.0) / 12.0)
-            * voice.bendImpedanceScale;
+        // c*Z=T also holds for the string's tiny natural fretting detune.
+        // Its stretched mass makes c/c0 distinct from Z/Z0.
+        const double waveSpeed = voice.tensionNewtons
+            / (voice.characteristicImpedance * double(voice.bendImpedanceScale));
         const double heldMetres = displacement
             * engine.physicalCalibration_.steelDisplacementScaleMetres;
         const double releaseSpeed = 0.5 * waveSpeed * heldMetres

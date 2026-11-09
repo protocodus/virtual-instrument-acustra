@@ -54,7 +54,7 @@ struct AcustraEngineTestAccess
 
     struct Attack
     {
-        double length, position, amplitude, slipPole, bendSpeed;
+        double length, position, amplitude, slipPole, impedanceRatio;
         double referencePole, upperContactFret, tension;
         bool finite;
         std::array<double, 2> waveEnergy;
@@ -475,14 +475,20 @@ void testMemberAttackUsesBentWaveSpeedAtFixedLength()
                 expect(forceError < 2.0e-5,
                        "member attack ignored force-driven static string compliance");
                 worstForceError = std::max(worstForceError, forceError);
-                // The edge release lasts r/u. At fixed contact position,
-                // u follows both physical wave speed and actual displacement.
+                // Two equal string impedances unload a held force F at
+                // u=F/(2Z), so the edge's release time r/u is proportional
+                // to Z/F. This uses the independent stored saddle-force
+                // displacement and the actual junction impedance, not an
+                // internal variable labelled as a propagation speed. A
+                // stretched string's Z=sqrt(T*mu) and c=sqrt(T/mu) do not
+                // have the same ratio: mu falls as the string stretches.
                 const double heldTau = -1.0 / std::log(held.slipPole);
                 const double bentTau = -1.0 / std::log(bent.slipPole);
+                const double forceRatio = displacementRatio * bent.tension / held.tension;
                 const double releaseError = std::abs(bentTau / heldTau
-                    * bent.bendSpeed * displacementRatio - 1.0);
+                    * forceRatio / bent.impedanceRatio - 1.0);
                 expect(releaseError < 2.0e-5,
-                       "member attack release time ignored wave speed or displacement");
+                       "member attack release time did not unload held force through two string impedances");
                 worstReleaseError = std::max(worstReleaseError, releaseError);
                 expect(bent.finite, "member attack was nonfinite");
             }

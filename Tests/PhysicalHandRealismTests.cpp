@@ -53,9 +53,8 @@ struct AcustraEngineTestAccess
                 const double a = voice.pluckPoint * voice.speakingLengthMetres;
                 const double force = voice.tensionNewtons * metres
                     * (1.0 / a + 1.0 / (voice.speakingLengthMetres - a));
-                const double speed = 2.0 * 0.648 * 440.0
-                    * std::exp2((voice.openMidi - 69.0) / 12.0)
-                    * voice.bendImpedanceScale;
+                const double speed = voice.tensionNewtons
+                    / (voice.characteristicImpedance * double(voice.bendImpedanceScale));
                 return { voice.pluckPoint, voice.speakingLengthMetres,
                          voice.tensionNewtons, metres, force, speed,
                          voice.releaseSlipPole, voice.releaseReferencePole, voice.pluckForceGain,

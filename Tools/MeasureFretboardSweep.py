@@ -29,8 +29,9 @@ measured for:
            at A440: the strongest peak within 8 % of the nominal fundamental,
            Hann window, 8x zero padding, parabolic interpolation
   set_c    the same over 0.3-0.9 s, the settled pitch; glide = att_c - set_c
-  B        inharmonicity coefficient from partials 1-6 over 0.1-0.6 s,
-           f_n = n f1 sqrt(1 + B n^2), least squares on f_n^2 / n^2
+  B        inharmonicity coefficient from resolved partials 1-6 over
+           0.1-0.6 s, f_n = n f_ideal sqrt(1 + B n^2), least squares on
+           f_n^2 / n^2; unavailable when harmonic identity is ambiguous
 
 Every metric is also expressed as a deviation from its neighbourhood: the
 mean of the same metric at frets +/-1 and +/-2 on the same string, with the
@@ -207,16 +208,49 @@ def pitch_cents(mono: np.ndarray, f0: float, start: float, end: float) -> float:
 
 def inharmonicity(mono: np.ndarray, f0: float, start: float, end: float,
                   count: int = 6) -> float:
-    """B of f_n = n f1 sqrt(1 + B n^2), fitted to the partials' peaks."""
+    """B from identifiable partials; NaN is preferable to a wrong mode label.
+
+    Each search is bounded by non-overlapping nominal harmonic cells. The
+    former increasing upper limit for H6 included H7: a strong seventh could
+    therefore be fitted as the sixth and fabricate a large stiffness B.
+    Very stiff spectra can leave these conservative cells. They require a
+    separate tracked-modal analysis, rather than relabelling a nearby peak.
+    The maximum residual guard also rejects spectra that these six peaks
+    cannot describe with one stiff-string law (e.g. unresolved coupled modes).
+    """
     x = seg(mono, start, end)
+    size = 8 * len(x)
+    spectrum = np.abs(np.fft.rfft(x * np.hanning(len(x)), size))
+    frequencies = np.fft.rfftfreq(size, 1 / RATE)
     n = np.arange(1, count + 1)
-    peaks = np.array([peak_frequency(x, f0 * k * (1 - 0.03), f0 * k * (1 + 0.03 + 0.004 * k * k))
-                      for k in n])
+    peaks = []
+    for k in n:
+        low = max(k * 0.97, k - 0.45) * f0
+        high = min(k * (1.03 + 0.004 * k * k), k + 0.45) * f0
+        band = np.flatnonzero((frequencies >= low) & (frequencies <= high))
+        if len(band) < 3:
+            return float("nan")
+        peak = band[np.argmax(spectrum[band])]
+        if (peak == band[0] or peak == band[-1]
+                or spectrum[peak] < 1.0e-4 * np.max(spectrum)):
+            return float("nan")
+        a, b, c = np.log(spectrum[peak - 1:peak + 2] + 1e-30)
+        curvature = a - 2 * b + c
+        if curvature >= -1e-12:
+            return float("nan")
+        shift = 0.5 * (a - c) / curvature
+        peaks.append((peak + shift) * frequencies[1])
+    peaks = np.asarray(peaks)
     if not np.isfinite(peaks).all() or f0 * count > 12000:
         return float("nan")
-    # (f_n / n)^2 = f1^2 + f1^2 B n^2: a line in n^2.
+    # (f_n / n)^2 = f_ideal^2 (1 + B n^2): a line in n^2.
     slope, intercept = np.polyfit(n ** 2, (peaks / n) ** 2, 1)
-    return float(slope / intercept) if intercept > 0 else float("nan")
+    if intercept <= 0 or np.any(intercept + slope * n ** 2 <= 0):
+        return float("nan")
+    fitted = n * np.sqrt(intercept + slope * n ** 2)
+    if np.max(np.abs(peaks - fitted)) > 0.04 * f0:
+        return float("nan")
+    return float(slope / intercept)
 
 
 def note_metrics(audio: np.ndarray, midi: int) -> dict:
@@ -293,7 +327,7 @@ OUTLIER_LIMITS = {"peak_dbfs": 3.0, "attack_dbfs": 3.0, "sustain_dbfs": 3.0,
                   "h2_db": 6.0, "h3_db": 6.0, "floor_db": 6.0,
                   "release_db": 6.0, "tail_db": 6.0,
                   "attack_cents": 8.0, "settled_cents": 4.0,
-                  # B doubles each fret on one string (1/L^2), so the
+                  # B doubles every six frets on one string (1/L^2), so the
                   # neighbourhood mean is biased; a 3x step is still a hole.
                   "inharmonicity_b": 10 * np.log10(3.0)}
 # Outright limits, against the nominal rather than the neighbours.

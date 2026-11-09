@@ -1172,7 +1172,7 @@ private:
     // computed from: the engine-wide state configureVoice reads (calibration,
     // host rate, construction, tuning, bridge bank) enters as one generation
     // count that changes whenever any of it does; the voice's own pitch,
-    // geometry, tension, age and hand enter as
+    // geometry, contact tuning reference, tension, age and hand enter as
     // their exact bits. A bounded final pitch does not identify the physical
     // length, fret or pre-attack loss pitch. Equal keys produce equal values, so
     // an equal key lets it keep what it already wrote.
@@ -1186,6 +1186,7 @@ private:
         std::uint32_t soundingLength { 0 };
         std::uint32_t speakingFret { 0 };
         std::uint32_t lossDesignFrequency { 0 };
+        std::uint32_t tuningFrequency { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
 
@@ -1199,6 +1200,7 @@ private:
                 && soundingLength == other.soundingLength
                 && speakingFret == other.speakingFret
                 && lossDesignFrequency == other.lossDesignFrequency
+                && tuningFrequency == other.tuningFrequency
                 && age == other.age && palmMute == other.palmMute;
         }
     };
@@ -1531,6 +1533,9 @@ private:
         // and a scale of exactly 1 leaves every product bit-identical to the
         // unbent engine.
         float bendImpedanceScale { 1.0f };
+        // Propagation speed c=sqrt(T/mu), distinct from the impedance
+        // sqrt(T*mu) when a member bend stretches the string's mass.
+        float bendWaveSpeedScale { 1.0f };
         float bendImpedanceStage { 1.0f };
         float appliedBendImpedanceScale { 1.0f };
         // The string's tension now, in newtons, bend included. Kept so the
@@ -1551,7 +1556,6 @@ private:
         // The slide the wheel held when this wave was struck, in semitones;
         // the coupled tuning is solved there (configureVoice).
         float tuningSlideSemitones { 0.0f };
-        float attackPitchDecay { 1.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
         float attackSlopeEnergy { 0.0f };
         float observedSlopeEnergy { 0.0f };

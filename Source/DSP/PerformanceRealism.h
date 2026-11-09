@@ -105,8 +105,10 @@ struct PerformanceRealism
     // (p(1 - p) / (p0(1 - p0)))^0.22 so stiffer bridgeward contacts unload
     // faster and more compliant soundhole-ward contacts unload more warmly.
     bool pluckBoundaryCompliance { true };
-    // Smooth unilateral fret-crown grazing when hard downward normal-plane
-    // excursions on fretted strings exceed the fret clearance.
+    // Retired: clipping an absolute travelling potential at the bridge is
+    // not a physical fret contact. Retain this trailing setup field for
+    // source compatibility with existing offline aggregate initializers;
+    // neither value now changes the wave. No saved/user parameter uses it.
     bool fretCrownGrazing { true };
 };
 

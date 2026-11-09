@@ -30,8 +30,8 @@ struct AcustraEngineTestAccess
         const double held = displacement
             * engine.physicalCalibration_.steelDisplacementScaleMetres;
         const double a = v.pluckPoint * v.speakingLengthMetres;
-        const double c = 2.0 * 0.648 * 440.0
-            * std::exp2((v.openMidi - 69.0) / 12.0) * v.bendImpedanceScale;
+        const double c = v.tensionNewtons
+            / (v.characteristicImpedance * double(v.bendImpedanceScale));
         const double speed = 0.5 * c * held
             * (1.0 / a + 1.0 / (v.speakingLengthMetres - a));
         // Independently apply Finger's authored radius response and point
