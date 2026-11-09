@@ -991,6 +991,10 @@ if(BUILD_TESTING)
         add_test(NAME Acustra.ParameterMatrix
                  COMMAND AcustraParameterMatrixTests --jobs 4)
         set_tests_properties(Acustra.ParameterMatrix PROPERTIES LABELS fuzz TIMEOUT 1800)
+        # U11: every parameter reaches held and new notes after long play.
+        add_test(NAME Acustra.ParameterReach
+                 COMMAND AcustraParameterMatrixTests --reach --jobs 4)
+        set_tests_properties(Acustra.ParameterReach PROPERTIES LABELS unit TIMEOUT 1800)
         add_test(NAME Acustra.ParameterMatrixProtocol
                  COMMAND AcustraParameterMatrixTests --self-test)
         set_tests_properties(Acustra.ParameterMatrixProtocol PROPERTIES TIMEOUT 30)

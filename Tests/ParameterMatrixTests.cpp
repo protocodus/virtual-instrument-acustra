@@ -4,7 +4,11 @@
 //
 //   AcustraParameterMatrixTests [--jobs N] [--rotation] [--shard K/N]
 //                               [--case LABEL] [--count] [--list]
+//   AcustraParameterMatrixTests --reach [--jobs N] [--case PARAMETER]
 //   AcustraParameterMatrixTests --self-test
+//
+// --reach is the U11 reach test over the same device: every parameter change
+// must reach the sound after long play.
 
 #include "PluginProcessor.h"
 
@@ -14,6 +18,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -72,6 +77,37 @@ public:
             limits.dcLimit *= gain;
         }
         return limits;
+    }
+
+    // U11. Every other parameter must reach notes already sounding.
+    matrix::ReachRule ReachFor (std::size_t index, float) const override
+    {
+        std::vector<matrix::Parameter> all = Parameters();
+        for (const auto& p : EditorOnlyParameters())
+            all.push_back (p);
+        const std::string& name = all[index].name;
+        // Each is read only where a pluck starts (AcustraEngine::initialisePluck).
+        if (name == "Pluck Position")
+            return { matrix::Reach::NewNotes, "where the finger excites each new pluck" };
+        if (name == "Touch")
+            return { matrix::Reach::NewNotes, "the finger's contact and let-go at each new pluck" };
+        if (name == "Picking")
+            return { matrix::Reach::NewNotes, "the technique of each new pluck; a sounding string "
+                                              "only takes its construction loudness trim" };
+        // AcustraEngine::applyDiscreteParameters moves an idle string to its
+        // new open pitch with the waves it carries (returnToOpenString), so
+        // the open strings ring on with what the old tuning's playing left.
+        if (name == "Tuning")
+            return { matrix::Reach::Held, "", {},
+                     "the open strings ring on with what the old tuning's playing left" };
+        // Not on the editor and not automatable: setStateInformation reads
+        // them once, to migrate a session saved before the controls that
+        // replaced them.
+        if (name == "Legacy capture" || name == "Legacy upper mic" || name == "Legacy piezo loading")
+            return { matrix::Reach::Exempt, "retired; migrated into Capture when an old session loads" };
+        if (name == "Legacy guitar model")
+            return { matrix::Reach::Exempt, "retired; nothing reads it (Docs/decisions.md, 2026-10-10)" };
+        return {};
     }
 
 private:

@@ -102,11 +102,12 @@ jobs:
         run: |
           cmake --build "build-dsp" --parallel \
             --target "Acustra_VST3" "Acustra_CLAP" "Acustra_Standalone" \
-              "AcustraPluginProcessorTests" "AcustraPluginTempoReleaseTests"
+              "AcustraPluginProcessorTests" "AcustraPluginTempoReleaseTests" \
+              "AcustraParameterMatrixTests"
 
       - name: Run plug-in wrapper tests
         run: |
-          ctest --test-dir "build-dsp" -R "^Acustra[.](PluginProcessor|PluginTempoRelease)$" --no-tests=error --output-on-failure
+          ctest --test-dir "build-dsp" -R "^Acustra[.](PluginProcessor|PluginTempoRelease|ParameterReach)$" --no-tests=error --output-on-failure
 
       - name: Package Linux VST3, CLAP and standalone
         id: linux-package
