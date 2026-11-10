@@ -207,9 +207,9 @@ skill has the procedures. These hold in every session:
   Declare a parameter `NewNotes` or `Exempt` only where the design says so,
   with the reason beside it; a reach failure is a bug, not an exemption.
 - At the default settings, which start at the lowest oversampling (U13), no
-  block of a demo or the stress phrase may take more than 10% of one core on
-  the CI runner (U12, `<Name>.CpuBudget`). A product above it carries its
-  measured `cpuCeiling` and only ever lowers it.
+  block of a demo or the stress phrase should take more than 10% of one core
+  on the CI runner (U12). `<Name>.CpuBudget` warns above that and never fails
+  on it (owner, 2026-11-10); a product above it keeps a Known gap.
 - A DSP change is done when the suites it touches, the `unit`, `audio` and
   `perf` tiers and `<Name>DSPCxx17` pass.
 

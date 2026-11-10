@@ -26,11 +26,11 @@
 //       repeats) and the worst block: each block's fastest repeat, so the
 //       same work timed several times sheds the machine's interruptions, and
 //       of those the slowest, as a share of the block's period. Fails when a
-//       repeat differs, a median exceeds Instrument::cpuBudget or a worst
-//       block exceeds Instrument::cpuCeiling. Only voice->Midi() and
-//       voice->Render() are timed. A Debug or sanitized build reports but
-//       never fails on time. FILE gets the figures as JSON; TEXT (a commit,
-//       a machine) is copied into it.
+//       repeat differs or a median exceeds Instrument::cpuBudget; a worst
+//       block above Instrument::cpuCeiling is a WARN line and never fails.
+//       Only voice->Midi() and voice->Render() are timed. A Debug or
+//       sanitized build reports but never fails or warns on time. FILE gets
+//       the figures as JSON; TEXT (a commit, a machine) is copied into it.
 //
 // The .mid files are the curated demo list (G3): each names a factory preset
 // by program number and slug, there are at most kMaxDemos of them, and a bank
@@ -95,8 +95,9 @@ struct MidiEvent {
 };
 
 // U12: the portfolio's CPU target, the share of one core the worst
-// kBlockFrames block of any demo or stress render may take on the CI runner
-// at the default settings.
+// kBlockFrames block of any demo or stress render should take on the CI
+// runner at the default settings. Above it --cpu warns; it never fails
+// (owner, 2026-11-10: "cpu gate = warning only, do not block anything").
 constexpr double kCpuTarget = 0.10;
 
 // The default stress phrase (U12): an eight-note chord over C3-C6 at full
@@ -136,9 +137,7 @@ struct Instrument {
     // may take on one thread. Set it from a measurement on the CI runner and
     // say which beside it; 0 reports without a budget.
     double cpuBudget = 0.0;
-    // The highest worst-block share (U12). kCpuTarget unless the product is
-    // above it today: then its CI measurement, beside a Known gap, and it
-    // only ever comes down.
+    // The worst-block share above which --cpu warns (U12).
     double cpuCeiling = kCpuTarget;
     // Played through each demo's preset by --cpu, after a 2 s tail.
     std::vector<MidiEvent> stress = StressPhrase();
@@ -685,13 +684,15 @@ inline int Cpu(const Instrument& instrument, const fs::path& midiDir, int repeat
             std::snprintf(text, sizeof text, "above the %.4gx budget", instrument.cpuBudget);
             row.error = text;
         }
-        if (row.error.empty() && gated && row.worst > instrument.cpuCeiling) {
+        std::string remark = row.error;
+        if (remark.empty() && gated && row.worst > instrument.cpuCeiling) {
             std::snprintf(text, sizeof text, "worst block above the %.0f %% ceiling", 100.0 * instrument.cpuCeiling);
-            row.error = text;
+            remark = text;
         }
         std::printf("%s %s: %.4fx realtime (median of %zu), worst block %.1f %% of %.2f ms at %.2f s%s%s\n",
-                    row.error.empty() ? "PASS" : "FAIL", row.stem.c_str(), row.factor, row.factors.size(),
-                    100.0 * row.worst, 1000.0 * period, row.worstAt, row.error.empty() ? "" : ": ", row.error.c_str());
+                    !row.error.empty() ? "FAIL" : remark.empty() ? "PASS" : "WARN", row.stem.c_str(), row.factor,
+                    row.factors.size(), 100.0 * row.worst, 1000.0 * period, row.worstAt, remark.empty() ? "" : ": ",
+                    remark.c_str());
         failures += !row.error.empty();
 
         char numbers[256];
@@ -718,9 +719,6 @@ inline int Cpu(const Instrument& instrument, const fs::path& midiDir, int repeat
     if (!gated)
         std::printf("NOTE: a Debug or sanitized build; the budget and the %.0f %% ceiling were not checked\n",
                     100.0 * instrument.cpuCeiling);
-    if (instrument.cpuCeiling > kCpuTarget)
-        std::printf("NOTE: the ceiling is %.0f %%, above the portfolio's %.0f %% target (U12)\n",
-                    100.0 * instrument.cpuCeiling, 100.0 * kCpuTarget);
 
     if (!json.empty()) {
         char budget[32], ceiling[32];
