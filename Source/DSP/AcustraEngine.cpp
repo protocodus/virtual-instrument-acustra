@@ -15,6 +15,7 @@
 #include "StudioCaptureLoudnessData.h"
 #include "PiezoBlampTable.h"
 #include "PlayerBodyLoading.h"
+#include "PickProjectionMath.h"
 
 #include <algorithm>
 #include <cassert>
@@ -4373,6 +4374,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     }
 #endif
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
     releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
     releaseStepSamples_ = static_cast<int>(std::ceil(0.4 * sampleRate_));
@@ -4788,6 +4790,7 @@ void AcustraEngine::setPhysicalCalibration(
     // which the mobility table's key does not hold.
     bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     if (!prepared_)
         return;
     prepareBodyConfigurations();
@@ -4804,6 +4807,7 @@ void AcustraEngine::setPerformanceRealism(
         bodyConfigurationsReady_ = false;
     bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     restartRandomDraws();
     if (prepared_)
     {
@@ -6175,28 +6179,35 @@ float AcustraEngine::coupledPolarisationDetune(
     Voice& voice, int stringIndex, float impedance, float frequency,
     float normalGain, float parallelGain, float normalShare) noexcept
 {
-    const std::array<std::uint32_t, 7> key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
+    // The fit sees the current bridge during a queued construction change
+    // and the nominal resting strings. A playing-state reset leaves these
+    // inputs unchanged unless a different construction is adopted.
+    const Voice::CommonTuningKey key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
         exact::bits(normalGain), exact::bits(parallelGain), exact::bits(normalShare),
-        exact::bits(static_cast<float>(sampleRate_)) };
+        exact::bits(static_cast<float>(sampleRate_)),
+        static_cast<std::uint32_t>(configuredBridgeShape_),
+        static_cast<std::uint32_t>(configuredBridgeMaterial_),
+        static_cast<std::uint32_t>(parameters_.tuning), exact::bits(parameters_.stringAge),
+        exact::bits(masterTuneSemitones_), bridgeCouplingEnabled_ ? 1u : 0u };
     // The tuning is the whole guitar's, with every idle string on its
     // bridge: the sympathetic switch takes their sound out of the mix, not
     // the string out of tune (testSympatheticStringsAreAudibleButBounded
     // compares the two renders and must see only their sound).
-    if (voice.commonTuningGeneration == voiceConfigurationGeneration_
+    if (voice.commonTuningGeneration == tuningCalibrationGeneration_
         && voice.commonTuningKey == key)
         return voice.commonTuningValue;
     for (auto& earlier : voice.commonTuningHistory)
-        if (earlier.generation == voiceConfigurationGeneration_ && earlier.key == key)
+        if (earlier.generation == tuningCalibrationGeneration_ && earlier.key == key)
         {
             // Swap with the front, so two stops played in turn both stay.
             const float value = earlier.value;
             earlier = { voice.commonTuningGeneration, voice.commonTuningKey, voice.commonTuningValue };
             voice.commonTuningKey = key;
-            voice.commonTuningGeneration = voiceConfigurationGeneration_;
+            voice.commonTuningGeneration = tuningCalibrationGeneration_;
             voice.commonTuningValue = value;
             return value;
         }
-    if (voice.commonTuningGeneration == voiceConfigurationGeneration_)
+    if (voice.commonTuningGeneration == tuningCalibrationGeneration_)
     {
         voice.commonTuningHistory[static_cast<std::size_t>(voice.commonTuningHistoryNext)]
             = { voice.commonTuningGeneration, voice.commonTuningKey, voice.commonTuningValue };
@@ -6204,7 +6215,7 @@ float AcustraEngine::coupledPolarisationDetune(
             % static_cast<int>(voice.commonTuningHistory.size());
     }
     voice.commonTuningKey = key;
-    voice.commonTuningGeneration = voiceConfigurationGeneration_;
+    voice.commonTuningGeneration = tuningCalibrationGeneration_;
     const auto finish = [&voice] (float result)
     {
         voice.commonTuningValue = result;
@@ -8281,10 +8292,20 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             physicalCalibration_.apertureRegisterExponent);
         if (releaseShare > 0.0f)
         {
+            const float physicalPeriod = !merge && loop.upperDispersionActive && modes == 1
+                ? voice.contactPeriodSamples : 0.0f;
+            const float point = position + (polarisation == 0 ? -0.006f : 0.009f);
+            const float footprint = physicalPeriod > 8.0f
+                ? registeredPluckAperture(contactSamples, physical.apertureScale,
+                    apertureReferenceDelay, physicalPeriod * 48000.0f
+                    / static_cast<float>(sampleRate_),
+                    physicalCalibration_.apertureRegisterExponent)
+                : 0.0f;
             pickReferenceSlopeEnergy += writePickRelease(
                 loop, length, releasedAmplitude * polarisationGain, localPosition,
                 aperture, modes, releaseShare, slipPole,
-                voice.referencePickDelay[static_cast<std::size_t>(polarisation)]);
+                voice.referencePickDelay[static_cast<std::size_t>(polarisation)],
+                physicalPeriod, point, footprint);
             continue;
         }
         const auto triangleAt = [localPosition] (double phase)
@@ -9840,10 +9861,401 @@ double AcustraEngine::gaussianReleaseStep(double argument,
     return 0.5 * std::erfc(argument);
 }
 
+namespace
+{
+// The projection's normalized pole arithmetic cannot overflow near its
+// bracketed waveguide roots. Keep its bounded operations inline in SDK builds.
+struct PickComplex
+{
+    double x {};
+    double y {};
+    constexpr PickComplex(double real = 0.0, double imaginary = 0.0) noexcept
+        : x(real), y(imaginary) {}
+    double real() const noexcept { return x; }
+    double imag() const noexcept { return y; }
+    void imag(double value) noexcept { y = value; }
+    PickComplex& operator+=(PickComplex other) noexcept
+    {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+    PickComplex& operator*=(PickComplex other) noexcept
+    {
+        const double real = x * other.x - y * other.y;
+        y = x * other.y + y * other.x;
+        x = real;
+        return *this;
+    }
+};
+
+PickComplex operator+(PickComplex a, PickComplex b) noexcept { return a += b; }
+PickComplex operator-(PickComplex a, PickComplex b) noexcept
+{ return { a.x - b.x, a.y - b.y }; }
+PickComplex operator*(PickComplex a, PickComplex b) noexcept { return a *= b; }
+PickComplex operator*(double a, PickComplex b) noexcept
+{ return { a * b.x, a * b.y }; }
+PickComplex operator/(PickComplex a, double b) noexcept
+{ return { a.x / b, a.y / b }; }
+double pickNorm(PickComplex a) noexcept { return a.x * a.x + a.y * a.y; }
+PickComplex pickConj(PickComplex a) noexcept { return { a.x, -a.y }; }
+PickComplex pickPolar(double magnitude, double phase) noexcept
+{ return { magnitude * std::cos(phase), magnitude * std::sin(phase) }; }
+
+// Section transfer values stay far from overflow at these poles. The
+// explicit division reuses the squared norms used for the magnitude.
+PickComplex pickDivide(PickComplex z, PickComplex w, double inversePower) noexcept
+{
+    return { (z.real() * w.real() + z.imag() * w.imag()) * inversePower,
+             (z.imag() * w.real() - z.real() * w.imag()) * inversePower };
+}
+
+double pickPhase(PickComplex value) noexcept
+{
+    return pickProjection::phaseAngle(value.real(), value.imag());
+}
+
+struct PickProjectionFilter
+{
+    enum class Kind { Allpass, Shelf, Loss };
+    Kind kind;
+    double a1, a2;
+    double b0, b1, b2;
+    double memoryB0, memoryB1;
+    std::array<float*, 4> destinations;
+    std::array<double, 4> history {};
+};
+
+struct PickProjection
+{
+    std::array<PickProjectionFilter, 9> filters {};
+    int count { 0 };
+    int tap { 0 };
+    int allpassOrder { 0 };
+    double logLoopGain { 0.0 };
+
+    void allpass(double a1, double a2,
+                 std::array<float*, 4> state) noexcept
+    {
+        filters[count++] = { PickProjectionFilter::Kind::Allpass,
+            a1, a2, a2, a1, 1.0, 0.0, 0.0, state };
+        allpassOrder += 2;
+    }
+
+    void shelf(double pole, double inputLag, double mix,
+               float& previousInput, float& state) noexcept
+    {
+        const double direct = 1.0 - pole - inputLag;
+        filters[count++] = { PickProjectionFilter::Kind::Shelf,
+            -pole, 0.0, 1.0 - mix + mix * direct,
+            (mix - 1.0) * pole + mix * inputLag, 0.0, direct, inputLag,
+            { &previousInput, nullptr, &state, nullptr } };
+    }
+
+    void loss(double a1, double a2, double take0, double take1,
+              std::array<float*, 4> state) noexcept
+    {
+        filters[count++] = { PickProjectionFilter::Kind::Loss,
+            a1, a2, 1.0 - take0, a1 + take0 - take1, a2 + take1,
+            take0, take1, state };
+    }
+
+    struct Response
+    {
+        PickComplex derivative;
+        double logMagnitude;
+        double lag;
+    };
+
+    Response response(PickComplex s) const noexcept
+    {
+        const PickComplex z = pickPolar(std::exp(-s.real()), -s.imag());
+        const PickComplex z2 = z * z;
+        Response result { -static_cast<double>(tap),
+            logLoopGain - tap * s.real(), tap * s.imag() };
+        double power = 1.0;
+        for (int section = 0; section < count; ++section)
+        {
+            const auto& f = filters[section];
+            const auto num1 = f.b1 * z;
+            const auto num2 = f.b2 * z2;
+            const auto den1 = f.a1 * z;
+            const auto den2 = f.a2 * z2;
+            const auto num = f.b0 + num1 + num2;
+            const auto den = 1.0 + den1 + den2;
+            const double numPower = pickNorm(num);
+            const double inverseDenPower = 1.0 / pickNorm(den);
+            power *= numPower * inverseDenPower;
+            result.derivative += pickDivide(den1 + 2.0 * den2, den, inverseDenPower)
+                               - pickDivide(num1 + 2.0 * num2, num, 1.0 / numPower);
+            if (s.imag() == piDouble)
+                result.lag += f.kind == PickProjectionFilter::Kind::Allpass
+                    ? 2.0 * piDouble : 0.0;
+            else if (f.kind == PickProjectionFilter::Kind::Allpass)
+            {
+                double sectionLag = 2.0 * s.imag()
+                    + pickPhase(den * pickConj(num) * z2);
+                if (sectionLag < 0.0)
+                    sectionLag += 2.0 * piDouble;
+                else if (sectionLag >= 2.0 * piDouble)
+                    sectionLag -= 2.0 * piDouble;
+                result.lag += sectionLag;
+            }
+            else
+                result.lag += pickPhase(den * pickConj(num));
+        }
+        result.logMagnitude += 0.5 * std::log(power);
+        return result;
+    }
+
+    bool root(int mode, double last, double slope, PickComplex& s,
+              double& nextSlope) const noexcept
+    {
+        constexpr double turn = 2.0 * piDouble;
+        const bool dc = mode == 0;
+        const bool nyquist = mode * 2 == tap + allpassOrder;
+        const double target = turn * mode;
+        double omega = dc ? 0.0 : nyquist ? piDouble
+            : std::clamp(last + turn / slope, last + 1.0e-7, piDouble - 1.0e-7);
+        s = { 0.0, omega };
+        for (int iteration = 0; iteration < 6; ++iteration)
+        {
+            const auto r = response(s);
+            const PickComplex residual { r.logMagnitude, target - r.lag };
+            nextSlope = -r.derivative.real();
+            if (pickNorm(residual) < 1.0e-14 && nextSlope > 0.0)
+                return s.real() <= 0.0 && (dc || nyquist || s.imag() > last);
+            auto next = s - pickDivide(residual, r.derivative,
+                                        1.0 / pickNorm(r.derivative));
+            if (dc || nyquist)
+                next.imag(omega);
+            else
+                next.imag(std::clamp(next.imag(), last + 1.0e-7, piDouble - 1.0e-7));
+            if (!exact::isfinite(next.real()) || !exact::isfinite(next.imag()))
+                return false;
+            s = next;
+        }
+        return false;
+    }
+
+    void addHistory(PickComplex atRelease, PickComplex s) noexcept
+    {
+        const PickComplex z = pickPolar(std::exp(-s.real()), -s.imag());
+        const PickComplex z2 = z * z;
+        // atRelease is the previous write (time -1); feed each section its
+        // own complex input at time 0 and recover the saved samples at -1,-2.
+        PickComplex x = atRelease * pickPolar(
+            std::exp((1 - tap) * s.real()), (1 - tap) * s.imag());
+        for (int section = 0; section < count; ++section)
+        {
+            auto& f = filters[section];
+            const auto denominator = 1.0 + f.a1 * z + f.a2 * z2;
+            const double inversePower = 1.0 / pickNorm(denominator);
+            const auto output = x * pickDivide(f.b0 + f.b1 * z + f.b2 * z2,
+                                                denominator, inversePower);
+            auto storedX2 = x * z2;
+            auto storedY = output;
+            if (f.kind == PickProjectionFilter::Kind::Shelf)
+                storedY = x * pickDivide(f.memoryB0 + f.memoryB1 * z,
+                                           denominator, inversePower);
+            if (f.kind == PickProjectionFilter::Kind::Loss)
+            {
+                storedX2 = x * (1.0 - z) * z;
+                storedY = x - output;
+            }
+            f.history[0] += 2.0 * (x * z).real();
+            f.history[1] += 2.0 * storedX2.real();
+            f.history[2] += 2.0 * (storedY * z).real();
+            f.history[3] += 2.0 * (storedY * z2).real();
+            x = output;
+        }
+    }
+
+    void publish() const noexcept
+    {
+        for (int section = 0; section < count; ++section)
+            for (int i = 0; i < 4; ++i)
+                if (auto* destination = filters[section].destinations[i])
+                    *destination = static_cast<float>(filters[section].history[i]);
+    }
+};
+
+struct PickHarmonic
+{
+    PickComplex rest, velocity;
+};
+
+struct PickHarmonics
+{
+    PickComplex phaseStep, slipStep;
+    PickComplex rotation { 1.0 }, slipRotation { 1.0 };
+    double window { 1.0 }, nextWindowRatio, windowRatioStep;
+    double restScale, pole;
+
+    PickHarmonics(double p, double sigma, double slip, double omega0) noexcept
+        : phaseStep(pickPolar(1.0, piDouble * p)),
+          slipStep(pickPolar(1.0, omega0)),
+          nextWindowRatio(std::exp(-2.0 * piDouble * piDouble * sigma * sigma)),
+          windowRatioStep(nextWindowRatio * nextWindowRatio),
+          restScale(0.5 / (p * (1.0 - p))), pole(slip)
+    {}
+
+    PickHarmonic next(int n) noexcept
+    {
+        rotation *= phaseStep;
+        slipRotation *= slipStep;
+        window *= nextWindowRatio;
+        nextWindowRatio *= windowRatioStep;
+        const double order = piDouble * n;
+        const auto contact = rotation.imag() * window * rotation;
+        const PickComplex den = 1.0 - pole * slipRotation;
+        const auto slip = pickDivide(1.0 - pole, den, 1.0 / pickNorm(den));
+        return { PickComplex(0.0, restScale / (order * order)) * contact * slip,
+                 contact / order };
+    }
+};
+} // namespace
+
+bool AcustraEngine::projectPickRelease(StringLoop& loop, float height,
+                                       float position, float aperture, double hump,
+                                       double slipPole, int physicalGrid) noexcept
+{
+    const double p = clamp(position, 0.05f, 0.60f);
+    const double sigma = std::max(static_cast<double>(aperture), 1.0e-9);
+    loop.designReadDelay(loop.currentDelay);
+    PickProjection model;
+    model.tap = loop.readDelayWhole;
+    model.logLoopGain = std::log(loop.loopGain);
+    model.allpass(loop.thiranFirst, loop.thiranSecond,
+                  { nullptr, nullptr, &loop.allpassY1, &loop.allpassY2 });
+    const auto allpass = [&] (SecondOrderAllpass& filter, float a1, float a2)
+    {
+        model.allpass(a1, a2, { &filter.x1, &filter.x2, &filter.y1, &filter.y2 });
+    };
+    if (loop.upperDispersionActive)
+    {
+        const auto& c = loop.upperDispersionCoefficients;
+        allpass(loop.upperDispersion[1], c[2], c[3]);
+        allpass(loop.upperDispersion[0], c[0], c[1]);
+    }
+    if (loop.secondDispersionActive)
+        allpass(loop.secondDispersion, loop.secondDispersionA1, loop.secondDispersionA2);
+    const auto shelf = [&] (OnePole& filter, float coefficient, float mix)
+    {
+        model.shelf(filter.remapped ? filter.ratePole : coefficient,
+                    filter.remapped ? filter.delayedInputGain : 0.0f, mix,
+                    filter.previousInput, filter.state);
+    };
+    if (loop.broadLossMix != 0.0f)
+        shelf(loop.broadLossFilter, loop.broadLossCoefficient, loop.broadLossMix);
+    shelf(loop.lossFilter, loop.lowpassCoefficient, loop.highLossMix);
+    if (loop.bendingLossActive)
+        model.loss(loop.bendingLossA1, loop.bendingLossA2,
+                   1.0f - loop.bendingLossGain, -loop.bendingLossA2,
+                   { &loop.bendingLossX1, &loop.bendingLossX2,
+                     &loop.bendingLossY1, &loop.bendingLossY2 });
+    if (loop.constantLossActive)
+        model.loss(loop.constantLossA1, loop.constantLossA2,
+                   1.0f - loop.constantLossGain, loop.constantLossN2 - loop.constantLossA2,
+                   { &loop.constantLossX1, &loop.constantLossX2,
+                     &loop.constantLossY1, &loop.constantLossY2 });
+    allpass(loop.dispersion, loop.dispersionA1, loop.dispersionA2);
+
+    const int history = std::max(model.tap + 2, static_cast<int>(std::ceil(loop.currentDelay)) + 1);
+    if (history > static_cast<int>(pickReleaseDisplacement_.size()))
+        return false;
+    std::fill_n(pickReleaseDisplacement_.data(), history, 0.0f);
+    const auto fillSingle = [&] (PickComplex step, PickComplex coefficient)
+    {
+        for (int lag = 0; lag < history; ++lag)
+        {
+            pickReleaseDisplacement_[static_cast<std::size_t>(lag)]
+                += static_cast<float>(2.0 * coefficient.real());
+            coefficient *= step;
+        }
+    };
+#if defined(__clang__) || defined(__GNUC__)
+    PickComplex firstStep;
+    PickComplex firstCoefficient;
+    bool pending = false;
+#endif
+    const auto add = [&] (PickComplex s, PickComplex coefficient)
+    {
+        model.addHistory(coefficient, s);
+        const auto step = pickPolar(std::exp(-s.real()), -s.imag());
+#if defined(__clang__) || defined(__GNUC__)
+        if (!pending)
+        {
+            firstStep = step;
+            firstCoefficient = coefficient;
+            pending = true;
+            return;
+        }
+        // Step two modes at once, preserving each mode's arithmetic and
+        // the order of float additions into each history cell.
+        typedef double Pair __attribute__((vector_size(16), aligned(8)));
+        Pair real { firstCoefficient.real(), coefficient.real() };
+        Pair imaginary { firstCoefficient.imag(), coefficient.imag() };
+        const Pair stepReal { firstStep.real(), step.real() };
+        const Pair stepImaginary { firstStep.imag(), step.imag() };
+        for (int lag = 0; lag < history; ++lag)
+        {
+            auto& cell = pickReleaseDisplacement_[static_cast<std::size_t>(lag)];
+            cell += static_cast<float>(2.0 * real[0]);
+            cell += static_cast<float>(2.0 * real[1]);
+            const Pair nextReal = real * stepReal - imaginary * stepImaginary;
+            imaginary = real * stepImaginary + imaginary * stepReal;
+            real = nextReal;
+        }
+        pending = false;
+#else
+        fillSingle(step, coefficient);
+#endif
+    };
+    PickComplex dc;
+    double slope = loop.currentDelay;
+    if (!model.root(0, 0.0, slope, dc, slope))
+        return false;
+    double last = 0.0;
+    double endpoint = 0.0;
+    // The continuous shape's coefficients are evaluated in the same
+    // spatial frame as a dense four-times sampling of the physical period.
+    const double omega0 = 2.0 * piDouble / physicalGrid;
+    const double denseSlipPole = slipPole > 0.0 ? std::sqrt(std::sqrt(slipPole)) : 0.0;
+    const int phaseOrder = model.tap + model.allpassOrder;
+    PickHarmonics renderedHarmonics(p, sigma, denseSlipPole, omega0);
+    for (int n = 1; n <= phaseOrder / 2; ++n)
+    {
+        PickComplex mode;
+        if (!model.root(n, last, slope, mode, slope))
+            return false;
+        last = mode.imag();
+        const auto h = renderedHarmonics.next(n);
+        PickComplex coefficient = static_cast<double>(height) * (h.rest + hump * h.velocity);
+        if (n * 2 == phaseOrder)
+            coefficient.imag(0.0);
+        endpoint += coefficient.real();
+        add(mode, coefficient);
+    }
+    // Preserve the fitted frame's zero displacement at the last write.
+    add(dc, -endpoint);
+#if defined(__clang__) || defined(__GNUC__)
+    if (pending)
+        fillSingle(firstStep, firstCoefficient);
+#endif
+    for (int lag = 0; lag < history; ++lag)
+        loop.delay[static_cast<std::size_t>(wrapDelayIndex(loop.writeIndex - lag - 1))]
+            = pickReleaseDisplacement_[static_cast<std::size_t>(lag)];
+    model.publish();
+    loop.bendingLossSeed = loop.constantLossSeed = false;
+    return true;
+}
+
 double AcustraEngine::writePickRelease(StringLoop& loop, int length, float height,
                                        float position, float aperture, int modes,
                                        float releaseShare, double slipPole,
-                                       float referenceDelay) noexcept
+                                       float referenceDelay, float physicalPeriod,
+                                       float physicalPoint, float physicalAperture) noexcept
 {
     // As the shape's own bound (initialisePluck): p of the written line.
     // The reference grid below moves it (setApex) and puts it back.
@@ -9873,7 +10285,7 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
     // edge, which the first sample always does. Periodic images within the
     // kernel's reach are summed. The node projection for a natural harmonic
     // follows; all of it is linear, so both components are treated alike.
-    const double sigma = std::max(static_cast<double>(aperture), 1.0e-9);
+    double sigma = std::max(static_cast<double>(aperture), 1.0e-9);
     double cornerA = 0.5 * apex;
     double cornerB = 1.0 - 0.5 * apex;
     double slopeChange = 1.0 / (apex * (1.0 - apex));
@@ -10066,73 +10478,87 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
     bool referenceSolved = false;
     double referenceHump = 0.0;
     double referenceSlopeEnergy = 0.0;
-    if (referenceGrid)
+    // Calculate the authored hump on a sampled 48 kHz grid. The sign of
+    // the small displacement/velocity cross term is part of the release:
+    // the continuous Fourier limit alone can select the opposite direction.
+    struct ReleaseWork { double hump {}, slope {}; };
+    const auto workOnGrid = [&] (int grid, double pole)
     {
-        // The kept arrays serve as the reference's scratch: the host pass
-        // below rewrites them before the write reads them. A pluck not
-        // tuned for a pick (the technique changed while it waited) takes
-        // this period rescaled.
-        const double periodAt48k = referenceDelay > 0.0f
-            ? static_cast<double>(referenceDelay)
-            : static_cast<double>(loop.targetDelay) * 48000.0 / sampleRate_;
-        const int grid = std::clamp(
-            static_cast<int>(std::round(periodAt48k)),
-            8, std::min(activeDelaySamples() - 3,
-                        static_cast<int>(pickReleaseDisplacement_.size())));
-        const double referencePole = slipPole > 0.0
-            ? std::pow(slipPole, sampleRate_ / 48000.0) : 0.0;
-        // The kink is a share of the line it is written on, which is the
-        // string's period over that line's rounded length (initialisePluck);
-        // the same point on the string is its own share of the 48 kHz line.
-        const float hostShare = p;
-        setApex(clamp(static_cast<float>(static_cast<double>(hostShare) * length
-            * (48000.0 / sampleRate_) / grid), 0.05f, 0.60f));
         const auto reference = energiesOn(grid, true);
-        referenceSolved = true;
-        if (reference.velocity > 0.0)
+        if (!(reference.velocity > 0.0))
+            return ReleaseWork {};
+        double displacement = reference.displacement;
+        double cross = reference.cross;
+        if (pole > 0.0)
         {
-            const double share = static_cast<double>(releaseShare);
-            // The solved hump adds exactly share * D to the displacement
-            // energy D. Convert summed differences on the reference grid
-            // to normalized spatial slope and restore the actual height.
-            const double energyScale = (1.0 + share) * grid
-                * static_cast<double>(rest) * static_cast<double>(rest);
-            if (referencePole > 0.0)
+            const float first = pickReleaseDisplacement_[0];
+            for (int sample = 0; sample < grid; ++sample)
+                pickReleaseDisplacement_[static_cast<std::size_t>(sample)] -= first;
+            slipPeriod([this] (int sample) -> float&
             {
-                // The rest line per unit height, from zero at the bridge,
-                // slipped as applyPlectrumSlip slips the loop.
-                const float first = pickReleaseDisplacement_[0];
-                for (int sample = 0; sample < grid; ++sample)
-                    pickReleaseDisplacement_[static_cast<std::size_t>(sample)] -= first;
-                slipPeriod([this] (int sample) -> float&
+                return pickReleaseDisplacement_[static_cast<std::size_t>(sample)];
+            }, grid, pole);
+            const auto slipped = slippedOn(grid,
+                [this] (int sample)
                 {
-                    return pickReleaseDisplacement_[static_cast<std::size_t>(sample)];
-                }, grid, referencePole);
-                const auto slipped = slippedOn(grid,
-                    [this] (int sample)
-                    {
-                        return static_cast<double>(pickReleaseDisplacement_[
-                            static_cast<std::size_t>(sample - 1)]);
-                    },
-                    [this] (int sample)
-                    {
-                        return pickReleaseVelocity_[static_cast<std::size_t>(sample - 1)];
-                    });
-                referenceHump = solvedHump(share * slipped.displacement,
-                                           slipped.cross, reference.velocity);
-                referenceSlopeEnergy = energyScale * slipped.displacement;
-            }
-            else
-            {
-                referenceHump = solvedHump(share * reference.displacement,
-                                           reference.cross, reference.velocity);
-                referenceSlopeEnergy = energyScale * reference.displacement;
-            }
+                    return static_cast<double>(pickReleaseDisplacement_[
+                        static_cast<std::size_t>(sample - 1)]);
+                },
+                [this] (int sample)
+                {
+                    return pickReleaseVelocity_[static_cast<std::size_t>(sample - 1)];
+                });
+            displacement = slipped.displacement;
+            cross = slipped.cross;
         }
-    }
-
-    if (referenceSolved)
+        const double share = static_cast<double>(releaseShare);
+        const double scale = (1.0 + share) * grid
+            * static_cast<double>(rest) * static_cast<double>(rest);
+        return ReleaseWork { solvedHump(share * displacement, cross, reference.velocity),
+                             scale * displacement };
+    };
+    const bool projected = physicalPeriod > 8.0f;
+    if (referenceGrid || projected)
+    {
+        const double periodAt48k = referenceGrid && referenceDelay > 0.0f
+            ? static_cast<double>(referenceDelay)
+            : referenceGrid ? static_cast<double>(loop.targetDelay) * 48000.0 / sampleRate_
+                            : length;
+        const int maximumGrid = std::min(activeDelaySamples() - 3,
+                                       static_cast<int>(pickReleaseDisplacement_.size()));
+        const int grid = std::clamp(static_cast<int>(std::round(periodAt48k)), 8, maximumGrid);
+        const double referencePole = slipPole > 0.0 && referenceGrid
+            ? std::pow(slipPole, sampleRate_ / 48000.0) : slipPole;
+        if (referenceGrid)
+            setApex(clamp(static_cast<float>(static_cast<double>(p) * length
+                * (48000.0 / sampleRate_) / grid), 0.05f, 0.60f));
+        const auto calibrated = workOnGrid(grid, referencePole);
+        referenceSolved = referenceGrid;
+        referenceHump = calibrated.hump;
+        referenceSlopeEnergy = calibrated.slope;
+        if (projected)
+        {
+            // The authored tension cue belongs to the legacy calibrated
+            // grid above. Use the physical period only for the full-state
+            // source, where the spatial comb and the velocity phase must
+            // agree with a sampled release of that complete shape.
+            const double oldSigma = sigma;
+            sigma = std::max(static_cast<double>(physicalAperture), 1.0e-9);
+            const int denseGrid = static_cast<int>(std::round(4.0 * physicalPeriod));
+            const int physicalReference = std::clamp(static_cast<int>(std::round(
+                48000.0 * physicalPeriod / sampleRate_)), 8, maximumGrid);
+            setApex(clamp(static_cast<float>(static_cast<double>(physicalPoint)
+                * denseGrid * (12000.0 / sampleRate_) / physicalReference), 0.05f, 0.60f));
+            const auto source = workOnGrid(physicalReference, referencePole);
+            if (source.slope > 0.0 && projectPickRelease(loop, height, physicalPoint,
+                    physicalAperture, source.hump, slipPole, denseGrid))
+                return referenceSlopeEnergy;
+            sigma = oldSigma;
+            if (!referenceGrid)
+                referenceSlopeEnergy = 0.0;
+        }
         setApex(clamp(position, 0.05f, 0.60f));
+    }
 
     // Kept for the write pass below, which reads the same phases.
     const bool kept = length >= 1
@@ -13024,10 +13450,9 @@ namespace
 // renderStringAxialForce: cell k reads the outgoing wave's sample k strides
 // back and the returning wave at its own age, and adds the square of the two
 // waves' slopes over the cell. `outgoing`, `returning` and `sum` carry the
-// previous cell's reads and the running sum in and out. Four cells go at once
-// where the compiler has 4-wide float vectors; each cell's reads and slope are
-// the one-at-a-time arithmetic, and only the order the squares are added in
-// differs (four partial sums, joined last), a change in the sum's last bits.
+// previous cell's reads and the running sum in and out. The SDK evaluates four
+// cells at once and adds their squares in the scalar order. Native SSE2 builds
+// retain their existing four partial sums.
 void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                    int stride, int first, int end, float period,
                    float returningSpan, float outgoingScale,
@@ -13044,7 +13469,8 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         return a + part * (b - a);
     };
     int cell = first;
-#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+#if (defined(JUKEBOX_SDK) || (defined(__SSE2__) && defined(__x86_64__))) \
+    && (defined(__clang__) || defined(__GNUC__))
     typedef float Floats __attribute__((vector_size(16)));
     typedef int Ints __attribute__((vector_size(16)));
     if (end - cell >= 4)
@@ -13059,7 +13485,19 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         const Floats four = { 4.0f, 4.0f, 4.0f, 4.0f };
         Floats cells = { static_cast<float>(cell), static_cast<float>(cell + 1),
                          static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
+#if defined(JUKEBOX_SDK)
+        const auto addSquares = [&sum] (Floats slope)
+        {
+            const Floats squares = slope * slope;
+            sum += squares[0];
+            sum += squares[1];
+            sum += squares[2];
+            sum += squares[3];
+        };
+#else
         Floats partial = { 0.0f, 0.0f, 0.0f, 0.0f };
+        const auto addSquares = [&partial] (Floats slope) { partial += slope * slope; };
+#endif
         // Mostly the cells' reads lie in one unbroken run of the ring, up
         // to `newest`: read them there without masking. The deepest is the
         // outgoing wave's last full group, or the returning wave's first
@@ -13075,9 +13513,9 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             && static_cast<unsigned>(lastCell * stride) <= newest)
         {
             const float* const head = line + newest;
-            const float* outgoingAt = head - cell * stride;
             for (int group = 0; group < groups; ++group, cell += 4)
             {
+                const float* const outgoingAt = head - cell * stride;
                 const Floats age = periodV - spanV * cells;
                 const Ints whole = __builtin_convertvector(age, Ints);
                 const Floats part = age - __builtin_convertvector(whole, Floats);
@@ -13091,14 +13529,13 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                 const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-stride],
                                               outgoingAt[-2 * stride],
                                               outgoingAt[-3 * stride] };
-                outgoingAt -= 4 * stride;
                 const Floats previousOutgoing = { outgoing, nextOutgoing[0],
                                                   nextOutgoing[1], nextOutgoing[2] };
                 const Floats previousReturning = { returning, nextReturning[0],
                                                    nextReturning[1], nextReturning[2] };
                 const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                     + (nextReturning - previousReturning) * returningScaleV;
-                partial += slope * slope;
+                addSquares(slope);
                 outgoing = nextOutgoing[3];
                 returning = nextReturning[3];
                 cells += four;
@@ -13129,12 +13566,14 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                                                nextReturning[1], nextReturning[2] };
             const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                 + (nextReturning - previousReturning) * returningScaleV;
-            partial += slope * slope;
+            addSquares(slope);
             outgoing = nextOutgoing[3];
             returning = nextReturning[3];
             cells += four;
         }
+#if !defined(JUKEBOX_SDK)
         sum += (partial[0] + partial[1]) + (partial[2] + partial[3]);
+#endif
     }
 #endif
     for (; cell < end; ++cell)
