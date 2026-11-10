@@ -4373,6 +4373,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     }
 #endif
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
     releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
     releaseStepSamples_ = static_cast<int>(std::ceil(0.4 * sampleRate_));
@@ -4788,6 +4789,7 @@ void AcustraEngine::setPhysicalCalibration(
     // which the mobility table's key does not hold.
     bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     if (!prepared_)
         return;
     prepareBodyConfigurations();
@@ -4804,6 +4806,7 @@ void AcustraEngine::setPerformanceRealism(
         bodyConfigurationsReady_ = false;
     bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
+    ++tuningCalibrationGeneration_;
     restartRandomDraws();
     if (prepared_)
     {
@@ -6175,28 +6178,35 @@ float AcustraEngine::coupledPolarisationDetune(
     Voice& voice, int stringIndex, float impedance, float frequency,
     float normalGain, float parallelGain, float normalShare) noexcept
 {
-    const std::array<std::uint32_t, 7> key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
+    // The fit sees the current bridge during a queued construction change
+    // and the nominal resting strings. A playing-state reset leaves these
+    // inputs unchanged unless a different construction is adopted.
+    const Voice::CommonTuningKey key { static_cast<std::uint32_t>(stringIndex), exact::bits(frequency), exact::bits(impedance),
         exact::bits(normalGain), exact::bits(parallelGain), exact::bits(normalShare),
-        exact::bits(static_cast<float>(sampleRate_)) };
+        exact::bits(static_cast<float>(sampleRate_)),
+        static_cast<std::uint32_t>(configuredBridgeShape_),
+        static_cast<std::uint32_t>(configuredBridgeMaterial_),
+        static_cast<std::uint32_t>(parameters_.tuning), exact::bits(parameters_.stringAge),
+        exact::bits(masterTuneSemitones_), bridgeCouplingEnabled_ ? 1u : 0u };
     // The tuning is the whole guitar's, with every idle string on its
     // bridge: the sympathetic switch takes their sound out of the mix, not
     // the string out of tune (testSympatheticStringsAreAudibleButBounded
     // compares the two renders and must see only their sound).
-    if (voice.commonTuningGeneration == voiceConfigurationGeneration_
+    if (voice.commonTuningGeneration == tuningCalibrationGeneration_
         && voice.commonTuningKey == key)
         return voice.commonTuningValue;
     for (auto& earlier : voice.commonTuningHistory)
-        if (earlier.generation == voiceConfigurationGeneration_ && earlier.key == key)
+        if (earlier.generation == tuningCalibrationGeneration_ && earlier.key == key)
         {
             // Swap with the front, so two stops played in turn both stay.
             const float value = earlier.value;
             earlier = { voice.commonTuningGeneration, voice.commonTuningKey, voice.commonTuningValue };
             voice.commonTuningKey = key;
-            voice.commonTuningGeneration = voiceConfigurationGeneration_;
+            voice.commonTuningGeneration = tuningCalibrationGeneration_;
             voice.commonTuningValue = value;
             return value;
         }
-    if (voice.commonTuningGeneration == voiceConfigurationGeneration_)
+    if (voice.commonTuningGeneration == tuningCalibrationGeneration_)
     {
         voice.commonTuningHistory[static_cast<std::size_t>(voice.commonTuningHistoryNext)]
             = { voice.commonTuningGeneration, voice.commonTuningKey, voice.commonTuningValue };
@@ -6204,7 +6214,7 @@ float AcustraEngine::coupledPolarisationDetune(
             % static_cast<int>(voice.commonTuningHistory.size());
     }
     voice.commonTuningKey = key;
-    voice.commonTuningGeneration = voiceConfigurationGeneration_;
+    voice.commonTuningGeneration = tuningCalibrationGeneration_;
     const auto finish = [&voice] (float result)
     {
         voice.commonTuningValue = result;
