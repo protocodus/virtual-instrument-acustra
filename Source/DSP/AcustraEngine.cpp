@@ -15,6 +15,7 @@
 #include "StudioCaptureLoudnessData.h"
 #include "PiezoBlampTable.h"
 #include "PlayerBodyLoading.h"
+#include "PickBendingProfile.h"
 
 #include <algorithm>
 #include <cassert>
@@ -8182,6 +8183,24 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // zero-velocity release: before smoothing it is phase-equivalent
     // to a rest pluck, with the same modal magnitudes. Unlike the fretting
     // primitives below, it is not combined with a prescribed velocity state.
+    const auto slopeEnergyOf = [] (const StringLoop& loop, int length)
+    {
+        const auto at = [&] (int sample)
+        {
+            return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
+                loop.writeIndex - sample))];
+        };
+        float previous = at(length);
+        double squaredDifferences = 0.0;
+        for (int sample = 1; sample <= length; ++sample)
+        {
+            const float current = at(sample);
+            const double difference = static_cast<double>(current - previous);
+            squaredDifferences += difference * difference;
+            previous = current;
+        }
+        return static_cast<double>(length) * squaredDifferences;
+    };
     double pickReferenceSlopeEnergy = 0.0;
     for (int polarisation = 0; polarisation < 2; ++polarisation)
     {
@@ -8289,12 +8308,31 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             contactSamples, physical.apertureScale, apertureReferenceDelay,
             currentReferenceLength,
             physicalCalibration_.apertureRegisterExponent);
+        // Express the bending length in the written frame, the same
+        // physical-to-line conversion as the contact's position.
+        const double bendingWidth = pick && modes == 1 && voice.dispersionDesignInharmonicity > 0.0f
+            ? exact::sqrt(static_cast<double>(voice.dispersionDesignInharmonicity))
+                * frameScale / (2.0 * piDouble)
+            : 0.0;
+        const auto bendRest = [&] (double referenceEnergy)
+        {
+            if (!(bendingWidth > 0.0))
+                return referenceEnergy;
+            // Keep the calibrated attack pitch cue. At 48 kHz the original
+            // observer read the just-written flexible shape directly.
+            if (!(referenceEnergy > 0.0) && !merge)
+                referenceEnergy = slopeEnergyOf(loop, length);
+            applyPickBendingCompliance(loop, length,
+                releasedAmplitude * polarisationGain, localPosition, aperture,
+                bendingWidth, slipPole);
+            return referenceEnergy;
+        };
         if (releaseShare > 0.0f)
         {
-            pickReferenceSlopeEnergy += writePickRelease(
+            pickReferenceSlopeEnergy += bendRest(writePickRelease(
                 loop, length, releasedAmplitude * polarisationGain, localPosition,
                 aperture, modes, releaseShare, slipPole,
-                voice.referencePickDelay[static_cast<std::size_t>(polarisation)]);
+                voice.referencePickDelay[static_cast<std::size_t>(polarisation)]));
             continue;
         }
         const auto triangleAt = [localPosition] (double phase)
@@ -8508,7 +8546,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             }
         }
         else if (pick)
+        {
             applyPlectrumSlip(loop, length, slipPole);
+            pickReferenceSlopeEnergy += bendRest(0.0);
+        }
         else
             applyPadRelease(loop, length, slipPole, 0.0,
                             performanceRealism_.matchedPadRelease);
@@ -8566,22 +8607,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             const int length = std::clamp(
                 static_cast<int>(std::round(merge ? loop.currentDelay : loop.targetDelay)), 8,
                 activeDelaySamples() - 3);
-            const auto at = [&] (int sample)
-            {
-                return loop.delay[static_cast<std::size_t>(wrapDelayIndex(
-                    loop.writeIndex - sample))];
-            };
-            float previous = at(length);
-            double squaredDifferences = 0.0;
-            for (int sample = 1; sample <= length; ++sample)
-            {
-                const float current = at(sample);
-                const double difference
-                    = static_cast<double>(current - previous);
-                squaredDifferences += difference * difference;
-                previous = current;
-            }
-            slopeEnergy += static_cast<double>(length) * squaredDifferences;
+            slopeEnergy += slopeEnergyOf(loop, length);
         }
     }
     voice.attackSlopeEnergy = exact::isfinite(slopeEnergy)
@@ -10225,6 +10251,42 @@ double AcustraEngine::writePickRelease(StringLoop& loop, int length, float heigh
         loop.delay[static_cast<std::size_t>(wrapDelayIndex(
             loop.writeIndex - sample))] += humpFrame(sample) - humpEndpoint;
     return referenceSlopeEnergy;
+}
+
+void AcustraEngine::applyPickBendingCompliance(StringLoop& loop, int length,
+                                                float height, float position,
+                                                float aperture, double width,
+                                                double slipPole) noexcept
+{
+    if (!(width > 0.0))
+        return;
+    const double p = position;
+    const double cornerA = 0.5 * p;
+    const double cornerB = 1.0 - 0.5 * p;
+    const double scale = -static_cast<double>(height) / (p * (1.0 - p));
+    const pickBending::Profile profile(std::max(static_cast<double>(aperture), 1.0e-9), width);
+    const auto increment = [&] (int sample)
+    {
+        const double phase = static_cast<float>(sample - 1) / static_cast<float>(length)
+            - 0.5f * position;
+        return scale * (profile.corner(phase - cornerA) - profile.corner(phase - cornerB));
+    };
+    // At fixed hand force the static saddle reaction is unchanged,
+    // while bending rounds the released displacement near the contact.
+    // Apply the same plectrum slip to this displacement increment and
+    // leave the already written velocity wave alone.
+    const double endpoint = increment(1);
+    for (int sample = 1; sample <= length; ++sample)
+        pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)]
+            = static_cast<float>(increment(sample) - endpoint);
+    if (slipPole > 0.0)
+        slipPeriod([this] (int sample) -> float&
+        {
+            return pickReleaseDisplacement_[static_cast<std::size_t>(sample)];
+        }, length, slipPole);
+    for (int sample = 1; sample <= length; ++sample)
+        loop.delay[static_cast<std::size_t>(wrapDelayIndex(loop.writeIndex - sample))]
+            += pickReleaseDisplacement_[static_cast<std::size_t>(sample - 1)];
 }
 
 void AcustraEngine::freezeMemberPitchBend(Voice& voice) noexcept

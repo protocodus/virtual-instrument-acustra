@@ -1586,6 +1586,23 @@ struct AcustraEngineTestAccess
 
     // The normal-polarisation line a fresh note writes, newest sample first,
     // over its round trip: what the bridge will read over the first period.
+    static std::vector<float> staticPickRelease(AcustraEngine& engine, int length,
+                                                 float position, float aperture,
+                                                 float velocityShare, double slipPole,
+                                                 double inharmonicity)
+    {
+        auto& loop = engine.voices_[0].loops[0];
+        loop.reset();
+        engine.writePickRelease(loop, length, 0.25f, position, aperture, 1,
+                                velocityShare, slipPole, 0.0f);
+        engine.applyPickBendingCompliance(loop, length, 0.25f, position, aperture,
+            std::sqrt(inharmonicity) / (2.0 * std::numbers::pi), slipPole);
+        std::vector<float> result(static_cast<std::size_t>(length));
+        for (int sample = 0; sample < length; ++sample)
+            result[sample] = loop.delay[AcustraEngine::maximumDelaySamples - sample - 1];
+        return result;
+    }
+
     static std::vector<double> pluckedLine(PhysicalCalibration calibration,
                                            PickingTechnique picking,
                                            int midiNote, float velocity,
@@ -8830,6 +8847,71 @@ void testAPickReleaseKeepsItsHumpAcrossRates()
               << worst << " dB from 48 kHz\n";
 }
 
+void testAStaticPickRespectsBendingCompliance()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    engine->prepare(48000.0, 64);
+    constexpr int length = 2048;
+    constexpr float point = 0.23f;
+    double worstModalError = 0.0;
+    double worstVelocityChange = 0.0;
+    for (const float aperture : { 0.0007f, 0.004f, 0.07f })
+        for (const double slip : { 0.0, 0.29 })
+        {
+            const auto flexible = Access::staticPickRelease(*engine, length, point,
+                aperture, 0.0f, slip, 0.0);
+            const auto flexibleWithVelocity = Access::staticPickRelease(*engine, length,
+                point, aperture, 0.58f, slip, 0.0);
+            const auto nearlyFlexible = Access::staticPickRelease(*engine, length,
+                point, aperture, 0.58f, slip, 1.0e-19);
+            expect(nearlyFlexible == flexibleWithVelocity,
+                   "vanishing stiffness changed a Pick release");
+            for (const double B : { 0.00005, 0.0008, 0.004 })
+            {
+                const auto stiff = Access::staticPickRelease(*engine, length, point,
+                    aperture, 0.0f, slip, B);
+                const auto stiffWithVelocity = Access::staticPickRelease(*engine, length,
+                    point, aperture, 0.58f, slip, B);
+                expect(stiff.front() == 0.0f && stiffWithVelocity.front() == 0.0f,
+                       "bending compliance moved the Pick release endpoint");
+                for (int sample = 0; sample < length; ++sample)
+                {
+                    const double before = double(flexibleWithVelocity[sample]) - flexible[sample];
+                    const double after = double(stiffWithVelocity[sample]) - stiff[sample];
+                    worstVelocityChange = std::max(worstVelocityChange, std::abs(after - before));
+                }
+                double fundamental = 0.0;
+                for (int n = 1; n <= 40; ++n)
+                {
+                    std::complex<double> before {}, after {};
+                    const auto step = std::polar(1.0, -2.0 * std::numbers::pi * n / length);
+                    std::complex<double> phase { 1.0, 0.0 };
+                    for (int sample = 0; sample < length; ++sample)
+                    {
+                        before += static_cast<double>(flexible[sample]) * phase;
+                        after += static_cast<double>(stiff[sample]) * phase;
+                        phase *= step;
+                    }
+                    if (n == 1)
+                        fundamental = std::abs(before);
+                    // The pinned static equation under the same Gaussian force
+                    // has the flexible eigenvectors and stiffness T*k²+EI*k⁴.
+                    // Slip acts linearly on both shapes and cannot change this ratio.
+                    const double error = std::abs(after - before / (1.0 + B * n * n))
+                        / fundamental;
+                    worstModalError = std::max(worstModalError, error);
+                }
+            }
+        }
+    std::cout << "Acustra Pick static compliance modal error " << worstModalError
+              << ", velocity residual " << worstVelocityChange << '\n';
+    expect(worstModalError < 2.0e-6,
+           "the Pick's static deflection did not satisfy the pinned stiff-string law");
+    expect(worstVelocityChange < 6.0e-8,
+           "static bending compliance changed the authored Pick velocity component");
+}
+
 // A Shape is the measured body's A0 and T1 re-coupled through Christensen and
 // Vistisen's two-oscillator model for a published box, with the plate modes
 // above T1 on the equal-thickness plate law. The anchor - the Dreadnought,
@@ -10041,6 +10123,7 @@ int main(int argc, char** argv)
     testBodyShapesFollowTheCoupledTopAndCavity();
     testAPlectrumReleasesWithVelocity();
     testAPickReleaseKeepsItsHumpAcrossRates();
+    testAStaticPickRespectsBendingCompliance();
     testAPlectrumSlipsOffItsEdgeFasterWhenHarder();
     testTheParallelPolarisationRadiatesThroughTheRockingSaddle();
     if (!contractsOnly)

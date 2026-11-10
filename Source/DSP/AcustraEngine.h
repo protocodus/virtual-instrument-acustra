@@ -1996,6 +1996,9 @@ private:
                             float position, float aperture, int modes,
                             float releaseShare, double slipPole,
                             float referenceDelay) noexcept;
+    void applyPickBendingCompliance(StringLoop& loop, int length, float height,
+                                    float position, float aperture,
+                                    double width, double slipPole) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
                             float scaleLength, float edgeRadius) const noexcept;
