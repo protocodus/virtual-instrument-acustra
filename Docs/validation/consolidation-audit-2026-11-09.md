@@ -155,16 +155,18 @@ Aculele took the held-chord flush (1.9.38) and the denormal tracer from here.
   change reaches 10%. What would: fewer cells (rejected by ear), or
   spreading a chord's solves over its first blocks, which changes the first
   milliseconds of those notes and needs a listening set.
-- **The Rack device starts at 2x.** New instances and its factory patches
-  run the engine at twice the host rate; the portfolio target is the lowest
-  setting by default. The engine alone on the development machine (the
+- **The Rack device started at 2x.** Up to 1.9.34d3 new instances and its
+  factory patches ran the engine at twice the host rate. The owner's rule of
+  2026-11-09 makes 1x the default everywhere, and the adapter's 1.9.34d4
+  source (unreleased when this was written) starts new instances and every
+  factory patch at 1x; a saved song keeps the factor it stored. What that
+  buys, for the engine alone on the development machine (the
   device's decimation filter not included), Dreadnought Steel, as a share of
   a 256-frame host block at 48 kHz: a held chord 9.4-9.7% at 1x and 19-22% at
   2x; twelve first-time chords a mean of 13% against 21-22%, their worst
   block 41-44% against 55-60%. The 96 kHz check above shows what 1x would
   leave alone (pitch, the fundamental's decay) and where it differs (the top
-  frets' upper partials); aliasing was not compared. The default lives in
-  the adapter and is a choice between the two settings by ear.
+  frets' upper partials); aliasing was not compared.
 - **A held chord at rest** still runs the whole per-sample loop over zeros,
   7.7% of a block. Suspending with strings held needs the suspension to
   carry them; not a quick win.
