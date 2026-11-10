@@ -39,6 +39,20 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.41 — 2026-11-10 — a chord's first block costs less, identical output
+
+- The tuning a fret is given the first time it is played is solved in about
+  140 evaluations of the bridge and the five other strings. Each evaluation
+  worked out the bridge modes' constants again and raised z to each string's
+  delay from the start; the constants are now worked out once a solve and
+  the powers share one chain of squares.
+- The block in which a six-note chord is first struck is 2-3% fewer
+  instructions (23.8 M to 23.2 M; 23.9 M to 23.3 M compiled as the Rack
+  device is). A chord struck again on the same frets and a held chord are
+  unchanged.
+- The output is bit for bit as before.
+- [Benchmark](Docs/benchmarks/cpu-fix-pass-2026-11-10.md).
+
 ### 1.9.40 — 2026-11-09 — a string struck again moves less memory, identical output
 
 - A note on a string that was still sounding copied and cleared the whole
@@ -1097,7 +1111,9 @@ separates verified errors from accepted approximations.
   held chord that has come to rest still 7.7%. Half of a held block is the
   stretch sum at the four cells kept by ear; no change that leaves the
   output exact reaches the target
-  (`Docs/benchmarks/cpu-consolidation-2026-11-09.md`).
+  (`Docs/benchmarks/cpu-consolidation-2026-11-09.md`). 1.9.41 takes a
+  further 2-3% of the instructions out of a chord's first block and none out
+  of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`).
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over

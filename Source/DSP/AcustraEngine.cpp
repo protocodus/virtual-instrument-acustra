@@ -6239,14 +6239,33 @@ float AcustraEngine::coupledPolarisationDetune(
                  (z.imag() * w.real() - z.real() * w.imag()) * inverse };
     };
     // z^n by squaring, 2 log2 n products in place of a complex exponential
-    // for each resting string's whole-sample delay (anchor up to 600).
-    const auto raisedTo = [] (Complex z, int n) -> Complex
+    // for each resting string's whole-sample delay (anchor up to 600). The
+    // squares z, z^2, z^4, ... are the same chain for every resting string,
+    // so one evaluation makes them once (loadOtherStrings) and each string
+    // takes its own product of them, in the order it always did.
+    constexpr int squareCount = 16;
+    using Squares = std::array<Complex, squareCount>;
+    const auto raisedTo = [] (const Squares& squares, int n) -> Complex
     {
         Complex result { 1.0, 0.0 };
-        for (; n > 0; n >>= 1, z *= z)
-            if (n & 1) result *= z;
+        for (std::size_t bit = 0; n > 0; n >>= 1, ++bit)
+            if (n & 1) result *= squares[bit];
         return result;
     };
+    // What the modal sum below needs of each mode, as the doubles it works
+    // in, once a solve rather than once an evaluation: the same values, so
+    // the same sum.
+    struct ModeTerms { double twiceDamping, omegaSquared, heave, cross, rock; };
+    std::array<ModeTerms, bridgeModeCount> modeTerms {};
+    for (int index = 0; index < table.count; ++index)
+    {
+        const auto& mode = table.modes[static_cast<std::size_t>(index)];
+        modeTerms[static_cast<std::size_t>(index)] = {
+            2.0 * static_cast<double>(mode.damping),
+            static_cast<double>(mode.omega) * static_cast<double>(mode.omega),
+            static_cast<double>(mode.heave), static_cast<double>(mode.cross),
+            static_cast<double>(mode.rock) };
+    }
     // bridgePortMobility at a complex digital frequency s (z = e^s): the same
     // modal sum at the bilinear image of s, which on the unit circle is its
     // j 2 fs tan(w/2).
@@ -6259,13 +6278,12 @@ float AcustraEngine::coupledPolarisationDetune(
         Complex heave {}, cross {}, rock {};
         for (int index = 0; index < table.count; ++index)
         {
-            const auto& mode = table.modes[static_cast<std::size_t>(index)];
+            const auto& mode = modeTerms[static_cast<std::size_t>(index)];
             const Complex shape = over(scaled, squared
-                + 2.0 * static_cast<double>(mode.damping) * analog
-                + static_cast<double>(mode.omega) * static_cast<double>(mode.omega));
-            heave += static_cast<double>(mode.heave) * shape;
-            cross += static_cast<double>(mode.cross) * shape;
-            rock += static_cast<double>(mode.rock) * shape;
+                + mode.twiceDamping * analog + mode.omegaSquared);
+            heave += mode.heave * shape;
+            cross += mode.cross * shape;
+            rock += mode.rock * shape;
         }
         if (table.plate)
         {
@@ -6287,6 +6305,7 @@ float AcustraEngine::coupledPolarisationDetune(
     };
     std::array<RestingLoop, stringCount> restingLoops {};
     int restingCount = 0;
+    int longestAnchor = 0;
     {
         const auto& references = restingStringModels();
         for (int other = 0; other < stringCount; ++other)
@@ -6295,6 +6314,7 @@ float AcustraEngine::coupledPolarisationDetune(
             const auto& model = references[static_cast<std::size_t>(other)];
             auto& loop = restingLoops[static_cast<std::size_t>(restingCount++)];
             loop.anchor = delayAnchor(model.delay);
+            longestAnchor = std::max(longestAnchor, loop.anchor);
             thiranCoefficients(model.delay - loop.anchor, loop.thiranA1, loop.thiranA2);
             loop.pole = model.highFilter.remapped ? model.highFilter.ratePole : model.highCoefficient;
             loop.delayed = model.highFilter.remapped ? model.highFilter.delayedInputGain : 0.0;
@@ -6309,6 +6329,13 @@ float AcustraEngine::coupledPolarisationDetune(
         const Complex y01 = -source[1] / eta - arm * y11;
         const Complex y00 = source[0] - 2.0 * arm * y01 - arm * arm * y11;
         const Complex zz = z * z;
+        Squares squares;
+        squares[0] = z;
+        for (std::size_t bit = 1; bit < squares.size() && (longestAnchor >> bit) != 0; ++bit)
+        {
+            squares[bit] = squares[bit - 1];
+            squares[bit] *= squares[bit - 1];
+        }
         Complex g00 {}, g01 {}, g11 {};
         for (int other = 0; other < restingCount; ++other) {
             const auto& resting = restingLoops[static_cast<std::size_t>(other)];
@@ -6320,7 +6347,7 @@ float AcustraEngine::coupledPolarisationDetune(
             const auto ap = [&](double first, double second) {
                 return over(second + first * z + zz, 1.0 + first * z + second * zz);
             };
-            Complex feedback = double(model.loopGain) * raisedTo(z, resting.anchor)
+            Complex feedback = double(model.loopGain) * raisedTo(squares, resting.anchor)
                 * ap(resting.thiranA1, resting.thiranA2);
             for (std::size_t section = 0; section < stringDispersionSectionCount; ++section)
                 if (model.dispersionActive[section])
