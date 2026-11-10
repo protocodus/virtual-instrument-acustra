@@ -793,6 +793,50 @@ private:
         void reset() noexcept { x1 = x2 = y1 = y2 = 0.0f; }
     };
 
+    struct CoupledAllpass
+    {
+        float x1 { 0.0f };
+        float x2 { 0.0f };
+        float correction { 0.0f };
+        float correctionDifference { 0.0f };
+
+        float process(float input, float a1, float a2) noexcept
+        {
+            // For c = x - y, A(z)c = (1 - a2)(x - z^-2 x). Keep
+            // the first difference of c so the feedback does not subtract
+            // large, nearly equal values when the poles approach one.
+            const float inputDifference = input - x2;
+            float output;
+            if (a2 == 0.0f && a1 == 0.0f)
+            {
+                correctionDifference = inputDifference - correction;
+                correction = inputDifference;
+                output = x2;
+            }
+            else
+            {
+                const float stiffness = (1.0f + a1) + a2;
+                correctionDifference = (1.0f - a2) * inputDifference
+                    - stiffness * correction + a2 * correctionDifference;
+                correction += correctionDifference;
+                output = input - correction;
+            }
+            x2 = x1;
+            x1 = input;
+            return output;
+        }
+
+        void scale(float gain) noexcept
+        {
+            x1 *= gain;
+            x2 *= gain;
+            correction *= gain;
+            correctionDifference *= gain;
+        }
+
+        void reset() noexcept { x1 = x2 = correction = correctionDifference = 0.0f; }
+    };
+
     struct FixedDerivative
     {
         // The longest reference delay needs nine (extended: seventeen)
@@ -914,7 +958,7 @@ private:
                                       bool transition) noexcept;
         OnePole broadLossFilter {};
         OnePole lossFilter {};
-        SecondOrderAllpass dispersion {};
+        CoupledAllpass dispersion {};
         SecondOrderAllpass secondDispersion {};
         std::array<SecondOrderAllpass, 2> upperDispersion {};
         // The fractional-delay allpass's state: its two previous outputs.

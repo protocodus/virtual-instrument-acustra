@@ -1586,6 +1586,13 @@ struct AcustraEngineTestAccess
 
     // The normal-polarisation line a fresh note writes, newest sample first,
     // over its round trip: what the bridge will read over the first period.
+    using CoupledAllpass = AcustraEngine::CoupledAllpass;
+    static std::array<float, 2> baseDispersion(const AcustraEngine& engine, int string)
+    {
+        const auto& loop = engine.voices_[static_cast<std::size_t>(string)].loops[0];
+        return { loop.dispersionA1, loop.dispersionA2 };
+    }
+
     static std::vector<double> pluckedLine(PhysicalCalibration calibration,
                                            PickingTechnique picking,
                                            int midiNote, float velocity,
@@ -8830,6 +8837,97 @@ void testAPickReleaseKeepsItsHumpAcrossRates()
               << worst << " dB from 48 kHz\n";
 }
 
+void testCoupledDispersionKeepsItsAllpassTransfer()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    struct DirectReference
+    {
+        double x1 {}, x2 {}, y1 {}, y2 {};
+        double process(double x, double a1, double a2)
+        {
+            const double y = a2 * x + a1 * x1 + x2 - a1 * y1 - a2 * y2;
+            x2 = x1;
+            x1 = x;
+            y2 = y1;
+            y1 = y;
+            return y;
+        }
+        void scale(float gain)
+        {
+            x1 *= gain;
+            x2 *= gain;
+            y1 *= gain;
+            y2 *= gain;
+        }
+    };
+    double worstOutputError = 0.0;
+    double worstEnergyError = 0.0;
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    for (double rate : { 44100.0, 96000.0, acustra::AcustraEngine::maximumSupportedSampleRate })
+    {
+        engine->prepare(rate, 64);
+        engine->setStringPerChannelMode(true);
+        engine->noteOn(40, 1.0f, 1);
+        const auto low = Access::baseDispersion(*engine, 0);
+        engine->noteOn(84, 1.0f, 6);
+        const auto high = Access::baseDispersion(*engine, 5);
+        for (const auto& coefficients : { low, high })
+        {
+            Access::CoupledAllpass filter;
+            double energy = 0.0;
+            for (int sample = 0; sample < 16384; ++sample)
+            {
+                const float y = filter.process(sample == 0 ? 1.0f : 0.0f,
+                                               coefficients[0], coefficients[1]);
+                energy += double(y) * y;
+            }
+            worstEnergyError = std::max(worstEnergyError, std::abs(energy - 1.0));
+            filter.reset();
+            expect(filter.process(0.0f, coefficients[0], coefficients[1]) == 0.0f,
+                   "the coupled allpass retained signal history after reset");
+        }
+        Access::CoupledAllpass filter;
+        DirectReference reference;
+        float previous = 0.0f, twoBack = 0.0f;
+        double energy = 0.0, errorEnergy = 0.0;
+        for (int sample = 0; sample < 8192; ++sample)
+        {
+            const float progress = std::clamp((sample - 2048) / 4096.0f, 0.0f, 1.0f);
+            float a1 = low[0] + progress * (high[0] - low[0]);
+            float a2 = low[1] + progress * (high[1] - low[1]);
+            const bool pureDelay = sample >= 4000 && sample < 4010;
+            if (pureDelay)
+                a1 = a2 = 0.0f;
+            if (sample == 3000)
+            {
+                constexpr float gain = 0.43f;
+                filter.scale(gain);
+                reference.scale(gain);
+                previous *= gain;
+                twoBack *= gain;
+            }
+            const float input = 0.37f * std::sin(0.016f * sample)
+                + 0.11f * std::cos(0.073f * sample + 0.5f) + 0.04f;
+            const float output = filter.process(input, a1, a2);
+            const double expected = reference.process(input, a1, a2);
+            if (pureDelay)
+                expect(output == twoBack, "a neutral dispersion section did not give an exact delay");
+            const double error = output - expected;
+            errorEnergy += error * error;
+            energy += expected * expected;
+            twoBack = previous;
+            previous = input;
+        }
+        worstOutputError = std::max(worstOutputError, std::sqrt(errorEnergy / energy));
+    }
+    std::cout << "Acustra coupled dispersion relative error " << worstOutputError
+              << ", impulse energy error " << worstEnergyError << '\n';
+    expect(worstOutputError < 1.0e-6,
+           "the coupled dispersion filter moved the direct transfer under a coefficient change");
+    expect(worstEnergyError < 2.0e-6,
+           "a fixed coupled dispersion filter did not preserve impulse energy");
+}
+
 // A Shape is the measured body's A0 and T1 re-coupled through Christensen and
 // Vistisen's two-oscillator model for a published box, with the plate modes
 // above T1 on the equal-thickness plate law. The anchor - the Dreadnought,
@@ -10012,6 +10110,7 @@ int main(int argc, char** argv)
     testBendingLossFollowsItsLaw();
     testConstantLossFollowsItsLaw();
     testStringLossSectionsArePassiveAtEveryRate();
+    testCoupledDispersionKeepsItsAllpassTransfer();
     testStringLossIsTheSameInBothPlanes();
     testPlateConductanceFloorDampsOnlyTheUpperBand();
     testPlateConductanceFloorReachesBothPorts();

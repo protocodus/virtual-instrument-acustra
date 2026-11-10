@@ -565,7 +565,7 @@ std::array<float, 24> filterMemory(const Access::Loop& loop)
         loop.broadLossFilter.state,
         loop.broadLossFilter.previousInput, loop.lossFilter.state,
         loop.lossFilter.previousInput, loop.dispersion.x1, loop.dispersion.x2,
-        loop.dispersion.y1, loop.dispersion.y2, loop.secondDispersion.x1,
+        loop.dispersion.correction, loop.dispersion.correctionDifference, loop.secondDispersion.x1,
         loop.secondDispersion.y1, loop.appliedReleaseGain };
 }
 
@@ -596,7 +596,7 @@ void testRingingContactIsPassiveAtTheActualFractionalPoint()
                     original.constantLossY1 = 0.02f; original.constantLossY2 = -0.03f;
                     original.broadLossFilter.state = 0.13f;
                     original.lossFilter.previousInput = -0.27f;
-                    original.dispersion.x1 = 0.41f; original.dispersion.y2 = -0.39f;
+                    original.dispersion.x1 = 0.41f; original.dispersion.correctionDifference = -0.39f;
                     original.secondDispersion.y1 = 0.07f;
                     const double before = slopeEnergy(original);
                     auto conditioned = original;

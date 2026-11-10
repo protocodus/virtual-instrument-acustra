@@ -171,7 +171,7 @@ struct AcustraEngineTestAccess
                 && loop.constantLossX1 == old.constantLossX1 && loop.constantLossX2 == old.constantLossX2
                 && loop.constantLossY1 == old.constantLossY1 && loop.constantLossY2 == old.constantLossY2
                 && loop.dispersion.x1 == old.dispersion.x1 && loop.dispersion.x2 == old.dispersion.x2
-                && loop.dispersion.y1 == old.dispersion.y1 && loop.dispersion.y2 == old.dispersion.y2;
+                && loop.dispersion.correction == old.dispersion.correction && loop.dispersion.correctionDifference == old.dispersion.correctionDifference;
         }
         return result;
     }

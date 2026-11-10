@@ -4989,7 +4989,8 @@ void AcustraEngine::scaleStoredWaves(Voice& voice, float gain) noexcept
             filter->state *= gain;
             filter->previousInput *= gain;
         }
-        for (auto* section : { &loop.dispersion, &loop.secondDispersion,
+        loop.dispersion.scale(gain);
+        for (auto* section : { &loop.secondDispersion,
                                &loop.upperDispersion[0], &loop.upperDispersion[1] })
         {
             section->x1 *= gain;
