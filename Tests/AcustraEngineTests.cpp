@@ -2,6 +2,7 @@
 #include "DSP/ConstructionLoudnessData.h"
 #include "DSP/MeasuredBodyData.h"
 #include "DSP/MeasuredBridgeData.h"
+#include "DSP/PickProjectionMath.h"
 #include "DSP/StudioCaptureLoudnessData.h"
 #include "Fixtures/FixedVelocityObserverData.h"
 
@@ -1222,6 +1223,122 @@ struct AcustraEngineTestAccess
                                   selected->attackPitchDecay });
         }
         return trace;
+    }
+
+    static bool failedPickProjectionPreservesLegacyRelease()
+    {
+        auto owner = std::make_unique<AcustraEngine>();
+        auto& engine = *owner;
+        engine.prepare(96000.0, 64);
+        auto rejected = std::make_unique<AcustraEngine::StringLoop>();
+        rejected->setCurrentDelay(71.375f);
+        rejected->targetDelay = rejected->currentDelay;
+        rejected->upperDispersionActive = true;
+        rejected->secondDispersionActive = true;
+        // Deliberately force a growing DC root so the complete-state
+        // projection has to reject before publishing anything.
+        rejected->loopGain = 1.01f;
+        rejected->allpassY1 = 0.12f;
+        rejected->upperDispersion[0].y2 = -0.031f;
+        rejected->constantLossX1 = 0.006f;
+        auto legacy = std::make_unique<AcustraEngine::StringLoop>(*rejected);
+        const bool accepted = engine.projectPickRelease(
+            *rejected, 0.1f, 0.24f, 0.002f, 0.35, 0.2, 320);
+        if (accepted || rejected->delay != legacy->delay
+            || rejected->allpassY1 != legacy->allpassY1
+            || rejected->upperDispersion[0].y2 != legacy->upperDispersion[0].y2
+            || rejected->constantLossX1 != legacy->constantLossX1)
+            return false;
+        const double ordinary = engine.writePickRelease(
+            *legacy, 71, 0.1f, 0.27f, 0.0025f, 1, 0.4f, 0.2, 35.6f);
+        const double fallback = engine.writePickRelease(
+            *rejected, 71, 0.1f, 0.27f, 0.0025f, 1, 0.4f, 0.2, 35.6f,
+            81.0f, 0.24f, 0.002f);
+        return fallback == ordinary && rejected->delay == legacy->delay
+            && rejected->allpassY1 == legacy->allpassY1
+            && rejected->upperDispersion[0].y2 == legacy->upperDispersion[0].y2
+            && rejected->constantLossX1 == legacy->constantLossX1;
+    }
+
+    static std::array<double, 2> projectedPickReleaseErrors(
+        double rate, float fullPeriod, int rawLength, float point, float aperture,
+        float height, double slip)
+    {
+        auto owner = std::make_unique<AcustraEngine>();
+        auto& engine = *owner;
+        engine.prepare(rate, 64);
+        auto projected = std::make_unique<AcustraEngine::StringLoop>();
+        projected->setCurrentDelay(static_cast<float>(rawLength));
+        projected->targetDelay = projected->currentDelay;
+        projected->loopGain = 1.0f;
+        projected->highLossMix = projected->broadLossMix = 0.0f;
+        projected->upperDispersionActive = true;
+        projected->secondDispersionActive = true;
+        // Four pure two-sample sections isolate the release's complete
+        // initial state and sign from the fractional pole-fit accuracy.
+        const int period = rawLength + 8;
+        const int dense = static_cast<int>(std::round(4.0f * fullPeriod));
+        constexpr float velocityShare = 0.58203125f;
+        auto unprojected = std::make_unique<AcustraEngine::StringLoop>(*projected);
+        const float storedPoint = point * fullPeriod / rawLength;
+        const float storedAperture = aperture * fullPeriod / rawLength;
+        const float referenceDelay = static_cast<float>(48000.0 * rawLength / rate);
+        double expectedWork = engine.writePickRelease(*unprojected, rawLength, height,
+            storedPoint, storedAperture, 1, velocityShare, slip, referenceDelay);
+        if (rate == 48000.0)
+        {
+            const auto age = [&] (int lag)
+            {
+                return unprojected->delay[static_cast<std::size_t>(-lag)
+                    & (unprojected->delay.size() - 1)];
+            };
+            float previous = age(rawLength);
+            for (int lag = 1; lag <= rawLength; ++lag)
+            {
+                const double difference = age(lag) - previous;
+                expectedWork += rawLength * difference * difference;
+                previous = age(lag);
+            }
+        }
+        const double actualWork = engine.writePickRelease(*projected, rawLength, height,
+            storedPoint, storedAperture, 1, velocityShare, slip, referenceDelay,
+            fullPeriod, point, aperture);
+        if (projected->allpassY1 == 0.0f && projected->allpassY2 == 0.0f)
+            return { std::numeric_limits<double>::infinity(),
+                     std::numeric_limits<double>::infinity() };
+
+        // Independently sample the exact legacy-shaped release at four
+        // times the spatial resolution, then measure its Fourier phase.
+        auto reference = std::make_unique<AcustraEngine::StringLoop>();
+        engine.sampleRate_ = 4.0 * rate;
+        engine.writePickRelease(*reference, dense, height, point, aperture,
+            1, velocityShare, std::pow(slip, 0.25),
+            static_cast<float>(48000.0 * fullPeriod / rate));
+        std::vector<double> output(static_cast<std::size_t>(period));
+        for (double& sample : output)
+        {
+            sample = projected->advance(0.0f, 1.0f);
+            projected->write(static_cast<float>(sample));
+        }
+        double error = 0.0;
+        for (int partial = 1; partial <= 6; ++partial)
+        {
+            constexpr double turn = 2.0 * std::numbers::pi;
+            std::complex<double> wanted, actual;
+            for (int sample = 0; sample < dense; ++sample)
+            {
+                const auto slot = static_cast<std::size_t>(-sample - 1)
+                    & (reference->delay.size() - 1);
+                wanted += static_cast<double>(reference->delay[slot])
+                    * std::polar(1.0, turn * partial * sample / dense);
+            }
+            for (int sample = 0; sample < period; ++sample)
+                actual += output[static_cast<std::size_t>(sample)]
+                    * std::polar(1.0, -turn * partial * sample / period);
+            wanted *= std::polar(1.0, turn * partial / period);
+            error = std::max(error, std::abs(std::arg(actual / wanted)));
+        }
+        return { error, std::abs(actualWork / expectedWork - 1.0) };
     }
 
     static float freshPickAttackCents(double rate, int string, int fret,
@@ -3082,6 +3199,53 @@ void testAttackPitchIsBoundedAndVelocityResponsive()
         expect(hardSteel.back().cents < 0.8 * hardSteel.front().cents,
                "energy-following attack pitch did not relax during sustain");
     }
+}
+
+void testPickProjectionPhaseApproximation()
+{
+    double maximum = 0.0;
+    const auto check = [&] (double real, double imaginary)
+    {
+        const double phase = acustra::pickProjection::phaseAngle(real, imaginary);
+        const double reference = std::atan2(imaginary, real);
+        maximum = std::max(maximum, std::abs(std::remainder(
+            phase - reference, 2.0 * std::numbers::pi)));
+    };
+    for (const double scale : { 1.0e-120, 1.0, 1.0e120 })
+        for (int step = 0; step < 8192; ++step)
+        {
+            const double angle = step * (2.0 * std::numbers::pi / 8192.0);
+            check(scale * std::cos(angle), scale * std::sin(angle));
+        }
+    constexpr double boundary = 0.41421356237309505;
+    for (const double ratio : { std::nextafter(boundary, 0.0), boundary,
+                                std::nextafter(boundary, 1.0) })
+        for (const double real : { -1.0, 1.0 })
+            for (const double sign : { -1.0, 1.0 })
+            {
+                check(real, sign * ratio);
+                check(real * ratio, sign);
+            }
+    expect(maximum < 5.0e-10, "Pick projection phase error exceeded its series bound");
+}
+
+void testPickProjectionKeepsTheSampledVelocityPhase()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    // These narrow releases were sign outliers when their velocity
+    // cross term was obtained by a continuous-limit approximation.
+    const auto [first, firstWork] = Access::projectedPickReleaseErrors(44100.0, 79.67474365f,
+        69, 0.1748672392f, 0.0006579438429f, 0.2116291672f, 0.197052);
+    const auto [second, secondWork] = Access::projectedPickReleaseErrors(48000.0, 45.93875504f,
+        40, 0.2855798426f, 0.001977078275f, 0.0835332796f, 0.207762);
+    std::cout << "Projected Pick sampled velocity phase errors: "
+              << first << ", " << second << " radians\n";
+    expect(std::max(first, second) < 0.04,
+           "projection changed the sampled Pick release phase");
+    expect(std::max(firstWork, secondWork) < 2.0e-6,
+           "projection changed the calibrated Pick reference work");
+    expect(Access::failedPickProjectionPreservesLegacyRelease(),
+           "a rejected Pick projection did not preserve the legacy release");
 }
 
 void testFreshPickAttackPitchIsRateIndependent()
@@ -9973,6 +10137,8 @@ int main(int argc, char** argv)
     testConstructionControlsChangeTheModel();
     testAgeRemovesUpperStringEnergy();
     testAttackPitchIsBoundedAndVelocityResponsive();
+    testPickProjectionPhaseApproximation();
+    testPickProjectionKeepsTheSampledVelocityPhase();
     testFreshPickAttackPitchIsRateIndependent();
     testSteadyPitchIsCompensated();
     testEveryStringStaysOnEqualTemperedPitch();

@@ -1991,10 +1991,14 @@ private:
     // The share is solved on the grid of referenceDelay, the loop's period
     // in 48 kHz samples, at any other host rate. Return the released slope
     // energy on that grid, or zero when the written line is the reference.
+    bool projectPickRelease(StringLoop& loop, float height, float position,
+                            float aperture, double hump,
+                            double slipPole, int physicalGrid) noexcept;
     double writePickRelease(StringLoop& loop, int length, float height,
                             float position, float aperture, int modes,
                             float releaseShare, double slipPole,
-                            float referenceDelay) noexcept;
+                            float referenceDelay, float physicalPeriod = 0.0f,
+                            float physicalPoint = 0.0f, float physicalAperture = 0.0f) noexcept;
     double plectrumSlipPole(const Voice& voice, float releasedAmplitude,
                             float heldDistance, float soundingLength,
                             float scaleLength, float edgeRadius) const noexcept;
