@@ -13024,10 +13024,9 @@ namespace
 // renderStringAxialForce: cell k reads the outgoing wave's sample k strides
 // back and the returning wave at its own age, and adds the square of the two
 // waves' slopes over the cell. `outgoing`, `returning` and `sum` carry the
-// previous cell's reads and the running sum in and out. Four cells go at once
-// where the compiler has 4-wide float vectors; each cell's reads and slope are
-// the one-at-a-time arithmetic, and only the order the squares are added in
-// differs (four partial sums, joined last), a change in the sum's last bits.
+// previous cell's reads and the running sum in and out. The SDK evaluates four
+// cells at once and adds their squares in the scalar order. Native SSE2 builds
+// retain their existing four partial sums.
 void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                    int stride, int first, int end, float period,
                    float returningSpan, float outgoingScale,
@@ -13044,7 +13043,8 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         return a + part * (b - a);
     };
     int cell = first;
-#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+#if (defined(JUKEBOX_SDK) || (defined(__SSE2__) && defined(__x86_64__))) \
+    && (defined(__clang__) || defined(__GNUC__))
     typedef float Floats __attribute__((vector_size(16)));
     typedef int Ints __attribute__((vector_size(16)));
     if (end - cell >= 4)
@@ -13059,7 +13059,19 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         const Floats four = { 4.0f, 4.0f, 4.0f, 4.0f };
         Floats cells = { static_cast<float>(cell), static_cast<float>(cell + 1),
                          static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
+#if defined(JUKEBOX_SDK)
+        const auto addSquares = [&sum] (Floats slope)
+        {
+            const Floats squares = slope * slope;
+            sum += squares[0];
+            sum += squares[1];
+            sum += squares[2];
+            sum += squares[3];
+        };
+#else
         Floats partial = { 0.0f, 0.0f, 0.0f, 0.0f };
+        const auto addSquares = [&partial] (Floats slope) { partial += slope * slope; };
+#endif
         // Mostly the cells' reads lie in one unbroken run of the ring, up
         // to `newest`: read them there without masking. The deepest is the
         // outgoing wave's last full group, or the returning wave's first
@@ -13075,9 +13087,9 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             && static_cast<unsigned>(lastCell * stride) <= newest)
         {
             const float* const head = line + newest;
-            const float* outgoingAt = head - cell * stride;
             for (int group = 0; group < groups; ++group, cell += 4)
             {
+                const float* const outgoingAt = head - cell * stride;
                 const Floats age = periodV - spanV * cells;
                 const Ints whole = __builtin_convertvector(age, Ints);
                 const Floats part = age - __builtin_convertvector(whole, Floats);
@@ -13091,14 +13103,13 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                 const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-stride],
                                               outgoingAt[-2 * stride],
                                               outgoingAt[-3 * stride] };
-                outgoingAt -= 4 * stride;
                 const Floats previousOutgoing = { outgoing, nextOutgoing[0],
                                                   nextOutgoing[1], nextOutgoing[2] };
                 const Floats previousReturning = { returning, nextReturning[0],
                                                    nextReturning[1], nextReturning[2] };
                 const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                     + (nextReturning - previousReturning) * returningScaleV;
-                partial += slope * slope;
+                addSquares(slope);
                 outgoing = nextOutgoing[3];
                 returning = nextReturning[3];
                 cells += four;
@@ -13129,12 +13140,14 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                                                nextReturning[1], nextReturning[2] };
             const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                 + (nextReturning - previousReturning) * returningScaleV;
-            partial += slope * slope;
+            addSquares(slope);
             outgoing = nextOutgoing[3];
             returning = nextReturning[3];
             cells += four;
         }
+#if !defined(JUKEBOX_SDK)
         sum += (partial[0] + partial[1]) + (partial[2] + partial[3]);
+#endif
     }
 #endif
     for (; cell < end; ++cell)
