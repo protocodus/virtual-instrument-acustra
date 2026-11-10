@@ -407,6 +407,12 @@ if(BUILD_TESTING)
     acustra_add_suite(Acustra.ReleaseJoin AcustraReleaseJoinTests)
     set_tests_properties(Acustra.ReleaseJoin PROPERTIES TIMEOUT 120)
 
+    add_executable(AcustraMatrixReleaseTests Tests/MatrixReleaseTests.cpp)
+    target_link_libraries(AcustraMatrixReleaseTests PRIVATE AcustraDSP)
+    target_compile_features(AcustraMatrixReleaseTests PRIVATE cxx_std_20)
+    acustra_add_suite(Acustra.MatrixRelease AcustraMatrixReleaseTests)
+    set_tests_properties(Acustra.MatrixRelease PROPERTIES TIMEOUT 300)
+
     add_executable(AcustraStrumDirectionTests Tests/StrumDirectionTests.cpp)
     target_link_libraries(AcustraStrumDirectionTests PRIVATE AcustraDSP)
     target_compile_features(AcustraStrumDirectionTests PRIVATE cxx_std_20)

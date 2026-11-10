@@ -12,6 +12,7 @@
 
 #include "PluginProcessor.h"
 
+#include "MatrixRelease.h"
 #include "ParameterMatrix.h"
 
 #include <cmath>
@@ -53,16 +54,14 @@ public:
             limits.releaseSeconds = -1.0;
         else
         {
-            // Ordinary MIDI key-up retains held-string physics through an
-            // inclusive 1/32-note join window (7.5/BPM seconds), then the
-            // damping hand starts. With no playhead the processor uses
-            // 120 BPM. Keep the full two-second physical-release bound and
-            // the existing -60 dB floor; start that clock at the first
-            // damped sample, observed through the declared output latency.
-            // Docs/research/release-join-2026-10-05.md specifies this rule.
-            const double graceSamples = std::ceil (7.5 * sampleRate / 120.0);
-            limits.releaseSeconds += (graceSamples + 1.0
-                + processor->getLatencySamples()) / sampleRate;
+            // The two-second bound starts at the first damped sample, after
+            // the 1/32-note join window; with no playhead the processor uses
+            // 120 BPM. The floor is the open strings' ring, not the shared
+            // -60 dBFS: Tests/MatrixRelease.h has both rules and the
+            // measurements behind them.
+            limits.releaseSeconds = acustra::matrixrelease::releaseSeconds (
+                sampleRate, 120.0, processor->getLatencySamples());
+            limits.silenceFloor = acustra::matrixrelease::silenceFloor;
         }
         // Output is a plain gain from -24 to +6 dB after the engine, so the
         // ceiling and the silence floor move with it; automation ramps
@@ -150,7 +149,7 @@ int checkReleaseProtocol()
     constexpr double latencyAt48k = 7.0 + 96.0;
     const double expectedSeconds = 2.0 + (3000.0 + 1.0 + latencyAt48k) / 48000.0;
     if (std::abs (limits.releaseSeconds - expectedSeconds) > 1.0e-12
-        || std::abs (limits.silenceFloor - 1.0e-3f) > 1.0e-10f)
+        || std::abs (limits.silenceFloor - 2.0e-3f) > 1.0e-10f)
     {
         std::fprintf (stderr, "release protocol changed its physical-time or silence bound\n");
         return 1;
