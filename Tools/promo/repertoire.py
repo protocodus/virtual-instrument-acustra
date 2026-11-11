@@ -128,9 +128,9 @@ def players(tempo, timing, seed, phrase, swell, lilt, *specs):
 G_MAJOR = (7, 9, 11, 0, 2, 4, 6)   # and E minor
 
 
-def melody(p, start, notes, loud, bar, lean=0.012, shift=0, scale=G_MAJOR, cuts=0.0):
+def melody(p, start, notes, loud, bar, lean=0.012, shift=0, scale=G_MAJOR, cuts=0.0, pulse=3):
     """(name, length in beats) from `start`, in bars of `bar` beats: the bar's
-    first note strongest, the first of each other three beats a little
+    first note strongest, the first of each other `pulse` beats a little
     stronger, as a player leans on the pulse, and the bar's high notes
     stronger than its low ones. A name written "~X" takes a grace note, the
     scale's next note above, just before it (the tune's own octave only);
@@ -143,7 +143,7 @@ def melody(p, start, notes, loud, bar, lean=0.012, shift=0, scale=G_MAJOR, cuts=
         if name:
             pitch = n(name.lstrip("~")) + shift
             lead = 3 if abs(at % bar) < 1e-6 else 0
-            strong = abs(at / 3 - round(at / 3)) < 1e-6
+            strong = abs(at / pulse - round(at / pulse)) < 1e-6
             contour = max(-4.0, min(5.0, 0.5 * (pitch - shift - centre)))
             onset = p.at(at, lean=lean)
             grace = 0.07 if name.startswith("~") and not shift else cuts if pitch == before else 0.0

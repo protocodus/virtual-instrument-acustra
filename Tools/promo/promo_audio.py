@@ -108,6 +108,25 @@ def strings_of(notes, state, note, strings):
     return out
 
 
+def master(mix):
+    """Brings `mix` to -16 LUFS in place, true peak <= -1.15 dBTP (4x) by a
+    5 ms look-ahead limiter; returns what it did."""
+    total = len(mix)
+    mix *= 10 ** ((-16 - meter.integrated_loudness(mix)) / 20)
+    before = round(float(tp(mix)), 2)
+    up = np.abs(resample_poly(mix, 4, 1, axis=0)).max(1).reshape(-1, 4).max(1)[:total]
+    need = np.minimum(1, 10 ** (-1.15 / 20) / np.maximum(up, 1e-9))
+    la = int(.005 * sr)
+    target = minimum_filter1d(need, size=2 * la + 1, origin=-la)
+    gain, rel, cur = np.ones(total), np.exp(-1 / (0.12 * sr)), 1.0
+    for i in range(total):
+        cur = target[i] if target[i] < cur else min(target[i], cur + (1 - cur) * (1 - rel))
+        gain[i] = cur
+    mix *= gain[:, None]
+    return dict(true_peak_before_limit=before, limiter_max_gr_db=round(float(-20 * np.log10(gain.min())), 2),
+                lufs=round(float(meter.integrated_loudness(mix)), 2), true_peak=round(float(tp(mix)), 2), duration=round(total / sr, 3))
+
+
 def main():
     name = sys.argv[1] if len(sys.argv) > 1 else 'promo'
     segments, lead_in = SETS[name]
@@ -143,19 +162,7 @@ def main():
     for s, c in clips:
         i = int(round(s * sr))
         mix[i:i + len(c)] += c[:total - i]
-    mix *= 10 ** ((-16 - meter.integrated_loudness(mix)) / 20)
-    report['true_peak_before_limit'] = round(float(tp(mix)), 2)
-    up = np.abs(resample_poly(mix, 4, 1, axis=0)).max(1).reshape(-1, 4).max(1)[:total]
-    need = np.minimum(1, 10 ** (-1.15 / 20) / np.maximum(up, 1e-9))
-    la = int(.005 * sr)
-    target = minimum_filter1d(need, size=2 * la + 1, origin=-la)
-    gain, rel, cur = np.ones(total), np.exp(-1 / (0.12 * sr)), 1.0
-    for i in range(total):
-        cur = target[i] if target[i] < cur else min(target[i], cur + (1 - cur) * (1 - rel))
-        gain[i] = cur
-    mix *= gain[:, None]
-    report.update(limiter_max_gr_db=round(float(-20 * np.log10(gain.min())), 2), lufs=round(float(meter.integrated_loudness(mix)), 2),
-                  true_peak=round(float(tp(mix)), 2), duration=round(total / sr, 3))
+    report.update(master(mix))
     sf.write(f'out/{name}/{name}.wav', mix, sr, subtype='PCM_24')
 
     # timeline for promo.mjs: each excerpt's players, their notes and their strings' 60 Hz trace, in piece time

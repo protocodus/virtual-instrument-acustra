@@ -13,6 +13,8 @@ and are never committed.
 | `SongRender.cpp` | plays one part as the Rack device does (factory patch, its Rack-only settings, 64-frame batches, the Rack's `OutputRate` decimator and output ceiling, latency trimmed); writes the WAV and a 60 Hz trace of every string's level, state, fret and note (the engine's read-only `getStringActivity`) |
 | `promo_audio.py` | `promo` mixes each excerpt from its players' renders (level and an energy-balanced pan only), matches the excerpts' loudness, joins and masters them to -16 LUFS; `short-minuet`, `short-kesh`, `short-butterfly` make one excerpt each, under 30 s; writes `out/<set>/timeline.json` |
 | `promo.mjs` | draws the film (one six-string fretboard per guitar, lit by the trace) from `timeline.json` and muxes the audio (H.264 CRF 18, AAC 384 kbps); `--portrait` draws a 1080×1920 short |
+| `trios.py` | more demos, each for three guitars: Morrison's Jig, Drowsy Maggie and Sí Bheag Sí Mhór with accompaniments written here, and four Dowland pieces played voice for voice from fetched editions (its docstring names them); `python3 Tools/promo/trios.py <w>/out <dowland-dir> > <w>/parts.tsv`, then render as below |
+| `demo_audio.py` | mixes and masters each of those pieces whole to `out/<piece>/<piece>.wav` (`python3 demo_audio.py <dowland-dir>` in the work directory) |
 | `thumbs.mjs` | three 3840×2160 promo thumbnail concepts and the shorts' 9:16 covers |
 
 ```sh
