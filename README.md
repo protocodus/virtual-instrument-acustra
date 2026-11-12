@@ -1280,11 +1280,16 @@ separates verified errors from accepted approximations.
   the same record. A bridge mobility measurement of the modelled instrument
   would close both.
 - Note-to-note level is rougher than the open recordings' (2.2 dB against
-  1.8); the holes are the measured bodies' antiresonances at a close
-  microphone. The default 20% Piezo Mix deepens two of them (Parlor F#5,
-  Jumbo C5) and has not been heard yet. A bridge-microphone fit to the
-  archive's measured positions, heard before it ships, would be the way to
-  close them.
+  1.8); the holes are the measured bodies' antiresonances. On 1.9.47's
+  E2-C6 sweep (Dreadnought, Finger, `Tools/MeasureNoteEvenness.py`) the
+  spread is 2.74 dB RMS with C5 -7.6 and C#5 -6.4 dB under their
+  neighbours, about 11 dB under the Eastman E1D's same notes; the piezo is
+  even there. All three of the archive's measured microphones (treble
+  bridge, bass bridge, upper bout) share the 490-600 Hz trough, so moving
+  the microphones would not remove it, and every boost tried on the sweep
+  (+5 to +8 dB, Q 1.4-3) left it rougher (2.87-3.14 dB) by lifting D5 and
+  E5. The default 20% Piezo Mix deepens two holes (Parlor F#5, Jumbo C5)
+  and has not been heard yet.
 - Radiation above each bank's fitted band (8-12 kHz up) is a statistical
   continuation; a microphone response measured past 10 kHz would replace it.
 - The two-way junction has not been refitted since the strings came to end on
