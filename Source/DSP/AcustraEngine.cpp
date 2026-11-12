@@ -4534,6 +4534,9 @@ void AcustraEngine::reset() noexcept
     pickingGestureOriginSample_ = 0;
     pickingGestureSample_ = 0;
     hand_.fill({});
+    handPosition_ = {};
+    handShiftFrets_ = 0;
+    handShiftAt_ = 0;
     anticipations_.fill({});
     lastNoteOnSample_.fill(0);
     chordStartSample_.fill(0);
@@ -10502,6 +10505,20 @@ bool AcustraEngine::sustainIsDown(const Voice& voice) const noexcept
 // the last fretted note it sounded (hand_); held notes, key or pedal, weigh
 // 1, and released ones exp(-age / handMemoryTimeConstantSeconds) until
 // handMemorySeconds, when they are forgotten.
+//
+// One finger a string cannot say where the hand is: an open string erased
+// its string's finger, so the next note after one was placed with no hand
+// (E4 open, then F4 at the B string's sixth fret), and a line climbing one
+// string dragged the hand a fret at a time (a chromatic octave ran from the
+// B string's sixth fret to its seventeenth). So the hand also has a position
+// (handPosition_, rememberFinger): the index-finger frets from which
+// every recent fretted note is reached without moving. It weighs 1 while
+// any key or pedal holds a note and fades as a finger does afterwards, and
+// a shape costs that weight for each fret the hand would move from it. The
+// listener's direction, 2026-11-12: "figure out how a real pro player would
+// play it on the guitar with minimal hand movement. do not block impossible
+// combinations but always prefer those that are possible with single palm
+// fingers and empty strings".
 AcustraEngine::HandWeights AcustraEngine::handWeights() const noexcept
 {
     HandWeights weights {};
@@ -10526,14 +10543,38 @@ AcustraEngine::HandWeights AcustraEngine::handWeights() const noexcept
                     weight = static_cast<float>(std::exp(-age / timeConstant));
             }
         }
-        weights[static_cast<std::size_t>(string)] = weight;
+        weights.fingers[static_cast<std::size_t>(string)] = weight;
     }
+    weights.position = handPositionWeight(-1);
     return weights;
+}
+
+// The hand's position weighs 1 while a key or pedal holds a note on any
+// string but `exceptString` (the one a note-on is taking), and fades as a
+// finger does from the last note played or let go.
+float AcustraEngine::handPositionWeight(int exceptString) const noexcept
+{
+    if (!handPosition_.valid)
+        return 0.0f;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (string != exceptString && voice.played
+            && (voice.keyDown || voice.pedalHeld))
+            return 1.0f;
+    }
+    const double age = static_cast<double>(
+        sampleClock_ - std::min(handPosition_.at, sampleClock_));
+    return age <= static_cast<double>(handMemorySeconds) * sampleRate_
+        ? static_cast<float>(std::exp(-age
+            / (static_cast<double>(handMemoryTimeConstantSeconds) * sampleRate_)))
+        : 0.0f;
 }
 
 bool AcustraEngine::handKnown(const HandWeights& weights) noexcept
 {
-    return std::any_of(weights.begin(), weights.end(),
+    return weights.position > 0.0f
+        || std::any_of(weights.fingers.begin(), weights.fingers.end(),
                        [] (float weight) { return weight > 0.0f; });
 }
 
@@ -10545,7 +10586,9 @@ bool AcustraEngine::handKnown(const HandWeights& weights) noexcept
 // held fingers, at their weights. The hand is an index finger at fret p
 // covering p..p+handPositionSpan; a held fret one outside it is a stretch
 // (handStretchCost a fret), a remembered one outside it costs its weight
-// per fret the hand would have to move. The cost is the best p's; frets
+// per fret the hand would have to move, and so does each fret p lies from
+// the hand's position, at its weight. The cost is the best p's, and
+// handBodyCost for each fret a held note lies up the body; frets
 // the hand must hold that no one hand can span are impossibleShapeCost
 // plus their spread. Zero is a shape the hand reaches where it is.
 float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
@@ -10583,12 +10626,12 @@ float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
             hold(fingerFrets[index]);
         if (movable || (voice.played && voice.keyDown))
             continue;
-        if (weights[index] > 0.0f)
+        if (weights.fingers[index] > 0.0f)
         {
             remembered[static_cast<std::size_t>(rememberedCount)]
                 = hand_[index].fret;
             rememberedWeight[static_cast<std::size_t>(rememberedCount)]
-                = weights[index];
+                = weights.fingers[index];
             ++rememberedCount;
         }
     }
@@ -10646,10 +10689,19 @@ float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
             cost += rememberedWeight[static_cast<std::size_t>(index)]
                 * static_cast<float>(outside(
                     remembered[static_cast<std::size_t>(index)], position));
+        if (weights.position > 0.0f)
+            cost += weights.position * static_cast<float>(
+                position < handPosition_.low ? handPosition_.low - position
+                : position > handPosition_.high ? position - handPosition_.high
+                : 0);
         best = std::min(best, cost);
     }
-    return best == std::numeric_limits<float>::max()
-        ? impossibleShapeCost : best;
+    if (best == std::numeric_limits<float>::max())
+        return impossibleShapeCost;
+    for (int index = 0; index < heldCount; ++index)
+        best += handBodyCost * static_cast<float>(std::max(
+            0, held[static_cast<std::size_t>(index)] - handBodyFret));
+    return best;
 }
 
 int AcustraEngine::chooseString(int midiNote) const noexcept
@@ -11186,6 +11238,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     }
     const HandFinger previousFinger = hand_[static_cast<std::size_t>(string)];
     const bool previousKeyDown = voice.played && voice.keyDown;
+    bool handShiftLands = false;
     voice.harmonic = harmonic;
     voice.played = true;
     voice.keyDown = true;
@@ -11214,6 +11267,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
         const bool landed = anticipation.arrivedFret == voice.fret && voice.fret >= 1
             && static_cast<double>(sampleClock_ - anticipation.arrivedAt)
                 <= 0.005 * sampleRate_;
+        handShiftLands = !landed;
         if (landed)
             voice.fretMotion.arrivalFrom = 0.0;
         else
@@ -11229,7 +11283,9 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
         anticipation.pending = anticipation.moving = false;
         anticipation.arrivedFret = -1;
     }
-    rememberFinger(string);
+    rememberFinger(string, previousKeyDown && previousFinger.valid);
+    if (handShiftLands)
+        planHandShiftArrival(voice, string);
     voice.strumming = strumMember;
     // A forming chord may move an unfired string while another stroke has
     // already begun. Restore the original stroke before a zero-delay move
@@ -11261,15 +11317,66 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
 
 // The hand's memory of a string: the fret its finger now holds there, or
 // none for an open string or a natural harmonic's touch.
-void AcustraEngine::rememberFinger(int stringIndex) noexcept
+// The hand's position follows. A fret under the hand narrows where its
+// index finger can be; one a fret outside is a stretch from the nearer end;
+// anything further moves the hand the fewest frets that bring the fret
+// under it. A hand not on the neck goes where the fret is. An open string or
+// a harmonic leaves the hand where it is, and with no hand on the neck puts
+// it in first position, where open strings are played from. A hand that moves
+// while a finger was on the strings (fingerWasDown, another fretted key
+// down, or one let go under 0.25 s ago, planShiftArrival's own limit) has
+// shifted rather than been set down: planHandShiftArrival slides it.
+void AcustraEngine::rememberFinger(int stringIndex, bool fingerWasDown) noexcept
 {
     const auto index = static_cast<std::size_t>(stringIndex);
     const auto& voice = voices_[index];
     auto& finger = hand_[index];
-    if (voice.harmonic == 1 && voice.fret >= 1)
+    const bool fretted = voice.harmonic == 1 && voice.fret >= 1;
+    if (fretted)
         finger = { voice.fret, sampleClock_, true };
     else
         finger.valid = false;
+    const bool known = handPositionWeight(stringIndex) > 0.0f;
+    if (!fretted)
+    {
+        if (!known)
+            handPosition_ = { 1, 1, sampleClock_, true };
+        handPosition_.at = sampleClock_;
+        return;
+    }
+    const int reachLow = std::max(1, voice.fret - handPositionSpan);
+    const int reachHigh = std::min(voice.fret, fretCount - handPositionSpan);
+    HandPosition next { reachLow, reachHigh, sampleClock_, true };
+    int shift = 0;
+    if (known)
+    {
+        next.low = std::max(handPosition_.low, reachLow);
+        next.high = std::min(handPosition_.high, reachHigh);
+        if (next.low > next.high)
+        {
+            const bool up = reachLow > handPosition_.high;
+            const int from = up ? handPosition_.high : handPosition_.low;
+            const int to = up ? reachLow : reachHigh;
+            shift = std::abs(to - from) == 1 ? 0 : to - from;
+            next.low = next.high = shift == 0 ? from : to;
+        }
+    }
+    if (shift != 0)
+    {
+        constexpr double liftedSeconds = 0.25;
+        bool onStrings = fingerWasDown || static_cast<double>(
+            sampleClock_ - std::min(handPosition_.at, sampleClock_))
+                <= liftedSeconds * sampleRate_;
+        for (int other = 0; other < stringCount && !onStrings; ++other)
+        {
+            const auto& held = voices_[static_cast<std::size_t>(other)];
+            onStrings = other != stringIndex && held.played && held.keyDown
+                && held.harmonic == 1 && held.fret >= 1;
+        }
+        handShiftFrets_ = onStrings ? shift : 0;
+        handShiftAt_ = sampleClock_;
+    }
+    handPosition_ = next;
 }
 
 // The finger leaves the note: its memory starts to fade from now.
@@ -11278,6 +11385,7 @@ void AcustraEngine::releaseFinger(int stringIndex) noexcept
     const auto index = static_cast<std::size_t>(stringIndex);
     const auto& voice = voices_[index];
     auto& finger = hand_[index];
+    handPosition_.at = sampleClock_;
     if (finger.valid && voice.played && voice.harmonic == 1
         && voice.fret == finger.fret)
         finger.heldAt = sampleClock_;
@@ -12662,9 +12770,11 @@ void AcustraEngine::primeFretMotion(Voice& voice) noexcept
 {
     // A planned shift survives the pick's own re-priming (firePluck).
     const double arrivalFrom = voice.fretMotion.arrivalFrom;
+    const float arrivalPressure = voice.fretMotion.arrivalPressure;
     voice.fretMotion = {};
     voice.fretMotion.length = voice.speakingLengthMetres;
     voice.fretMotion.arrivalFrom = arrivalFrom;
+    voice.fretMotion.arrivalPressure = arrivalPressure;
 }
 
 // A position shift on a wound string: the finger that held another fret on
@@ -12683,6 +12793,7 @@ void AcustraEngine::planShiftArrival(Voice& voice, int stringIndex,
 {
     constexpr double liftedSeconds = 0.25;
     voice.fretMotion.arrivalFrom = 0.0;
+    voice.fretMotion.arrivalPressure = 1.0f;
     if (stringIndex >= 4 || voice.harmonic != 1 || voice.fret < 1 || !previous.valid
         || previous.fret == voice.fret)
         return;
@@ -12691,6 +12802,30 @@ void AcustraEngine::planShiftArrival(Voice& voice, int stringIndex,
         return;
     voice.fretMotion.arrivalFrom = voice.speakingLengthMetres * std::exp2(
         static_cast<double>(voice.fret - previous.fret) / 12.0);
+}
+
+// The whole hand changing position: when it moves along the neck with
+// fingers on the strings (rememberFinger), a finger coming down on a wound
+// string it did not hold arrives along the winding too, by the frets the
+// hand moved, as a guitarist's fingers stay near the strings through a
+// shift. Every note of the chord the shift lands on (chordWindowSeconds)
+// slides so. Authored, not measured: such a finger rides the string more
+// lightly than one that was pressing it, at half the force (-6 dB).
+void AcustraEngine::planHandShiftArrival(Voice& voice, int stringIndex) noexcept
+{
+    constexpr float guidePressure = 0.5f;
+    if (voice.fretMotion.arrivalFrom > 0.0 || handShiftFrets_ == 0
+        || stringIndex >= 4 || voice.harmonic != 1 || voice.fret < 1
+        || static_cast<double>(sampleClock_ - handShiftAt_)
+            > static_cast<double>(chordWindowSeconds) * sampleRate_)
+        return;
+    const int frets = std::clamp(handShiftFrets_, voice.fret - fretCount,
+                                 voice.fret - 1);
+    if (frets == 0)
+        return;
+    voice.fretMotion.arrivalFrom = voice.speakingLengthMetres
+        * std::exp2(static_cast<double>(frets) / 12.0);
+    voice.fretMotion.arrivalPressure = guidePressure;
 }
 
 void AcustraEngine::startShiftArrival(Voice& voice) noexcept
@@ -12706,7 +12841,7 @@ void AcustraEngine::startShiftArrival(Voice& voice) noexcept
     // settling time (shiftPressureSpreadDb), drawn even when Release Noise
     // silences it, so the hand's later draws do not depend on that control.
     auto& state = voice.fretGestureState;
-    motion.gesture = shiftPressureGain(state);
+    motion.gesture = motion.arrivalPressure * shiftPressureGain(state);
     const double pace = std::exp2(0.5 * static_cast<double>(xorshiftNoise(state)));
     const double settle = arrivalSeconds
         * std::exp2(0.5 * static_cast<double>(xorshiftNoise(state)));

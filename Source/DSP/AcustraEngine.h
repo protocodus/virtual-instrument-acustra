@@ -1312,6 +1312,9 @@ private:
             // at the pick's contact (firePluck), which re-primes the motion;
             // zero for none.
             double arrivalFrom { 0.0 };
+            // How hard the arriving finger presses against one that held
+            // this string (planHandShiftArrival).
+            float arrivalPressure { 1.0f };
             // This shift's own finger pressure, as a force gain, and the
             // slow wander of the friction along it (shiftGesture).
             float gesture { 1.0f };
@@ -2064,8 +2067,23 @@ private:
         bool valid { false };
     };
     using StringFrets = std::array<int, stringCount>;
-    using HandWeights = std::array<float, stringCount>;
+    // Where the hand is on the neck (see chooseString): the frets low..high
+    // its index finger may be at for every recent fretted note to lie under
+    // it, and when it last played or let go.
+    struct HandPosition
+    {
+        int low { 1 };
+        int high { 1 };
+        std::uint64_t at { 0 };
+        bool valid { false };
+    };
+    struct HandWeights
+    {
+        std::array<float, stringCount> fingers {};
+        float position { 0.0f };
+    };
     [[nodiscard]] HandWeights handWeights() const noexcept;
+    [[nodiscard]] float handPositionWeight(int exceptString) const noexcept;
     [[nodiscard]] static bool handKnown(const HandWeights& weights) noexcept;
     [[nodiscard]] float shapeCost(const StringFrets& shapeFrets,
                                   unsigned movableStrings,
@@ -2114,10 +2132,11 @@ private:
                    const PickingGesture* capturedGesture = nullptr,
                    float capturedParallelSign = 1.0f) noexcept;
     void muteVacatedString(Voice& voice, int stringIndex) noexcept;
-    void rememberFinger(int stringIndex) noexcept;
+    void rememberFinger(int stringIndex, bool fingerWasDown = false) noexcept;
     void releaseFinger(int stringIndex) noexcept;
     void planShiftArrival(Voice& voice, int stringIndex, const HandFinger& previous,
                           bool previousKeyDown) noexcept;
+    void planHandShiftArrival(Voice& voice, int stringIndex) noexcept;
     void startShiftArrival(Voice& voice) noexcept;
     float renderExcitation(Voice& voice) noexcept;
     // The key-up's sound (EngineParameters::releaseNoise): started by
@@ -2558,6 +2577,11 @@ private:
     double tempoBpm_ { 120.0 };
     std::array<HandFinger, stringCount> hand_ {};
     std::array<FingerAnticipation, stringCount> anticipations_ {};
+    HandPosition handPosition_ {};
+    // The hand's last change of position, in frets up the neck, and when:
+    // what planHandShiftArrival's fingers slide.
+    int handShiftFrets_ { 0 };
+    std::uint64_t handShiftAt_ { 0 };
     // Reused synchronously by one note-on; never a second bridge-loaded string.
     std::array<StringLoop, 2> repluckOldLoops_ {};
     std::array<std::uint64_t, midiChannelCount> lastNoteOnSample_ {};
@@ -2585,6 +2609,14 @@ private:
     // must move by at full memory weight (1 per fret). Half is an ordering
     // choice -- stretching beats moving, as the study found -- not a figure.
     static constexpr float handStretchCost = 0.5f;
+    // Past the twelfth fret the heel and the body are in the hand's way, so
+    // a player takes a note there only when the hand is already close: each
+    // fret beyond costs as much as moving the hand one. An ordering choice
+    // like the stretch's, not a figure. Without it a hand that had climbed
+    // the first string stayed up the body for the next phrase (D5 at the
+    // G string's nineteenth fret, not the first string's tenth).
+    static constexpr int handBodyFret = 12;
+    static constexpr float handBodyCost = 1.0f;
     // The listener's direction, not a measurement: a note released less
     // than handMemorySeconds ago still places the hand, weighted by
     // exp(-age / handMemoryTimeConstantSeconds); held notes weigh 1. With

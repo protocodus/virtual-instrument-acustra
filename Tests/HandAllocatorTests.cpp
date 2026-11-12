@@ -46,7 +46,27 @@ struct AcustraEngineTestAccess
     static void forgetHand(AcustraEngine& engine)
     {
         for (auto& finger : engine.hand_) finger.valid = false;
+        engine.handPosition_.valid = false;
     }
+    static int handShift(const AcustraEngine& engine)
+    {
+        return engine.handShiftFrets_;
+    }
+    // The pick's contact has begun the arrival planned at the note-on:
+    // how far short of its fret the finger is, in metres of string (above
+    // zero for one coming down the neck), or zero for none.
+    static double arrival(const AcustraEngine& engine, int string)
+    {
+        const auto& voice = engine.voices_[static_cast<std::size_t>(string)];
+        return voice.fretMotion.arriving
+            ? voice.speakingLengthMetres - voice.fretMotion.length : 0.0;
+    }
+    static float arrivalPressure(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)]
+            .fretMotion.arrivalPressure;
+    }
+
     static int openMidi(const AcustraEngine& engine, int string)
     {
         return engine.voices_[static_cast<std::size_t>(string)].openMidi;
@@ -549,7 +569,10 @@ void testQuietContactKeepsRepeatedString()
     auto noContact = std::make_unique<AcustraEngine>(*engine);
     Access::removeContact(*noContact, 3, 0);
     Access::removeContact(*noContact, 3, 1);
-    expect(Access::chooseString(*noContact, 55) == 2
+    // Since 1.9.43 an open string leaves the hand in first position, and
+    // that hand plays the open G again rather than the D string's fifth
+    // fret; the handless allocator is as it was.
+    expect(Access::chooseString(*noContact, 55) == 3
                && Access::chooseStringWithoutHand(*noContact, 55) == 2,
            "an inactive contact changed the existing quiet-string allocator");
     auto repeated = std::make_unique<AcustraEngine>(*engine);
@@ -616,8 +639,9 @@ void testQuietContactChordPreference()
     disabled->noteOff(55);
     run(*disabled, 0.1);
     Access::quietObserver(*disabled, 3);
+    // The hand's first position after an open string, as above.
     expect(!Access::contact(*disabled, 3)
-               && Access::chooseString(*disabled, 55) == 2
+               && Access::chooseString(*disabled, 55) == 3
                && Access::chooseStringWithoutHand(*disabled, 55) == 2,
            "all-off realism changed the old quiet-string allocator");
 }
@@ -818,8 +842,11 @@ void testForgottenHandIsTheHandlessAllocator()
                "a fresh engine placed " + std::to_string(note)
                    + " differently from the handless allocator");
     }
+    // Up the neck (the first string's eighth to twelfth frets): a hand in
+    // first position, where 1.9.43 leaves one that played D4-F4-A4, places
+    // every note where the handless allocator does.
     auto engine = freshEngine();
-    for (const int note : { 62, 65, 69 })
+    for (const int note : { 72, 74, 76 })
     {
         engine->noteOn(note, 0.7f);
         run(*engine, 0.1);
@@ -838,6 +865,136 @@ void testForgottenHandIsTheHandlessAllocator()
         expect(Access::chooseString(*engine, note)
                    == Access::chooseStringWithoutHand(*engine, note),
                "a hand two seconds gone still placed " + std::to_string(note));
+}
+
+std::vector<Placement> playLine(AcustraEngine& engine, const std::vector<int>& notes,
+                                double held = 0.12, double gap = 0.03)
+{
+    std::vector<Placement> line;
+    for (const int note : notes)
+    {
+        engine.noteOn(note, 0.7f);
+        line.push_back(placed(engine, note));
+        run(engine, held);
+        engine.noteOff(note);
+        run(engine, gap);
+    }
+    return line;
+}
+
+// The hand has a position of its own (1.9.43), beside each string's last
+// finger: an open string does not lift the hand off the neck, a line does
+// not drag it a fret at a time, and it comes down a scale in position.
+void testHandKeepsItsPosition()
+{
+    // E4 on the open first string, then F4: the first fret beside it, where
+    // a hand playing open strings is. It was the B string's sixth.
+    auto open = freshEngine();
+    auto line = playLine(*open, { 64, 65, 67 });
+    std::cout << "Acustra open E4, F4, G4: " << describe(line) << '\n';
+    expect(sameShape(line, { { { 5, 0 } }, { { 5, 1 } }, { { 5, 3 } } }),
+           "a hand that played an open string left first position: " + describe(line));
+
+    // A chromatic octave up from F3 is played four frets to a string, as in
+    // position, with no fret beyond the fourth. Before the hand had a
+    // position each string remembered one finger and the run crept up it.
+    auto chromatic = freshEngine();
+    line = playLine(*chromatic, { 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65 });
+    std::cout << "Acustra chromatic octave from F3: " << describe(line) << '\n';
+    expect(std::all_of(line.begin(), line.end(), [](const Placement& note)
+               { return note.string >= 0 && note.fret <= 4; }),
+           "a chromatic octave left first position: " + describe(line));
+
+    // C major down from C5 after climbing the first string to it: the hand
+    // stays where the climb left it (frets 4-8) and takes the open strings
+    // it passes, rather than walking back down to first position.
+    auto scale = freshEngine();
+    playLine(*scale, { 64, 65, 67, 69, 71 });
+    line = playLine(*scale, { 72, 71, 69, 67, 65, 64, 62, 60, 59, 57, 55 });
+    std::cout << "Acustra C major down from C5: " << describe(line) << '\n';
+    int low = 99, high = -1;
+    for (const auto& note : line)
+        if (note.fret >= 1)
+        {
+            low = std::min(low, note.fret);
+            high = std::max(high, note.fret);
+        }
+    expect(high - low <= AcustraEngine::fretCount && high - low <= 5,
+           "the descending scale left the hand's position: " + describe(line));
+    expect(std::count_if(line.begin(), line.end(), [](const Placement& note)
+               { return note.fret == 0; }) >= 3,
+           "the descending scale passed its open strings by: " + describe(line));
+
+    // The same descent after two seconds' rest starts from no hand at all.
+    auto rested = freshEngine();
+    playLine(*rested, { 64, 65, 67, 69, 71, 72 });
+    run(*rested, 2.1);
+    expect(Access::chooseString(*rested, 62)
+               == Access::chooseStringWithoutHand(*rested, 62),
+           "a hand two seconds gone kept its position");
+}
+
+// Frets up the body (handBodyFret) are taken only by a hand already there.
+void testHandComesBackDownTheBody()
+{
+    // Up the first string to C6 and back: E5 returns to its twelfth fret,
+    // D5 to its tenth, not to the B and G strings' seventeenth and
+    // nineteenth, where the hand's position alone would have kept them.
+    auto engine = freshEngine();
+    const auto line = playLine(*engine, { 76, 79, 81, 83, 84, 83, 81, 79, 76, 74 });
+    std::cout << "Acustra first string to C6 and back: " << describe(line) << '\n';
+    expect(line[8].string == 5 && line[8].fret == 12
+               && line[9].string == 5 && line[9].fret == 10,
+           "the hand stayed up the body: " + describe(line));
+    // A fret up the body with no other place is still played.
+    auto top = freshEngine();
+    top->noteOn(84, 0.7f);
+    expect(placed(*top, 84).fret == 20, "C6 was not placed at the twentieth fret");
+}
+
+// The hand shifting position with fingers on the strings slides the finger
+// that lands on a wound string (planHandShiftArrival), lightly; a hand set
+// down after a rest, a plain string and a note under the hand do not.
+void testHandShiftSlidesItsArrival()
+{
+    const auto shifted = [] (double rest, int to)
+    {
+        // At the presets' 10% Release Noise; at zero no finger is heard.
+        auto engine = std::make_unique<AcustraEngine>();
+        acustra::EngineParameters parameters;
+        parameters.releaseNoise = 0.1f;
+        engine->setParameters(parameters);
+        engine->prepare(sampleRate, blockSize);
+        // A4, B4 and C5 on the first string leave the hand at the fifth fret.
+        playLine(*engine, { 69, 71, 72 });
+        run(*engine, rest);
+        engine->noteOn(to, 0.7f);
+        return engine;
+    };
+    // F2 is the low E string's first fret and nowhere else: four frets down.
+    auto engine = shifted(0.0, 41);
+    expect(placed(*engine, 41).string == 0 && placed(*engine, 41).fret == 1,
+           "the shift fixture did not land on the low E string's first fret");
+    const int frets = Access::handShift(*engine);
+    expect(frets == -4, "the hand did not record its shift down the neck");
+    expect(Access::arrival(*engine, 0) > 0.0,
+           "the landing finger did not slide down the neck to its fret");
+    expect(Access::arrivalPressure(*engine, 0) == 0.5f,
+           "the landing finger did not ride the string at half force");
+    // The same note half a second later: the hand had left the strings.
+    auto rested = shifted(0.5, 41);
+    expect(placed(*rested, 41).string == 0 && Access::arrival(*rested, 0) == 0.0,
+           "a hand set down after a rest slid along the string");
+    // F5 is five frets up the first string, which has no winding to slide on.
+    auto plain = shifted(0.0, 77);
+    expect(placed(*plain, 77).string == 5 && Access::handShift(*plain) > 0
+               && Access::arrival(*plain, 5) == 0.0,
+           "a plain string slid a hand shift");
+    // E3 under the hand, at the A string's seventh fret, moves nothing.
+    auto still = shifted(0.0, 52);
+    expect(placed(*still, 52).string == 1 && placed(*still, 52).fret == 7
+               && Access::arrival(*still, 1) == 0.0,
+           "a note under the hand slid");
 }
 
 void testAllocatorCost()
@@ -940,6 +1097,9 @@ int main()
     testChordsOnOneSampleAreOneShape();
     testHandTimedStrumsKeepTheirAttacks();
     testForgottenHandIsTheHandlessAllocator();
+    testHandKeepsItsPosition();
+    testHandComesBackDownTheBody();
+    testHandShiftSlidesItsArrival();
     testAllocatorCost();
     if (failures == 0)
         std::cout << "All Acustra hand allocator tests passed\n";

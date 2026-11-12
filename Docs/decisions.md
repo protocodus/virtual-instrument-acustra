@@ -5,6 +5,45 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-12 — the fretting hand has a position, 1.9.43 (the owner's direction; listening set sent, B assumed)
+
+**What was decided.** The owner's direction, 2026-11-12: "focus now on hand
+modelling. based on keys pressed, figure out how a real pro player would
+play it on the guitar with minimal hand movement. do not block impossible
+combinations but always prefer those that are possible with single palm
+fingers and empty strings. add related movement noises, subtly."
+
+*Where the allocator fell short.* It remembered one finger a string for two
+seconds and nothing else. Played through it, 1.9.42 placed F4 after an open
+E4 at the B string's sixth fret (an open string erased the only finger, and
+with no hand the allocator avoids a string still ringing), ran a chromatic
+octave from the B string's sixth fret to its seventeenth (each step a fret
+from the last finger, so free), and walked a descending scale back to first
+position.
+
+*What ships.* The hand has a position: the index-finger frets from which
+every recent fretted note is reached. A fret under it narrows that range, a
+fret one outside is a stretch, anything further moves the hand the fewest
+frets that bring the fret under it; an open string leaves it where it is,
+and with no hand on the neck puts it in first position. It weighs 1 while a
+key or pedal holds a note and fades with the fingers' existing two seconds,
+which stay the owner's earlier direction. A shape costs that weight for
+each fret the hand would move. The span, the stretch and the
+impossible-shape fallback are unchanged: a shape no one hand reaches is
+ranked last and played.
+
+*Two authored choices.* A fret past the twelfth costs one fret of movement
+for each beyond, because a hand with a position otherwise stayed up the body
+(D5 at the G string's nineteenth fret after a climb to C6). A hand that
+shifts with fingers on the strings slides the finger landing on a wound
+string it did not hold, at half the force of the existing same-string shift
+(1.9.24). Neither is measured.
+
+**The listening set.** `2026-11-12-hand-model`, two keyboard phrases through
+the Performer on Dreadnought Steel at the preset's own settings, A 1.9.42
+and B 1.9.43, matched on whole-file RMS. Not committed. By the project's
+standing instruction B is assumed until the owner says otherwise.
+
 ## 2026-11-11 — the Pick's hand and the top's full spring-back, 1.9.42 (measured; the owner took B)
 
 **What was decided.** Two things the flat-top recordings contradict on the

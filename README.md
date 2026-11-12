@@ -39,6 +39,29 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.43 — 2026-11-12 — a fretting hand with a position
+
+- The fretting hand now has a position on the neck, beside each string's
+  last finger, and a note or chord costs a fret for each fret the hand would
+  move from it. An open string no longer lifts the hand off the neck: after
+  E4 on the open first string, F4 is its first fret, where it was the B
+  string's sixth. A line no longer drags the hand along one string: a
+  chromatic octave from F3 is played four frets to a string in first
+  position. Coming down a scale the hand stays where it climbed to and takes
+  the open strings it passes (C major down from C5: first string 8, 7, 5, 3,
+  B string 6, open E, G string 7, 5, open B, D string 7, open G), where it
+  walked back to first position. Keyboard lines and chords that follow a
+  position change are fretted differently, so they sound from other strings.
+- Frets past the twelfth are taken only by a hand already there. After
+  climbing the first string to C6, E5 and D5 come back down it to the
+  twelfth and tenth frets.
+- When the hand shifts position with fingers on the strings, the finger that
+  lands on a wound string it did not hold slides in along the winding by the
+  frets the hand moved, at half the force of a finger that held the string.
+  The level is authored. Release Noise scales it, and 0% silences it.
+- Impossible combinations are still never dropped: a shape no one hand
+  reaches is played, ranked after every shape one reaches.
+
 ### 1.9.42 — 2026-11-11 — the upper frets against the flat-top recordings
 
 - The Pick's hand now sits 141 mm from the saddle at the default Pluck
@@ -705,9 +728,14 @@ gives every mechanism, measurement and citation in full, and
 
 **How.** Each note takes one string and fret. A fretting-hand cost chooses
 them: a hand in position covers four frets and stretches to a fifth, held and
-recently released notes place it, and among equal costs an open string, a
+recently released notes place it, and it keeps its position on the neck
+through open strings and for two seconds after the last note, so a fret it
+must move to costs as many frets as it moves and a fret past the twelfth one
+more for each beyond. Among equal costs an open string, a
 lower fret and a silent string win; a repeated note re-plucks the string still
-sounding it. Four tunings (Standard, Drop D, DADGAD, Open G)
+sounding it. A shape no one hand reaches is still played, after every shape
+one reaches. A hand that changes position with fingers on the strings slides
+the finger landing on a wound string, faintly. Four tunings (Standard, Drop D, DADGAD, Open G)
 change the strings' tension at fixed gauge, and only the tuning's range
 sounds (E2 to C6 in Standard). Notes on one sample and channel are fretted as
 one chord shape and, with a pick, swept as a strum whose string timing,
@@ -987,6 +1015,13 @@ separates verified errors from accepted approximations.
 - Live chords with Gather Chords off can keep a wider fingering than one hand
   reaches. The hand's span and costs follow the listener's direction and a
   finger-span study, not recorded fingerings.
+- The fretting hand sees only the notes played so far. It cannot choose a
+  position for the phrase to come, as a player reading ahead does, and the
+  first note after two seconds' rest takes the lowest fret. It has no
+  fingers of its own beyond a count of four and their barres, and the
+  picking hand's string crossings cost nothing. The cost of a fret past the
+  twelfth and the half-force slide of a shifting hand are authored, not
+  measured.
 - MIDI limits: the MPE zone is not saved with a session; RPN Data
   Increment/Decrement are ignored; the Sustain switch acts at block start;
   Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond
