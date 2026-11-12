@@ -519,7 +519,7 @@ void testSameSampleChordOrderIsCanonical()
             "the chord determinism check rendered silence");
 }
 
-double upperRegisterRise (const std::vector<float>& mono)
+double upperRegisterRise (const std::vector<float>& mono, double partial = 1.0)
 {
     // Five-millisecond heterodyne windows locate the rise around C6,
     // relative to first sound, to one millisecond. Use a clip-relative
@@ -527,7 +527,7 @@ double upperRegisterRise (const std::vector<float>& mono)
     std::size_t first = 0;
     while (first < mono.size() && std::abs (mono[first]) < 1.0e-5f)
         ++first;
-    const double frequency = 440.0 * std::exp2 ((84.0 - 69.0) / 12.0);
+    const double frequency = partial * 440.0 * std::exp2 ((84.0 - 69.0) / 12.0);
     const auto window = static_cast<std::size_t> (0.005 * sampleRate);
     const auto hop = static_cast<std::size_t> (0.001 * sampleRate);
     const auto extent = static_cast<std::size_t> (0.08 * sampleRate);
@@ -590,7 +590,13 @@ void testSameSampleChordsAreStrummedAndAlternate()
             juce::MidiBuffer empty;
             processor.processBlock (audio, block == 0 ? off : empty);
         }
-        return upperRegisterRise (mono);
+        // C6's second partial: F2's twelfth, B-flat 2's ninth and A-flat 3's
+        // fifth lie on its fundamental about 15 dB under it, at the probe's
+        // 0.2 threshold. 1.9.44's softer Finger release moved them across it
+        // (down again 4 ms, restart 5 ms on an unchanged 10 ms sweep); at
+        // 2093 Hz the same strums read down 18, up 1, again 15, restart 13 ms,
+        // and 1.9.43's read 12, 1, 15, 12.
+        return upperRegisterRise (mono, 2.0);
     };
     const auto median = [] (std::vector<double> values)
     {
