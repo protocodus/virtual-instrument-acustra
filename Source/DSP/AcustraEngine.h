@@ -1680,8 +1680,12 @@ private:
         // the pluck (initialisePluck): the normal plane's steep-flank rise
         // per sample still to reach the junction, the two first-order
         // stages whose cascade gives it (n + 1) d^n there (process), and
-        // the samples since the latest release (-1: none sounding).
+        // the samples since the latest release (-1: none sounding). A soft
+        // contact's force unloads in its slip time: one pole ahead of them
+        // (0: at once, the Pick).
         float releaseStepRise { 0.0f };
+        float releaseStepSlipPole { 0.0f };
+        float releaseStepSlip { 0.0f };
         float releaseStepForce { 0.0f };
         float releaseStepLevel { 0.0f };
         int releaseStepAge { -1 };

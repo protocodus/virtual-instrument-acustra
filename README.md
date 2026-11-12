@@ -39,6 +39,19 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.46 — 2026-11-12 — the fingertip lets the saddle go as gently as the string
+
+- Finger and Thumb lose the click at the start of every note. The force the
+  hand held the string aside with, which the saddle carried, was let go in
+  one sample: a broadband edge that stood 15-19 dB over the Eastman E1D's
+  plucked notes above 3 kHz in their first 30 ms from E2 to D#4, and once
+  1.9.45 darkened the string it stood clear of the note. The force now
+  unloads in the fingertip's own slip time, and that band lies 1 to 4.5 dB
+  under the recording in every register. The knock of the top stays as it
+  was. The Pick is unchanged.
+- Finger and Thumb play at the loudness they had; Mahogany Steel Thumb loads
+  with Output -1.0 dB (-1.6 before) to hold -9 VU.
+
 ### 1.9.45 — 2026-11-12 — a plucked string starts at rest at the bridge
 
 - Finger and Thumb lose a brightness that did not belong to the hand, most
@@ -1073,6 +1086,13 @@ separates verified errors from accepted approximations.
   from E4 to D#5; no one radius centres both. The Martin HD28 notes, whose
   hand is not identified, are brighter than the Finger and fit the Pick
   better.
+- A Finger re-plucking a ringing string still steps where the wave the
+  fingertip stopped reaches the bridge, under a millisecond in: on a low E
+  tremolo at 12 strokes a second, 0.004-0.019 at 48 kHz against a fresh
+  pluck's 0.001. On the plucked Eastman notes the low strings' 4-8 kHz from
+  80 ms on lies 25 dB under the recording (17 with 1.9.45's click ringing
+  the top's upper modes), so the standing benchmark's body term is worse
+  than 1.9.45's.
 - MIDI limits: the MPE zone is not saved with a session; RPN Data
   Increment/Decrement are ignored; the Sustain switch acts at block start;
   Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond

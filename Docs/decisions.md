@@ -5,6 +5,61 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-12 — the saddle's held force unloads in the fingertip's slip time, 1.9.46 (the owner's ear; the click measured)
+
+**What was decided.** The owner, 2026-11-12, after the lower-string set:
+"pluck is too loud imho", then "if this was pluck, then calibrate against
+plucked guitar samples and give me preview for other types - finger,
+thumb".
+
+*What was too loud.* Measured, not chosen by ear. Attack over sustain (the
+largest 5 ms RMS in the first 60 ms over 150-400 ms) was not the fault: the
+model's Finger stood at or under the Eastman E1D's and the Crafter's. The
+click was: above 3 kHz, the largest 2 ms RMS in the first 30 ms re the
+note's 150-400 ms level, at velocity 91 from E2-B2 / C3-B3 / C4-B4 / C5-C6,
+Eastman finger -33.6 / -30.0 / -16.0 / -11.0 dB, 1.9.45 -14.8 / -17.3 /
+-10.1 / -12.0, and 21-33 dB out of the note's own top on the low strings
+(Eastman 5-8). It did not move with velocity (-15.7 to -15.9 from v44 to
+v115) where the Crafter's grows 24 dB. The contact burst was not it (burst
+off: within 0.5 dB). The saddle's release step was (step off: -37.3 /
+-30.4 / -21.8 / -15.2): the force the hand held the string aside with,
+given back to the saddle in one sample.
+
+*The fix.* The pad's held force unloads in r/u (`plectrumSlipPole`), the
+time the line's slip is built from, and the contact's roughness burst
+already follows it. The step now passes one pole at that slip before the
+saddle's two 10 ms stages: -34.6 / -33.9 / -18.5 / -15.5 dB, 1 to 4.5 dB
+under the recording. Two stages at the line's per-pass pole (the
+zero-phase pair's magnitude) was tried first and landed 4.5-5.7 dB under
+it; one pole is the unloading the slip pole describes and lands closer.
+The knock of the top (60-180 Hz in the first 100 ms re the note) moved by
+0.1-0.6 dB. Pick unchanged to the digit.
+
+**The standing benchmark** (1.9.45 against 1.9.46): Eastman finger-plucked
+5.9607 to 6.2690 (+5.2%; body 11.323 to 12.606, attack 6.905 to 7.182,
+decay 3.332 to 3.449). Eastman picked unchanged. Martin HD28 (played as
+Finger) 7.7396 to 8.1793 (+5.7%). The body term is the 80-900 ms spectrum:
+from E2 to B2 the model's 4-8 kHz there lies 25 dB under the recording, 17
+dB under with 1.9.45's edge ringing the top's upper modes. The edge had
+filled that gap; it was not the recording's click. Recorded as a
+regression and a Known gap, not a reason to keep the click.
+
+**The letters.** `2026-11-12-pluck-click`: A is 1.9.45 and B is 1.9.46.
+Through the Performer at 48 kHz, 13 s: `finger-low/` and `finger-high/` on
+Dreadnought Steel (Finger), the lower-string arpeggios and the upper-string
+melody of the two earlier sets; `thumb/` on Mahogany Steel Thumb, the line
+from the low E to D4 and back. Matched on whole-file RMS: B +0.02, 0.00 and
+-0.44 dB. Not committed. By the project's standing instruction B is
+assumed until the owner says otherwise.
+
+**What it licensed.** The Finger and Thumb cells of
+`ConstructionLoudnessData.h` were rewritten, and Mahogany Steel Thumb's
+Output raised 0.6 dB to -1.0 dB (its Main median read -9.80 VU, outside
+-9 +/- 0.75). `RepeatedPluckRealism`'s tremolo guard measured a re-plucked
+Finger's onset steps against the isolated attack's, which was this edge;
+the Finger keeps the edge's 1.9.45 values as its reference, the same bound
+as before, with the reason beside it.
+
 ## 2026-11-12 — a plucked string starts at rest at the bridge, 1.9.45 (the fault measured; the radius by ear, listening set sent, B assumed)
 
 **What was decided.** The owner, 2026-11-12, offered the sampler libraries

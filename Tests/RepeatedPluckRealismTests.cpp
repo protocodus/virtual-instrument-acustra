@@ -1105,10 +1105,23 @@ void testRapidTremoloAudioRemainsBoundedAndBlockExact()
             // flat-top recordings' do (3.3-5 kHz, MIDI 40-58: 38 dB/s against
             // the recordings' 31, the bending law's 61), so the train's own
             // steps reach the attack's (Docs/research/string-hf-loss-2026-10-10.md).
+            // To 1.9.45 the Finger's saddle shed its held force in one
+            // sample, and that edge was its isolated attack's onset step:
+            // 0.0245, 0.0217, 0.0105 and 0.0054 at 44.1, 48, 96 and 192
+            // kHz. From 1.9.46 the force unloads over the fingertip's slip
+            // and the isolated attack barely steps (0.0002-0.001). A
+            // re-pluck still does, 40 samples in at 48 kHz, where the old
+            // wave the fingertip stopped arrives at the bridge with an
+            // unsmoothed corner (0.004-0.019, under the edge on 1.9.44 and
+            // 1.9.45 alike, README Known gaps). The Finger's bound keeps the
+            // edge it was set against, so it is the same bound as before.
+            const double fingerEdge = rate == 44100.0 ? 0.0244799
+                : rate == 48000.0 ? 0.0216868 : rate == 96000.0 ? 0.0105155 : 0.00537288;
+            const double reference = pick ? onsetSteps[0] : std::max(onsetSteps[0], fingerEdge);
             for (int stroke = 1; stroke < 32; ++stroke)
             {
                 expect(onsetSteps[stroke] < 3.0
-                           * (onsetSteps[0] + backgroundSteps[stroke - 1]),
+                           * (reference + backgroundSteps[stroke - 1]),
                        "ringing contact introduced a large latency-aligned onset step");
             }
             // A stroke supplies its own release's work and no more (the

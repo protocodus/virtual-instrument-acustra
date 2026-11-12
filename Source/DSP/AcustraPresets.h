@@ -50,7 +50,7 @@ inline constexpr std::array<FactoryPreset, 8> factoryPresets {{
     { "Mahogany Steel Thumb", "mahogany-steel-thumb",
       BodyShape::Auditorium, BodyMaterial::Mahogany, Tuning::Standard,
       PickingTechnique::Thumb, CaptureType::StereoMic,
-      0.35f, 0.38f, 0.38f, 0.90f, 0.50f, 0.0f, 0.10f, 0.10f, -1.6f },
+      0.35f, 0.38f, 0.38f, 0.90f, 0.50f, 0.0f, 0.10f, 0.10f, -1.0f },
     { "Jumbo Steel Pick", "jumbo-steel-pick",
       BodyShape::Jumbo, BodyMaterial::Spruce, Tuning::Standard,
       PickingTechnique::Pick, CaptureType::StereoMic,

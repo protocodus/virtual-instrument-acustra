@@ -4626,6 +4626,7 @@ void AcustraEngine::resetSoundState() noexcept
         voice.releaseStepAge = -1;
         voice.releaseStepRise = voice.releaseStepForce
             = voice.releaseStepLevel = 0.0f;
+        voice.releaseStepSlip = 0.0f;
     }
     piezoForceDerivative_.reset();
     lastPiezoWave_ = lastPiezoForce_ = 0.0f;
@@ -8391,6 +8392,17 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             {
                 voice.releaseStepRise = rise;
                 voice.releaseStepAge = 0;
+                // The force the saddle carried is the force the pad held
+                // the string with, and a fingertip or thumb unloads it in
+                // r/u (plectrumSlipPole), one pole at the slip the line was
+                // filtered with, as the contact's roughness already is.
+                // Shed in one sample (to 1.9.45), it was a broadband edge
+                // the wave never had: above 3 kHz the first 30 ms of a
+                // Finger note at velocity 91 stood 15-19 dB over the
+                // Eastman E1D's from E2 to D#4 and 21-33 dB out of the
+                // note's own top, the pluck heard as too loud once the
+                // string was dark. Now -1 to -4.5 dB from the recording.
+                voice.releaseStepSlipPole = static_cast<float>(roughnessSlipPole);
             }
         }
         const float currentReferenceLength = loop.targetDelay * 48000.0f
@@ -8870,6 +8882,7 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
         voice.releaseStepAge = -1;
         voice.releaseStepRise = voice.releaseStepForce
             = voice.releaseStepLevel = 0.0f;
+        voice.releaseStepSlip = 0.0f;
     }
     voice.attackPitchCents = 0.0f;
     voice.frozenMemberPitchBendSemitones = 0.0f;
@@ -15258,12 +15271,17 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 // travelling-wave force; no extra gain or sensor is added.
                 if (voice.releaseStepAge >= 0)
                 {
-                    float force = releaseStepPole_ * voice.releaseStepForce;
+                    float impulse = 0.0f;
                     if (voice.releaseStepRise != 0.0f)
                     {
-                        force += 2.0f * port * voice.releaseStepRise;
+                        impulse = 2.0f * port * voice.releaseStepRise;
                         voice.releaseStepRise = 0.0f;
                     }
+                    const float slip = voice.releaseStepSlipPole;
+                    voice.releaseStepSlip = slip * voice.releaseStepSlip
+                        + (1.0f - slip) * impulse;
+                    float force = releaseStepPole_ * voice.releaseStepForce
+                        + voice.releaseStepSlip;
                     voice.releaseStepForce = force;
                     voice.releaseStepLevel
                         = releaseStepPole_ * voice.releaseStepLevel + force;
@@ -15274,6 +15292,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                     {
                         voice.releaseStepAge = -1;
                         voice.releaseStepForce = voice.releaseStepLevel = 0.0f;
+                        voice.releaseStepSlip = 0.0f;
                     }
                 }
                 const float piezoBranch = piezoWeight * branchImpedance;
