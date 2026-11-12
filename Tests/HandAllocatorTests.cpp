@@ -952,6 +952,26 @@ void testHandComesBackDownTheBody()
     expect(placed(*top, 84).fret == 20, "C6 was not placed at the twentieth fret");
 }
 
+// A lone note keeps to the strings beside the last one plucked when a fret
+// under the hand can sound it (pickCrossingCost).
+void testPickingHandStaysClose()
+{
+    // E5 and D5 on the first string, C4 on the D string's tenth fret: E4 is
+    // the G string's ninth, under the hand, not the open first string three
+    // strings away.
+    auto engine = freshEngine();
+    const auto line = playLine(*engine, { 76, 74, 60, 64 });
+    std::cout << "Acustra picking hand up the neck: " << describe(line) << '\n';
+    expect(line[2].string == 2 && line[2].fret == 10
+               && line[3].string == 3 && line[3].fret == 9,
+           "the line crossed the neck to an open string: " + describe(line));
+    // In first position no fret is nearer, and the open string is taken.
+    auto low = freshEngine();
+    const auto open = playLine(*low, { 64, 60, 57, 64 });
+    expect(open[2].string == 3 && open[3].string == 5 && open[3].fret == 0,
+           "first position left its open string: " + describe(open));
+}
+
 // The hand shifting position with fingers on the strings slides the finger
 // that lands on a wound string (planHandShiftArrival), lightly; a hand set
 // down after a rest, a plain string and a note under the hand do not.
@@ -1099,6 +1119,7 @@ int main()
     testForgottenHandIsTheHandlessAllocator();
     testHandKeepsItsPosition();
     testHandComesBackDownTheBody();
+    testPickingHandStaysClose();
     testHandShiftSlidesItsArrival();
     testAllocatorCost();
     if (failures == 0)

@@ -59,7 +59,8 @@ struct AcustraEngineTestAccess
         const double displacement = voice.releaseStepRise
             * voice.releaseShapePosition[0] * length
             / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
-        // Independently predict the default-Touch 0.2 mm contact's r/u
+        // Independently predict the default-Touch contact's r/u (the Finger's
+        // 0.7 mm since 1.9.44, the Thumb's 0.2 mm)
         // release from observed held force and string geometry, rather than
         // consulting plectrumSlipPole or the initializer's pole metadata.
         const double speakingLength = voice.speakingLengthMetres;
@@ -79,7 +80,8 @@ struct AcustraEngineTestAccess
             ? std::clamp(std::pow(speakingLength / 0.648
                 * double(voice.pluckPoint) * (1.0 - voice.pluckPoint) / (0.18 * 0.82),
                 0.22), 0.72, 1.35) : 1.0;
-        const double radius = 0.2e-3
+        const double radius
+            = (engine.parameters_.picking == PickingTechnique::Finger ? 0.7e-3 : 0.2e-3)
             * boundaryScale * expectedForceScale(voice.velocity)
             * (engine.parameters_.picking == PickingTechnique::Finger
                 ? std::pow(double(voice.velocity), 0.233125)
@@ -427,9 +429,14 @@ void testPlayableAudibleVelocityRange()
     // soft notes are further below the full stroke, while the 96–127 range
     // preserves the established response. Bounds cover the measured range
     // across the three techniques and captures, with numerical margin.
+    // The soft bounds were 36 and 23 dB while the Finger let go over 0.2 mm.
+    // Over the 0.7 mm the recordings give it (1.9.44) a soft stroke on the
+    // low E string lets go over more of its period and its upper partials,
+    // which carry its level, fall further: 39.1 dB at velocity 16 and 26.0
+    // at 32 on the piezo. Every other cell stays inside the old bounds.
     constexpr std::array<int, 5> velocities { 16, 32, 64, 96, 127 };
     constexpr std::array<double, 4> minimumSpan { 28.0, 17.5, 5.5, 1.0 };
-    constexpr std::array<double, 4> maximumSpan { 36.0, 23.0, 10.0, 4.0 };
+    constexpr std::array<double, 4> maximumSpan { 40.0, 27.0, 10.0, 4.0 };
     int cases = 0;
     for (double rate : { 44100.0, 96000.0 })
         for (auto technique : { acustra::PickingTechnique::Finger,

@@ -39,6 +39,26 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.44 — 2026-11-12 — the fingertip lets go as the recorded player's does
+
+- Finger is darker, on every string. The recorded player's plucked notes
+  lose their upper partials against the same player's picked notes on the
+  same guitar (4 dB at the second partial, 12 at the fifth, 19 at the
+  eighth on the low strings; 13 dB from the fifth up on the first string's
+  upper frets), and the model's Finger stood within 3 dB of its own Pick.
+  The fingertip now lets the string go over 0.7 mm, where 0.2 mm was
+  authored: from E4 to C6 its partials lie a mean 0.6 dB under that
+  recorded contrast, where they stood 7.3 dB over it. Soft strokes darken
+  more than they did. A firmer Touch brings brightness back.
+- Finger plays at the loudness it had: its level cells were re-measured, and
+  Parlor Steel Fingerstyle, DADGAD Mono Mic and Open G Slide-ready load with
+  Output 0.6 to 0.9 dB higher to hold their level on the meter. A session
+  keeps the Output it saved, so a Finger session plays up to 1 dB quieter.
+- A lone note keeps to the strings beside the last one plucked when a fret
+  under the hand can sound it: up the neck, E4 after C4 on the D string's
+  tenth fret is the G string's ninth, where it was the open first string.
+  In first position the open string is still taken.
+
 ### 1.9.43 — 2026-11-12 — a fretting hand with a position
 
 - The fretting hand now has a position on the neck, beside each string's
@@ -731,7 +751,8 @@ them: a hand in position covers four frets and stretches to a fifth, held and
 recently released notes place it, and it keeps its position on the neck
 through open strings and for two seconds after the last note, so a fret it
 must move to costs as many frets as it moves and a fret past the twelfth one
-more for each beyond. Among equal costs an open string, a
+more for each beyond. A lone note costs a quarter of that for each string
+it lies beyond the neighbour of the last one plucked. Among equal costs an open string, a
 lower fret and a silent string win; a repeated note re-plucks the string still
 sounding it. A shape no one hand reaches is still played, after every shape
 one reaches. A hand that changes position with fingers on the strings slides
@@ -785,7 +806,9 @@ the force the hand holds; Pluck Position, Touch and velocity move its point,
 width, level and brightness. The Pick adds a fitted release velocity, and every
 technique lets the string slide off a rounded edge, so softer strokes are
 released darker; a fingertip or thumb, unloading smoothly, releases at zero
-phase with a second-order fall above its half-power point. A short noise burst carries release detail. Most of a steel
+phase with a second-order fall above its half-power point. The fingertip's
+edge is the radius at which a plucked note loses its upper partials against
+a picked one as the Eastman E1D's player's do (0.7 mm). A short noise burst carries release detail. Most of a steel
 pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
@@ -1018,10 +1041,15 @@ separates verified errors from accepted approximations.
 - The fretting hand sees only the notes played so far. It cannot choose a
   position for the phrase to come, as a player reading ahead does, and the
   first note after two seconds' rest takes the lowest fret. It has no
-  fingers of its own beyond a count of four and their barres, and the
-  picking hand's string crossings cost nothing. The cost of a fret past the
-  twelfth and the half-force slide of a shifting hand are authored, not
-  measured.
+  fingers of its own beyond a count of four and their barres. The cost of
+  a fret past the twelfth, of a string crossing for the picking hand and the
+  half-force slide of a shifting hand are authored, not measured.
+- The fingertip's 0.7 mm is fitted to one player's plucked and picked takes
+  of one guitar, both assumed at velocity 91; how a real fingertip's release
+  changes with force is not measured, and soft Finger notes follow the
+  authored law. From E2 to D#4 a plucked note's partials above the eighth
+  still stand 14-19 dB over the recorded finger-to-pick contrast, at every
+  radius tried.
 - MIDI limits: the MPE zone is not saved with a session; RPN Data
   Increment/Decrement are ignored; the Sustain switch acts at block start;
   Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond

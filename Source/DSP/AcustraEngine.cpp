@@ -8187,11 +8187,22 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Martin spectral tradeoff (Docs/decisions.md, 2026-10-07). Thumb
     // retains its full-velocity reference ratio. Both keep the released
     // line's spread about its mean, preserving the displacement-to-level law.
-    // The existing 0.2 mm effective radius is authored, not a newly measured
-    // fingertip dimension. The nominal contact still bounds a firm Touch to
-    // three times its release speed; no velocity law is fitted to Finger
-    // recordings with unknown dynamics.
-    constexpr float fingerReleaseRadius = 0.2e-3f;
+    // The Finger's effective radius is the Eastman E1D's: the same player
+    // plucked and picked the same guitar, and from E2 to C6 a plucked note's
+    // partials fall under the picked note's as a low-pass with its corner
+    // between the first and second partial does (-4, -8, -12, -19 dB at
+    // H2, H3, H5, H8 re H1 from E2 to B2; -13 dB from H5 from E5 to C6;
+    // first 300 ms, velocity 91 assumed for both takes). At the 0.2 mm
+    // authored before 1.9.44 the model's Finger stood within 3 dB of its
+    // own Pick up to H7: a mean 7.3 dB over that contrast on H2-H12 from
+    // E4 to C6 and 9.5 on H2-H7 from E2 to D#4. 0.7 mm brings the first
+    // to -0.6 dB (0.5 mm +1.3, 1.0 mm -2.5) and the second to +4.0; from
+    // E2 to D#4 the partials above H8 still stand 14-19 dB over the
+    // recording's contrast, which no radius reached (README, Known gaps). The Thumb keeps the 0.2 mm
+    // its reference ratio was approved at. The nominal contact still bounds
+    // a firm Touch to three times its release speed; no velocity law is
+    // fitted to Finger recordings with unknown dynamics.
+    const float fingerReleaseRadius = fullSoftSlip ? 0.7e-3f : 0.2e-3f;
     // Playing force and release gesture have independent authored responses.
     // Raising soft-note force from v^2 to v also raises its release speed.
     // Finger and Thumb scale their effective edge by the same 1/v ratio to
@@ -10704,6 +10715,44 @@ float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
     return best;
 }
 
+// The picking hand rests where it last plucked. A lone note on the next
+// string over is under it; each string further is pickCrossingCost, fading
+// as the fretting hand's memory does. After a chord (two strings plucked
+// within chordWindowSeconds) the hand lies across the strings and nothing
+// is a crossing. Without this a line up the neck took any open string that
+// could sound its note, two or three strings away, between fretted notes.
+float AcustraEngine::pickCrossingCost(int string) const noexcept
+{
+    int last = -1;
+    std::uint64_t at = 0;
+    for (int index = 0; index < stringCount; ++index)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(index)];
+        if (voice.lastPluckMidiNote >= 0 && (last < 0 || voice.lastPluckSample > at))
+        {
+            last = index;
+            at = voice.lastPluckSample;
+        }
+    }
+    if (last < 0)
+        return 0.0f;
+    const auto chordWindow = static_cast<std::uint64_t>(
+        static_cast<double>(chordWindowSeconds) * sampleRate_);
+    for (int index = 0; index < stringCount; ++index)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(index)];
+        if (index != last && voice.lastPluckMidiNote >= 0
+            && at - voice.lastPluckSample <= chordWindow)
+            return 0.0f;
+    }
+    const double age = static_cast<double>(sampleClock_ - std::min(at, sampleClock_));
+    if (age > static_cast<double>(handMemorySeconds) * sampleRate_)
+        return 0.0f;
+    return pickCrossingPerString * static_cast<float>(std::max(0, std::abs(string - last) - 1))
+        * static_cast<float>(std::exp(-age
+            / (static_cast<double>(handMemoryTimeConstantSeconds) * sampleRate_)));
+}
+
 int AcustraEngine::chooseString(int midiNote) const noexcept
 {
     // A note repeated after its key came up is replucked on the string still
@@ -10749,7 +10798,8 @@ int AcustraEngine::chooseString(int midiNote) const noexcept
         frets.fill(-1);
         frets[static_cast<std::size_t>(string)] = fret;
         const bool steal = voice.played && voice.keyDown;
-        const float cost = shapeCost(frets, 0u, weights);
+        const float cost = shapeCost(frets, 0u, weights)
+            + pickCrossingCost(string);
         const bool open = fret == 0;
         const bool ringing = voice.played;
         bool better = best < 0;

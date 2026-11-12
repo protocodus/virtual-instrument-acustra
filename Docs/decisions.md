@@ -5,7 +5,83 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-12 — the fretting hand has a position, 1.9.43 (the owner's direction; listening set sent, B assumed)
+## 2026-11-12 — the fingertip's release against the recorded player's, and the picking hand's crossings, 1.9.44 (the radius measured; listening set sent, B assumed)
+
+**What was decided.** The owner's direction, 2026-11-12, on hearing the
+hand-model set: "sounds good, pls iterate on this idea and then continue
+with high string sound realism improvement".
+
+*The hand, second pass.* Two things were tried on twenty phrases (scales,
+melodies, leaps, thirds, sixths, octaves, triads, bass and chord) through
+the allocator. Where the hand lands after a shift: the shipped rule puts the
+new fret under the far finger, the least travel (62 shifts, 180 frets);
+leading with the near finger, as a player who expects the run to continue
+does, made 59 shifts over 268 frets. Three shifts fewer for half as much
+travel again is not the owner's "minimal hand movement", so the rule stays.
+The picking hand: a lone note took any open string that could sound it,
+however far across the neck (E4 on the open first string between C4 on the
+D string's tenth fret and the next fretted note). A lone note now costs a
+quarter of a fret's movement for each string beyond the neighbour of the
+last one plucked, fading as the fretting hand's memory does and not after a
+chord. The quarter is an ordering choice, under the half a stretch costs:
+a fret under the hand beats an open string across the neck, and an open
+string next door beats any fret. It is authored, not measured.
+
+*The Finger's brightness.* Measured, not chosen by ear. The Eastman E1D
+corpus holds the same player's plucked and picked chromatic walks on one
+guitar through one microphone, so the difference between a plucked and a
+picked note of the same pitch is the hand's alone. Partial levels re the
+first partial over the first 300 ms, the plucked note minus the picked one,
+median over the pitches both takes hold: from E2 to B2, -3.7, -7.5, -7.9,
+-11.7, -12.7, -15.0, -18.9 dB at H2 to H8 and about -20 above; from E5 to
+C6, within 6 dB to H4 and -13 to -15 from H5 to H10. The model's Finger
+minus its own Pick, both at velocity 91, stood within 3 dB of zero up to H7
+in every register. A plucked note was as bright as a picked one.
+
+The release already has the mechanism: the string slides off a rounded
+edge in r/u, u the speed its own displacement gives it
+(`plectrumSlipPole`), and the Finger's r was an authored 0.2 mm. Renders at
+0.5, 0.7, 0.85, 1.0 and 1.5 mm, model contrast minus recorded contrast,
+mean over H2-H12 from E4 to C6 / over H2-H7 from E2 to D#4: 0.2 mm +7.3 /
++9.5 dB; 0.5 mm +1.3 / +5.1; 0.7 mm -0.6 / +4.0; 0.85 mm -1.6 / +3.0;
+1.0 mm -2.5 / +1.7; 1.5 mm -4.1 / -0.9. 0.7 mm is the radius that centres
+the plain strings, where the release alone decides, and it ships. From E2
+to D#4 the partials above H8 stay 14-19 dB over the recorded contrast at
+every radius, so something other than the release holds them up there; that
+is a Known gap, not a reason to push the radius until the low partials
+overshoot (1.5 mm: H2 and H3 5-8 dB under).
+
+*What it does not establish.* Both takes are assumed at velocity 91 (their
+peaks lie within 3 dB of each other). One player, one guitar. How the
+release changes with force is not in the recordings, and soft strokes
+follow the authored law: a velocity-32 open first string's second partial
+now lies 14 dB under its first, where it lay 2 dB under.
+
+**The standing benchmark** (`Tools/BenchmarkOpenCorpora.py`, 1.9.42's
+renders against this build's): Eastman finger-plucked 6.7696 to 6.2507
+(-7.66%; harmonic -12.25%, body -11.02%, attack -4.09%; regressions: pitch
++6.77%, decay +0.92%, tuning +0.31%). Eastman picked unchanged to the
+digit. Martin HD28 6.7145 to 6.6627 (-0.77%; harmonic -8.94%; regression:
+attack +9.14%).
+
+**The letters.** `2026-11-12-finger-release`: A is 1.9.43 and B is 1.9.44.
+Two phrases through the Performer on Dreadnought Steel as a fresh plug-in
+loads it, 48 kHz, 12 s: `1/` a melody on the top strings from the 5th to
+the 20th fret, then double stops climbing to C6; `2/` a line from the open
+first string up to E5 and down the scale to G3, then a C chord. Matched on
+whole-file RMS: B trimmed +0.54 dB in `1/` and +0.73 dB in `2/`. The set is
+in the project files and is not committed. By the project's standing
+instruction B is assumed until the owner says otherwise.
+
+**What it licensed.** The Finger cells of `ConstructionLoudnessData.h` were
+rewritten (`--pickings finger`), and Parlor Steel Fingerstyle, DADGAD Mono
+Mic and Open G Slide-ready load with Output 0.7, 0.6 and 0.8 dB (0.1, 0.0
+and -0.1 before) to hold -9 VU. Fixtures re-derived, each with its reason
+beside it: `VelocityRealism` and `ContactRelease` predict the Finger's
+release from 0.7 mm, and `VelocityRealism`'s soft velocity spans admit the
+low E string's 39.1 and 26.0 dB (bounds 40 and 27, were 36 and 23).
+
+## 2026-11-12 — the fretting hand has a position, 1.9.43 (the owner's direction; the owner took B)
 
 **What was decided.** The owner's direction, 2026-11-12: "focus now on hand
 modelling. based on keys pressed, figure out how a real pro player would
@@ -41,8 +117,10 @@ string it did not hold, at half the force of the existing same-string shift
 
 **The listening set.** `2026-11-12-hand-model`, two keyboard phrases through
 the Performer on Dreadnought Steel at the preset's own settings, A 1.9.42
-and B 1.9.43, matched on whole-file RMS. Not committed. By the project's
-standing instruction B is assumed until the owner says otherwise.
+and B 1.9.43, matched on whole-file RMS. Not committed. B shipped under the project's
+standing instruction. On 2026-11-12, with the set in hand, the owner
+answered "sounds good, pls iterate on this idea": B, recorded as the
+owner's choice and nothing finer.
 
 ## 2026-11-11 — the Pick's hand and the top's full spring-back, 1.9.42 (measured; the owner took B)
 

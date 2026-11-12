@@ -2084,6 +2084,7 @@ private:
     };
     [[nodiscard]] HandWeights handWeights() const noexcept;
     [[nodiscard]] float handPositionWeight(int exceptString) const noexcept;
+    [[nodiscard]] float pickCrossingCost(int string) const noexcept;
     [[nodiscard]] static bool handKnown(const HandWeights& weights) noexcept;
     [[nodiscard]] float shapeCost(const StringFrets& shapeFrets,
                                   unsigned movableStrings,
@@ -2617,6 +2618,11 @@ private:
     // G string's nineteenth fret, not the first string's tenth).
     static constexpr int handBodyFret = 12;
     static constexpr float handBodyCost = 1.0f;
+    // A lone note's string, per string beyond the neighbour of the one last
+    // plucked. An ordering choice again: under a stretch, so a fret already
+    // under the hand beats an open string across the neck, and an open
+    // string next door still beats any fret.
+    static constexpr float pickCrossingPerString = 0.25f;
     // The listener's direction, not a measurement: a note released less
     // than handMemorySeconds ago still places the hand, weighted by
     // exp(-age / handMemoryTimeConstantSeconds); held notes weigh 1. With
