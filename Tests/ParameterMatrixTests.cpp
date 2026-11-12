@@ -99,6 +99,20 @@ public:
         if (name == "Tuning")
             return { matrix::Reach::Held, "", {},
                      "the open strings ring on with what the old tuning's playing left" };
+        // Release Noise sounds where a finger slides along a winding and,
+        // 30-45 dB under its note by design, where the hand damps a key-up
+        // (AcustraEngine::startReleaseNoise). Since 1.9.43 the hand frets the
+        // probe chord (G3 E4 C5) as the open G and E strings and the B
+        // string's thirteenth fret, so nothing in it slides and the two runs
+        // lie 0.19 dB apart. Until then the long play left the hand up the
+        // body, G3 went to the low E string's fifteenth fret and C5 to the G
+        // string's seventeenth, and that finger's slide was what the phrase
+        // heard.
+        if (name == "Release Noise")
+            return { matrix::Reach::Exempt,
+                     "the probe chord's open and plain strings have no finger to slide; "
+                     "Acustra.PluginProcessor hears the parameter's key-up and "
+                     "Acustra.ShiftArrivalAudibility its slides" };
         // Not on the editor and not automatable: setStateInformation reads
         // them once, to migrate a session saved before the controls that
         // replaced them.
