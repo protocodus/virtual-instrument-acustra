@@ -5,6 +5,65 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-11 — the Pick's hand and the top's full spring-back, 1.9.42 (measured; ships as the candidate, not yet heard)
+
+**What was decided.** Two things the flat-top recordings contradict on the
+upper strings and frets, and one thing left alone.
+
+*Where the Pick's hand is.* It stood at 0.40 of the Finger's distance, 60 mm
+from the saddle at the default Pluck Position, a ratio chosen when the steel
+corpus was a picked archtop (2026-09-25). The picked Eastman E1D take puts
+its own plectrum a median 141 mm from the saddle (the comb the pluck point
+leaves in the first 24 partials of 18 notes from E2 to E5, lowest fret
+assumed), against 126 mm for the same player's fingers and 149 mm for the
+model's Finger. The Pick now stands at 0.95. On the notes from F#4 to C6 at
+velocity 91, partial levels against the fundamental by band, recording /
+1.9.41 / 1.9.42: 1.1-1.7 kHz -5.6 / +5.4 / -3.5 dB; 1.7-2.5 kHz -7.6 / -5.9
+/ -15.4; 2.5-3.5 kHz -16.1 / -7.9 / -15.4; 3.5-5 kHz -17.1 / -15.5 / -16.7;
+5-7 kHz -18.6 / -9.9 / -16.2; 7-11 kHz -24.2 / -15.4 / -16.6. Four bands
+moved to the recording and one, 1.7-2.5 kHz, moved 8 dB under it. This is a
+measurement, not a by-ear choice.
+
+*How hard the top springs back.* The owner chose the release step at 80% of
+the full force by ear on 2026-10-01, and 0.45 kept that thump when the
+saddle anchors were retired (2026-10-10). On 1.9.41 the knock under the
+notes from E4 to C6 (71-112 Hz over the first 100 ms, against the note)
+stood 5-11 dB under the Eastman's for Pick and Finger alike. At the full
+force, which is the physical value and needs no number, the Finger reads
++0.9 to -2.3 dB against the recording and the Pick -3.7 to -6.0, and the
+knock's decay over the first second follows the recording's within a few
+dB. This reverses a level the owner chose by ear; the measurement says the
+engine moved under that choice, not that the choice was wrong when made.
+
+*The microphone voicing stays.* A refit on the new engine did not converge
+in four passes and read worse where it moved (README, Known gaps).
+
+**The letters.** A is 1.9.41 and B is 1.9.42; C is 1.9.42 with the spring-back
+left at 0.45, so B against C is the knock alone. One phrase for every letter:
+a melody on the top two strings from the 5th to the 20th fret, then four
+double stops climbing to C6, 12.4 s, Dreadnought Spruce on the stereo
+microphones with Room at the plug-in's 0.5, once with Finger (A and B; the
+Pick's hand does not touch it) and once with Pick (A, B and C). Each is
+matched to its A on whole-file RMS: Finger B -0.05 dB; Pick B +2.20 dB, C
++6.23 dB (C keeps 1.9.41's Pick loudness cell, which B re-levels). The set
+is in the project files
+(`acustra/listening-tests/2026-11-11-high-register/`) and is not committed.
+
+**The choice.** None has been made by ear. B ships under the owner's
+standing rule that the candidate wins unless they say otherwise. If the
+owner hears the knock as too much, C's direction is the 0.45 that was
+chosen before, and the Pick's hand stands on its own measurement either way.
+
+**What it licensed.** The Pick cells of `ConstructionLoudnessData.h` were
+rewritten (`--pickings pick`) and the three Pick presets' Outputs moved to
+hold their level on Reason's meter. Six test fixtures that were built on
+the 60 mm hand or the 0.45 step were re-derived, each with its reason
+beside it: `PhysicalHandGeometry`, `StringAxialForce` and `Capture` play
+where their fixtures were built, `ChorusRegression` re-observes the Pick's
+reference amplitudes, `ConstructionHistory` waits to half its floor, and
+`PickRoughness` holds a stronger median (-1.2 dB, it was -0.4) and a looser
+single case and level bound.
+
 ## 2026-11-09 — the axial stretch keeps four cells per cut-off period (chosen by ear; the owner took A)
 
 **What was decided.** Whether the axial stretch sum, about half of every

@@ -2536,7 +2536,7 @@ private:
     bool releaseStepEnabled_ { true };
     // The share of the held string's static force that its release gives
     // back to the junction (initialisePluck says how it was chosen).
-    static constexpr float releaseStepShare = 0.45f;
+    static constexpr float releaseStepShare = 1.0f;
     // The strings do not leave the bridge when a note ends, so the junction
     // keeps the port they present rather than switching it out from under a
     // body that is still ringing.

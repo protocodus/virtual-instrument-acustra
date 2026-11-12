@@ -323,7 +323,11 @@ void testReleasedCycles(const EngineParameters& final, bool shapeFirst)
     int elapsed = 0;
     const int step = int(.1 * rate);
     double tailPeak = 1.0;
-    while (tailPeak > 1.0e-7 && elapsed < int(12 * rate))
+    // Waited to half the floor: the body's low modes beat as they die, so a
+    // 0.1 s step just under the floor can be followed by one just over it
+    // (1.02e-7 on the Parlor in maple once 1.9.42 gave the released string's
+    // knock its full force).
+    while (tailPeak > 0.5e-7 && elapsed < int(12 * rate))
     {
         tailPeak = advanceBoth(*actual, *reference, step);
         elapsed += step;

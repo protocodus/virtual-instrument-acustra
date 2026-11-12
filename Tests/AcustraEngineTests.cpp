@@ -8849,7 +8849,9 @@ void testAPlectrumReleasesWithVelocity()
     // bridge (steel.pluckDistanceScale 0.888): at the 60 mm it has followed
     // the Finger to since 2026-09-25 the same share lifts the rise by 0.6 dB
     // against the pick released from rest, and the refitted share is
-    // 0.0117, so the effect is not what ships.
+    // 0.0117, so the effect is not what ships. Since 1.9.42 the Pick's hand
+    // is 0.95 of the Finger's distance, which puts this fixture's plectrum
+    // 71 mm from the bridge; the rise still exceeds the Finger law's there.
     plain.steel.pluckDistanceScale = 0.88819512f;
     auto fitted = plain;
     fitted.pickReleaseVelocityShare = 1.5f;

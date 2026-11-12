@@ -925,7 +925,7 @@ AcustraAudioProcessorEditor::AcustraAudioProcessorEditor (
     };
     configureSetupChoice (
         1, "PICKING", acustra::parameters::picking,
-        "Finger: balanced attack. Pick: crisp and bridgeward. "
+        "Finger: balanced attack. Pick: a crisp, narrow plectrum. "
         "Thumb: rounder and neckward. Touch adjusts the contact within each "
         "technique. MIDI: CC2 Mute (picking-hand damping).", 3);
     configureSetupChoice (

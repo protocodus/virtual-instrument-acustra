@@ -121,6 +121,16 @@ int main()
     // from -0.68 dB (1.9.35) to -0.47, every case still below -0.1. Its bound
     // was re-derived from -0.5 to -0.4 for that reason, and the burst's own
     // change, -3.17 dB on both versions, is held to -2.5.
+    // 1.9.42 moved the Pick's hand from 60 mm to 141 mm from the saddle. The
+    // string itself then puts less into this band and the burst is more of
+    // it, so the restraint takes more: the shipping median is -1.65 dB and
+    // the burst's own -5.16, and their bounds are re-derived to -1.2 and
+    // -4.0. Two things moved the other way with the same cause. On the soft
+    // open E (velocity 40) the release velocity now carries the band and the
+    // restraint reads -0.002 dB against it, -3.13 against the string alone,
+    // so each case is held to no rise rather than to -0.1. And the burst is
+    // more of a loud high note's whole energy, so the restraint takes up to
+    // 0.28 dB of it (0.11 before); that bound is 0.35.
     std::vector<double> shipping, alone;
     for (int note : { 40, 52, 64, 76 })
         for (float velocity : { 40.0f / 127.0f, 80.0f / 127.0f, 120.0f / 127.0f })
@@ -130,8 +140,8 @@ int main()
             const double highDb = 10.0 * std::log10(attackHighBand(after) / attackHighBand(before));
             const double levelDb = 10.0 * std::log10(energy(after) / energy(before));
             shipping.push_back(highDb);
-            expect(highDb < -0.1, "pick's early high-band roughness was not reduced");
-            expect(std::abs(levelDb) < 0.2, "pick refinement changed overall level excessively");
+            expect(highDb < 0.0, "pick's early high-band roughness was not reduced");
+            expect(std::abs(levelDb) < 0.35, "pick refinement changed overall level excessively");
             const auto string = render(PickingTechnique::Pick, false, false, note, velocity,
                                        48000, 64, false);
             const auto restrainedString = render(PickingTechnique::Pick, true, false, note,
@@ -153,8 +163,8 @@ int main()
     std::cout << "Pick roughness median early 4-16 kHz change: " << median
               << " dB in the shipping pluck, " << burstMedian
               << " dB against the string alone\n";
-    expect(median < -0.4, "median high-band change is too small to review");
-    expect(burstMedian < -2.5, "the burst's own high-band restraint is too small to review");
+    expect(median < -1.2, "median high-band change is too small to review");
+    expect(burstMedian < -4.0, "the burst's own high-band restraint is too small to review");
     const auto a = render(PickingTechnique::Pick, true, false, 64, 0.8f, 48000, 32);
     const auto b = render(PickingTechnique::Pick, true, false, 64, 0.8f, 48000, 127);
     expect(same(a, b), "restrained pick depends on callback partition");

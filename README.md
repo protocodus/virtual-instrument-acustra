@@ -39,6 +39,34 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.42 — 2026-11-11 — the upper frets against the flat-top recordings
+
+- The Pick's hand now sits 141 mm from the saddle at the default Pluck
+  Position, where the picked Eastman E1D take's own pluck-point comb puts
+  it, 0.95 of the Finger's distance. It sat at 60 mm, a figure fitted on a
+  picked archtop. On the notes from F#4 to C6 the model's partials between
+  1.1 and 1.7 kHz stood 5 dB over the fundamental where the recording's lie
+  6 under; they now lie 4 under, and 2.5-3.5 kHz and 5-7 kHz moved from 8-9
+  dB over the recording to within 2.5 dB of it; 1.7-2.5 kHz moved the other
+  way, from 2 dB over it to 8 under (Known gaps). Every Pick patch sounds
+  rounder and less nasal, most of all on the top two strings.
+- The top's spring-back is given its full force (it was 0.45 of it). On the
+  notes from E4 to C6 the knock under the note (71-112 Hz, first 100 ms)
+  stood 5-11 dB under the Eastman's; the Finger's is now within 2 dB and the
+  Pick's 4-6 dB under. The piezo sees the same full released load.
+- The Pick's cells of the construction loudness table are levelled again,
+  and the three Pick presets' Outputs hold their level: Jumbo Steel Pick
+  -0.7 dB (it was -0.1), Palm Muted Steel Pick 4.4 dB (5.5), Piezo Stage
+  Steel 1.0 dB (2.7).
+- Benchmark against the recordings, lower is better: Eastman picked 6.02 to
+  5.81, Eastman finger-plucked 6.93 to 6.77, Martin HD28 6.84 to 6.71. On
+  GuitarSet the 80-160 Hz octave moved from 2.4 dB under the recordings to
+  0.6 under. A Pick's level now falls with pitch as the picked recording's
+  does (2.3-2.8 dB per octave in the attack against 1.9; it was 0.6-0.9).
+  Both changes ship under the standing rule that the candidate
+  wins; the [decision](Docs/decisions.md) has the listening set and what
+  it has not settled.
+
 ### 1.9.41 — 2026-11-10 — a chord's first block costs less, identical output
 
 - The tuning a fret is given the first time it is played is solved in about
@@ -820,7 +848,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box, with the plate modes scaled with the top; all three captures hear it. |
 | **Body Material** | Spruce, Mahogany or Maple plate material at fixed geometry; a session saved with Cedar loads as Mahogany. |
 | **Tuning** | Standard, Drop D, DADGAD or Open G; a retuned string keeps its gauge, so its tension follows its pitch. |
-| **Picking** | Finger, Pick (sharper, nearer the bridge, darker when soft) or Thumb (rounder, nearer the neck). |
+| **Picking** | Finger, Pick (sharper, at the Finger's place over the soundhole, darker when soft) or Thumb (rounder, nearer the neck). |
 | **Capture** | Stereo mic, a single measured mono mic, or the under-saddle piezo through its preamp. |
 | **Piezo Mix** | The piezo beneath the microphones on Main; 20% for a new instance, 0% for an older session. |
 | **Release Noise** | The damping hand's touch as a note ends, faint friction on held wound-string slides, and a finger sliding along a wound string into a new fret (before the note with Finger Lookahead on); 0% adds nothing. |
@@ -841,8 +869,8 @@ the air and lowest top modes on every note.
 
 **How.** The engine reads that released force from the wave it wrote and
 returns it to the junction as a high-passed step at the string's saddle point,
-at 0.45 of the full force (the level a listener chose); the piezo observes the
-same released load.
+at the full force since 1.9.42 (0.45 of it before, the level a listener chose
+on an earlier engine); the piezo observes the same released load.
 
 **References.** Comparison with the Eastman E1D and Martin HD28 recordings;
 the [released-load correction](Docs/research/piezo-release-load-2026-10-11.md).
@@ -935,9 +963,11 @@ separates verified errors from accepted approximations.
 - Strum direction follows an interval rule, not the host's beat grid. A
   listening pass of the interval rule decides whether a beat-grid rule is
   needed.
-- A Pick's level falls with pitch less than the picked Eastman E1D
-  recording (−0.4 to −1.0 against −1.9 dB per octave in the attack, −3.3 in
-  the sustain; `Tools/MeasureCorpusLevels.py`). The Finger and Thumb follow
+- A Pick's level falls with pitch as the picked Eastman E1D recording's does
+  since 1.9.42 moved its hand (Jumbo Steel Pick over MIDI 40-76: −2.3 to −2.8
+  dB per octave in the attack against the recording's −1.9, −2.5 to −3.0 in
+  the sustain against −3.3; they were −0.6 to −0.9 and −0.2 to −0.5;
+  `Tools/MeasureCorpusLevels.py`). The Finger and Thumb follow
   the finger-plucked recording since 1.9.25. The player's effort and the
   player's string choice are inside the recorded slope, so a corpus with
   both noted would say how much is the body's.
@@ -1012,8 +1042,19 @@ separates verified errors from accepted approximations.
   real spread is not measured. A picked note's partials and brightness now
   vary from take to take as the reference bank's picked round robins do;
   Finger's and Thumb's spreads have no round robins of their own to check.
-- Pick and Thumb dimensions are authored and the plectrum's values are fitted
-  to one picked archtop; no beam/friction plectrum solver is available.
+- The Thumb's dimensions are authored. The Pick's hand is the picked Eastman
+  E1D's (1.9.42), but the plectrum's width and release values are still
+  those fitted to one picked archtop with the hand at 60 mm; no beam/friction
+  plectrum solver is available. On the notes from F#4 to C6 a Pick's partials
+  between 1.7 and 2.5 kHz lie 8 dB under the Eastman's (the hand meets those
+  short strings near a third of their length) and those from 7 to 11 kHz 8 dB
+  over it.
+- A refit of the microphone voicing on 1.9.42 (`Tools/FitCaptureVoicing.py`,
+  four passes, not converged) kept lowering 90-180 Hz to reach a 160-250 Hz
+  cut its sections cannot make, and read worse on the Eastman finger-plucked
+  take (6.77 to 6.97) and on GuitarSet's 80-160 Hz octave (0.6 to 5.5 dB
+  under). The voicing is 1.9.41's. Renders still stand 7 dB over GuitarSet's
+  recordings in the 640-1280 Hz octave.
 - The pluck is a propagated ideal shape, not a finger-loaded rest state.
   At engine rates of at least 32 kHz, stopped notes at 350 Hz and above use
   four allpass sections: H1-H12 are individual physical targets, followed

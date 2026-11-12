@@ -88,10 +88,13 @@ int main()
     // across this window (1.9.26, the pair tuned on its loudness centre;
     // 2.6 dB when it was tuned on its energy centre); the per-plane
     // end-delay chorus this guards against beat it well beyond the 2 dB
-    // allowed.
+    // allowed. The Pick's references were re-observed on 1.9.42, which
+    // moved its hand from 60 mm to 141 mm from the saddle: the fifth
+    // partial's place on the pluck's comb moved with it, 7.5 dB up from
+    // 0.000492141 and 0.000494366.
     constexpr double referenceAmplitude[2][3] {
-        { 0.00134199, 0.000492141, 0.00108866 },
-        { 0.00125877, 0.000494366, 0.00102439 }
+        { 0.00134199, 0.00117303, 0.00108866 },
+        { 0.00125877, 0.00113555, 0.00102439 }
     };
     for (const double rate : { 48000.0, 96000.0 })
     for (const auto technique : { acustra::PickingTechnique::Finger,

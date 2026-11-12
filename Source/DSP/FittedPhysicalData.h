@@ -140,8 +140,10 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // the same fitted displacement. The 0.888 was fitted on archtop rows
     // played with a pick near the bridge; the finger-played flat-top rows
     // prefer 149 mm, and a blind listener chose it on all three pairs. Pick
-    // keeps 0.40 of the Finger's distance, 60 mm, and the picked archtop
-    // rows rendered with it improve (steel training 6.106 -> 5.803).
+    // kept 0.40 of the Finger's distance, 60 mm, and the picked archtop
+    // rows rendered with it improved (steel training 6.106 -> 5.803). Since
+    // 1.9.42 Pick stands at 0.95, 141 mm, the picked Eastman flat-top's own
+    // hand (AcustraEngine::initialisePluck).
     // Steel's contact width (aperture), finger burst (transient) and velocity
     // brightness, with the plectrum's release and the strings' bending loss
     // below, were chosen by ear on 2026-09-28 (Docs/decisions.md, Set 14) at

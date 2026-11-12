@@ -92,7 +92,10 @@ auto fresh(double rate, Picking picking, float posture,
     parameters.picking = picking;
     // Stay clear of the point band's reflections when measuring physical
     // travel. The existing upper-register nominal knee remains exercised.
-    parameters.pluckPosition = picking == Picking::Pick ? 1.0f : 0.0f;
+    // Until 1.9.42 the Pick sat at 0.40 of the Finger's distance and needed
+    // Pluck Position 1 to clear the band's lower edge; at 0.95 that setting
+    // puts it on the upper edge, and it clears both at 0 as the others do.
+    parameters.pluckPosition = 0.0f;
     parameters.room = 0.0f;
     engine->setParameters(parameters);
     engine->prepare(rate, 127);

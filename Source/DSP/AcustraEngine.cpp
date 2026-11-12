@@ -7816,13 +7816,23 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // A player's hand stays at an approximately fixed physical distance from
     // the bridge.  Express that distance relative to each fretted string only
     // when constructing its initial condition.
-    // Authored playing styles: a bridgeward narrow Pick, calibrated Finger,
-    // and neckward broad Thumb. Finite width and pluck position change the
-    // excited modes (Traube/Smith, DAFx00); these ratios are not measured
-    // dimensions or universal laws of a plectrum/finger. The panel remains
-    // the base hand position; explicit MPE position below takes precedence.
+    // Playing styles: a narrow Pick, the calibrated Finger and a neckward
+    // broad Thumb. Finite width and pluck position change the excited modes
+    // (Traube/Smith, DAFx00). The Thumb's ratio is authored. The Pick's is
+    // the picked Eastman E1D dreadnought take's own hand: the comb its pluck
+    // point leaves in each note's partials (the roughness of the first 24
+    // partials' levels after dividing by |sin(n pi p)|, lowest fret assumed)
+    // puts the plectrum a median 141 mm from the saddle on the 18 notes from
+    // E2 to E5 whose estimate is not its own half, over the soundhole, where
+    // the same player's fingers pluck at 126 mm. Against the Finger's 149 mm
+    // at the default Pluck Position that is 0.95. Until 1.9.42 the Pick stood
+    // at 0.40, 60 mm, fitted on a picked archtop bank (FittedPhysicalData.h):
+    // from G4 to F#5 its third or second partial then stood 10-17 dB over the
+    // fundamental where the flat-top's lies 9-25 dB under it. The panel
+    // remains the base hand position; explicit MPE position below takes
+    // precedence.
     const float pickingDistance = parameters_.picking == PickingTechnique::Pick
-        ? 0.40f : parameters_.picking == PickingTechnique::Thumb ? 1.95f : 1.0f;
+        ? 0.95f : parameters_.picking == PickingTechnique::Thumb ? 1.95f : 1.0f;
     const float distanceFromBridge = (0.045f
         + 0.135f * parameters_.pluckPosition) * physical.pluckDistanceScale
         * pickingDistance;
@@ -8332,17 +8342,19 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // parallel plane's acts along it. A natural harmonic is held aside
         // by the picking hand as any note is - the finger on its node damps
         // what the node does not share only once the string is let go - so
-        // its saddle sheds the same force. A listener liked the thump and
-        // chose it at 80% of the full release (Docs/decisions.md,
-        // 2026-10-01), by ear, through a junction whose saddle anchors took
-        // their share of it (applied past them, that entry measured, the step
-        // rang 8-9 dB over the recordings). With the anchors retired
-        // (2026-10-10) the same 0.8 reached the body 5.0 dB stronger: the
-        // step's own part of the 60-180 Hz band over the first 300 ms of E4
-        // and A4, Dreadnought, Finger at velocity 0.6, 4.8-5.1 dB for every
-        // Picking. So the step is given back at 0.45 of the force, 0.8 x
-        // 10^(-5.0/20), the thump that was heard (releaseStepShare;
-        // Docs/research/saddle-termination-2026-10-10.md). A
+        // its saddle sheds the same force. The whole force is given back
+        // (releaseStepShare). A listener first chose 80% of it by ear
+        // (Docs/decisions.md, 2026-10-01), through a junction whose saddle
+        // anchors took their share, and 1.9.x kept that thump at 0.45 once
+        // the anchors were retired (2026-10-10;
+        // Docs/research/saddle-termination-2026-10-10.md). The engine since
+        // then moved under it: on 1.9.41 the knock of the notes from E4 to
+        // C6 (71-112 Hz over the first 100 ms, re the note: under their
+        // fundamentals and clear of the recording's 120 Hz hum) stood 5-11
+        // dB under the Eastman E1D's, picked and plucked alike, and the
+        // upper frets sounded like a string with no guitar under it. At the
+        // full force the Finger lies within 2 dB of the recording and the
+        // Pick 4-6 dB under it (Docs/decisions.md, 2026-11-11). A
         // re-pluck adds its step to what an earlier one has still to give
         // back rather than cutting it off: cut, the earlier step's net
         // impulse is no longer zero and the bridge keeps a low kick. Two

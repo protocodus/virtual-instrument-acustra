@@ -506,13 +506,19 @@ struct Strum
 Strum hardStrum(double rate, float velocity, float touch,
                 acustra::PickingTechnique picking = acustra::PickingTechnique::Finger,
                 double seconds = 2.5, int strokes = 0, float pluckPosition = 0.28f,
-                float driveScale = 1.0f)
+                float driveScale = 1.0f, float handDistance = 1.0f)
 {
     acustra::EngineParameters parameters;
     parameters.touch = touch;
     parameters.picking = picking;
     parameters.pluckPosition = pluckPosition;
     auto engine = std::make_unique<acustra::AcustraEngine>();
+    if (handDistance != 1.0f)
+    {
+        auto calibration = acustra::fittedPhysicalCalibration;
+        calibration.steel.pluckDistanceScale *= handDistance;
+        engine->setPhysicalCalibration(calibration);
+    }
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
     engine->setStringPerChannelMode(true);
@@ -1127,12 +1133,20 @@ void testPiezoHeadroom()
 // PiezoCircuitTests.cpp; they cover the nonlinear input stage itself.
 void testPiezoClipAliasing()
 {
+    // The plectrum 32 mm from the saddle, where this fixture was built: the
+    // Pick's hand at Pluck Position 0 before 1.9.42 moved it out to 0.95 of
+    // the Finger's distance (77 mm there). So close to the saddle the strum
+    // is all sharp force peaks, which reach U1B's rails before the released
+    // load reaches U1A's input limit; from 77 mm U1A limits first (2.32
+    // against 2.41 times the shipped weights) and there is no interval in
+    // which U1B clips alone.
+    constexpr float nearBridge = 0.40f / 0.95f;
     for (const float touch : { 0.58f, 1.0f })
     for (int rate : { 44100, 48000 })
     {
     constexpr float calibrationDrive = 0.5f;
     const auto linear = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
-                                   1.0, 0, 0.0f, calibrationDrive);
+                                   1.0, 0, 0.0f, calibrationDrive, nearBridge);
     double railUse = 0.0, inputUse = 0.0;
     for (std::size_t i = 0; i < linear.drive.size(); ++i)
     {
@@ -1172,7 +1186,7 @@ void testPiezoClipAliasing()
     {
         const float overdrive = overdrives[driveIndex];
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
-                               1.0, 0, 0.0f, overdrive);
+                               1.0, 0, 0.0f, overdrive, nearBridge);
         bool inputKneesHidden = true;
         for (std::size_t i = 0; i < strum.drive.size(); ++i)
             inputKneesHidden = inputKneesHidden && std::isfinite(strum.freeDrive[i])
