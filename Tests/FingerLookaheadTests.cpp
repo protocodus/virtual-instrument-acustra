@@ -181,7 +181,11 @@ int main()
         // The slide led the plain player by 12.5 dB at shift 2 (F#2 to G#2)
         // until 1.9.26 tuned the low E's fretted notes 8-10 cents up, where
         // the string answers the same noise 0.8 dB more quietly: 11.8 dB.
-        expect(before > 3.5 * plainBefore,
+        // 1.9.47 gave the wound strings the plain steel's bending loss, so
+        // the earlier shifts' noise rings on in the plain render's window:
+        // -55.2 to -52.3 dB at shift 2, while the lookahead's slide stays at
+        // -43.9. It leads by 8.4 dB, held to 8 (2.5x).
+        expect(before > 2.5 * plainBefore,
                "the slide sounds before shift " + std::to_string(index)
                    + " (" + std::to_string(20.0 * std::log10(before / plainBefore)) + " dB)");
         // 1.9.24 raised the slide 6 dB (the owner's choice by ear) and gave

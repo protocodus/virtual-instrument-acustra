@@ -5,7 +5,61 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-12 — the saddle's held force unloads in the fingertip's slip time, 1.9.46 (the owner's ear; the click measured)
+## 2026-11-12 — the wound strings take the plain steel's bending loss, 1.9.47 (the mud measured; listening set sent, B assumed)
+
+**What was decided.** The owner, after 1.9.46: "b is better but the sound
+overall sounds a bit muddy".
+
+*Where the mud was.* Measured against the plucked recordings, not chosen by
+ear. Third-octave spectrum over 0.08-0.9 s re 100-5000 Hz, model minus
+recording, median per register at velocity 91: from E2 to B2 the Finger's
+5-8 kHz stood 29-36 dB under the Eastman E1D (Crafter at v85: 10-18 under),
+and from C3 to B3 12-15 dB under. Band decay (20 ms frames, 0.05-1.2 s,
+above the floor + 10 dB), Finger / Pick, 2-4 kHz: E2-B2 49 / 48 dB/s
+against the recording's 26 / 35, C3-B3 34 / 39 against 20 / 21. The plain
+strings sat near the recording at 1-2 kHz. Turning the wound strings'
+bending loss down moved those bands; the friction did little.
+
+*What was wrong.* `steelWoundBendingLoss` was 0.0175 (by ear, 2026-10-10),
+seven times the plain steel's 0.002334375, on the reading that it carries
+the core's loss and the turns sliding. Since 2026-10-10 the turns sliding
+are the winding friction (2.25e-4), which the engine takes back out of this
+value, so what is left is the core's: the same steel wire as the plain
+strings. 1.9.47 gives it the plain steel's value. Wound 2-4 kHz decay
+Finger 33 / 27 dB/s, Pick 34 / 33; 5-8 kHz 5-14 dB under the recording
+from E2 to B2 and within 5 from C3 to B3.
+
+*A first candidate was wrong.* Taking the loss to zero matched the 2-4 kHz
+decay better on paper, and a set with it went to the owner. But the same
+value is the core's loss for the longitudinal waves
+(`voice.axialLossFactor`): at zero they rang on, part of the measured
+brightness was that ringing, and released chords never fell silent
+(`MatrixRelease`, `Capture`, ten suites in all). That set was withdrawn
+within minutes and replaced; the constant's comment now says so.
+
+**The standing benchmark** (1.9.46 against 1.9.47): Eastman finger-plucked
+6.2690 to 5.6904 (-9.2%; attack 7.182 to 6.150, body 12.606 to 11.080,
+decay 3.449 to 3.027, harmonics 6.017 to 6.118). Eastman picked 5.8115 to
+5.5020 (-5.3%; body 11.499 to 12.080, worse). Martin HD28 8.1793 to 7.0399
+(-13.9%). All three are better than 1.9.45's too.
+
+**The letters.** `2026-11-12-muddy-v2`: A is 1.9.46 and B is 1.9.47.
+Through the Performer at 48 kHz: `1-finger-arpeggios/` (Dreadnought Steel,
+the lower-string arpeggios), `2-thumb-bass-line/` (Mahogany Steel Thumb,
+low E to D4 and back, soft then firm) and `3-pick-bass-line/` (Jumbo Steel
+Pick, the same line). Matched on whole-file RMS: B -0.01, 0.00 and -0.14
+dB. Not committed. By the project's standing instruction B is assumed
+until the owner says otherwise.
+
+**What it licensed.** The Finger and Thumb cells of
+`ConstructionLoudnessData.h` were rewritten. Four test fixtures moved, each
+with its reason beside it: the low-rate axial fallback is pinned to the old
+loss it was found at; the pluck snapshot reads the line length the pluck
+was written at; the plain render's slide residue rose 2.8 dB so the slide's
+lead is held to 8 dB; and the retune flash at 44.1 kHz, -82.5 dBFS over the
+same -92.5 cover, is held to 10.5 dB.
+
+## 2026-11-12 — the saddle's held force unloads in the fingertip's slip time, 1.9.46 (the click measured; the owner took B)
 
 **What was decided.** The owner, 2026-11-12, after the lower-string set:
 "pluck is too loud imho", then "if this was pluck, then calibrate against
@@ -49,8 +103,8 @@ Through the Performer at 48 kHz, 13 s: `finger-low/` and `finger-high/` on
 Dreadnought Steel (Finger), the lower-string arpeggios and the upper-string
 melody of the two earlier sets; `thumb/` on Mahogany Steel Thumb, the line
 from the low E to D4 and back. Matched on whole-file RMS: B +0.02, 0.00 and
--0.44 dB. Not committed. By the project's standing instruction B is
-assumed until the owner says otherwise.
+-0.44 dB. Not committed. The owner took B by ear: "b is better but the
+sound overall sounds a bit muddy" (2026-11-12; the mud is 1.9.47's entry).
 
 **What it licensed.** The Finger and Thumb cells of
 `ConstructionLoudnessData.h` were rewritten, and Mahogany Steel Thumb's

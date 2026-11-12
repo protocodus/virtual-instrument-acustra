@@ -244,14 +244,18 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // 0.00078125. Steel ships 70% of the way from C toward B, 0.002334375; it
     // is not refit.
     0.002334375f,
-    // The wound strings' bending loss, by ear. The recordings' 20-300 ms
-    // upper-partial decay measures 0.10, and Set 14 shipped 0.035 (70% of
-    // the way from C's 0 toward B's 0.05). The friction above replaced it
-    // on 2026-10-10. Restored at half Set 14's value beside half the blend's
-    // friction, it gives the picked wound strings' highest partials main's
-    // fast decay again: their 4-16 kHz over 0.05-0.4 s reads within 0.1 dB
-    // of main's (Docs/research/string-hf-loss-2026-10-10.md, section 12).
-    0.0175f
+    // The wound strings' bending loss: the plain steel's (2026-11-12,
+    // 1.9.47). Their core is the same steel wire, and the turns sliding on
+    // it are their own term since 2026-10-10 (the winding friction above,
+    // which the engine takes back out of this value). At 0.0175 (by ear,
+    // 2026-10-10) the cube law took the wound strings' 2-4 kHz down at
+    // 34-49 dB/s against the Eastman E1D's 20-35 and left their 5-8 kHz
+    // 9-36 dB under the recording over 0.08-0.9 s: the listener heard it as
+    // mud. At the plain steel's, 27-33 dB/s and 0-14 dB under. This value
+    // is also the core's loss for the longitudinal waves
+    // (voice.axialLossFactor), so it cannot go to zero: at zero those waves
+    // ring on and a released chord never falls silent.
+    0.002334375f
 };
 
 } // namespace acustra

@@ -39,6 +39,17 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.47 — 2026-11-12 — the wound strings keep their top
+
+- The low strings are clearer. The wound strings (E A D G) lost their upper
+  partials to a bending loss seven times the plain steel's, chosen by ear on
+  2026-10-10, though their core is the same steel and the turns sliding on
+  it have their own loss: their 2-4 kHz died at 34-49 dB/s against the
+  Eastman E1D's 20-35, and their 5-8 kHz sat 9-36 dB under the recording
+  from 80 ms on. They now take the plain steel's loss: 27-33 dB/s, and
+  0-14 dB under. Plain strings are unchanged.
+- Finger and Thumb play at the loudness they had.
+
 ### 1.9.46 — 2026-11-12 — the fingertip lets the saddle go as gently as the string
 
 - Finger and Thumb lose the click at the start of every note. The force the
@@ -1089,10 +1100,9 @@ separates verified errors from accepted approximations.
 - A Finger re-plucking a ringing string still steps where the wave the
   fingertip stopped reaches the bridge, under a millisecond in: on a low E
   tremolo at 12 strokes a second, 0.004-0.019 at 48 kHz against a fresh
-  pluck's 0.001. On the plucked Eastman notes the low strings' 4-8 kHz from
-  80 ms on lies 25 dB under the recording (17 with 1.9.45's click ringing
-  the top's upper modes), so the standing benchmark's body term is worse
-  than 1.9.45's.
+  pluck's 0.001. On the plucked Eastman notes the wound strings' 5-8 kHz
+  from 80 ms on still lies up to 14 dB under the recording, and the plain
+  strings' 2-4 kHz decays at about 24 dB/s against its 17.
 - MIDI limits: the MPE zone is not saved with a session; RPN Data
   Increment/Decrement are ignored; the Sustain switch acts at block start;
   Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond

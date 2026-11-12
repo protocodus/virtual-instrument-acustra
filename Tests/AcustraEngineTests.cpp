@@ -1218,13 +1218,20 @@ struct AcustraEngineTestAccess
                 peakSample = sample;
             }
         }
+        // The release step was sized with the line length the pluck was
+        // written at, the loop's current delay before any audio; the target
+        // has since moved with the pluck's own tension, which at E3 on
+        // 1.9.47 rounds a soft and a firm pluck to different lengths.
+        const int writtenLength = std::clamp(
+            static_cast<int>(std::round(loop.currentDelay)), 8,
+            AcustraEngine::maximumDelaySamples - 3);
         return {
             engine.effectiveTouch(voice.velocity),
             static_cast<double>(peakSample) / length,
             peakValue,
             voice.excitationEnvelope,
             voice.pluckPoint,
-            voice.releaseStepRise * voice.releaseShapePosition[0] * length
+            voice.releaseStepRise * voice.releaseShapePosition[0] * writtenLength
                 / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix))
         };
     }

@@ -694,6 +694,13 @@ void lowRateAxialRingDecaysWithoutInput()
 {
     auto engine=std::make_unique<Engine>();
     engine->setParameters(acustra::engineParameters(acustra::factoryPresets[6]));
+    // The wound core's loss factor pinned at 1.9.46's 0.0175, the value these
+    // known nonpassive and already-passive designs were found at; 1.9.47's
+    // smaller shipping loss makes the G-string fit passive and would leave the
+    // scalar fallback untested.
+    auto calibration=acustra::fittedPhysicalCalibration;
+    calibration.steelWoundBendingLoss=0.0175f;
+    engine->setPhysicalCalibration(calibration);
     engine->prepare(11025,64);
     Access::configure(*engine,3,0);
     auto& v=Access::voice(*engine,3);v.played=false;
