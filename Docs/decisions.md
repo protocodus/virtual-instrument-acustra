@@ -5,7 +5,7 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-11 — the Pick's hand and the top's full spring-back, 1.9.42 (measured; ships as the candidate, not yet heard)
+## 2026-11-11 — the Pick's hand and the top's full spring-back, 1.9.42 (measured; the owner took B)
 
 **What was decided.** Two things the flat-top recordings contradict on the
 upper strings and frets, and one thing left alone.
@@ -49,10 +49,11 @@ matched to its A on whole-file RMS: Finger B -0.05 dB; Pick B +2.20 dB, C
 is in the project files
 (`acustra/listening-tests/2026-11-11-high-register/`) and is not committed.
 
-**The choice.** None has been made by ear. B ships under the owner's
-standing rule that the candidate wins unless they say otherwise. If the
-owner hears the knock as too much, C's direction is the 0.45 that was
-chosen before, and the Pick's hand stands on its own measurement either way.
+**The owner's choice.** B shipped under the owner's standing rule that the
+candidate wins. On 2026-11-12, with the set in hand, the owner answered
+"pick b and proceed": B, the Pick's hand at 141 mm and the spring-back at
+its full force, over C's 0.45. The answer does not say what was heard in
+each letter, so it is recorded as the owner's choice of B and nothing finer.
 
 **What it licensed.** The Pick cells of `ConstructionLoudnessData.h` were
 rewritten (`--pickings pick`) and the three Pick presets' Outputs moved to
