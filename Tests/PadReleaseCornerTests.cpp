@@ -33,11 +33,14 @@ struct AcustraEngineTestAccess
         return result;
     }
 
+    // A cosine: like a plucked line it turns at the bridge sample, where
+    // the release keeps the period's start. A sine sits on a slope there and
+    // is started at its own turning point, a quarter period on (1.9.45).
     static std::vector<float> filter(int length, int harmonic, double pole,
                                     double reference, bool matched)
     {
         return filterLine(length, [=] (int sample) {
-            return static_cast<float>(std::sin(6.2831853071795864769
+            return static_cast<float>(std::cos(6.2831853071795864769
                 * harmonic * sample / length));
         }, pole, reference, matched);
     }
@@ -128,15 +131,15 @@ void testHalfPowerAndZeroPhase()
                 std::abs(std::abs(transfer) - std::sqrt(0.5)));
             worstLegacy = std::max(worstLegacy,
                 std::abs(std::abs(coefficient(legacy, harmonic)) - std::sqrt(0.5)));
-            // The original sine has DFT coefficient -j. A zero-phase pair
+            // The original cosine has DFT coefficient 1. A zero-phase pair
             // preserves this orientation, including after bridge-rest repair.
-            worstPhase = std::max(worstPhase, std::abs(transfer.real()));
+            worstPhase = std::max(worstPhase, std::abs(transfer.imag()));
             expect(matched.front() == 0.0f, "pad release no longer starts at bridge rest");
             ++cases;
         }
     std::cout << "Pad corner cases=" << cases << " matched amplitude error="
               << worstMatched << " legacy=" << worstLegacy
-              << " real coefficient=" << worstPhase << '\n';
+              << " imaginary coefficient=" << worstPhase << '\n';
     expect(worstMatched < 2.0e-6, "two-pass pad did not retain the original half-power corner");
     expect(worstLegacy > 0.02, "corner fixture did not expose the old approximation");
     expect(worstPhase < 2.0e-6, "two-pass pad introduced a phase rotation");
@@ -155,7 +158,7 @@ void testReferenceInverseBypassAndEdges()
         for (int sample = 0; sample < length; ++sample)
             worstInverse = std::max(worstInverse,
                 std::abs(static_cast<double>(restored[static_cast<std::size_t>(sample)])
-                    - bypass[static_cast<std::size_t>(sample)]));
+                    - (bypass[static_cast<std::size_t>(sample)] - bypass.front())));
     }
     expect(worstInverse < 2.0e-5, "matching the reference pole failed to cancel its release");
     for (const double pole : { 1.0e-200, 1.0e-12, 0.99999999 })
@@ -167,11 +170,19 @@ void testReferenceInverseBypassAndEdges()
     std::cout << "Pad reference cancellation max sample error=" << worstInverse << '\n';
 }
 
-void testSampledBridgeCorrection()
+// The released line meets the loop's empty loss and dispersion sections at
+// the bridge sample, so it must start there at rest and level: a plucked
+// line, an asymmetric triangle with its corner at the bridge, comes back as
+// the cyclic slip of itself started at the rounded corner's turning point.
+// To 1.9.44 the bridge sample was brought to rest by a raised cosine instead
+// and this checked that cosine's width; the line it left met the sections
+// on a slope, a kink in every period (AcustraEngine::applyPadRelease).
+void testReleasedLineStartsAtRestAtItsTurningPoint()
 {
-    double worstMomentError = 0.0, worstCappedMomentError = 0.0;
-    int matchedCases = 0, cappedCases = 0;
+    double worstError = 0.0;
+    int moved = 0, cases = 0;
     for (const int length : { 8, 9, 19, 64, 257, 4096 })
+        for (const double apex : { 0.12, 0.3 })
         for (const double corner : { 0.01, 0.1, 0.5, 1.0, 2.0, 3.0 })
         {
             const double originalPole = poleAtCorner(corner);
@@ -185,53 +196,42 @@ void testSampledBridgeCorrection()
                     hi = mid;
             }
             const double pole = 0.5 * (lo + hi);
-            const auto response = Access::filterLine(length,
-                [] (int sample) { return sample == 0 ? 1.0f : 0.0f; },
-                originalPole, 0.0, true);
-            std::vector<double> cyclicKernel(static_cast<std::size_t>(length));
-            double kernelMass = 0.0, kernelMoment = 0.0;
+            const auto triangle = [=] (int sample)
+            {
+                const double phase = static_cast<double>(sample) / length;
+                return static_cast<float>(phase < apex ? phase / apex
+                                                       : (1.0 - phase) / (1.0 - apex));
+            };
+            const auto response = Access::filterLine(length, triangle, originalPole, 0.0, true);
+            std::vector<double> slipped(static_cast<std::size_t>(length));
+            double mass = 0.0;
+            for (int distance = 0; distance < length; ++distance)
+                mass += std::pow(pole, distance) + std::pow(pole, length - distance);
+            for (int sample = 0; sample < length; ++sample)
+                for (int distance = 0; distance < length; ++distance)
+                    slipped[static_cast<std::size_t>(sample)]
+                        += (std::pow(pole, distance) + std::pow(pole, length - distance)) / mass
+                         * triangle((sample + distance) % length);
+            const int lowest = static_cast<int>(std::min_element(slipped.begin(), slipped.end())
+                                                - slipped.begin());
             for (int sample = 0; sample < length; ++sample)
             {
-                const double weight = std::pow(pole, sample) + std::pow(pole, length - sample);
-                const double distance = std::min(sample, length - sample);
-                cyclicKernel[static_cast<std::size_t>(sample)] = weight;
-                kernelMass += weight;
-                kernelMoment += distance * distance * weight;
+                const double expected = slipped[static_cast<std::size_t>((sample + lowest) % length)]
+                    - slipped[static_cast<std::size_t>(lowest)];
+                worstError = std::max(worstError,
+                    std::abs(response[static_cast<std::size_t>(sample)] - expected));
             }
-            double correctionMass = 0.0, correctionMoment = 0.0;
-            double capMass = 0.0, capMoment = 0.0;
-            for (int sample = 0; sample < length; ++sample)
-            {
-                const double distance = std::min(sample, length - sample);
-                const double correction = cyclicKernel[static_cast<std::size_t>(sample)]
-                    / kernelMass - response[static_cast<std::size_t>(sample)];
-                correctionMass += correction;
-                correctionMoment += distance * distance * correction;
-                const double cap = 1.0 + std::cos(2.0 * pi * distance / length);
-                capMass += cap;
-                capMoment += distance * distance * cap;
-            }
-            const double target = kernelMoment / kernelMass;
-            const double cap = capMoment / capMass;
-            const double error = std::abs(correctionMoment / correctionMass
-                / std::min(target, cap) - 1.0);
-            if (target < cap)
-            {
-                ++matchedCases;
-                worstMomentError = std::max(worstMomentError, error);
-            }
-            else
-            {
-                ++cappedCases;
-                worstCappedMomentError = std::max(worstCappedMomentError, error);
-            }
-            expect(error < 2.0e-5, "sampled bridge correction missed the cyclic kernel or its width cap");
-            expect(response.front() == 0.0f, "sampled bridge correction left a nonzero endpoint");
+            const double ahead = response[1] - response.front();
+            const double behind = response.front() - response.back();
+            expect(response.front() == 0.0f, "the released line left the bridge sample off rest");
+            expect(ahead * behind <= 0.0, "the released line met the bridge sample on a slope");
+            moved += lowest != 0 ? 1 : 0;
+            ++cases;
         }
-    expect(matchedCases > 20 && cappedCases > 5, "sampled width fixture missed its match or cap paths");
-    std::cout << "Sampled bridge correction moment error=" << worstMomentError
-              << " (" << matchedCases << " matched), capped=" << worstCappedMomentError
-              << " (" << cappedCases << " capped)\n";
+    expect(worstError < 2.0e-5, "the released line is not its cyclic slip started at the turning point");
+    expect(moved > cases / 3, "no slip moved the turning point off the bridge sample");
+    std::cout << "Released line against its cyclic slip, worst sample error=" << worstError
+              << " (" << moved << " of " << cases << " started off the bridge sample)\n";
 }
 
 auto note(int rate, int string, int fret, acustra::PickingTechnique style, bool matched)
@@ -311,7 +311,7 @@ int main()
 {
     testHalfPowerAndZeroPhase();
     testReferenceInverseBypassAndEdges();
-    testSampledBridgeCorrection();
+    testReleasedLineStartsAtRestAtItsTurningPoint();
     testUpperNotesAndPickingIsolation();
     return failures == 0 ? 0 : 1;
 }

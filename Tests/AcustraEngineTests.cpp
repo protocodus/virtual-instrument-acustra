@@ -3935,7 +3935,10 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         // 60 dB of the attack: since the Finger's contact burst lost its
         // white share (2026-09-30) the attack's top band starts 15 dB lower
         // while that residue is where it was, 47 dB under the new attack,
-        // and its beating is no more a click than it was before.
+        // and its beating is no more a click than it was before. 1.9.45's
+        // release took the kink out of every period of a Finger's string
+        // and the attack's top band fell again with the residue where it
+        // was (3e-7): 38.6-46 dB under it, so the guard asks for 36.
         const auto attack = frames(bent(false), 0.005, 0.30);
         double attackPeak = 0.0, settledPeak = 0.0;
         for (std::size_t i = 0; i < std::min<std::size_t>(4, attack.size()); ++i)
@@ -3943,8 +3946,8 @@ void testASlewingDelayDoesNotClickAboveFourteenKilohertz()
         for (std::size_t i = 0; i < attack.size(); ++i)
             if (0.005 + 0.0025 * static_cast<double>(i) >= 0.2)
                 settledPeak = std::max(settledPeak, attack[i]);
-        expect(settledPeak < 1.0e-2 * attackPeak,
-               "the steel attack's top band did not settle 40 dB under its attack");
+        expect(settledPeak < 1.6e-2 * attackPeak,
+               "the steel attack's top band did not settle 36 dB under its attack");
         const double floor = std::max(1.0e-3 * attackPeak, 4.0 * settledPeak);
         double rise = 0.0;
         int counted = 0;
@@ -5427,10 +5430,11 @@ double releaseSlipRatio(double slipPole, double referencePole, int harmonic, int
 
 // The released line's DFT coefficients, x[s] = sum_n Y_n exp(2 pi i n s / N),
 // from the contact's bins 1..N-1. The contact starts at rest at the bridge,
-// so its DC is minus the rest. After the slip, the bridge sample y[0] is
-// brought back to rest by a raised cosine over +/-W about it. Its sampled
-// variance matches the cyclic slip kernel, with W limited to N/2; then the
-// line's spread about its mean is restored, which by Parseval is the sum of
+// so its DC is minus the rest. After the slip, the period starts at the
+// rounded corner's turning point beside the bridge sample, at rest there
+// (1.9.45; a raised cosine about the bridge sample before, which left a
+// kink where the line meets the loop's empty sections); then the line's
+// spread about its mean is restored, which by Parseval is the sum of
 // |Y_n|^2 over the bins other than DC.
 std::vector<std::complex<double>> releasedLine(double slipPole, double referencePole,
                                                const std::vector<std::complex<double>>& bins)
@@ -5445,53 +5449,28 @@ std::vector<std::complex<double>> releasedLine(double slipPole, double reference
     }
     if (!(slipPole > 0.0))
         return line;
-    double first = 0.0;
-    for (const auto& bin : line)
-        first += bin.real();
-    const double pole = independentPadPole(slipPole);
-    // Directly sum the folded geometric kernel and sampled correction.
-    // Production evaluates their moments analytically instead.
-    double mass = 0.0, moment = 0.0;
+    // Rebuild the slipped line and walk from the bridge sample down its
+    // shallower side to where the slope turns. Starting the period there is
+    // a rotation, a phase on every bin, and its rest there changes only DC.
+    std::vector<double> samples(bins.size());
     for (int sample = 0; sample < length; ++sample)
-    {
-        const double distance = std::min(sample, length - sample);
-        const double weight = std::pow(pole, sample) + std::pow(pole, length - sample);
-        mass += weight;
-        moment += weight * distance * distance;
-    }
-    const auto cosineMoment = [] (double width)
-    {
-        double windowMass = 1.0, windowMoment = 0.0;
-        for (int sample = 1; sample < width; ++sample)
-        {
-            const double weight = 1.0 + std::cos(std::numbers::pi * sample / width);
-            windowMass += weight;
-            windowMoment += weight * sample * sample;
-        }
-        return windowMoment / windowMass;
-    };
-    double lower = 1.0, upper = 0.5 * length;
-    for (int step = 0; step < 40; ++step)
-    {
-        const double middle = 0.5 * (lower + upper);
-        if (cosineMoment(middle) < moment / mass)
-            lower = middle;
-        else
-            upper = middle;
-    }
-    const double halfWidth = 0.5 * (lower + upper);
-    const int reach = static_cast<int>(std::ceil(halfWidth));
-    for (int sample = 0; sample < reach; ++sample)
-    {
-        const double share = 0.5 * (1.0 + std::cos(std::numbers::pi * sample / halfWidth));
         for (int n = 0; n < length; ++n)
-        {
-            const double phase = 2.0 * std::numbers::pi * n * sample / length;
-            // Both sides of the bridge, a real even pair; the bridge once.
-            const double weight = sample == 0 ? 1.0 : 2.0 * std::cos(phase);
-            line[static_cast<std::size_t>(n)] -= first * share * weight / length;
-        }
-    }
+            samples[static_cast<std::size_t>(sample)] += std::real(line[static_cast<std::size_t>(n)]
+                * std::polar(1.0, 2.0 * std::numbers::pi * n * sample / length));
+    const auto at = [&] (int sample)
+    {
+        return samples[static_cast<std::size_t>(((sample % length) + length) % length)];
+    };
+    const int side = std::abs(at(1) - at(0)) < std::abs(at(0) - at(-1)) ? 1 : -1;
+    const double slope = at(side) - at(0);
+    int turn = 0;
+    while ((at(1) - at(0)) * (at(0) - at(-1)) > 0.0 && turn < length / 2
+           && (at(side * (turn + 1)) - at(side * turn)) * slope > 0.0)
+        ++turn;
+    for (int n = 0; n < length; ++n)
+        line[static_cast<std::size_t>(n)] *= std::polar(
+            1.0, 2.0 * std::numbers::pi * n * side * turn / length);
+    line[0] -= at(side * turn);
     double before = 0.0, after = 0.0, beforeEnergy = 0.0, afterEnergy = 0.0;
     for (int n = 1; n < length; ++n)
     {
@@ -5753,7 +5732,7 @@ void testBroadContactWrapsAndReachesItsUniformLimit()
                 }
                 bins[0] = 0.0;
                 const auto released = releasedLine(state.slipPole, state.referencePole, bins);
-                bool negativeBeforeWrap = false;
+                bool signedBeforeWrap = false;
                 for (int sample = 0; sample < length; ++sample)
                 {
                     double expected = 0.0;
@@ -5768,14 +5747,19 @@ void testBroadContactWrapsAndReachesItsUniformLimit()
                     if (uniform || sample == 0)
                         expect(observed == 0.0,
                                "uniform contact or its subtracted endpoint was nonzero");
-                    if (sample > length / 2 && expected < -4.0 * tolerance)
+                    // To 1.9.44 the line ran below its bridge sample before
+                    // the wrap and the witness was a negative sample there.
+                    // The period now starts at the wave's turning point, so
+                    // it stands on one side of it right up to the wrap.
+                    if (sample > length / 2 && std::abs(expected) > 4.0 * tolerance)
                     {
-                        negativeBeforeWrap = true;
-                        expect(observed < 0.0, "contact was rectified before its periodic endpoint");
+                        signedBeforeWrap = true;
+                        expect(observed * expected > 0.0,
+                               "contact was clamped before its periodic endpoint");
                     }
                 }
                 uniformCases += uniform ? 1 : 0;
-                signedWrapCases += negativeBeforeWrap ? 1 : 0;
+                signedWrapCases += signedBeforeWrap ? 1 : 0;
                 ++cases;
             }
     expect(uniformCases >= 4 && signedWrapCases >= 4,

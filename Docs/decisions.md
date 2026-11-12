@@ -5,6 +5,83 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-12 — a plucked string starts at rest at the bridge, 1.9.45 (the fault measured; the radius by ear, listening set sent, B assumed)
+
+**What was decided.** The owner, 2026-11-12, offered the sampler libraries
+in their AcustraTrainingDataset folder as a benchmark and asked what came
+next. The Crafter library (a Crafter MD70-12EQ strung with six strings,
+plucked, twelve velocity layers, mono, peak-normalised; touch and capture
+not stated) and Modern Acoustic Guitar V2 (two usable layers, reads as
+picked) were measured against the model and are not in the repository.
+
+*What the libraries said.* From E4 to B5 the Crafter's five louder layers
+lie within about 5 dB of the Finger on partials 5-12, and Modern's loud
+layer fits the Pick; the first partial decays 8-10 dB/s on the Crafter,
+15-17 on Modern, 10-19 on the Eastman and 11-18 in the model. Nothing there
+asked for a change to the upper strings. From E2 to D4 the Crafter agreed
+with 1.9.44's Known gap: the Finger's partials 9-20 stood 13-20 dB over it,
+as they do over the Eastman's.
+
+*The fault.* Measured, not chosen by ear. A low E plucked at velocity 30
+stood within 3 dB of velocity 120 from H5 up, whatever the release radius.
+The loop's loss and dispersion sections start empty, about 28 samples of a
+low E's 582, so the first period is the written line with that much rest
+ahead of it, and the release left the bridge sample on a slope: the slip
+rounds the corner there but moves its turning point a few samples to the
+shallow side, and the raised cosine that brought the bridge sample back to
+rest (1.9.11 to 1.9.44) kept the slope. The line met the rest at a kink, a
+notch in every period. A constant added to the line raised the upper
+partials 25-30 dB, which is the same step made on purpose. `applyPadRelease`
+now starts the period at the turning point, the same wave under a
+millisecond earlier or later, and takes its rest there. Low E, velocity 30:
+H9-H20 from -23..-33 dB re H1 to -34..-53. The Thumb, released by the same
+function, loses 2-6 dB above H8.
+
+*The radius.* With the kink gone the fit of 1.9.44 was repeated (model
+finger-minus-pick contrast minus the Eastman's, mean H2-H12, over E2-B2 /
+E3-D#4 / E4-D#5 / E5-C6): 1.9.44 +10.8 / +8.5 / -1.0 / -0.2 dB; 0.7 mm
++5.4 / +2.5 / -4.0 / 0.0; 0.5 mm +8.0 / +5.3 / -2.0 / +1.6; 0.4 mm +9.5 /
++7.1 / +0.2 / +2.7; 0.3 mm +11.0 / +9.5 / +2.2 / +4.9. Against the Crafter
+(finger minus library, H9-14 / H15-20): E2-D4 0.5 mm -2.5 / -0.8, 0.7 mm
+-5.8 / -6.3 (1.9.44 +5.2 / +10.5); E4-B5 0.5 mm -4.9 / -8.1, 0.7 mm -7.7 /
+-10.6 (1.9.44 -2.1 / 0.0). The Eastman contrast, one player on one guitar,
+prefers 0.7 mm overall; the Crafter, another guitar whose touch is unknown,
+prefers 0.5. Both are defensible, so 0.7 mm stays, the change being the
+release alone, and 0.5 mm is the set's other candidate.
+
+**The standing benchmark** (1.9.44's scores against this build's): Eastman
+finger-plucked 6.2507 to 5.9607 (-4.64%; body 13.309 to 11.323, harmonics
+6.303 to 6.017, decay 3.459 to 3.332; regressions: attack 6.278 to 6.905,
+pitch 0.669 to 0.678). Eastman picked unchanged to the digit. Martin HD28,
+hand not identified and played here as Finger, 6.6627 to 7.7396 (+16.2%;
+attack 6.770 to 8.481, harmonics 7.014 to 8.919, body 11.298 to 13.146;
+decay better, 4.763 to 4.632). The same notes played with the Pick score
+6.4108: the Martin is brighter than a fingertip on either build, as earlier
+entries record, and it is reported here as a regression all the same.
+
+**The letters.** `2026-11-12-finger-low-strings`: A is 1.9.44, B is 1.9.45
+(0.7 mm) and C is 1.9.45 with the fingertip at 0.5 mm. Dreadnought Steel as
+a fresh plug-in loads it, through the Performer, 48 kHz, 13 s: `1/`
+fingerpicked arpeggios over E minor, C, G and D on the lower strings, soft
+to firm; `2/` a line of single notes from the low E to D4 and back, soft
+and then firm. Matched on whole-file RMS: B +0.08 and C +0.03 dB in `1/`,
+B +0.15 and C +0.06 dB in `2/`. The set is in the project files and is not
+committed. By the project's standing instruction B is assumed until the
+owner says otherwise.
+
+**What it licensed.** The Finger and Thumb cells of
+`ConstructionLoudnessData.h` were rewritten (`--pickings finger thumb`).
+Fixtures re-derived, each with its reason beside it: `PadReleaseCorner`
+checks that a plucked line comes back as its cyclic slip started at the
+turning point, at rest and level at the bridge (it checked the raised
+cosine's width), and its transfer checks filter a cosine, which turns at the
+bridge as a plucked line does; `Engine` predicts the same start in its
+independent Fourier reconstruction, reads the broad contact's sign before
+the wrap rather than a negative sample there, and asks the attack's top
+band to settle 36 dB under its attack (40; the attack fell, the residue did
+not); `BodyShape` holds a retune a second into a chord to 5 dB over the
+chord above 5 kHz (2): the flash fell 4 dB and the chord 8.5.
+
 ## 2026-11-12 — the fingertip's release against the recorded player's, and the picking hand's crossings, 1.9.44 (the radius measured; listening set sent, B assumed)
 
 **What was decided.** The owner's direction, 2026-11-12, on hearing the

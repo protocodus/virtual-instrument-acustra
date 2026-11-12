@@ -8195,10 +8195,14 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // first 300 ms, velocity 91 assumed for both takes). At the 0.2 mm
     // authored before 1.9.44 the model's Finger stood within 3 dB of its
     // own Pick up to H7: a mean 7.3 dB over that contrast on H2-H12 from
-    // E4 to C6 and 9.5 on H2-H7 from E2 to D#4. 0.7 mm brings the first
-    // to -0.6 dB (0.5 mm +1.3, 1.0 mm -2.5) and the second to +4.0; from
-    // E2 to D#4 the partials above H8 still stand 14-19 dB over the
-    // recording's contrast, which no radius reached (README, Known gaps). The Thumb keeps the 0.2 mm
+    // E4 to C6 and 9.5 on H2-H7 from E2 to D#4. 0.7 mm brought the first
+    // to -0.6 dB (0.5 mm +1.3, 1.0 mm -2.5) and the second to +4.0, with
+    // the partials above H8 from E2 to D#4 still 14-19 dB over the
+    // recording's contrast at any radius: a kink the release left at the
+    // bridge, gone in 1.9.45 (applyPadRelease). Without it 0.7 mm stands,
+    // mean H2-H12, +5.4, +2.5, -4.0 and 0.0 dB from that contrast over
+    // E2-B2, E3-D#4, E4-D#5 and E5-C6 (0.5 mm +8.0, +5.3, -2.0, +1.6;
+    // 1.9.44 +10.8, +8.5, -1.0, -0.2). The Thumb keeps the 0.2 mm
     // its reference ratio was approved at. The nominal contact still bounds
     // a firm Touch to three times its release speed; no velocity law is
     // fitted to Finger recordings with unknown dynamics.
@@ -9855,79 +9859,6 @@ double padReleasePole(double b, bool matchHalfPower) noexcept
     return 1.0 / (1.0 + t + std::sqrt(t) * std::sqrt(2.0 + t));
 }
 
-// The sampled raised cosine has unit centre and support |k| < width.
-// Its cosine sum is the Dirichlet kernel D(theta). The cosine-weighted
-// sum of k^2 is -D''(theta), so the moment takes constant work even on a
-// long string at a high internal rate.
-double padEndpointMoment(double width) noexcept
-{
-    if (width <= 1.0)
-        return 0.0;
-    constexpr double halfTurn = 3.14159265358979323846;
-    const double angle = halfTurn / width;
-    const double radius = std::ceil(width) - 1.0;
-    const double a = radius + 0.5;
-    const double inverseSine = 1.0 / std::sin(0.5 * angle);
-    const double cotangent = std::cos(0.5 * angle) * inverseSine;
-    const double kernel = std::sin(a * angle) * inverseSine;
-    const double cosineTerm = std::cos(a * angle) * inverseSine;
-    const double squareSum = radius * (radius + 1.0) * (2.0 * radius + 1.0) / 3.0;
-    const double negativeSecondDerivative =
-        (a * a - 0.25 - 0.5 * cotangent * cotangent) * kernel
-        + a * cosineTerm * cotangent;
-    return (squareSum + negativeSecondDerivative) / (2.0 * a + kernel);
-}
-
-double padEndpointWidth(double pole, int length) noexcept
-{
-    constexpr double halfTurn = 3.14159265358979323846;
-    constexpr double continuousMoment = 1.0 / 3.0 - 2.0 / (halfTurn * halfTurn);
-    const double cap = 0.5 * length;
-    const double loss = 1.0 - pole;
-    // In this nearly uniform regime the circular kernel's moment is already
-    // beyond the widest possible raised cosine. Avoid subtracting its
-    // near-equal correction from one.
-    if (loss * length < 1.0e-3)
-        return cap;
-
-    // For the periodic two-pass pole, the discrete second difference of
-    // squared circular distance is 2 except at the antipode. The pole's
-    // recurrence therefore gives the unwrapped moment 2q/(1-q)^2 times
-    // (1-N*K_antipode). At odd lengths the same deficit is split between
-    // the two equally weighted antipodal samples.
-    const double middlePower = std::pow(pole, length / 2);
-    const double otherPower = (length & 1) != 0 ? middlePower * pole : middlePower;
-    const double antipode = loss / (1.0 + pole) * (middlePower + otherPower)
-        / (1.0 - middlePower * otherPower);
-    const double target = (2.0 * pole / (loss * loss)) * (1.0 - length * antipode);
-    if (target >= padEndpointMoment(cap))
-        return cap;
-    if (target <= 0.5)
-    {
-        // At widths through two, only the centre and its neighbours can
-        // contribute. Invert their moment directly, including sub-sample
-        // releases that need a very small but nonzero neighbour weight.
-        return halfTurn / (2.0 * std::acos(std::sqrt(target / (2.0 * (1.0 - target)))));
-    }
-
-    const double estimate = std::sqrt(target / continuousMoment);
-    double lower = std::max(2.0, estimate - 1.0);
-    double upper = std::min(cap, estimate + 1.0);
-    if (padEndpointMoment(lower) > target)
-        lower = 2.0;
-    if (padEndpointMoment(upper) < target)
-        upper = cap;
-    for (int step = 0; step < 22; ++step)
-    {
-        const double middle = 0.5 * (lower + upper);
-        if (padEndpointMoment(middle) < target)
-            lower = middle;
-        else
-            upper = middle;
-    }
-    return 0.5 * (lower + upper);
-}
-
 template <typename At>
 void padPass(const At& at, int length, double b, bool inverse) noexcept
 {
@@ -9980,24 +9911,43 @@ void AcustraEngine::applyPadRelease(StringLoop& loop, int length,
         padPass(lineAt, length, padReleasePole(unslipPole, matchHalfPower), true);
     const double c = padReleasePole(slipPole, matchHalfPower);
     padPass(lineAt, length, c, false);
-    // Bring the bridge sample back to rest with a raised cosine whose
-    // sampled variance matches the slip's own periodic kernel. Shifting the
-    // whole line, as the plectrum's slip does, put back much of the treble this slip takes
-    // from soft low notes: a velocity-16 Finger E2 and A2 brightened to 112
-    // by 2.9 and 2.3 dB in H5-H12 (Acustra.Engine), against 3.6 and 6.1
-    // under the one-pass slip and 4.3 and 5.0 here.
-    const double first = lineAt(0);
-    constexpr double halfTurn = 3.14159265358979323846;
-    const double halfWidth = padEndpointWidth(c, length);
-    const int reach = static_cast<int>(std::ceil(halfWidth));
-    for (int sample = 0; sample < reach; ++sample)
+    // The loop's loss and dispersion sections start empty, so the string's
+    // first period is the written line with their delay's worth of rest
+    // ahead of it. That only joins a line that reaches the bridge sample at
+    // rest and level. The slip rounds the wave's corner there but leaves the
+    // rounded corner's turning point some samples to its shallow side, and
+    // the bridge sample on a slope: shifted or brought down to rest by a
+    // raised cosine (1.9.11-1.9.44), the line met the empty sections at a
+    // kink, a notch in every period as bright as an unslipped corner. A low
+    // E plucked at velocity 30 then stood within 3 dB of velocity 120 from
+    // H5 up, and from E2 to D4 the Finger's H9-H20 stood 13-20 dB over the
+    // Eastman E1D's and the Crafter's plucked notes whatever the release
+    // time. Start the period at the turning point instead: the same wave,
+    // under a millisecond earlier or later, at rest and level where it meets
+    // the sections. The low E's H9-H20 fall 10-20 dB at velocity 30.
+    const auto at = [&] (int sample) -> float&
     {
-        const double share = 0.5 * (1.0 + std::cos(halfTurn * sample / halfWidth));
-        lineAt(sample) = static_cast<float>(lineAt(sample) - first * share);
-        if (sample > 0)
-            lineAt(length - sample) = static_cast<float>(
-                lineAt(length - sample) - first * share);
+        return lineAt(sample < 0 ? sample + length : sample >= length ? sample - length : sample);
+    };
+    const int step = exact::abs(at(1) - at(0)) < exact::abs(at(0) - at(-1)) ? 1 : -1;
+    const float slope = at(step) - at(0);
+    int turn = 0;
+    // Only from a slope: a bridge sample that is the turning point stays.
+    if ((at(1) - at(0)) * (at(0) - at(-1)) > 0.0f)
+        while (turn < length / 2
+               && (at(step * (turn + 1)) - at(step * turn)) * slope > 0.0f)
+            ++turn;
+    if (turn > 0)
+    {
+        // lineAt(k) is low[length - 1 - k], so the line as indexed moves
+        // down by `shift` when the stored range rotates up by it.
+        const int shift = step > 0 ? turn : length - turn;
+        float* const low = &lineAt(length - 1);
+        std::rotate(low, low + (length - shift), low + length);
     }
+    const float rest = lineAt(0);
+    for (int sample = 0; sample < length; ++sample)
+        lineAt(sample) -= rest;
 }
 
 double AcustraEngine::gaussianReleaseStep(double argument,

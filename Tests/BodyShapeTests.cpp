@@ -1030,7 +1030,11 @@ void testRetuneAndTailOwnership()
 // flash stands out: each retuned string's pull on the saddle set off at
 // full slope, a corner heard as a click 2.2-3.9 dB over both settings at
 // 44.1 and 48 kHz; eased in through two stages it stands at most 1.1 dB over
-// (AcustraEngine::process), and is held to 2.
+// (AcustraEngine::process), and was held to 2. That 1.1 was read against a
+// Finger chord whose every period carried a kink at the bridge (to 1.9.44):
+// with it gone the chord stands 8.5 dB lower up there a second on, -92.4 and
+// -94.5 dBFS here, and the flash, itself 4 dB lower at -87.9 and -89.9, is
+// 4.5 and 4.6 dB over it. Held to 5: the flash did not grow, its cover fell.
 struct SwitchCase
 {
     const char* name;
@@ -1115,8 +1119,8 @@ void testConstructionSwitchesDoNotTick()
         { "steel Shape", steel, with(steel, [] (auto& p) { p.shape = BodyShape::Parlor; }), 6.0 },
         { "steel Wood", steel, with(steel, [] (auto& p) { p.bodyMaterial = acustra::BodyMaterial::Maple; }), 6.0 },
         { "steel Tuning", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 6.0 },
-        { "steel Tuning a second on", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 2.0, 1.0 },
-        { "steel Tuning back a second on", with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), steel, 2.0, 1.0 },
+        { "steel Tuning a second on", steel, with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), 5.0, 1.0 },
+        { "steel Tuning back a second on", with(steel, [] (auto& p) { p.tuning = acustra::Tuning::Dadgad; }), steel, 5.0, 1.0 },
     };
     double worst = -1e9;
     const char* worstName = "";

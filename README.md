@@ -39,6 +39,25 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.45 — 2026-11-12 — a plucked string starts at rest at the bridge
+
+- Finger and Thumb lose a brightness that did not belong to the hand, most
+  on the wound strings. The released string was written with a kink where
+  it meets the bridge, a notch in every period as bright as a pick's
+  corner, so a soft pluck's upper partials stood within 3 dB of a hard
+  one's and from E2 to D4 a plucked note's ninth to twentieth partials
+  stood 13-20 dB over the recorded Eastman E1D's and over a second plucked
+  guitar's (the Crafter sample library). The period now starts where the
+  rounded corner turns: a low E plucked at velocity 30 carries those
+  partials 10-20 dB lower, and soft and hard strokes differ in brightness
+  as well as level. The Thumb's partials above the eighth fall 2-6 dB.
+- The fingertip's 0.7 mm stays. Against the recorded finger-to-pick
+  contrast the second to twelfth partials now stand a mean 5.4 dB over
+  from E2 to B2 and 2.5 over from E3 to D#4 (10.8 and 8.5 before), 4.0
+  under from E4 to D#5 and level from E5 to C6.
+- Finger and Thumb play at the loudness they had: their level cells were
+  re-measured.
+
 ### 1.9.44 — 2026-11-12 — the fingertip lets go as the recorded player's does
 
 - Finger is darker, on every string. The recorded player's plucked notes
@@ -808,7 +827,8 @@ technique lets the string slide off a rounded edge, so softer strokes are
 released darker; a fingertip or thumb, unloading smoothly, releases at zero
 phase with a second-order fall above its half-power point. The fingertip's
 edge is the radius at which a plucked note loses its upper partials against
-a picked one as the Eastman E1D's player's do (0.7 mm). A short noise burst carries release detail. Most of a steel
+a picked one as the Eastman E1D's player's do (0.7 mm), and the released
+wave starts where its rounded corner turns, at rest at the bridge. A short noise burst carries release detail. Most of a steel
 pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
@@ -1047,9 +1067,12 @@ separates verified errors from accepted approximations.
 - The fingertip's 0.7 mm is fitted to one player's plucked and picked takes
   of one guitar, both assumed at velocity 91; how a real fingertip's release
   changes with force is not measured, and soft Finger notes follow the
-  authored law. From E2 to D#4 a plucked note's partials above the eighth
-  still stand 14-19 dB over the recorded finger-to-pick contrast, at every
-  radius tried.
+  authored law. Against the recorded finger-to-pick contrast a plucked
+  note's ninth to twelfth partials still stand 8.8 dB over from E2 to B2
+  and 4.6 over from E3 to D#4, and its fifth to twentieth lie 5-9 dB under
+  from E4 to D#5; no one radius centres both. The Martin HD28 notes, whose
+  hand is not identified, are brighter than the Finger and fit the Pick
+  better.
 - MIDI limits: the MPE zone is not saved with a session; RPN Data
   Increment/Decrement are ignored; the Sustain switch acts at block start;
   Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond
