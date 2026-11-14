@@ -39,6 +39,24 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.50 — 2026-11-14 — physical Finger pluck point on the low strings, and faster saddle stretch
+
+- Under Finger, notes past the 4th fret on the low E, A and D strings now
+  follow the hand's physical distance from the bridge (`0.32-0.34` of the
+  speaking length at frets 12-20) rather than 1.9.19's eased length, chosen by
+  ear; the three treble strings (G, B and E) keep 1.9.15's easing (`0.30-0.31`)
+  and frets 0-4 on every string are unchanged. Upper-neck basses and inner
+  voices on the low three strings lose 1.8-3.3 dB on the third harmonic and
+  gain up to 2.6 dB on the fourth.
+- The saddle stretch's four-cell slope sum now accumulates in paired four-lane
+  vectors on ARM64 and Reason Rack builds as well as x86-64 (after 1.9.49
+  cached settled loop geometry and specialized cell strides), cutting
+  calling-thread CPU a further 17.2% across the eight presets at 48 kHz (10.7%
+  under the Rack device's flags) and 18.6% on a held six-string chord (12.2%
+  under the Rack flags), with a `−141.8 dBFS` float null residual against the
+  scalar sum.
+- [Decisions](Docs/decisions.md) and [benchmark](Docs/benchmarks/cpu-pass-2026-11-14.md).
+
 ### 1.9.48 — 2026-11-14 — Keys mode with MPE, Rack heap alignment, and lower CPU at identical output
 
 - Keys mode (F0, F#0) now works across an MPE lower zone and across channels:
@@ -868,7 +886,9 @@ the same intrinsic loss, with winding friction and bending loss on the wound
 strings; String Age lowers the cutoff and raises those losses. A pluck writes
 a triangular release rounded by a Gaussian contact, at a displacement set by
 the force the hand holds; Pluck Position, Touch and velocity move its point,
-width, level and brightness. The Pick adds a fitted release velocity, and every
+width, level and brightness, with a Finger pluck past the 4th fret eased
+slightly bridgeward on the three treble strings by ear while the low E, A and D
+keep the hand's physical distance from the bridge. The Pick adds a fitted release velocity, and every
 technique lets the string slide off a rounded edge, so softer strokes are
 released darker; a fingertip or thumb, unloading smoothly, releases at zero
 phase with a second-order fall above its half-power point. The fingertip's
@@ -1165,10 +1185,11 @@ separates verified errors from accepted approximations.
   attack deficits change with layer and corpus. The historical aggregate is
   not a universal high-register loss ratio. Technique-matched release
   measurements and a listener-accepted attack remain future evidence needs.
-- The Finger's pluck point at the 12th to 20th fret is nominally 0.30-0.31 of
-  the speaking length on every string since 1.9.19. The third harmonic did not
-  rise with it on the A and D strings (2-3 dB lower); whether the move helps
-  is a listening decision.
+- The Finger's pluck point at the 12th to 20th fret sits at 0.32-0.34 of the
+  speaking length on the low E, A and D strings (near 1/3) and is eased to
+  0.30-0.31 on the three treble strings (1.9.15 and 1.9.50, both chosen by
+  ear); where a player's hand actually shifts on high-fret low-string notes is
+  unmeasured.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
   real spread is not measured. A picked note's partials and brightness now
@@ -1286,10 +1307,11 @@ separates verified errors from accepted approximations.
   output exact reaches the target
   (`Docs/benchmarks/cpu-consolidation-2026-11-09.md`). 1.9.41 takes a
   further 2-3% of the instructions out of a chord's first block and none out
-  of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`); 1.9.48 and
-  1.9.49 together take 11-12% of the calling-thread CPU out of a held chord and
-  8-17% out of the presets at 48 kHz (`Docs/benchmarks/cpu-pass-2026-11-14.md`),
-  while a first-time chord's worst block remains above 10%.
+  of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`); 1.9.48–1.9.50
+  together take 20-28% of the calling-thread CPU out of a held chord and
+  17-26% out of the presets at 48 kHz (`Docs/benchmarks/cpu-pass-2026-11-14.md`),
+  bringing held six-string blocks within 10% while a first-time chord's worst
+  block remains above 10%.
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over

@@ -5,6 +5,87 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-14 — four-lane axial-stretch reduction and physical Finger pluck point on the low strings, 1.9.50 (two A–B sets; the owner chose B on both)
+
+**What was addressed.** After 1.9.48 and 1.9.49 landed every bit-exact DSP
+speedup, two open changes altered sample bits and were rendered for a blind
+listening comparison against 1.9.49 (`a8f3192`):
+
+1. *`01-axial-simd-reduction` (numerical optimization).* In `sumAxialCells`
+   (`Source/DSP/AcustraEngine.cpp`), ARM64 (`__aarch64__` / `__ARM_NEON`) and
+   Reason Rack (`JUKEBOX_SDK`) still accumulated the four cells' squared slopes
+   through four sequential scalar FMAs (`sum += slope[0]*slope[0]; ...; sum +=
+   slope[3]*slope[3];`), serializing each four-cell group on a 16-cycle scalar
+   dependency chain, whereas native x86-64 SSE2 (`1.9.16`) accumulated four
+   partial lanes in SIMD. Unifying ARM64, `JUKEBOX_SDK` and x86-64 onto two
+   independent four-lane vector FMA accumulators (`partial0`, `partial1`, stepped
+   in pairs across both the contiguous run and the masked ring-wrap tail so
+   normal and extended sample-rate storage produce identical ordinary-rate
+   bytes) keeps the exact same four-cell spatial quadrature, tap positions,
+   slopes and passive longitudinal ring while changing only floating-point
+   addition order.
+2. *`02-finger-upper-fret-pluck-point` (by-ear physical choice).* `1.9.15`
+   eased a Finger pluck's speaking length past the 4th fret (`exponent 0.35`,
+   `0.300-0.314` of the speaking length at frets 12-20) on the three treble
+   strings (`stringIndex >= 3`: G, B, E) by ear; `1.9.19` extended that easing
+   to the low E, A and D strings (`stringIndex < 3`) before anyone listened,
+   even though H3 fell 2.1-2.7 dB on the A and D strings at frets 12-19, and
+   noted *"If a listener finds the upper frets of the low strings hollower or
+   nasal, revert it"*. Since then, `1.9.44-1.9.47` recalibrated the fingertip's
+   0.7 mm release radius, bridge-rest corner, gentle saddle unloading and
+   wound-string bending loss. Restoring `stringIndex >= 3` keeps the three
+   treble strings and frets 0-4 on every string bit-identical before loudness
+   matching while letting the low E, A and D strings follow the physical hand
+   distance from the bridge (`distanceFromBridge / soundingLength`) bent only
+   by the universal `[0.25, 0.36]` midpoint knee (`0.322-0.340` at frets 12-20),
+   with zero new constants.
+
+**The letters.** Rendered through `acustra::Performer` at 48 kHz in 64-sample
+blocks, stereo 24-bit PCM WAV, 8.80 s each (`diagnostics/ab-listening-2026-11-14/acustra/`,
+not committed):
+
+- `01-axial-simd-reduction/`: **A** is 1.9.49; **B** is the two-way four-lane
+  vector FMA reduction in `sumAxialCells`. Preset #4 (`Jumbo Steel Pick`,
+  108 BPM), a four-bar progression (`G -> Cadd9 -> Dsus4/F# -> Em7 -> Cmaj9 ->
+  Dadd11 -> G`) with forte six-string strums, open-E2 axial tension glide,
+  cross-picked inner arpeggio and a 2.4 s chord decay. Whole-file RMS: A
+  `-19.7270 dBFS` (peak `-1.5000 dBFS`), B `-19.7270 dBFS` (peak `-1.5000 dBFS`),
+  trim applied to B `+0.0000 dB`. Null `B - A`: `-141.79 dBFS` RMS (peak
+  `-121.57 dBFS`) in 32-bit float (`122.1 dB` under signal RMS), `-140.58 dBFS`
+  RMS in 24-bit WAV. Calling-thread CPU (`CLOCK_THREAD_CPUTIME_ID`, six
+  alternating `A/B, B/A` rounds on Apple Silicon): eight-preset total `-17.42%`
+  at 48 kHz and `-15.99%` at 96 kHz in Native Release (`-O3 -fno-builtin`), and
+  `-11.02%` at 48 kHz and `-10.12%` at 96 kHz under Rack flags (`-O2
+  -fno-builtin -DJUKEBOX_SDK`); held six-string chord `-17.60%` Native and
+  `-11.20%` Rack at 48 kHz.
+- `02-finger-upper-fret-pluck-point/`: **A** is 1.9.49 (easing on all six
+  strings); **B** restores `stringIndex >= 3` (physical hand distance on low E,
+  A and D). Preset #1 (`Dreadnought Steel`, `PickingTechnique::Finger`, 96 BPM,
+  `CC 126 = 6` string-per-channel layout), a four-phrase E-major upper-neck
+  fingerstyle study playing frets 7-16 on low E, A and D (`C#m9 -> Asus2/E &
+  Badd11 -> descending bass/tenor duet -> rolled 12th-position E major`) against
+  open B3/E4 campanella tones and fretted G3 harmony. Whole-file RMS: A
+  `-20.1179 dBFS` (peak `-4.9641 dBFS`), B untrimmed `-19.9331 dBFS`, trim
+  applied to B `-0.1848 dB`, B trimmed `-20.1179 dBFS` (peak `-5.0167 dBFS`).
+  Null `B - A` after RMS trim: `-42.72 dBFS` RMS (peak `-21.86 dBFS`, `-22.60 dB`
+  re signal RMS). On isolated sustained notes (`60-560 ms`, velocity 96) across
+  frets 9-16 of low E, A and D, B lowers `H3/H1` by `1.80-3.29 dB` (`H2/H1`
+  `-0.19` to `-0.75 dB`) and raises `H4/H1` by up to `+2.55 dB`.
+
+**Chosen.** **B** on both sets, by ear (`"approvel all b and push"`, owner,
+2026-11-14).
+
+**What it licensed.** Both changes ship together as 1.9.50. Paired even/odd
+lane accumulation is kept in `sumAxialCells`'s masked ring-wrap loop as well as
+its contiguous run so `Acustra.SampleRateLayoutParity` remains bit-identical at
+ordinary rates. Across all 36 construction loudness cells, Finger's integrated
+loudness moved by less than 0.02 LU (median `+0.00 LU`), so
+`ConstructionLoudnessData.h`, preset Output trims and all 129 CTest suites pass
+unchanged. Combined calling-thread CPU (`1.9.49 -> 1.9.50`): `-17.21%` Native /
+`-10.68%` Rack across the eight presets at 48 kHz (`-16.06%` / `-10.19%` at
+96 kHz), and `-18.56%` Native / `-12.18%` Rack on a held six-string chord at
+48 kHz.
+
 ## 2026-11-12 — the wound strings take the plain steel's bending loss, 1.9.47 (the mud measured; listening set sent, B assumed)
 
 **What was decided.** The owner, after 1.9.46: "b is better but the sound

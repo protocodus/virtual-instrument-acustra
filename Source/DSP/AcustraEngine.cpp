@@ -8133,12 +8133,12 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     }
     constexpr float highRegisterFretPivot = 0.793700526f; // 2^(-4/12), 4th fret
     const float highRegisterLength = highRegisterFretPivot * scaleLength;
-    // A Finger's hand keeps its distance from the bridge, so on any string a
-    // note past the 4th fret is met ever nearer the middle and, from the 12th
-    // to the 20th fret, at 0.32-0.34 of its length, on the third harmonic's
-    // null. Past the pivot the length is eased toward the 4th fret's.
+    // On the three treble strings (G, B, E), easing a Finger's speaking length
+    // past the 4th fret keeps upper-neck notes off the third harmonic's null
+    // (1.9.15, chosen by ear). The low E, A and D strings keep the physical
+    // hand distance from the bridge plus the midpoint knee below (1.9.50).
     const float effectivePluckLength = (parameters_.picking == PickingTechnique::Finger
-        && soundingLength < highRegisterLength)
+        && stringIndex >= 3 && soundingLength < highRegisterLength)
         ? highRegisterLength * std::pow(soundingLength / highRegisterLength, 0.35f)
         : soundingLength;
     float basePosition = hasTimbre
@@ -13634,9 +13634,9 @@ namespace
 // renderStringAxialForce: cell k reads the outgoing wave's sample k strides
 // back and the returning wave at its own age, and adds the square of the two
 // waves' slopes over the cell. `outgoing`, `returning` and `sum` carry the
-// previous cell's reads and the running sum in and out. The SDK evaluates four
-// cells at once and adds their squares in the scalar order. Native SSE2 builds
-// retain their existing four partial sums.
+// previous cell's reads and the running sum in and out. Four cells are
+// evaluated at once and accumulated across two independent four-lane partial
+// sums so adjacent groups do not serialize on a scalar FMA chain.
 void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                    int stride, int first, int end, float period,
                    float returningSpan, float outgoingScale,
@@ -13673,27 +13673,8 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                          static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
         Floats outgoingCarry = { 0.0f, 0.0f, 0.0f, outgoing };
         Floats returningCarry = { 0.0f, 0.0f, 0.0f, returning };
-#if defined(JUKEBOX_SDK)
-        const auto addSquares = [&sum] (Floats slope) noexcept
-        {
-            const Floats squares = slope * slope;
-            sum += squares[0];
-            sum += squares[1];
-            sum += squares[2];
-            sum += squares[3];
-        };
-#elif defined(__aarch64__) || defined(__ARM_NEON)
-        const auto addSquares = [&sum] (Floats slope) noexcept
-        {
-            sum += slope[0] * slope[0];
-            sum += slope[1] * slope[1];
-            sum += slope[2] * slope[2];
-            sum += slope[3] * slope[3];
-        };
-#else
-        Floats partial = { 0.0f, 0.0f, 0.0f, 0.0f };
-        const auto addSquares = [&partial] (Floats slope) noexcept { partial += slope * slope; };
-#endif
+        Floats partial0 = { 0.0f, 0.0f, 0.0f, 0.0f };
+        Floats partial1 = { 0.0f, 0.0f, 0.0f, 0.0f };
 #if defined(__has_builtin)
 #if __has_builtin(__builtin_shufflevector)
 #define ACUSTRA_AXIAL_SHUFFLE 1
@@ -13721,7 +13702,7 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                 const int step = fixed > 0 ? fixed : stride;
                 const float* outgoingAt = head - cell * step;
                 const std::ptrdiff_t outgoingAdvance = -4 * static_cast<std::ptrdiff_t>(step);
-                for (int group = 0; group < groups; ++group, outgoingAt += outgoingAdvance)
+                const auto stepContiguous = [&] (Floats& targetPartial) noexcept
                 {
                     const Floats age = periodV - spanV * cells;
                     const Ints whole = __builtin_convertvector(age, Ints);
@@ -13785,11 +13766,20 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 #endif
                     const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                         + (nextReturning - previousReturning) * returningScaleV;
-                    addSquares(slope);
+                    targetPartial += slope * slope;
                     outgoingCarry = nextOutgoing;
                     returningCarry = nextReturning;
                     cells += four;
+                    outgoingAt += outgoingAdvance;
+                };
+                int group = 0;
+                for (; group + 1 < groups; group += 2)
+                {
+                    stepContiguous(partial0);
+                    stepContiguous(partial1);
                 }
+                if (group < groups)
+                    stepContiguous(partial0);
                 cell += 4 * groups;
             };
             if (stride == 1)
@@ -13801,7 +13791,7 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             else
                 runContiguous(std::integral_constant<int, 0> {});
         }
-        for (; end - cell >= 4; cell += 4)
+        for (int maskedGroup = 0; end - cell >= 4; cell += 4, ++maskedGroup)
         {
             const Floats age = periodV - spanV * cells;
             const Ints whole = __builtin_convertvector(age, Ints);
@@ -13833,7 +13823,10 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 #endif
             const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                 + (nextReturning - previousReturning) * returningScaleV;
-            addSquares(slope);
+            if ((maskedGroup & 1) == 0)
+                partial0 += slope * slope;
+            else
+                partial1 += slope * slope;
             outgoingCarry = nextOutgoing;
             returningCarry = nextReturning;
             cells += four;
@@ -13843,9 +13836,8 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 #endif
         outgoing = outgoingCarry[3];
         returning = returningCarry[3];
-#if !defined(JUKEBOX_SDK) && !defined(__aarch64__) && !defined(__ARM_NEON)
+        const Floats partial = partial0 + partial1;
         sum += (partial[0] + partial[1]) + (partial[2] + partial[3]);
-#endif
     }
 #endif
     for (; cell < end; ++cell)
