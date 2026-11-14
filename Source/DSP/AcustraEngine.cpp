@@ -4583,6 +4583,9 @@ void AcustraEngine::prepare(double sampleRate, int)
     sqrtSampleRateRatio_ = exact::sqrt(sampleRateRatio_);
     releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
     releaseStepSamples_ = static_cast<int>(std::ceil(0.4 * sampleRate_));
+    tailQuietLimitSamples_ = static_cast<int>(0.08 * sampleRate_);
+    tailUnfedLimitSamples_ = static_cast<int>(
+        8.0f * tailT60Seconds * static_cast<float>(sampleRate_));
     // The piezo chain (renderPiezo; PiezoDesign has the parts and their
     // sources, Tools/PiezoReference.py simulates the same circuit).
     {
@@ -9502,12 +9505,6 @@ void AcustraEngine::retainRepluckArrivals(Voice& voice) noexcept
     }
 }
 
-namespace
-{
-// The retained wave's nominal post-release T60 (captureTail).
-constexpr float tailT60Seconds = 0.010f;
-} // namespace
-
 void AcustraEngine::captureTail(Voice& voice) noexcept
 {
     // Fractional release responses are already emitted string packets too.
@@ -13717,70 +13714,92 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             && static_cast<unsigned>(lastCell * stride) <= newest)
         {
             const float* const head = line + newest;
-            for (int group = 0; group < groups; ++group, cell += 4)
+            const char* const headM1Bytes = reinterpret_cast<const char*>(head - 1);
+            const auto runContiguous = [&] (auto fixedStride) noexcept
             {
-                const float* const outgoingAt = head - cell * stride;
-                const Floats age = periodV - spanV * cells;
-                const Ints whole = __builtin_convertvector(age, Ints);
-                const Floats part = age - __builtin_convertvector(whole, Floats);
-                int back[4];
-                __builtin_memcpy(back, &whole, sizeof back);
+                constexpr int fixed = decltype(fixedStride)::value;
+                const int step = fixed > 0 ? fixed : stride;
+                const float* outgoingAt = head - cell * step;
+                const std::ptrdiff_t outgoingAdvance = -4 * static_cast<std::ptrdiff_t>(step);
+                for (int group = 0; group < groups; ++group, outgoingAt += outgoingAdvance)
+                {
+                    const Floats age = periodV - spanV * cells;
+                    const Ints whole = __builtin_convertvector(age, Ints);
+                    const Floats part = age - __builtin_convertvector(whole, Floats);
 #ifdef ACUSTRA_AXIAL_SHUFFLE
-                Float2 p0, p1, p2, p3;
-                __builtin_memcpy(&p0, head - back[0] - 1, sizeof(Float2));
-                __builtin_memcpy(&p1, head - back[1] - 1, sizeof(Float2));
-                __builtin_memcpy(&p2, head - back[2] - 1, sizeof(Float2));
-                __builtin_memcpy(&p3, head - back[3] - 1, sizeof(Float2));
-                const Floats p01 = __builtin_shufflevector(p0, p1, 0, 1, 2, 3);
-                const Floats p23 = __builtin_shufflevector(p2, p3, 0, 1, 2, 3);
-                const Floats b = __builtin_shufflevector(p01, p23, 0, 2, 4, 6);
-                const Floats a = __builtin_shufflevector(p01, p23, 1, 3, 5, 7);
-                Floats nextOutgoing;
-                if (stride == 1)
-                {
-                    Floats raw;
-                    __builtin_memcpy(&raw, outgoingAt - 3, sizeof(Floats));
-                    nextOutgoing = __builtin_shufflevector(raw, raw, 3, 2, 1, 0);
-                }
-                else if (stride == 2)
-                {
-                    Floats lo, hi;
-                    __builtin_memcpy(&lo, outgoingAt - 6, sizeof(Floats));
-                    __builtin_memcpy(&hi, outgoingAt - 3, sizeof(Floats));
-                    nextOutgoing = __builtin_shufflevector(hi, lo, 3, 1, 6, 4);
-                }
-                else
-                {
-                    nextOutgoing = Floats { outgoingAt[0], outgoingAt[-stride],
-                                            outgoingAt[-2 * stride],
-                                            outgoingAt[-3 * stride] };
-                }
-                const Floats nextReturning = a + part * (b - a);
-                const Floats previousOutgoing
-                    = __builtin_shufflevector(outgoingCarry, nextOutgoing, 3, 4, 5, 6);
-                const Floats previousReturning
-                    = __builtin_shufflevector(returningCarry, nextReturning, 3, 4, 5, 6);
+                    const Ints byteOff = -(whole << 2);
+                    Float2 p0, p1, p2, p3;
+                    __builtin_memcpy(&p0, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[0]), sizeof(Float2));
+                    __builtin_memcpy(&p1, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[1]), sizeof(Float2));
+                    __builtin_memcpy(&p2, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[2]), sizeof(Float2));
+                    __builtin_memcpy(&p3, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[3]), sizeof(Float2));
+                    const Floats p01 = __builtin_shufflevector(p0, p1, 0, 1, 2, 3);
+                    const Floats p23 = __builtin_shufflevector(p2, p3, 0, 1, 2, 3);
+                    const Floats b = __builtin_shufflevector(p01, p23, 0, 2, 4, 6);
+                    const Floats a = __builtin_shufflevector(p01, p23, 1, 3, 5, 7);
+                    Floats nextOutgoing;
+                    if constexpr (fixed == 1)
+                    {
+                        Floats raw;
+                        __builtin_memcpy(&raw, outgoingAt - 3, sizeof(Floats));
+                        nextOutgoing = __builtin_shufflevector(raw, raw, 3, 2, 1, 0);
+                    }
+                    else if constexpr (fixed == 2)
+                    {
+                        Floats lo, hi;
+                        __builtin_memcpy(&lo, outgoingAt - 6, sizeof(Floats));
+                        __builtin_memcpy(&hi, outgoingAt - 3, sizeof(Floats));
+                        nextOutgoing = __builtin_shufflevector(hi, lo, 3, 1, 6, 4);
+                    }
+                    else if constexpr (fixed == 3)
+                    {
+                        Floats v0, v1;
+                        __builtin_memcpy(&v0, outgoingAt - 9, sizeof(Floats));
+                        __builtin_memcpy(&v1, outgoingAt - 3, sizeof(Floats));
+                        nextOutgoing = __builtin_shufflevector(v1, v0, 3, 0, 7, 4);
+                    }
+                    else
+                    {
+                        nextOutgoing = Floats { outgoingAt[0], outgoingAt[-step],
+                                                outgoingAt[-2 * step],
+                                                outgoingAt[-3 * step] };
+                    }
+                    const Floats nextReturning = a + part * (b - a);
+                    const Floats previousOutgoing
+                        = __builtin_shufflevector(outgoingCarry, nextOutgoing, 3, 4, 5, 6);
+                    const Floats previousReturning
+                        = __builtin_shufflevector(returningCarry, nextReturning, 3, 4, 5, 6);
 #else
-                const Floats a = { head[-back[0]], head[-back[1]],
-                                   head[-back[2]], head[-back[3]] };
-                const Floats b = { head[-back[0] - 1], head[-back[1] - 1],
-                                   head[-back[2] - 1], head[-back[3] - 1] };
-                const Floats nextReturning = a + part * (b - a);
-                const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-stride],
-                                              outgoingAt[-2 * stride],
-                                              outgoingAt[-3 * stride] };
-                const Floats previousOutgoing = { outgoingCarry[3], nextOutgoing[0],
-                                                  nextOutgoing[1], nextOutgoing[2] };
-                const Floats previousReturning = { returningCarry[3], nextReturning[0],
-                                                   nextReturning[1], nextReturning[2] };
+                    const Floats a = { head[-whole[0]], head[-whole[1]],
+                                       head[-whole[2]], head[-whole[3]] };
+                    const Floats b = { head[-whole[0] - 1], head[-whole[1] - 1],
+                                       head[-whole[2] - 1], head[-whole[3] - 1] };
+                    const Floats nextReturning = a + part * (b - a);
+                    const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-step],
+                                                  outgoingAt[-2 * step],
+                                                  outgoingAt[-3 * step] };
+                    const Floats previousOutgoing = { outgoingCarry[3], nextOutgoing[0],
+                                                      nextOutgoing[1], nextOutgoing[2] };
+                    const Floats previousReturning = { returningCarry[3], nextReturning[0],
+                                                       nextReturning[1], nextReturning[2] };
 #endif
-                const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
-                    + (nextReturning - previousReturning) * returningScaleV;
-                addSquares(slope);
-                outgoingCarry = nextOutgoing;
-                returningCarry = nextReturning;
-                cells += four;
-            }
+                    const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
+                        + (nextReturning - previousReturning) * returningScaleV;
+                    addSquares(slope);
+                    outgoingCarry = nextOutgoing;
+                    returningCarry = nextReturning;
+                    cells += four;
+                }
+                cell += 4 * groups;
+            };
+            if (stride == 1)
+                runContiguous(std::integral_constant<int, 1> {});
+            else if (stride == 2)
+                runContiguous(std::integral_constant<int, 2> {});
+            else if (stride == 3)
+                runContiguous(std::integral_constant<int, 3> {});
+            else
+                runContiguous(std::integral_constant<int, 0> {});
         }
         for (; end - cell >= 4; cell += 4)
         {
@@ -13888,15 +13907,20 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 // away from the top, so a tension rise pushes the saddle into it. The
 // along-string push on the saddle top, which turns the bridge about its
 // long axis, has no measured path here and is left out.
+ACUSTRA_NOINLINE float AcustraEngine::fallbackVoiceTension(const Voice& voice) const noexcept
+{
+    constexpr float scaleLength = 0.648f;
+    return voice.characteristicImpedance * 2.0f * scaleLength
+        * tunedMidiFrequency(voice.openMidi);
+}
+
 ACUSTRA_FORCED_INLINE_BEGIN
 ACUSTRA_FORCED_INLINE void AcustraEngine::designStringAxialForce(Voice& voice, int stringIndex) noexcept
 {
     auto& axial = voice.stringAxialForce;
     const float length = std::max(voice.speakingLengthMetres, 0.05f);
-    constexpr float scaleLength = 0.648f;
     const float tension = voice.tensionNewtons > 0.0f ? voice.tensionNewtons
-        : voice.characteristicImpedance * 2.0f * scaleLength
-              * tunedMidiFrequency(voice.openMidi);
+        : fallbackVoiceTension(voice);
     const float excursion = excursionMetres(voice);
     const float loss = voice.axialLossFactor;
     const auto lengthBits = exact::bits(length);
@@ -13950,6 +13974,7 @@ ACUSTRA_NOINLINE void AcustraEngine::redesignStringAxialForce(
     const double rate = sampleRate_;
     const double cutoff = std::min(fundamental, 5000.0);
     axial.stride = std::max(1, static_cast<int>(std::floor(rate / (4.0 * cutoff))));
+    axial.outgoingScale = -1.0f / static_cast<float>(axial.stride);
     // Preserve the established force bandwidth and smoothing of a ring
     // redesign. This output filter is not the source's anti-alias filter:
     // the former fs/stride fold is prevented by evaluating F at every host
@@ -14094,8 +14119,13 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
     designStringAxialForce(voice, stringIndex);
     const bool waves = performanceRealism_.axialWaves;
     double stretch = 0.0;
-    for (const auto& loop : voice.loops)
+    const float maxRoom = static_cast<float>(activeDelaySamples() - 4);
+    const float validAgeF = static_cast<float>(axial.validAge);
+    const auto roundTripBits = exact::bits(axial.roundTrip);
+    const int stride = axial.stride;
+    for (std::size_t loopIndex = 0; loopIndex < voice.loops.size(); ++loopIndex)
     {
+        const auto& loop = voice.loops[loopIndex];
         // displacementAt's read, age 0 the newest sample, on the
         // line's own power-of-two ring.
         const float* line = loop.delay.data();
@@ -14149,18 +14179,44 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
             stretch += static_cast<double>(period) * integral;
             continue;
         }
-        // The axial round trip is a twelfth to an eighteenth of the
-        // transverse one on these strings; the bound only keeps a
-        // cell's span of the line from closing up.
-        const float shear = std::min(axial.roundTrip / period, 0.5f);
+        auto& geo = axial.loopGeometry[loopIndex];
+        const auto periodBits = exact::bits(period);
+        if (geo.periodBits != periodBits || geo.roundTripBits != roundTripBits
+            || geo.stride != stride)
+        {
+            geo.periodBits = periodBits;
+            geo.roundTripBits = roundTripBits;
+            geo.stride = stride;
+            // The axial round trip is a twelfth to an eighteenth of the
+            // transverse one on these strings; the bound only keeps a
+            // cell's span of the line from closing up.
+            const float shear = std::min(axial.roundTrip / period, 0.5f);
+            const float outgoingStep = 1.0f + shear;
+            const float returningStep = 1.0f - shear;
+            const float strideF = static_cast<float>(stride);
+            const float width = strideF / outgoingStep;
+            const int cells = std::max(1, static_cast<int>(
+                outgoingStep * period / strideF));
+            const float lastWidth = period - width * static_cast<float>(cells - 1);
+            const float returningSpan = width * returningStep;
+            geo.cells = cells;
+            geo.shear = shear;
+            geo.width = width;
+            geo.lastWidth = lastWidth;
+            geo.returningSpan = returningSpan;
+            geo.returningScale = 1.0f / returningSpan;
+            geo.shearPeriod = shear * period;
+            geo.outgoingEndAge = outgoingStep * period;
+            geo.lastOutgoingDenom = -lastWidth * outgoingStep;
+            geo.lastReturningDenom = lastWidth * returningStep;
+        }
         // Before its own release a new shape was held still, so a
         // retardation reaching past it reads the shape as released.
         // At the longest period the line allows the room left is a
         // sample short; a negative reach would read the line's far
         // end.
-        const float reach = std::max(0.0f, std::min({ shear * period,
-            static_cast<float>(axial.validAge),
-            static_cast<float>(activeDelaySamples() - 4) - period }));
+        const float reach = std::max(0.0f, std::min({ geo.shearPeriod,
+            validAgeF, maxRoom - period }));
         // The direct path and the one by way of the nut join into one
         // loop over u in [0, D], u = x on the first and D - x on the
         // second: there the waves are read at u + r and D - u + r,
@@ -14168,34 +14224,38 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
         // per unit of u, so cells of a stride over (1 + e) put it on
         // whole samples and only the second is interpolated. The
         // last cell runs on to u = D, one to two cells wide.
-        const int stride = axial.stride;
-        const float outgoingStep = 1.0f + shear;
-        const float returningStep = 1.0f - shear;
-        const float width = static_cast<float>(stride) / outgoingStep;
-        const int cells = std::max(1, static_cast<int>(
-            outgoingStep * period / static_cast<float>(stride)));
-        const float lastWidth = period - width * static_cast<float>(cells - 1);
         // y_x = -s'(outgoing) - s'(returning), each the mean over the
         // cell's span of its own line.
         float outgoing = sample(0);
         float returning = tap(period);
         float sum = 0.0f;
-        if (reach >= shear * period)
+        if (reach >= geo.shearPeriod)
         {
-            const float returningSpan = width * returningStep;
-            const float outgoingScale = -1.0f / static_cast<float>(stride);
-            const float returningScale = 1.0f / returningSpan;
-            sumAxialCells(line, mask, newest, stride, 1, cells, period,
-                          returningSpan, outgoingScale, returningScale,
+            sumAxialCells(line, mask, newest, stride, 1, geo.cells, period,
+                          geo.returningSpan, axial.outgoingScale, geo.returningScale,
                           outgoing, returning, sum);
-            sum *= width;
-            const float slope = (tap(outgoingStep * period) - outgoing)
-                    / (-lastWidth * outgoingStep)
-                + (tap(shear * period) - returning) / (lastWidth * returningStep);
-            sum += lastWidth * slope * slope;
+            sum *= geo.width;
+            const float numOut = tap(geo.outgoingEndAge) - outgoing;
+            const float numRet = tap(geo.shearPeriod) - returning;
+#if (defined(JUKEBOX_SDK) || defined(__aarch64__) || defined(__ARM_NEON) \
+    || (defined(__SSE2__) && defined(__x86_64__))) \
+    && (defined(__clang__) || defined(__GNUC__))
+            typedef float Float2Div __attribute__((vector_size(8), aligned(4), may_alias));
+            const Float2Div quot = Float2Div { numOut, numRet }
+                                 / Float2Div { geo.lastOutgoingDenom, geo.lastReturningDenom };
+            const float slope = quot[0] + quot[1];
+#else
+            const float slope = numOut / geo.lastOutgoingDenom
+                + numRet / geo.lastReturningDenom;
+#endif
+            sum += geo.lastWidth * slope * slope;
         }
         else
         {
+            const float shear = geo.shear;
+            const float width = geo.width;
+            const float lastWidth = geo.lastWidth;
+            const int cells = geo.cells;
             float outgoingAge = 0.0f;
             float returningAge = period;
             for (int cell = 1; cell <= cells; ++cell)
@@ -14279,6 +14339,10 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::renderStringAxialForce(Voice& voice, 
     // delay is held to it as well.
     float output = axial.force;
     if (axial.banded)
+    {
+#if defined(__clang__)
+#pragma unroll
+#endif
         for (std::size_t section = 0; section < axial.band.size(); ++section)
         {
             const auto& c = axial.band[section];
@@ -14288,6 +14352,7 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::renderStringAxialForce(Voice& voice, 
             z[1] = c[2] * output - c[4] * filtered;
             output = filtered;
         }
+    }
     axial.ringing = true;
     if (!driven)
     {
@@ -14442,9 +14507,8 @@ ACUSTRA_FORCED_INLINE void AcustraEngine::finishVoice(Voice& voice, int stringIn
         // threshold for as long as anything sounded, so in continuous
         // playing tails ran on 21-49% of string-samples (Aculele 0.4.31
         // retires them the same way).
-        if ((voice.tailQuietSamples > static_cast<int>(0.08 * sampleRate_)
-             || voice.tailUnfedSamples > static_cast<int>(
-                    8.0f * tailT60Seconds * static_cast<float>(sampleRate_)))
+        if ((voice.tailQuietSamples > tailQuietLimitSamples_
+             || voice.tailUnfedSamples > tailUnfedLimitSamples_)
             && !tailFed)
             voice.tailRetiring = true;
         // A retiring tail's port leaves the junction on the delay's own

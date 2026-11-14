@@ -1286,10 +1286,10 @@ separates verified errors from accepted approximations.
   output exact reaches the target
   (`Docs/benchmarks/cpu-consolidation-2026-11-09.md`). 1.9.41 takes a
   further 2-3% of the instructions out of a chord's first block and none out
-  of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`); 1.9.48 takes
-  7% of the calling-thread CPU out of a held chord and 5-14% out of the
-  presets at 48 kHz (`Docs/benchmarks/cpu-pass-2026-11-14.md`), while a
-  first-time chord's worst block remains above 10%.
+  of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`); 1.9.48 and
+  1.9.49 together take 11-12% of the calling-thread CPU out of a held chord and
+  8-17% out of the presets at 48 kHz (`Docs/benchmarks/cpu-pass-2026-11-14.md`),
+  while a first-time chord's worst block remains above 10%.
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over

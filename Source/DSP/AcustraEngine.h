@@ -1351,8 +1351,8 @@ private:
         struct AxialContactArrivals
         {
             static constexpr int capacity = 512;
-            std::array<float, capacity> force {};
             int readIndex { 0 }, remaining { 0 };
+            std::array<float, capacity> force {};
             void clear() noexcept { force.fill(0.0f); readIndex = remaining = 0; }
             void add(int offset, float value) noexcept
             {
@@ -1379,7 +1379,22 @@ private:
         struct StringAxialForce
         {
             static constexpr int ringSize = 1024;
-            std::array<float, ringSize> ring {};
+            struct LoopGeometry
+            {
+                std::uint32_t periodBits { 0xffffffffu };
+                std::uint32_t roundTripBits { 0xffffffffu };
+                int stride { 0 };
+                int cells { 1 };
+                float shear { 0.0f };
+                float width { 1.0f };
+                float lastWidth { 1.0f };
+                float returningSpan { 1.0f };
+                float returningScale { 1.0f };
+                float shearPeriod { 0.0f };
+                float outgoingEndAge { 0.0f };
+                float lastOutgoingDenom { -1.0f };
+                float lastReturningDenom { 1.0f };
+            };
             int writeIndex { 0 };
             // The design, for the length, tension, excursion scale and loss
             // it was made at (the rate clears it).
@@ -1387,6 +1402,7 @@ private:
             std::uint32_t lengthBits { 0 }, tensionBits { 0 };
             std::uint32_t scaleBits { 0 }, lossBits { 0 };
             int stride { 1 }; // spatial quadrature spacing, never a sample-rate reduction
+            float outgoingScale { -1.0f };
             // The force's output band (designStringAxialForce): four lowpass
             // sections, b0 b1 b2 a1 a2, in transposed direct form II.
             bool banded { false };
@@ -1412,6 +1428,8 @@ private:
             // history belongs to this shape.
             int validAge { 0 };
             bool rereference { true };
+            std::array<LoopGeometry, 2> loopGeometry {};
+            std::array<float, ringSize> ring {};
             // A new pluck or a cleared line holds a new shape whose stretch
             // the hand set up before the release: count its changes from
             // there, and let what the old one launched ring on.
@@ -1758,9 +1776,9 @@ private:
         // Keep the voice's per-sample scalar state ahead of the large
         // histories. Their storage, active lengths and copy rules stay local
         // to the same voice and contact as before.
-        AxialContactArrivals axialContactArrivals {};
         StringAxialForce stringAxialForce {};
         std::array<StringLoop, 2> loops {};
+        AxialContactArrivals axialContactArrivals {};
         // A string taken for a new note is still vibrating. This carries that
         // vibration on under the hand damping the model already uses for a
         // stopped note, instead of deleting it, in both planes: the parallel
@@ -2191,6 +2209,7 @@ private:
     void advanceAnticipation(Voice& voice, int stringIndex) noexcept;
     void renderFretMotion(Voice& voice, int stringIndex) noexcept;
     [[nodiscard]] float excursionMetres(const Voice& voice) const noexcept;
+    [[nodiscard]] float fallbackVoiceTension(const Voice& voice) const noexcept;
     ACUSTRA_ALWAYS_INLINE void designStringAxialForce(Voice& voice, int stringIndex) noexcept;
     void redesignStringAxialForce(Voice& voice, int stringIndex, float length,
                                  float tension, float excursion, float loss) noexcept;
@@ -2374,6 +2393,9 @@ private:
     // how long it runs (initialisePluck).
     float releaseStepPole_ { 0.0f };
     int releaseStepSamples_ { 1 };
+    static constexpr float tailT60Seconds = 0.010f;
+    int tailQuietLimitSamples_ { 3840 };
+    int tailUnfedLimitSamples_ { 3840 };
     float delaySmoothing_ { 0.001f };
     float parameterSmoothing_ { 0.002f };
     float levelSmoothing_ { 0.0025f };
