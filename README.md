@@ -39,6 +39,28 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.48 — 2026-11-14 — Keys mode with MPE, Rack heap alignment, and lower CPU at identical output
+
+- Keys mode (F0, F#0) now works across an MPE lower zone and across channels:
+  notes held on MPE member channels are struck when C0, C#0 or D0 arrives on
+  the manager or a member channel, strum keys on separate channels in the same
+  sample each strum their own channel, and a repeated Note On without a Note
+  Off in Keys mode no longer swallows the next Note Off. Reset All Controllers
+  (CC121) resets MPE CC74 timbre, and resizing the MPE lower zone clears
+  affected member keys and vibrato ownership.
+- The engine and Performer stay within 8-byte alignment so 64-bit Reason Rack
+  Extension builds (`phdsp64`) allocate them safely on the heap.
+- Each string's two wave planes now step together in paired lanes, the saddle
+  stretch sum runs four taps wide on ARM64 as well as x86, the bridge modes,
+  stereo microphone filter and coupled tuning solve evaluate in two-lane
+  doubles, and silent bridge, body and piezo stages stay idle until driven.
+  Calling-thread CPU across the eight presets falls 8.6% at 48 kHz (4.7%
+  compiled with the Rack device's flags) and 6.8% at 96 kHz (5.0% with the
+  Rack flags), a held six-string chord costs 7.1% less, and an awake engine at
+  rest before sleep costs 52% less.
+- The output is bit for bit as before.
+- [Benchmark](Docs/benchmarks/cpu-pass-2026-11-14.md).
+
 ### 1.9.47 — 2026-11-12 — the wound strings keep their top
 
 - The low strings are clearer. The wound strings (E A D G) lost their upper
@@ -1107,12 +1129,6 @@ separates verified errors from accepted approximations.
   Increment/Decrement are ignored; the Sustain switch acts at block start;
   Panic leaves CC2 where it is; upper-zone MPE and per-note aftertouch beyond
   the CC74/pressure bias are absent.
-- Keys mode (F0, F#0) is global but a strum is one channel's: in it, notes
-  on MPE member channels stay silent until C0, C#0 or D0 and their own strum
-  key strikes nothing, and strum keys on two channels in one sample strum
-  only the last. A repeated Note On without a Note Off in Keys mode swallows
-  the next Note Off, and Reset All Controllers leaves a member's CC74. Found
-  by reading the code, not yet reproduced.
 - Tapping, slapping, fret buzz, artificial and pinch harmonics, body knocks
   and a moving-fret boundary for hammer-ons are absent; slide roughness and the
   hammer-on contact are authored. Fret collision fires when built but needs a
@@ -1270,7 +1286,10 @@ separates verified errors from accepted approximations.
   output exact reaches the target
   (`Docs/benchmarks/cpu-consolidation-2026-11-09.md`). 1.9.41 takes a
   further 2-3% of the instructions out of a chord's first block and none out
-  of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`).
+  of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`); 1.9.48 takes
+  7% of the calling-thread CPU out of a held chord and 5-14% out of the
+  presets at 48 kHz (`Docs/benchmarks/cpu-pass-2026-11-14.md`), while a
+  first-time chord's worst block remains above 10%.
 - Notes near strong lossy body modes sit a few cents from their request, and
   coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over

@@ -17,6 +17,11 @@
 
 // Counts every allocation, so a test can prove the player makes none while
 // it plays.
+static_assert(alignof(acustra::AcustraEngine) <= 8,
+              "AcustraEngine must fit phdsp64 8-byte heap alignment");
+static_assert(alignof(acustra::Performer) <= 8,
+              "Performer must fit phdsp64 8-byte heap alignment");
+
 namespace
 {
 std::atomic<long> allocationCount { 0 };
@@ -905,17 +910,20 @@ void testResetAllControllersResetsVibratoAndPressure()
     };
     const auto memberNote = message(0.001, 0x91, 57, 100);
     const auto grip = message(0.0, 0xd1, 10, 0, 2);
+    const auto timbre = message(0.0, 0xb1, 74, 127);
     const auto memberWheel = play(with({ wheel, memberNote }));
     expect(play(with({ wheel, grip, memberNote })) != memberWheel,
            "a member's pressure did not reach its note");
-    expect(play(with({ wheel, grip, message(0.0, 0xb1, 121, 0), memberNote }))
+    expect(play(with({ wheel, timbre, memberNote })) != memberWheel,
+           "a member's CC74 timbre did not reach its note");
+    expect(play(with({ wheel, grip, timbre, message(0.0, 0xb1, 121, 0), memberNote }))
                == memberWheel,
-           "a member's Reset All Controllers left its pressure or took the "
-           "manager's wheel");
-    expect(play(with({ wheel, grip, message(0.0, 0xb0, 121, 0), memberNote }))
+           "a member's Reset All Controllers left its pressure or CC74, or "
+           "took the manager's wheel");
+    expect(play(with({ wheel, grip, timbre, message(0.0, 0xb0, 121, 0), memberNote }))
                == play(with({ memberNote })),
            "the manager's Reset All Controllers left the wheel or a member's "
-           "pressure");
+           "pressure or CC74");
 }
 
 // An MPE controller sends a member home right after the key: its bend (or a
@@ -1886,6 +1894,49 @@ void testChordWindowIsPerChannel()
     expect(busy.first == quiet.first && busy.second == quiet.second,
            "another channel's notes kept a chord forming and refretted a held note");
 }
+
+void testMpeZoneChangeClearsHeldKeysAndVibrato()
+{
+    auto performer = std::make_unique<Performer>();
+    performer->prepare(48000.0, 64);
+    performer->setGatherChords(false);
+    std::vector<float> left(64), right(64);
+    const auto block = [&](auto&& events)
+    {
+        performer->beginBlock(left.data(), right.data(), 64);
+        events();
+        performer->endBlock();
+    };
+    block([&]
+    {
+        performer->controlChange(0, 1, 101, 0);
+        performer->controlChange(0, 1, 100, 6);
+        performer->controlChange(0, 1, 6, 4);
+        performer->controlChange(0, 2, 1, 100);
+        performer->noteOn(0, 1, Performer::keyswitchStrumDown, 100);
+    });
+    block([&]
+    {
+        performer->noteOn(0, 2, 52, 100);
+        performer->noteOn(0, 8, 64, 100);
+    });
+    expect(acustra::AcustraEngineTestAccess::vibrato(performer->engine()) > 0.0f,
+           "member CC1 vibrato did not reach the engine before zone change");
+    block([&]
+    {
+        performer->controlChange(0, 1, 101, 0);
+        performer->controlChange(0, 1, 100, 6);
+        performer->controlChange(0, 1, 6, 0);
+    });
+    expect(acustra::AcustraEngineTestAccess::vibrato(performer->engine()) == 0.0f,
+           "clearing the MPE zone left vibrato set by an affected channel");
+    block([&] { performer->noteOn(0, 2, Performer::keyswitchStrumDown, 100); });
+    expect(performer->engine().heldString(52, 2) < 0,
+           "clearing the MPE zone left a held key in the performer's state");
+    block([&] { performer->noteOn(0, 8, Performer::keyswitchStrumDown, 100); });
+    expect(performer->engine().heldString(64, 8) >= 0,
+           "clearing the MPE zone dropped a held key outside the affected channels");
+}
 } // namespace
 
 int main()
@@ -1925,6 +1976,7 @@ int main()
     testUnsoundableNotesMakeNoStrum();
     testMasterTuneSurvivesPrepareAndReset();
     testChordWindowIsPerChannel();
+    testMpeZoneChangeClearsHeldKeysAndVibrato();
     testASuspendedEngineKeepsTime();
 
     if (failures != 0)

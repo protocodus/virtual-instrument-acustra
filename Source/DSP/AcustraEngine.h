@@ -1008,8 +1008,14 @@ private:
         // called instead, four times per string per sample, it cost about a
         // tenth of the engine there, and inlining gains a few percent on the
         // host, which never did.
+        ACUSTRA_ALWAYS_INLINE double advanceDelayAndRead(
+            float delaySmoothing) noexcept;
+        ACUSTRA_ALWAYS_INLINE void advanceReleaseGain(float releaseGain) noexcept;
         ACUSTRA_ALWAYS_INLINE float advance(float delaySmoothing,
                                             float releaseGain) noexcept;
+        static ACUSTRA_ALWAYS_INLINE void advancePair(
+            StringLoop& normal, StringLoop& parallel, float delaySmoothing,
+            float releaseGain, float& normalOut, float& parallelOut) noexcept;
         void setLoopGain(float gain, bool transition = false) noexcept;
         // A plucked string is released from rest, so the wave the bridge
         // reads was already standing there when the finger let go. Prime the
@@ -1099,6 +1105,7 @@ private:
         float mainIntegratedMoment { 0.0f };
         float bodyIntegratedForce { 0.0f };
         float bodyIntegratedMoment { 0.0f };
+        bool silent { true };
 
         void reset() noexcept;
         void process(const BridgeDrive& drive) noexcept;
@@ -1819,16 +1826,17 @@ private:
         static constexpr int lanes = 4;
         static constexpr int capacity = (bodyModeCount + lanes - 1) / lanes * lanes;
         using Lanes = std::array<float, capacity>;
-        alignas(16) Lanes real {}, imaginary {}, momentReal {}, momentImaginary {};
-        alignas(16) Lanes poleReal {}, poleImaginary {};
-        alignas(16) Lanes leftReal {}, leftImaginary {}, rightReal {}, rightImaginary {};
-        alignas(16) Lanes leftMomentReal {}, leftMomentImaginary {};
-        alignas(16) Lanes rightMomentReal {}, rightMomentImaginary {};
+        Lanes real {}, imaginary {}, momentReal {}, momentImaginary {};
+        Lanes poleReal {}, poleImaginary {};
+        Lanes leftReal {}, leftImaginary {}, rightReal {}, rightImaginary {};
+        Lanes leftMomentReal {}, leftMomentImaginary {};
+        Lanes rightMomentReal {}, rightMomentImaginary {};
         int count { 0 };
         // The first `ordered` modes are a bank's own; the rest are the steel
         // blend's parallel parts, starting on a group of four. render sums
         // them alike.
         int ordered { 0 };
+        bool silent { true };
         CaptureFilter captureFilter {};
 
         // The first modeCount modes' coefficients, their states kept. Slots
@@ -1842,6 +1850,7 @@ private:
             momentReal.fill(0.0f);
             momentImaginary.fill(0.0f);
             captureFilter.reset();
+            silent = true;
         }
         // Every mode's two-pole state advanced by the force and moment and
         // summed into the left and right residues, then a flush of tiny
@@ -2358,6 +2367,9 @@ private:
     FixedDerivative bridgeBodyForceDerivative_ {};
     double sampleRate_ { 48000.0 };
     float inverseSampleRate_ { 1.0f / 48000.0f };
+    float sampleRateRatio_ { 1.0f };
+    float referenceSampleRateRatio_ { 1.0f };
+    float sqrtSampleRateRatio_ { 1.0f };
     // The released static force's high-pass, a double pole at 10 ms, and
     // how long it runs (initialisePluck).
     float releaseStepPole_ { 0.0f };
@@ -2427,7 +2439,7 @@ private:
         static constexpr int arrivalCount = 2 * tapCount;
         static_assert(arrivalCount % 4 == 0, "arrivals are read four at a time");
         std::array<int, arrivalCount> arrivalOldest {};
-        alignas(16) std::array<float, 4 * arrivalCount> arrivalWeightLanes {};
+        std::array<float, 4 * arrivalCount> arrivalWeightLanes {};
         bool directional { false };
         bool rateConversion { false };
         // Two 64-internal-sample Blackman-windowed sinc filters. The first
@@ -2447,7 +2459,7 @@ private:
         // The room's outputs, left and right side by side, as doubles. The
         // ring is written twice, a ring's length apart, so its newest
         // converterOrder + 1 pairs are always one run of memory.
-        alignas(16) std::array<std::array<double, 2>, 2 * (converterOrder + 1)> converterStereo {};
+        std::array<std::array<double, 2>, 2 * (converterOrder + 1)> converterStereo {};
         int converterLength { 1 };
         int converterInputHead { 0 }, converterOutputHead { 0 };
         int lateDelay { 1 };
@@ -2575,6 +2587,7 @@ private:
     bool prepared_ { false };
     bool suspended_ { false };
     bool bodyConfigured_ { false };
+    bool piezoSilent_ { true };
     std::uint64_t noteOrder_ { 0 };
     // Samples rendered since reset(); the hand's memory and the chord window
     // are timed on it.

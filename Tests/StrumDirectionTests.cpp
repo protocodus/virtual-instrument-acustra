@@ -645,6 +645,160 @@ void testExplicitSmallStrokes()
         }
 }
 
+void testStrumKeyRepeatedNotesMultiChannelAndMpe()
+{
+    using P = acustra::Performer;
+
+    // 1. A repeated Note On without Note Off in Keys mode on an already-sounding
+    // note (struck by F0, or held from before entering Keys mode) must not mark
+    // it silent and swallow its next Note Off.
+    {
+        auto p = explicitStrokePerformer(acustra::PickingTechnique::Pick, true);
+        keyswitch(*p, P::keyswitchStrumDown, true);
+        keyswitch(*p, 52, true);
+        expect(p->engine().heldString(52, 1) < 0,
+               "initial key in Keys mode sounded without a strum key");
+        keyswitch(*p, P::keyswitchStrumDown, true);
+        expect(p->engine().heldString(52, 1) >= 0,
+               "F0 did not strike a key held in Keys mode");
+        keyswitch(*p, 52, true); // repeated Note On without Note Off
+        expect(p->engine().heldString(52, 1) >= 0,
+               "repeated Note On in Keys mode dropped the sounding note");
+        keyswitch(*p, 52, false);
+        expect(p->engine().heldString(52, 1) < 0,
+               "repeated Note On in Keys mode swallowed the sounding note's Note Off");
+
+        // Also test a note held from before entering Keys mode.
+        keyswitch(*p, P::keyswitchAutomatic, true);
+        keyswitch(*p, 55, true);
+        expect(p->engine().heldString(55, 1) >= 0,
+               "ordinary Note On after D0 did not sound");
+        keyswitch(*p, P::keyswitchStrumDown, true); // enters Keys mode while 55 rings
+        keyswitch(*p, 55, true); // repeated Note On without Note Off
+        keyswitch(*p, 55, false);
+        expect(p->engine().heldString(55, 1) < 0,
+               "repeated Note On after entering Keys mode swallowed an already-held note's Note Off");
+
+        // A key pressed silently in Keys mode still sounds once D0 leaves Keys mode
+        // and a new Note On arrives.
+        keyswitch(*p, 59, true);
+        expect(p->engine().heldString(59, 1) < 0,
+               "key sounded without strum key in Keys mode");
+        keyswitch(*p, P::keyswitchAutomatic, true);
+        keyswitch(*p, 59, true);
+        expect(p->engine().heldString(59, 1) >= 0,
+               "repeated Note On after leaving Keys mode via D0 stayed silent");
+        keyswitch(*p, 59, false);
+        expect(p->engine().heldString(59, 1) < 0,
+               "note struck after leaving Keys mode stayed held past Note Off");
+    }
+
+    // 2. Strum keys on two non-MPE channels on the same sample both strum their
+    // own held keys in their own directions, independent of host insertion order.
+    for (const bool reverseOrder : { false, true })
+    {
+        auto p = explicitStrokePerformer(acustra::PickingTechnique::Pick, true);
+        std::array<float, 127> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 4);
+        p->noteOn(0, 1, P::keyswitchStrumDown, 100);
+        p->noteOn(1, 1, 40, 80);
+        p->noteOn(1, 1, 45, 80);
+        p->noteOn(1, 2, 59, 80);
+        p->noteOn(1, 2, 64, 80);
+        if (!reverseOrder)
+        {
+            p->noteOn(2, 1, P::keyswitchStrumDown, 90);
+            p->noteOn(2, 2, P::keyswitchStrumUp, 110);
+        }
+        else
+        {
+            p->noteOn(2, 2, P::keyswitchStrumUp, 110);
+            p->noteOn(2, 1, P::keyswitchStrumDown, 90);
+        }
+        p->endBlockAt(3);
+        const int s40 = p->engine().heldString(40, 1);
+        const int s45 = p->engine().heldString(45, 1);
+        const int s59 = p->engine().heldString(59, 2);
+        const int s64 = p->engine().heldString(64, 2);
+        expect(s40 >= 0 && s45 >= 0 && s59 >= 0 && s64 >= 0,
+               "same-sample strum keys on two channels lost one channel's chord");
+        if (s40 >= 0 && s45 >= 0 && s59 >= 0 && s64 >= 0)
+        {
+            expect(Access::sign(p->engine(), s40) == 1.0f
+                       && Access::sign(p->engine(), s45) == 1.0f
+                       && Access::delay(p->engine(), s45) > Access::delay(p->engine(), s40),
+                   "channel 1 F0 lost its downstroke direction on a two-channel sample");
+            expect(Access::sign(p->engine(), s59) == -1.0f
+                       && Access::sign(p->engine(), s64) == -1.0f
+                       && Access::delay(p->engine(), s59) > Access::delay(p->engine(), s64),
+                   "channel 2 F#0 lost its upstroke direction on a two-channel sample");
+        }
+    }
+
+    // 3. MPE lower zone: chord notes on member channels wait silently in Keys
+    // mode until strummed by F0/F#0 on the manager channel (1) or any zone
+    // member channel, sweeping all held zone members while leaving channels
+    // outside the zone independent.
+    for (const int strumChannel : { 1, 5 })
+    {
+        auto p = explicitStrokePerformer(acustra::PickingTechnique::Finger, true);
+        std::array<float, 127> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 4);
+        p->controlChange(0, 1, 101, 0);
+        p->controlChange(0, 1, 100, 6);
+        p->controlChange(0, 1, 6, 5); // zone = channels 1..6; channel 8 is outside
+        p->noteOn(0, strumChannel, P::keyswitchStrumDown, 100);
+        p->pitchWheel(1, 2, 0.125f);
+        p->noteOn(1, 2, 50, 90);
+        p->noteOn(1, 3, 55, 90);
+        p->noteOn(1, 4, 59, 90);
+        p->noteOn(1, 8, 40, 90); // outside MPE zone
+        p->endBlock();
+        expect(p->engine().getActiveVoiceCount() == 0,
+               "MPE member notes sounded before a strum key in Keys mode");
+
+        p->beginBlock(left.data(), right.data(), 1);
+        p->noteOn(0, strumChannel, P::keyswitchStrumDown, 105);
+        p->endBlock();
+        const int s50 = p->engine().heldString(50, 2);
+        const int s55 = p->engine().heldString(55, 3);
+        const int s59 = p->engine().heldString(59, 4);
+        expect(s50 >= 0 && s55 >= 0 && s59 >= 0,
+               "MPE zone F0 did not strike all held member-channel notes");
+        expect(p->engine().heldString(40, 8) < 0,
+               "MPE zone F0 struck a channel outside the MPE lower zone");
+        if (s50 >= 0 && s55 >= 0 && s59 >= 0)
+        {
+            expect(Access::sign(p->engine(), s50) == 1.0f
+                       && Access::sign(p->engine(), s59) == 1.0f
+                       && Access::delay(p->engine(), s50) == 0
+                       && Access::delay(p->engine(), s59) > Access::delay(p->engine(), s55),
+                   "MPE zone F0 did not sweep member notes low to high");
+        }
+        advance(*p, 4000);
+        p->beginBlock(left.data(), right.data(), 1);
+        p->noteOn(0, strumChannel, P::keyswitchStrumUp, 105);
+        p->endBlock();
+        if (s50 >= 0 && s55 >= 0 && s59 >= 0)
+        {
+            expect(Access::sign(p->engine(), s50) == -1.0f
+                       && Access::sign(p->engine(), s59) == -1.0f
+                       && Access::delay(p->engine(), s59) == 0
+                       && Access::delay(p->engine(), s50) > Access::delay(p->engine(), s55),
+                   "MPE zone F#0 did not sweep member notes high to low");
+        }
+        p->beginBlock(left.data(), right.data(), 1);
+        p->noteOff(0, 2, 50, 64);
+        p->noteOff(0, 3, 55, 64);
+        p->noteOff(0, 4, 59, 64);
+        p->endBlock();
+        expect(p->engine().heldString(50, 2) < 0
+                   && p->engine().heldString(55, 3) < 0
+                   && p->engine().heldString(59, 4) < 0,
+               "re-strummed MPE member notes stayed held after single Note Offs");
+    }
+}
+
 int main()
 {
     testFreshReleaseAndDefaultPaths();
@@ -654,6 +808,7 @@ int main()
     testStrumKeys();
     testStrumKeyStrikesAGatheredChord();
     testExplicitSmallStrokes();
+    testStrumKeyRepeatedNotesMultiChannelAndMpe();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto reference = phrase(rate, 17);
