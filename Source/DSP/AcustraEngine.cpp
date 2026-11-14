@@ -1176,6 +1176,8 @@ static_assert(detail::constructionMicReference.size() == 4 * 3 * 3);
 // construction reference must recover the same exact final value.
 float settlingGlide(float value, float target, float smoothing) noexcept
 {
+    if (value == target)
+        return target;
     const float next = value + smoothing * (target - value);
     return next == value || exact::abs(target - next) < 1.0e-4f
         ? target : next;
@@ -3919,6 +3921,50 @@ void AcustraEngine::StringLoop::switchDispersion(bool second, bool upper) noexce
 }
 
 ACUSTRA_FORCED_INLINE_BEGIN
+ACUSTRA_FORCED_INLINE double AcustraEngine::StringLoop::advanceDelayAndRead(
+    float delaySmoothing) noexcept
+{
+    // A float follower's increment rounds to zero while a physically
+    // significant delay difference remains. Preserve its sub-ULP progress
+    // instead of snapping that whole difference on one sample. Explicit
+    // prescription/reset/switch writes to the published delay start here;
+    // copies retain the precise progress of an already moving string.
+    // A delay already at its target stays there: the follower below would
+    // add zero and store the same values, so it is not run.
+    const auto currentBits = exact::bits(currentDelay);
+    if (currentBits != delayProgressBits || currentBits != exact::bits(targetDelay)
+        || delayProgress != static_cast<double>(targetDelay))
+    {
+        if (currentBits != delayProgressBits)
+            delayProgress = currentDelay;
+        const double nextDelay = delayProgress + static_cast<double>(delaySmoothing)
+            * (static_cast<double>(targetDelay) - delayProgress);
+        delayProgress = nextDelay == delayProgress
+            || exact::abs(static_cast<double>(targetDelay) - nextDelay) < 1.0e-4
+            ? static_cast<double>(targetDelay) : nextDelay;
+        currentDelay = static_cast<float>(delayProgress);
+        delayProgressBits = exact::bits(currentDelay);
+    }
+    return readDelay(currentDelay);
+}
+
+ACUSTRA_FORCED_INLINE void AcustraEngine::StringLoop::advanceReleaseGain(
+    float releaseGain) noexcept
+{
+    if (releaseGain != requestedReleaseGain)
+    {
+        requestedReleaseGain = releaseGain;
+        releaseGainStep = exact::abs(releaseGain - appliedReleaseGain)
+                        / std::max(currentDelay, 1.0f);
+    }
+    if (appliedReleaseGain < requestedReleaseGain)
+        appliedReleaseGain = std::min(requestedReleaseGain,
+                                      appliedReleaseGain + releaseGainStep);
+    else if (appliedReleaseGain > requestedReleaseGain)
+        appliedReleaseGain = std::max(requestedReleaseGain,
+                                      appliedReleaseGain - releaseGainStep);
+}
+
 ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmoothing,
                                          float releaseGain) noexcept
 {
@@ -3964,28 +4010,7 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
                     : std::max(target, std::min(*applied[index], next));
         }
     }
-    // A float follower's increment rounds to zero while a physically
-    // significant delay difference remains. Preserve its sub-ULP progress
-    // instead of snapping that whole difference on one sample. Explicit
-    // prescription/reset/switch writes to the published delay start here;
-    // copies retain the precise progress of an already moving string.
-    // A delay already at its target stays there: the follower below would
-    // add zero and store the same values, so it is not run.
-    const auto currentBits = exact::bits(currentDelay);
-    if (currentBits != delayProgressBits || currentBits != exact::bits(targetDelay)
-        || delayProgress != static_cast<double>(targetDelay))
-    {
-        if (currentBits != delayProgressBits)
-            delayProgress = currentDelay;
-        const double nextDelay = delayProgress + static_cast<double>(delaySmoothing)
-            * (static_cast<double>(targetDelay) - delayProgress);
-        delayProgress = nextDelay == delayProgress
-            || std::abs(static_cast<double>(targetDelay) - nextDelay) < 1.0e-4
-            ? static_cast<double>(targetDelay) : nextDelay;
-        currentDelay = static_cast<float>(delayProgress);
-        delayProgressBits = exact::bits(currentDelay);
-    }
-    double delayed = readDelay(currentDelay);
+    double delayed = advanceDelayAndRead(delaySmoothing);
     if (upperDispersionActive)
     {
         delayed = upperDispersion[1].process(delayed, upperDispersionCoefficients[2],
@@ -4056,19 +4081,151 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         reflected -= taken;
     }
     reflected = dispersion.process(reflected, dispersionA1, dispersionA2);
-    if (releaseGain != requestedReleaseGain)
-    {
-        requestedReleaseGain = releaseGain;
-        releaseGainStep = exact::abs(releaseGain - appliedReleaseGain)
-                        / std::max(currentDelay, 1.0f);
-    }
-    if (appliedReleaseGain < requestedReleaseGain)
-        appliedReleaseGain = std::min(requestedReleaseGain,
-                                      appliedReleaseGain + releaseGainStep);
-    else if (appliedReleaseGain > requestedReleaseGain)
-        appliedReleaseGain = std::max(requestedReleaseGain,
-                                      appliedReleaseGain - releaseGainStep);
+    advanceReleaseGain(releaseGain);
     return static_cast<float>(reflected * loopGain * appliedReleaseGain);
+}
+
+ACUSTRA_FORCED_INLINE void AcustraEngine::StringLoop::advancePair(
+    StringLoop& normal, StringLoop& parallel, float delaySmoothing,
+    float releaseGain, float& normalOut, float& parallelOut) noexcept
+{
+#if defined(__clang__) || defined(__GNUC__)
+    if (normal.loopGainTransitionSamples == 0
+        && parallel.loopGainTransitionSamples == 0
+        && normal.intrinsicCoefficientSamples == 0
+        && parallel.intrinsicCoefficientSamples == 0
+        && !normal.bendingLossSeed && !parallel.bendingLossSeed
+        && !normal.constantLossSeed && !parallel.constantLossSeed
+        && normal.broadLossMix == 0.0f && parallel.broadLossMix == 0.0f
+        && normal.upperDispersionActive == parallel.upperDispersionActive
+        && normal.secondDispersionActive == parallel.secondDispersionActive
+        && normal.bendingLossActive == parallel.bendingLossActive
+        && normal.constantLossActive == parallel.constantLossActive
+        && normal.lossFilter.remapped == parallel.lossFilter.remapped)
+    {
+        typedef double Double2 __attribute__((vector_size(16), aligned(8), may_alias));
+        const auto allpass = [] (SecondOrderAllpass& s0, SecondOrderAllpass& s1,
+                                 Double2 input, float a1f, float a2f) noexcept
+        {
+            const double a1 = a1f;
+            const double a2 = a2f;
+            const Double2 x1 = { s0.x1, s1.x1 };
+            const Double2 x2 = { s0.x2, s1.x2 };
+            const Double2 y1 = { s0.y1, s1.y1 };
+            const Double2 y2 = { s0.y2, s1.y2 };
+            const Double2 output = a2 * input + a1 * x1 + x2 - a1 * y1 - a2 * y2;
+            s0.x2 = x1[0];
+            s1.x2 = x1[1];
+            s0.x1 = input[0];
+            s1.x1 = input[1];
+            s0.y2 = y1[0];
+            s1.y2 = y1[1];
+            s0.y1 = output[0];
+            s1.y1 = output[1];
+            return output;
+        };
+
+        Double2 delayed = { normal.advanceDelayAndRead(delaySmoothing),
+                            parallel.advanceDelayAndRead(delaySmoothing) };
+        if (normal.upperDispersionActive)
+        {
+            delayed = allpass(normal.upperDispersion[1], parallel.upperDispersion[1],
+                              delayed, normal.upperDispersionCoefficients[2],
+                              normal.upperDispersionCoefficients[3]);
+            delayed = allpass(normal.upperDispersion[0], parallel.upperDispersion[0],
+                              delayed, normal.upperDispersionCoefficients[0],
+                              normal.upperDispersionCoefficients[1]);
+        }
+        if (normal.secondDispersionActive)
+            delayed = allpass(normal.secondDispersion, parallel.secondDispersion,
+                              delayed, normal.secondDispersionA1,
+                              normal.secondDispersionA2);
+        Double2 reflected = delayed;
+        Double2 lowState = { normal.lossFilter.state, parallel.lossFilter.state };
+        if (normal.lossFilter.remapped)
+        {
+            const Double2 prev = { normal.lossFilter.previousInput,
+                                   parallel.lossFilter.previousInput };
+            lowState = reflected
+                + static_cast<double>(normal.lossFilter.ratePole)
+                    * (lowState - reflected)
+                + static_cast<double>(normal.lossFilter.delayedInputGain)
+                    * (prev - reflected);
+            normal.lossFilter.previousInput = reflected[0];
+            parallel.lossFilter.previousInput = reflected[1];
+        }
+        else
+        {
+            lowState = reflected
+                + static_cast<double>(normal.lowpassCoefficient)
+                    * (lowState - reflected);
+        }
+        normal.lossFilter.state = lowState[0];
+        parallel.lossFilter.state = lowState[1];
+        reflected += static_cast<double>(normal.highLossMix)
+            * (lowState - reflected);
+
+        if (normal.bendingLossActive)
+        {
+            const Double2 bx1 = { normal.bendingLossX1, parallel.bendingLossX1 };
+            const Double2 bx2 = { normal.bendingLossX2, parallel.bendingLossX2 };
+            const Double2 by1 = { normal.bendingLossY1, parallel.bendingLossY1 };
+            const Double2 by2 = { normal.bendingLossY2, parallel.bendingLossY2 };
+            const Double2 difference = reflected - bx1;
+            const Double2 taken = static_cast<double>(1.0f - normal.bendingLossGain)
+                    * difference
+                - static_cast<double>(normal.bendingLossA2) * bx2
+                - static_cast<double>(normal.bendingLossA1) * by1
+                - static_cast<double>(normal.bendingLossA2) * by2;
+            normal.bendingLossX1 = reflected[0];
+            parallel.bendingLossX1 = reflected[1];
+            normal.bendingLossX2 = difference[0];
+            parallel.bendingLossX2 = difference[1];
+            normal.bendingLossY2 = by1[0];
+            parallel.bendingLossY2 = by1[1];
+            normal.bendingLossY1 = taken[0];
+            parallel.bendingLossY1 = taken[1];
+            reflected -= taken;
+        }
+        if (normal.constantLossActive)
+        {
+            const Double2 cx1 = { normal.constantLossX1, parallel.constantLossX1 };
+            const Double2 cx2 = { normal.constantLossX2, parallel.constantLossX2 };
+            const Double2 cy1 = { normal.constantLossY1, parallel.constantLossY1 };
+            const Double2 cy2 = { normal.constantLossY2, parallel.constantLossY2 };
+            const Double2 difference = reflected - cx1;
+            const Double2 taken = static_cast<double>(1.0f - normal.constantLossGain)
+                    * difference
+                + static_cast<double>(normal.constantLossN2 - normal.constantLossA2)
+                    * cx2
+                - static_cast<double>(normal.constantLossA1) * cy1
+                - static_cast<double>(normal.constantLossA2) * cy2;
+            normal.constantLossX1 = reflected[0];
+            parallel.constantLossX1 = reflected[1];
+            normal.constantLossX2 = difference[0];
+            parallel.constantLossX2 = difference[1];
+            normal.constantLossY2 = cy1[0];
+            parallel.constantLossY2 = cy1[1];
+            normal.constantLossY1 = taken[0];
+            parallel.constantLossY1 = taken[1];
+            reflected -= taken;
+        }
+        reflected = allpass(normal.dispersion, parallel.dispersion, reflected,
+                            normal.dispersionA1, normal.dispersionA2);
+        normal.advanceReleaseGain(releaseGain);
+        parallel.advanceReleaseGain(releaseGain);
+        const Double2 gains = { static_cast<double>(normal.loopGain),
+                                static_cast<double>(parallel.loopGain) };
+        const Double2 release = { static_cast<double>(normal.appliedReleaseGain),
+                                  static_cast<double>(parallel.appliedReleaseGain) };
+        const Double2 scaled = (reflected * gains) * release;
+        normalOut = static_cast<float>(scaled[0]);
+        parallelOut = static_cast<float>(scaled[1]);
+        return;
+    }
+#endif
+    normalOut = normal.advance(delaySmoothing, releaseGain);
+    parallelOut = parallel.advance(delaySmoothing, releaseGain);
 }
 ACUSTRA_FORCED_INLINE_END
 
@@ -4218,6 +4375,7 @@ void AcustraEngine::BridgeLoad::reset() noexcept
     mainIntegratedMoment = 0.0f;
     bodyIntegratedForce = 0.0f;
     bodyIntegratedMoment = 0.0f;
+    silent = true;
     for (auto& mode : heaveModes)
         mode.reset();
     for (auto& mode : rockModes)
@@ -4227,33 +4385,41 @@ void AcustraEngine::BridgeLoad::reset() noexcept
 void AcustraEngine::BridgeLoad::advanceModes(float bodyForce,
                                              float bodyMoment) noexcept
 {
+    if (silent && bodyForce == 0.0f && bodyMoment == 0.0f)
+    {
+        pastHeave = 0.0f;
+        pastRock = 0.0f;
+        return;
+    }
+    silent = false;
     double nextPastHeave = 0.0;
     double nextPastRock = 0.0;
+#if defined(__clang__) || defined(__GNUC__)
+    typedef double Vector __attribute__((vector_size(16), aligned(8), may_alias));
+    const Vector input = { static_cast<double>(bodyForce),
+                           static_cast<double>(bodyMoment) };
+#endif
     for (int active = 0; active < activeModeCount; ++active)
     {
         const std::size_t index = activeModes[static_cast<std::size_t>(active)];
         double heaveState, rockState;
-        // Pack this mode's heave and rock with their own coefficients and history.
-        // Preserve each lane's arithmetic and the serial residue sums below.
-#if defined(__SSE2__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+        // Pack this mode's heave and rock with their shared denominator and
+        // numerator coefficients and independent histories. Preserve each
+        // lane's arithmetic and the serial residue sums below.
+#if defined(__clang__) || defined(__GNUC__)
         if (rocking[index])
         {
-            typedef double Vector __attribute__((vector_size(16)));
             auto& h = heaveModes[index];
             auto& r = rockModes[index];
-            const Vector input = { bodyForce, bodyMoment };
-            const Vector n1 = { h.numerator1, r.numerator1 };
-            const Vector n2 = { h.numerator2, r.numerator2 };
-            const Vector d1 = { h.denominator1, r.denominator1 };
-            const Vector d2 = { h.denominator2, r.denominator2 };
             const Vector i1 = { h.input1, r.input1 };
             const Vector o1 = { h.output1, r.output1 };
             const Vector o2 = { h.output2, r.output2 };
-            const Vector output = n1 * input + n2 * i1 - d1 * o1 - d2 * o2;
-            h.input1 = bodyForce;
-            r.input1 = bodyMoment;
-            h.output2 = h.output1;
-            r.output2 = r.output1;
+            const Vector output = h.numerator1 * input + h.numerator2 * i1
+                                - h.denominator1 * o1 - h.denominator2 * o2;
+            h.input1 = input[0];
+            r.input1 = input[1];
+            h.output2 = o1[0];
+            r.output2 = o1[1];
             h.output1 = output[0];
             r.output1 = output[1];
             heaveState = output[0];
@@ -4325,6 +4491,18 @@ void AcustraEngine::BridgeLoad::process(const BridgeDrive& drive) noexcept
     const float g11 = drive.impedance2;
     const float b0 = drive.incidentHeave;
     const float b1 = drive.incidentRock;
+    if (silent && pastHeave == 0.0f && pastRock == 0.0f
+        && b0 == 0.0f && b1 == 0.0f
+        && exact::isfinite(g00) && exact::isfinite(g01) && exact::isfinite(g11))
+    {
+        displacement = 0.0f;
+        rotation = 0.0f;
+        mainIntegratedForce = 0.0f;
+        mainIntegratedMoment = 0.0f;
+        bodyIntegratedForce = 0.0f;
+        bodyIntegratedMoment = 0.0f;
+        return;
+    }
 
     // (I + Y G) [x; theta] = Y b + past
     const float m00 = 1.0f + immediateHeave * g00 + immediateCross * g01;
@@ -4400,6 +4578,9 @@ void AcustraEngine::prepare(double sampleRate, int)
     ++voiceConfigurationGeneration_;
     ++tuningCalibrationGeneration_;
     inverseSampleRate_ = static_cast<float>(1.0 / sampleRate_);
+    sampleRateRatio_ = static_cast<float>(sampleRate_) / 48000.0f;
+    referenceSampleRateRatio_ = 48000.0f / static_cast<float>(sampleRate_);
+    sqrtSampleRateRatio_ = exact::sqrt(sampleRateRatio_);
     releaseStepPole_ = static_cast<float>(std::exp(-1.0 / (0.010 * sampleRate_)));
     releaseStepSamples_ = static_cast<int>(std::ceil(0.4 * sampleRate_));
     // The piezo chain (renderPiezo; PiezoDesign has the parts and their
@@ -5760,6 +5941,7 @@ void AcustraEngine::configureBridge(bool keepModalState) noexcept
     {
         bridgeLoad_.pastHeave = 0.0f;
         bridgeLoad_.pastRock = 0.0f;
+        bridgeLoad_.silent = true;
     }
     // A slot whose sections and residues are all zero returns +-0 and adds
     // +-0 to sums that start at +0, so leaving it out changes no bit.
@@ -6259,16 +6441,20 @@ float AcustraEngine::coupledPolarisationDetune(
     // What the modal sum below needs of each mode, as the doubles it works
     // in, once a solve rather than once an evaluation: the same values, so
     // the same sum.
-    struct ModeTerms { double twiceDamping, omegaSquared, heave, cross, rock; };
-    std::array<ModeTerms, bridgeModeCount> modeTerms {};
+    std::array<double, bridgeModeCount> modeTwiceDamping {};
+    std::array<double, bridgeModeCount> modeOmegaSquared {};
+    std::array<double, bridgeModeCount> modeHeave {};
+    std::array<double, bridgeModeCount> modeCross {};
+    std::array<double, bridgeModeCount> modeRock {};
     for (int index = 0; index < table.count; ++index)
     {
-        const auto& mode = table.modes[static_cast<std::size_t>(index)];
-        modeTerms[static_cast<std::size_t>(index)] = {
-            2.0 * static_cast<double>(mode.damping),
-            static_cast<double>(mode.omega) * static_cast<double>(mode.omega),
-            static_cast<double>(mode.heave), static_cast<double>(mode.cross),
-            static_cast<double>(mode.rock) };
+        const auto slot = static_cast<std::size_t>(index);
+        const auto& mode = table.modes[slot];
+        modeTwiceDamping[slot] = 2.0 * static_cast<double>(mode.damping);
+        modeOmegaSquared[slot] = static_cast<double>(mode.omega) * static_cast<double>(mode.omega);
+        modeHeave[slot] = static_cast<double>(mode.heave);
+        modeCross[slot] = static_cast<double>(mode.cross);
+        modeRock[slot] = static_cast<double>(mode.rock);
     }
     // bridgePortMobility at a complex digital frequency s (z = e^s): the same
     // modal sum at the bilinear image of s, which on the unit circle is its
@@ -6279,16 +6465,62 @@ float AcustraEngine::coupledPolarisationDetune(
         const Complex analog = bilinear * over(1.0 - zInverse, 1.0 + zInverse);
         const Complex squared = analog * analog;
         const Complex scaled = static_cast<double>(table.scale) * analog;
-        Complex heave {}, cross {}, rock {};
-        for (int index = 0; index < table.count; ++index)
+        double heaveRe = 0.0, heaveIm = 0.0;
+        double crossRe = 0.0, crossIm = 0.0;
+        double rockRe = 0.0, rockIm = 0.0;
+        int index = 0;
+#if defined(__clang__) || defined(__GNUC__)
+        typedef double Double2 __attribute__((vector_size(16), aligned(8), may_alias));
+        const auto loadPair = [] (const std::array<double, bridgeModeCount>& values, int offset) noexcept
         {
-            const auto& mode = modeTerms[static_cast<std::size_t>(index)];
-            const Complex shape = over(scaled, squared
-                + mode.twiceDamping * analog + mode.omegaSquared);
-            heave += mode.heave * shape;
-            cross += mode.cross * shape;
-            rock += mode.rock * shape;
+            Double2 pair;
+            __builtin_memcpy(&pair, values.data() + offset, sizeof(pair));
+            return pair;
+        };
+        const double analogRe = analog.real(), analogIm = analog.imag();
+        const double squaredRe = squared.real(), squaredIm = squared.imag();
+        const double scaledRe = scaled.real(), scaledIm = scaled.imag();
+        const Double2 one = { 1.0, 1.0 };
+        for (; index + 1 < table.count; index += 2)
+        {
+            const Double2 td = loadPair(modeTwiceDamping, index);
+            const Double2 osq = loadPair(modeOmegaSquared, index);
+            const Double2 dampRe = td * analogRe;
+            const Double2 dampIm = td * analogIm;
+            const Double2 wRe = (squaredRe + dampRe) + osq;
+            const Double2 wIm = squaredIm + dampIm;
+            const Double2 inv = one / (wRe * wRe + wIm * wIm);
+            const Double2 shapeRe = (scaledRe * wRe + scaledIm * wIm) * inv;
+            const Double2 shapeIm = (scaledIm * wRe - scaledRe * wIm) * inv;
+            const Double2 h = loadPair(modeHeave, index);
+            const Double2 c = loadPair(modeCross, index);
+            const Double2 r = loadPair(modeRock, index);
+            const Double2 hRe = h * shapeRe, hIm = h * shapeIm;
+            const Double2 cRe = c * shapeRe, cIm = c * shapeIm;
+            const Double2 rRe = r * shapeRe, rIm = r * shapeIm;
+            heaveRe += hRe[0]; heaveRe += hRe[1];
+            heaveIm += hIm[0]; heaveIm += hIm[1];
+            crossRe += cRe[0]; crossRe += cRe[1];
+            crossIm += cIm[0]; crossIm += cIm[1];
+            rockRe += rRe[0]; rockRe += rRe[1];
+            rockIm += rIm[0]; rockIm += rIm[1];
         }
+#endif
+        for (; index < table.count; ++index)
+        {
+            const auto slot = static_cast<std::size_t>(index);
+            const Complex shape = over(scaled, squared
+                + modeTwiceDamping[slot] * analog + modeOmegaSquared[slot]);
+            const Complex h = modeHeave[slot] * shape;
+            const Complex c = modeCross[slot] * shape;
+            const Complex r = modeRock[slot] * shape;
+            heaveRe += h.real(); heaveIm += h.imag();
+            crossRe += c.real(); crossIm += c.imag();
+            rockRe += r.real(); rockIm += r.imag();
+        }
+        Complex heave { heaveRe, heaveIm };
+        Complex cross { crossRe, crossIm };
+        Complex rock { rockRe, rockIm };
         if (table.plate)
         {
             const Complex shape = over(analog, squared
@@ -13424,10 +13656,12 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         return a + part * (b - a);
     };
     int cell = first;
-#if (defined(JUKEBOX_SDK) || (defined(__SSE2__) && defined(__x86_64__))) \
+#if (defined(JUKEBOX_SDK) || defined(__aarch64__) || defined(__ARM_NEON) \
+    || (defined(__SSE2__) && defined(__x86_64__))) \
     && (defined(__clang__) || defined(__GNUC__))
-    typedef float Floats __attribute__((vector_size(16)));
-    typedef int Ints __attribute__((vector_size(16)));
+    typedef float Floats __attribute__((vector_size(16), aligned(4), may_alias));
+    typedef float Float2 __attribute__((vector_size(8), aligned(4), may_alias));
+    typedef int Ints __attribute__((vector_size(16), aligned(4), may_alias));
     if (end - cell >= 4)
     {
         const Floats periodV = { period, period, period, period };
@@ -13440,8 +13674,10 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         const Floats four = { 4.0f, 4.0f, 4.0f, 4.0f };
         Floats cells = { static_cast<float>(cell), static_cast<float>(cell + 1),
                          static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
+        Floats outgoingCarry = { 0.0f, 0.0f, 0.0f, outgoing };
+        Floats returningCarry = { 0.0f, 0.0f, 0.0f, returning };
 #if defined(JUKEBOX_SDK)
-        const auto addSquares = [&sum] (Floats slope)
+        const auto addSquares = [&sum] (Floats slope) noexcept
         {
             const Floats squares = slope * slope;
             sum += squares[0];
@@ -13449,9 +13685,22 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             sum += squares[2];
             sum += squares[3];
         };
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+        const auto addSquares = [&sum] (Floats slope) noexcept
+        {
+            sum += slope[0] * slope[0];
+            sum += slope[1] * slope[1];
+            sum += slope[2] * slope[2];
+            sum += slope[3] * slope[3];
+        };
 #else
         Floats partial = { 0.0f, 0.0f, 0.0f, 0.0f };
-        const auto addSquares = [&partial] (Floats slope) { partial += slope * slope; };
+        const auto addSquares = [&partial] (Floats slope) noexcept { partial += slope * slope; };
+#endif
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_shufflevector)
+#define ACUSTRA_AXIAL_SHUFFLE 1
+#endif
 #endif
         // Mostly the cells' reads lie in one unbroken run of the ring, up
         // to `newest`: read them there without masking. The deepest is the
@@ -13476,6 +13725,42 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                 const Floats part = age - __builtin_convertvector(whole, Floats);
                 int back[4];
                 __builtin_memcpy(back, &whole, sizeof back);
+#ifdef ACUSTRA_AXIAL_SHUFFLE
+                Float2 p0, p1, p2, p3;
+                __builtin_memcpy(&p0, head - back[0] - 1, sizeof(Float2));
+                __builtin_memcpy(&p1, head - back[1] - 1, sizeof(Float2));
+                __builtin_memcpy(&p2, head - back[2] - 1, sizeof(Float2));
+                __builtin_memcpy(&p3, head - back[3] - 1, sizeof(Float2));
+                const Floats p01 = __builtin_shufflevector(p0, p1, 0, 1, 2, 3);
+                const Floats p23 = __builtin_shufflevector(p2, p3, 0, 1, 2, 3);
+                const Floats b = __builtin_shufflevector(p01, p23, 0, 2, 4, 6);
+                const Floats a = __builtin_shufflevector(p01, p23, 1, 3, 5, 7);
+                Floats nextOutgoing;
+                if (stride == 1)
+                {
+                    Floats raw;
+                    __builtin_memcpy(&raw, outgoingAt - 3, sizeof(Floats));
+                    nextOutgoing = __builtin_shufflevector(raw, raw, 3, 2, 1, 0);
+                }
+                else if (stride == 2)
+                {
+                    Floats lo, hi;
+                    __builtin_memcpy(&lo, outgoingAt - 6, sizeof(Floats));
+                    __builtin_memcpy(&hi, outgoingAt - 3, sizeof(Floats));
+                    nextOutgoing = __builtin_shufflevector(hi, lo, 3, 1, 6, 4);
+                }
+                else
+                {
+                    nextOutgoing = Floats { outgoingAt[0], outgoingAt[-stride],
+                                            outgoingAt[-2 * stride],
+                                            outgoingAt[-3 * stride] };
+                }
+                const Floats nextReturning = a + part * (b - a);
+                const Floats previousOutgoing
+                    = __builtin_shufflevector(outgoingCarry, nextOutgoing, 3, 4, 5, 6);
+                const Floats previousReturning
+                    = __builtin_shufflevector(returningCarry, nextReturning, 3, 4, 5, 6);
+#else
                 const Floats a = { head[-back[0]], head[-back[1]],
                                    head[-back[2]], head[-back[3]] };
                 const Floats b = { head[-back[0] - 1], head[-back[1] - 1],
@@ -13484,15 +13769,16 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                 const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-stride],
                                               outgoingAt[-2 * stride],
                                               outgoingAt[-3 * stride] };
-                const Floats previousOutgoing = { outgoing, nextOutgoing[0],
+                const Floats previousOutgoing = { outgoingCarry[3], nextOutgoing[0],
                                                   nextOutgoing[1], nextOutgoing[2] };
-                const Floats previousReturning = { returning, nextReturning[0],
+                const Floats previousReturning = { returningCarry[3], nextReturning[0],
                                                    nextReturning[1], nextReturning[2] };
+#endif
                 const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                     + (nextReturning - previousReturning) * returningScaleV;
                 addSquares(slope);
-                outgoing = nextOutgoing[3];
-                returning = nextReturning[3];
+                outgoingCarry = nextOutgoing;
+                returningCarry = nextReturning;
                 cells += four;
             }
         }
@@ -13515,18 +13801,30 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             };
             const Floats nextOutgoing = { out(cell), out(cell + 1),
                                           out(cell + 2), out(cell + 3) };
-            const Floats previousOutgoing = { outgoing, nextOutgoing[0],
+#ifdef ACUSTRA_AXIAL_SHUFFLE
+            const Floats previousOutgoing
+                = __builtin_shufflevector(outgoingCarry, nextOutgoing, 3, 4, 5, 6);
+            const Floats previousReturning
+                = __builtin_shufflevector(returningCarry, nextReturning, 3, 4, 5, 6);
+#else
+            const Floats previousOutgoing = { outgoingCarry[3], nextOutgoing[0],
                                               nextOutgoing[1], nextOutgoing[2] };
-            const Floats previousReturning = { returning, nextReturning[0],
+            const Floats previousReturning = { returningCarry[3], nextReturning[0],
                                                nextReturning[1], nextReturning[2] };
+#endif
             const Floats slope = (nextOutgoing - previousOutgoing) * outgoingScaleV
                 + (nextReturning - previousReturning) * returningScaleV;
             addSquares(slope);
-            outgoing = nextOutgoing[3];
-            returning = nextReturning[3];
+            outgoingCarry = nextOutgoing;
+            returningCarry = nextReturning;
             cells += four;
         }
-#if !defined(JUKEBOX_SDK)
+#ifdef ACUSTRA_AXIAL_SHUFFLE
+#undef ACUSTRA_AXIAL_SHUFFLE
+#endif
+        outgoing = outgoingCarry[3];
+        returning = returningCarry[3];
+#if !defined(JUKEBOX_SDK) && !defined(__aarch64__) && !defined(__ARM_NEON)
         sum += (partial[0] + partial[1]) + (partial[2] + partial[3]);
 #endif
     }
@@ -14014,9 +14312,8 @@ float AcustraEngine::renderExcitation(Voice& voice) noexcept
     float excitation = 0.0f;
     if (voice.excitationEnvelope > 1.0e-8f)
     {
-        const float rateRatio = static_cast<float>(sampleRate_) / 48000.0f;
         const float noise = xorshiftNoise(voice.excitationNoiseState)
-            * exact::sqrt(rateRatio);
+            * sqrtSampleRateRatio_;
         const float excitationCoefficient = voice.excitationReleaseCoefficient;
         voice.excitationLowpass += excitationCoefficient
             * (noise - voice.excitationLowpass);
@@ -14077,14 +14374,14 @@ ACUSTRA_FORCED_INLINE void AcustraEngine::finishVoice(Voice& voice, int stringIn
         voice.loops[1].applyGestureContact();
     }
 
-    const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
+    const float sampleRateRatio = sampleRateRatio_;
     const float verticalVelocity = voice.loops[0].bridgeVelocity(
         verticalIncident, sampleRateRatio);
     const float horizontalVelocity = voice.loops[1].bridgeVelocity(
         horizontalIncident, sampleRateRatio);
     if (voice.played)
     {
-        const float referenceRate = 48000.0f / static_cast<float>(sampleRate_);
+        const float referenceRate = referenceSampleRateRatio_;
         const float verticalSlope = voice.loops[0].currentDelay
                                   * referenceRate * verticalVelocity;
         const float horizontalSlope = voice.loops[1].currentDelay
@@ -14297,6 +14594,38 @@ void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept
 {
     if (!enabled)
         return;
+#if defined(__clang__) || defined(__GNUC__)
+    typedef double Double2 __attribute__((vector_size(16), aligned(8), may_alias));
+    typedef std::int64_t Mask2 __attribute__((vector_size(16), aligned(8), may_alias));
+    static_assert(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559,
+                  "capture state flush requires IEEE binary64");
+    // IEEE binary64 magnitude bits for 1e-30: 0x39b4484bfeebc2a0; equality is retained.
+    const auto flush = [] (Double2 value) noexcept
+    {
+        const Mask2 bits = reinterpret_cast<Mask2>(value);
+        const Mask2 magnitude = bits & 0x7fffffffffffffffLL;
+        const Mask2 tiny = magnitude < 0x39b4484bfeebc2a0LL;
+        return reinterpret_cast<Double2>(bits & ~tiny);
+    };
+    for (int index = 0; index < sections; ++index)
+    {
+        const auto slot = static_cast<std::size_t>(index);
+        const auto& c = coefficients[slot];
+        const Double2 input = { static_cast<double>(output.left),
+                                static_cast<double>(output.right) };
+        const Double2 s0 = { stateLeft[slot][0], stateRight[slot][0] };
+        const Double2 s1 = { stateLeft[slot][1], stateRight[slot][1] };
+        const Double2 result = c[0] * input + s0;
+        const Double2 first = flush(c[1] * input - c[3] * result + s1);
+        const Double2 second = flush(c[2] * input - c[4] * result);
+        stateLeft[slot][0] = first[0];
+        stateRight[slot][0] = first[1];
+        stateLeft[slot][1] = second[0];
+        stateRight[slot][1] = second[1];
+        output.left = static_cast<float>(result[0]);
+        output.right = static_cast<float>(result[1]);
+    }
+#else
     const auto filter = [] (float input, const std::array<double, 5>& coefficient,
                            std::array<double, 2>& state)
     {
@@ -14314,6 +14643,7 @@ void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept
         output.left = filter(output.left, coefficients[slot], stateLeft[slot]);
         output.right = filter(output.right, coefficients[slot], stateRight[slot]);
     }
+#endif
     output.left *= gain;
     output.right *= gain;
 }
@@ -14353,10 +14683,13 @@ void AcustraEngine::BodyBank::load(const std::array<BodyMode, bodyModeCount>& mo
 // Only modes below count are summed; lanes past it are zero padding.
 AcustraEngine::BodyOutput AcustraEngine::BodyBank::render(float force, float moment) noexcept
 {
+    if (silent && force == 0.0f && moment == 0.0f)
+        return {};
+    silent = false;
     BodyOutput output;
 #if defined(__clang__) || defined(__GNUC__)
-    typedef float Vector __attribute__((vector_size(16)));
-    typedef std::int32_t Mask __attribute__((vector_size(16)));
+    typedef float Vector __attribute__((vector_size(16), aligned(4), may_alias));
+    typedef std::int32_t Mask __attribute__((vector_size(16), aligned(4), may_alias));
     const auto load = [] (const Lanes& values, int index)
     {
         Vector value;
@@ -14694,6 +15027,7 @@ void AcustraEngine::resetPiezo() noexcept
     piezoStage_.fill(0.0);
     piezoOutputVolts_ = 0.0;
     lastPiezoOpen_ = lastPiezoVoltage_ = lastPiezoInput_ = lastPiezoDrive_ = 0.0f;
+    piezoSilent_ = true;
 }
 
 
@@ -14740,6 +15074,13 @@ float AcustraEngine::renderPiezo(float force) noexcept
         return 0.0f;
     }
     const float input = exact::abs(force) < forceFloor ? 0.0f : force;
+    if (piezoSilent_ && input == 0.0f)
+    {
+        piezoTrim_ = settlingGlide(piezoTrim_,
+            PiezoDesign::trim * piezoReferenceFor(parameters_), parameterSmoothing_);
+        return 0.0f;
+    }
+    piezoSilent_ = false;
     // 1. The saddle on its element (designPiezoSaddle), direct form I.
     const auto& saddle = piezoSaddle_;
     auto& x = piezoSaddleInput_;
@@ -15048,7 +15389,8 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 else
                     --voice.pluckDelay;
             }
-            processPendingRelease(voice, string);
+            if (voice.releaseJoinPending)
+                processPendingRelease(voice, string);
             float releaseGain = (voice.keyDown || voice.pedalHeld
                                  || voice.releaseJoinPending
                                  || voice.releaseAfterPluck || !voice.played)
@@ -15069,11 +15411,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 * (voice.bendImpedanceStage
                    - voice.appliedBendImpedanceScale);
             excitation[static_cast<std::size_t>(string)]
-                = renderExcitation(voice);
-            verticalIncident[static_cast<std::size_t>(string)]
-                = voice.loops[0].advance(delaySmoothing_, releaseGain);
-            horizontalIncident[static_cast<std::size_t>(string)]
-                = voice.loops[1].advance(delaySmoothing_, releaseGain);
+                = voice.excitationEnvelope > 1.0e-8f
+                    ? renderExcitation(voice) : 0.0f;
+            StringLoop::advancePair(voice.loops[0], voice.loops[1],
+                delaySmoothing_, releaseGain,
+                verticalIncident[static_cast<std::size_t>(string)],
+                horizontalIncident[static_cast<std::size_t>(string)]);
             if (voice.contactTravelEnabled
                 && (voice.contactTravel.active
                     || excitation[static_cast<std::size_t>(string)] != 0.0f))
@@ -15127,7 +15470,16 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
                 addReleaseNoise(voice);
             if (anticipations_[static_cast<std::size_t>(string)].pending)
                 advanceAnticipation(voice, string);
-            renderFretMotion(voice, string);
+            if (!anticipations_[static_cast<std::size_t>(string)].moving
+                && voice.fretMotion.remaining <= 0
+                && voice.fretMotion.length == static_cast<double>(voice.speakingLengthMetres)
+                && !voice.fretMotion.arriving)
+            {
+                voice.fretMotion.speed = 0.0f;
+                voice.fretMotion.emittedForce = 0.0f;
+            }
+            else
+                renderFretMotion(voice, string);
             if (performanceRealism_.stringAxialForce)
             {
                 const float force = renderStringAxialForce(voice, string);
@@ -15164,11 +15516,10 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             }
             if (voice.tailActive)
             {
-                tailIncident[static_cast<std::size_t>(string)]
-                    = voice.tailLoop.advance(delaySmoothing_, voice.tailDamping);
-                tailParallelIncident[static_cast<std::size_t>(string)]
-                    = voice.tailParallelLoop.advance(delaySmoothing_,
-                                                     voice.tailDamping);
+                StringLoop::advancePair(voice.tailLoop, voice.tailParallelLoop,
+                    delaySmoothing_, voice.tailDamping,
+                    tailIncident[static_cast<std::size_t>(string)],
+                    tailParallelIncident[static_cast<std::size_t>(string)]);
                 if (voice.tailRepluckArrivals.remaining > 0)
                 {
                     const auto arrivals = voice.tailRepluckArrivals.process();
@@ -15383,7 +15734,7 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
             piezoWave = piezoIncident - piezoImpedance0 * bridgeDisplacement
                 - piezoImpedance1 * bridgeRotation;
         lastPiezoWave_ = piezoWave;
-        const float sampleRateRatio = static_cast<float>(sampleRate_) / 48000.0f;
+        const float sampleRateRatio = sampleRateRatio_;
         if (bridgeDerivativesNeedPriming_
             && (exact::abs(reactionWave) + exact::abs(bridgeDisplacement)
                 > 1.0e-12f))
@@ -16054,7 +16405,7 @@ void AcustraEngine::RoomAmbience::step(float input) noexcept
         // own scalar sum below, the same products added to zero in the same
         // order, so every value is the scalar one bit for bit. Its four taps
         // are one read, oldest first, turned into the four weights' columns.
-        typedef float Vector __attribute__((vector_size(16)));
+        typedef float Vector __attribute__((vector_size(16), aligned(4), may_alias));
         std::array<float, arrivalCount> values;
         for (int group = 0; group < arrivalCount; group += 4)
         {
@@ -16253,7 +16604,7 @@ void AcustraEngine::RoomAmbience::process(float input, float& left,
         // Even and odd taps in two running sums, as the input's above.
 #if defined(__clang__) || defined(__GNUC__)
         // Left and right in the two lanes, each lane its own pair of sums.
-        typedef double Vector __attribute__((vector_size(16)));
+        typedef double Vector __attribute__((vector_size(16), aligned(8), may_alias));
         const auto tap = [&] (std::size_t coefficient)
         {
             Vector pair;

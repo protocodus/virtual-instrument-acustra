@@ -371,10 +371,19 @@ private:
         bool nrpn { false };
     };
 
+    struct StrumRequest
+    {
+        StrokeMode direction { StrokeMode::Automatic };
+        int channel { 1 };
+        float velocity { 0.0f };
+    };
+
     bool handleEvent(int eventSample, const std::uint8_t* data, int size) noexcept;
     void handleTempoEvent(int eventSample, double bpm) noexcept;
     void flushNoteGroup() noexcept;
-    void collectStrum() noexcept;
+    void flushStroke(StrokeMode strokeMode, bool strumKey,
+                     bool mpeZoneStrum) noexcept;
+    void collectStrum(const StrumRequest& request) noexcept;
     void clearKeys(int midiChannel) noexcept;
     void gatherChord(int first) noexcept;
     void anticipateHeldNotes() noexcept;
@@ -402,6 +411,10 @@ private:
                   bool unambiguousTransition = true,
                   bool upstroke = false) noexcept;
     [[nodiscard]] bool isLowerZoneMember(int midiChannel) const noexcept;
+    [[nodiscard]] bool inMpeZone(int midiChannel) const noexcept;
+    [[nodiscard]] int strumScopeKey(int midiChannel) const noexcept;
+    [[nodiscard]] bool inStrumScope(int strumChannel,
+                                    int noteChannel) const noexcept;
     void resetControllerScope(int midiChannel) noexcept;
     [[nodiscard]] bool channelIsInControllerScope(int controllerChannel,
                                                   int targetChannel) const noexcept;
@@ -427,11 +440,10 @@ private:
     using KeyBits = std::array<std::uint32_t, 4>;
     std::array<KeyBits, 16> keysDown_ {};
     std::array<KeyBits, 16> silentKeys_ {};
-    // A strum key on the sample being grouped: its direction (Automatic for
-    // none), channel and velocity.
-    StrokeMode strumRequest_ { StrokeMode::Automatic };
-    int strumChannel_ { 1 };
-    float strumVelocity_ { 0.0f };
+    // Strum keys on the sample being grouped, one entry per channel scope
+    // (the whole MPE lower zone, or one MIDI channel outside it).
+    std::array<StrumRequest, 16> strumRequests_ {};
+    int strumRequestCount_ { 0 };
     double tempoBpm_ { 120.0 };
     bool gatherChords_ { false };
     bool panelSustainHold_ { false };
