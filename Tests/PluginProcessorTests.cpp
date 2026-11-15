@@ -1829,8 +1829,8 @@ void testMalformedStateParameters()
                     : parameter->convertFrom0to1 (parameter->getDefaultValue());
                 const float actual = valueOf (target, parameter->paramID.toRawUTF8());
                 expect (std::isfinite (actual) && std::abs (actual - expected) < 0.011f,
-                        std::string { invalid } + " state did not recover the default for "
-                            + parameter->paramID.toStdString());
+                        std::string { invalid } + " state recovered " + parameter->paramID.toStdString()
+                            + " as " + std::to_string (actual) + ", expected " + std::to_string (expected));
             }
             const auto snapshot = target.snapshotEngineParameters();
             expect (snapshot.capture == acustra::CaptureType::StereoMic

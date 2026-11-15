@@ -14,7 +14,8 @@
 // from them. --touch sets the Touch control (default 0.58), and
 // --pluck-position the Pluck Position (default 0.28; 0 is at the bridge),
 // --room the Room (default 0, the engine's; the plug-in's is 0.5) and
-// --piezo-mix the Piezo Mix (default 0, the engine's; the plug-in's is 0.2).
+// --output-scale scales the default Output gain (0..1) before protection.
+// --piezo-mix sets the Piezo Mix (default 0, the engine's; the plug-in's is 0.2).
 // AcustraPerformanceRenderer --piezo-unit [--calibration FILE] renders
 // nothing and prints the piezo's force unit the engine uses with that
 // calibration (the fitted one by default): newtons per engine force unit and
@@ -81,7 +82,7 @@ int main(int argc, char** argv)
                      "[--body-shape parlor|auditorium|dreadnought|jumbo] "
                      "[--body-material spruce|mahogany|maple] "
                      "[--touch 0..1] [--pluck-position 0..1] [--room 0..1] "
-                     "[--piezo-mix 0..1] [--exact-intonation 0|1] "
+                     "[--piezo-mix 0..1] [--exact-intonation 0|1] [--output-scale 0..1] "
                      "[--calibration FILE] "
                      "[--observe piezo_voltage|piezo_levels|piezo_stages]\n";
         return 2;
@@ -118,7 +119,7 @@ int main(int argc, char** argv)
         bool tuningSeen = false;
         bool shapeSeen = false, woodSeen = false, calibrationSeen = false;
         bool observeSeen = false, touchSeen = false, pluckSeen = false, roomSeen = false;
-        bool piezoMixSeen = false, exactIntonationSeen = false;
+        bool piezoMixSeen = false, exactIntonationSeen = false, outputScaleSeen = false;
         // 1 holds every contact to its reference pitch, without the
         // fretting finger's own few-cent draw (frettingPitchCents), so a
         // measurement reads the tuning and not the player.
@@ -202,6 +203,15 @@ int main(int argc, char** argv)
                     throw std::runtime_error("piezo mix must be between 0 and 1");
                 parameters.piezoMix = mix;
                 piezoMixSeen = true;
+            }
+            else if (option == "--output-scale" && !outputScaleSeen)
+            {
+                std::size_t used = 0;
+                const float scale = std::stof(value, &used);
+                if (used != value.size() || !(scale >= 0.0f && scale <= 1.0f))
+                    throw std::runtime_error("output scale must be between 0 and 1");
+                parameters.outputGain *= scale;
+                outputScaleSeen = true;
             }
             else if (option == "--calibration" && !calibrationSeen)
             {
