@@ -19,7 +19,7 @@ void expect(bool ok, const char* message)
 std::vector<float> render(acustra::PickingTechnique technique, bool restrained,
                          bool silentBurst, int note, float velocity,
                          int rate = 48000, int block = 64,
-                         bool releaseVelocity = true)
+                         bool releaseVelocity = true, float pluckPosition = 0.28f)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
     acustra::PerformanceRealism realism;
@@ -31,6 +31,7 @@ std::vector<float> render(acustra::PickingTechnique technique, bool restrained,
     engine->setPhysicalCalibration(calibration);
     acustra::EngineParameters parameters;
     parameters.picking = technique;
+    parameters.pluckPosition = pluckPosition;
     parameters.outputGain = 1.0f;
     parameters.piezoMix = 0.2f;
     parameters.room = 0.5f;
@@ -113,39 +114,32 @@ int main()
         expect(std::all_of(audio.begin(), audio.end(), [](float x) { return std::isfinite(x); }),
                "pick roughness produced non-finite audio");
     }
-    // The restraint is read twice: in the shipping pluck, and against the
-    // string with no release velocity, where the burst is all it changes.
-    // Since the release velocity points the way the pick carried the string
-    // (writePickRelease, 2026-11-09) it fills more of this band on a loud
-    // stroke, so the restraint's share of it fell: the shipping median moved
-    // from -0.68 dB (1.9.35) to -0.47, every case still below -0.1. Its bound
-    // was re-derived from -0.5 to -0.4 for that reason, and the burst's own
-    // change, -3.17 dB on both versions, is held to -2.5.
-    // 1.9.42 moved the Pick's hand from 60 mm to 141 mm from the saddle. The
-    // string itself then puts less into this band and the burst is more of
-    // it, so the restraint takes more: the shipping median is -1.65 dB and
-    // the burst's own -5.16, and their bounds are re-derived to -1.2 and
-    // -4.0. Two things moved the other way with the same cause. On the soft
-    // open E (velocity 40) the release velocity now carries the band and the
-    // restraint reads -0.002 dB against it, -3.13 against the string alone,
-    // so each case is held to no rise rather than to -0.1. And the burst is
-    // more of a loud high note's whole energy, so the restraint takes up to
-    // 0.28 dB of it (0.11 before); that bound is 0.35.
+    // The burst and the string share this band. Keep the 141 mm hand
+    // position where the two attenuation bounds were established in 1.9.42.
+    // The ordinary release and the zero-release-velocity control use the
+    // same hand, so moving a harmonic node cannot masquerade as restraint.
+    constexpr float reviewPosition = 0.726f;
     std::vector<double> shipping, alone;
     for (int note : { 40, 52, 64, 76 })
         for (float velocity : { 40.0f / 127.0f, 80.0f / 127.0f, 120.0f / 127.0f })
         {
-            const auto before = render(PickingTechnique::Pick, false, false, note, velocity);
-            const auto after = render(PickingTechnique::Pick, true, false, note, velocity);
+            const auto defaultBefore = render(PickingTechnique::Pick, false, false, note, velocity);
+            const auto defaultAfter = render(PickingTechnique::Pick, true, false, note, velocity);
+            expect(attackHighBand(defaultAfter) < attackHighBand(defaultBefore),
+                   "restraint did not reduce early high frequencies at the default pick position");
+            const auto before = render(PickingTechnique::Pick, false, false, note, velocity,
+                                       48000, 64, true, reviewPosition);
+            const auto after = render(PickingTechnique::Pick, true, false, note, velocity,
+                                      48000, 64, true, reviewPosition);
             const double highDb = 10.0 * std::log10(attackHighBand(after) / attackHighBand(before));
             const double levelDb = 10.0 * std::log10(energy(after) / energy(before));
             shipping.push_back(highDb);
             expect(highDb < 0.0, "pick's early high-band roughness was not reduced");
             expect(std::abs(levelDb) < 0.35, "pick refinement changed overall level excessively");
             const auto string = render(PickingTechnique::Pick, false, false, note, velocity,
-                                       48000, 64, false);
+                                       48000, 64, false, reviewPosition);
             const auto restrainedString = render(PickingTechnique::Pick, true, false, note,
-                                                 velocity, 48000, 64, false);
+                                                 velocity, 48000, 64, false, reviewPosition);
             alone.push_back(10.0 * std::log10(attackHighBand(restrainedString)
                                               / attackHighBand(string)));
         }

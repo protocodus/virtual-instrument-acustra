@@ -62,10 +62,10 @@ void workAndRates(){
             if(rate==8000.)reference=work*rate;else expect(std::abs(work*rate/reference-1)<.025,"continuous finger work changed with rate");
             auto softer=engine(hammer,true,rate);Access::quiet(*softer);expect(softer->transitionNote(hammer?43:45,hammer?45:43,.4f),"contact fixture transition rejected");
             // Contact work is proportional to the square of the pluck's
-            // commanded force. MIDI 81 and above use unit force gain.
-            constexpr double t = 0.4 * 127.0 / 81.0;
-            constexpr double softForce = 0.4 * (0.2 + 0.8 * t * t * (3.0 - 2.0 * t));
-            constexpr double workRatio = (softForce / 0.8) * (softForce / 0.8);
+            // commanded force. Both gestures follow the full velocity curve.
+            constexpr auto force = [](double v) { return v * (0.2 + 0.8 * v * v * (3.0 - 2.0 * v)); };
+            constexpr double forceRatio = force(0.4) / force(0.8);
+            constexpr double workRatio = forceRatio * forceRatio;
             expect(std::abs(Access::contactEnergy(*softer)/work-workRatio)<1e-6,
                    "independent finger work did not follow the pluck force law");
             auto old=engine(hammer,false,rate);Access::quiet(*old);expect(old->transitionNote(hammer?43:45,hammer?45:43,.8f),"contact fixture transition rejected");

@@ -1046,12 +1046,11 @@ ModalPole radiationPole(ConstSpan<detail::MeasuredBodyMode> bank, int index,
                          morph, wood, calibration);
 }
 
-// Absolute output-only calibration: the factory Dreadnought patch's median
-// peak300ms stereo-mean RMS over six open singles, two triads and one four-note
-// chord at velocities70/90/110 is -9VU (0VU=-12dBFS). This gain follows the
-// physical sensor/body outputs; it does not retension or renormalize strings.
-// Protocol and measured results: Docs/validation/output-levels-2026-11-08.md.
-constexpr float outputCalibrationGain = 1.30316678f; // +2.3dB
+// Main and separate Piezo share this output reference after the physical
+// sensors. The eight legacy patch/MIDI pairs spanned -0.3 to +3.1 LU
+// against Rack 1.3.3 after the 1.9.51 contact and construction calibration.
+// Reducing the previous +2.3 dB by the midpoint limits the worst mix shift.
+constexpr float outputCalibrationGain = 1.10917482f; // +0.9 dB
 // At low engine rates the model can have substantial near-Nyquist energy.
 // Retain 2.5 dB of measured output-only reserve, a -4 dBFS sample ceiling.
 // The corrected passive axial model is rechecked through ten-second tails
@@ -7861,12 +7860,12 @@ namespace
 {
 float softPluckGain(float velocity) noexcept
 {
-    // Preserve calibrated force from MIDI 81 upward. The gain floor
-    // keeps even the softest strokes playable.
-    constexpr float fullGainVelocity = 81.0f / 127.0f;
+    // Retain the soft floor and full-force endpoint. Extending the rise
+    // across the whole keyboard velocity range lets ordinary accents carry
+    // the level contrast of parts written on 1.3.3.
     constexpr float minimumGain = 0.20f;
-    const float t = std::min(velocity / fullGainVelocity, 1.0f);
-    return minimumGain + (1.0f - minimumGain) * t * t * (3.0f - 2.0f * t);
+    return minimumGain + (1.0f - minimumGain) * velocity * velocity
+        * (3.0f - 2.0f * velocity);
 }
 
 float xorshiftNoise(std::uint32_t& state) noexcept
@@ -8055,23 +8054,11 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // A player's hand stays at an approximately fixed physical distance from
     // the bridge.  Express that distance relative to each fretted string only
     // when constructing its initial condition.
-    // Playing styles: a narrow Pick, the calibrated Finger and a neckward
-    // broad Thumb. Finite width and pluck position change the excited modes
-    // (Traube/Smith, DAFx00). The Thumb's ratio is authored. The Pick's is
-    // the picked Eastman E1D dreadnought take's own hand: the comb its pluck
-    // point leaves in each note's partials (the roughness of the first 24
-    // partials' levels after dividing by |sin(n pi p)|, lowest fret assumed)
-    // puts the plectrum a median 141 mm from the saddle on the 18 notes from
-    // E2 to E5 whose estimate is not its own half, over the soundhole, where
-    // the same player's fingers pluck at 126 mm. Against the Finger's 149 mm
-    // at the default Pluck Position that is 0.95. Until 1.9.42 the Pick stood
-    // at 0.40, 60 mm, fitted on a picked archtop bank (FittedPhysicalData.h):
-    // from G4 to F#5 its third or second partial then stood 10-17 dB over the
-    // fundamental where the flat-top's lies 9-25 dB under it. The panel
-    // remains the base hand position; explicit MPE position below takes
-    // precedence.
+    // The plectrum sits bridgeward of the Finger and the Thumb sits toward
+    // the neck. Their locations set the harmonic nodes (Traube/Smith, DAFx00).
+    // Explicit MPE position takes precedence below.
     const float pickingDistance = parameters_.picking == PickingTechnique::Pick
-        ? 0.95f : parameters_.picking == PickingTechnique::Thumb ? 1.95f : 1.0f;
+        ? pickHandDistanceRatio : parameters_.picking == PickingTechnique::Thumb ? 1.95f : 1.0f;
     const float distanceFromBridge = (0.045f
         + 0.135f * parameters_.pluckPosition) * physical.pluckDistanceScale
         * pickingDistance;
@@ -8423,7 +8410,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // Martin spectral tradeoff (Docs/decisions.md, 2026-10-07). Thumb
     // retains its full-velocity reference ratio. Both keep the released
     // line's spread about its mean, preserving the displacement-to-level law.
-    // The Finger's effective radius is the Eastman E1D's: the same player
+    // 1.9.44 fitted the Finger's effective radius to the Eastman E1D: the same player
     // plucked and picked the same guitar, and from E2 to C6 a plucked note's
     // partials fall under the picked note's as a low-pass with its corner
     // between the first and second partial does (-4, -8, -12, -19 dB at
@@ -8438,11 +8425,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // bridge, gone in 1.9.45 (applyPadRelease). Without it 0.7 mm stands,
     // mean H2-H12, +5.4, +2.5, -4.0 and 0.0 dB from that contrast over
     // E2-B2, E3-D#4, E4-D#5 and E5-C6 (0.5 mm +8.0, +5.3, -2.0, +1.6;
-    // 1.9.44 +10.8, +8.5, -1.0, -0.2). The Thumb keeps the 0.2 mm
-    // its reference ratio was approved at. The nominal contact still bounds
-    // a firm Touch to three times its release speed; no velocity law is
-    // fitted to Finger recordings with unknown dynamics.
-    const float fingerReleaseRadius = fullSoftSlip ? 0.7e-3f : 0.2e-3f;
+    // 1.9.44 +10.8, +8.5, -1.0, -0.2).
+    // For existing songs the reference is the released 1.3.3 instrument.
+    // With the corrected bridge and full pad slip, a 0.25 mm Finger edge
+    // moved the median 3–8 kHz share at 30–200 ms from 9.9 dB below that
+    // release to 0.4 dB above it across four Finger patches (E2–A5, v40–120).
+    // The Thumb uses its own reference-normalised 0.2 mm release.
+    const float fingerReleaseRadius = fullSoftSlip ? 0.25e-3f : 0.2e-3f;
     // Playing force and release gesture have independent authored responses.
     // Raising soft-note force from v^2 to v also raises its release speed.
     // Finger and Thumb scale their effective edge by the same 1/v ratio to

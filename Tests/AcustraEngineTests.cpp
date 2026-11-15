@@ -6100,10 +6100,8 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
         return (low.heldDisplacement / (0.92 + 0.08 * low.touch))
             / (high.heldDisplacement / (0.92 + 0.08 * high.touch));
     };
-    // Velocity 0.8 is above MIDI 81, where the new force gain is unity.
-    constexpr double softPosition = 0.2 * 127.0 / 81.0;
-    constexpr double expectedRatio = 0.25
-        * (0.2 + 0.8 * softPosition * softPosition * (3.0 - 2.0 * softPosition));
+    constexpr auto force = [](double v) { return v * (0.2 + 0.8 * v * v * (3.0 - 2.0 * v)); };
+    constexpr double expectedRatio = force(0.2) / force(0.8);
     expect(std::abs(forceRatio(responsiveLow, responsiveHigh)
                        - forceRatio(fixedLow, fixedHigh)) < 1.0e-6
                && std::abs(forceRatio(responsiveLow, responsiveHigh) - expectedRatio) < 1.0e-6,

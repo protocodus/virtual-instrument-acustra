@@ -178,9 +178,10 @@ own range: E2-C6 (Standard; MIDI 40-84), D2-C6 (Drop D; 38-84) and D2-A#5
 (DADGAD and Open G; 38-82). Anything outside it is ignored. The on-screen keyboard spans D2-C6 (MIDI 38-84);
 its labels count middle C as C3, so its top key reads C5.
 
-**Velocity** is how hard the string is plucked. The force follows velocity
-in proportion, so a very soft note sits roughly 12 dB under a full one.
-Repeated strums at one velocity keep a steady level, apart from the natural
+**Velocity** is how hard the string is plucked. At ordinary playing levels,
+raising MIDI velocity from 72 to 100 gives an accent of about 5–6 dB on the
+factory Finger, Pick and Thumb patches. Repeated strums at one velocity keep
+a steady level, apart from the natural
 differences of stroke direction and strings still ringing. **Release velocity** sets
 how firmly the hand damps the string: 64 is nominal, softer key-ups ring
 up to about twice as long, firmer ones about half; it also sets the

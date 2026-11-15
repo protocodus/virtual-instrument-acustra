@@ -94,6 +94,13 @@ struct PhysicalCalibration
     float steelWoundBendingLoss { 0.0f };
 };
 
+// At the default panel position the Finger is 149 mm from the bridge.
+// The early picked archtop fit placed the hand at 60 mm, the later Eastman
+// flat-top fit at 141 mm. At 82 mm the median Jumbo treble H3/H1 is within
+// 2.2 dB of the released Rack 1.3.3 at equal controls (8.2 dB at 141 mm;
+// E4–B5, velocities 48/85/110, 40–210 ms, distance varied alone).
+inline constexpr float pickHandDistanceRatio = 0.55f;
+
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
 // bounded pattern search rather than the one-sided Gauss-Newton stages that
 // produced the previous vector (Tools/OptimizePhysicalModel.py says why the
@@ -141,9 +148,8 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // played with a pick near the bridge; the finger-played flat-top rows
     // prefer 149 mm, and a blind listener chose it on all three pairs. Pick
     // kept 0.40 of the Finger's distance, 60 mm, and the picked archtop
-    // rows rendered with it improved (steel training 6.106 -> 5.803). Since
-    // 1.9.42 Pick stands at 0.95, 141 mm, the picked Eastman flat-top's own
-    // hand (AcustraEngine::initialisePluck).
+    // rows rendered with it improved (steel training 6.106 -> 5.803).
+    // pickHandDistanceRatio sets the plectrum's position independently.
     // Steel's contact width (aperture), finger burst (transient) and velocity
     // brightness, with the plectrum's release and the strings' bending loss
     // below, were chosen by ear on 2026-09-28 (Docs/decisions.md, Set 14) at

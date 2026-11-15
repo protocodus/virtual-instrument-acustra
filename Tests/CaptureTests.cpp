@@ -1133,14 +1133,9 @@ void testPiezoHeadroom()
 // PiezoCircuitTests.cpp; they cover the nonlinear input stage itself.
 void testPiezoClipAliasing()
 {
-    // The plectrum 32 mm from the saddle, where this fixture was built: the
-    // Pick's hand at Pluck Position 0 before 1.9.42 moved it out to 0.95 of
-    // the Finger's distance (77 mm there). So close to the saddle the strum
-    // is all sharp force peaks, which reach U1B's rails before the released
-    // load reaches U1A's input limit; from 77 mm U1A limits first (2.32
-    // against 2.41 times the shipped weights) and there is no interval in
-    // which U1B clips alone.
-    constexpr float nearBridge = 0.40f / 0.95f;
+    // This fixture needs the original 32 mm contact: its sharp force
+    // peaks can clip U1B before U1A reaches its input limit.
+    constexpr float nearBridge = 0.40f / acustra::pickHandDistanceRatio;
     for (const float touch : { 0.58f, 1.0f })
     for (int rate : { 44100, 48000 })
     {

@@ -200,8 +200,7 @@ void testThumbRoughnessHasAFinitePhysicalRelease()
                 // Finger's pad does, so it goes as v^0.233. The 1/v alone
                 // this predicted before let a soft thumb go as 1/v^2 and
                 // brighten again below velocity 80 (Acustra.ThumbDynamics).
-                const double t = std::min(double(velocity) * 127.0 / 81.0, 1.0);
-                const double forceScale = 0.2 + 0.8 * t * t * (3.0 - 2.0 * t);
+                const double forceScale = 0.2 + 0.8 * velocity * velocity * (3.0 - 2.0 * velocity);
                 const double p = contact.position;
                 const double boundary = std::clamp(std::pow(
                     (contact.length / 0.648) * p * (1.0 - p) / (0.18 * 0.82),

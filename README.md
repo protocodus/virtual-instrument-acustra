@@ -39,6 +39,14 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.51 — 2026-11-15 — song-compatibility audition
+
+Finger releases over a 0.25 mm edge and the pick sits about 82 mm from the
+bridge at the reference panel position. Ordinary keyboard accents have more
+contrast. These choices bring legacy parts closer to the released Rack 1.3.3
+at their saved settings, with the 1.9 bridge, fret, saddle and decay models.
+[Eight-song measurements and recall limits](Docs/validation/legacy-song-voicing-2026-11-15.md).
+
 ### 1.9.50 — 2026-11-14 — physical Finger pluck point on the low strings, and faster saddle stretch
 
 - Under Finger, notes past the 4th fret on the low E, A and D strings now
@@ -891,10 +899,9 @@ slightly bridgeward on the three treble strings by ear while the low E, A and D
 keep the hand's physical distance from the bridge. The Pick adds a fitted release velocity, and every
 technique lets the string slide off a rounded edge, so softer strokes are
 released darker; a fingertip or thumb, unloading smoothly, releases at zero
-phase with a second-order fall above its half-power point. The fingertip's
-edge is the radius at which a plucked note loses its upper partials against
-a picked one as the Eastman E1D's player's do (0.7 mm), and the released
-wave starts where its rounded corner turns, at rest at the bridge. A short noise burst carries release detail. Most of a steel
+phase with a second-order fall above its half-power point. The 0.25 mm effective fingertip edge is fitted to the
+released instrument's note spectra. The released wave starts at rest at
+the bridge, where its rounded corner turns. A short noise burst carries release detail. Most of a steel
 pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
@@ -1130,15 +1137,10 @@ separates verified errors from accepted approximations.
   fingers of its own beyond a count of four and their barres. The cost of
   a fret past the twelfth, of a string crossing for the picking hand and the
   half-force slide of a shifting hand are authored, not measured.
-- The fingertip's 0.7 mm is fitted to one player's plucked and picked takes
-  of one guitar, both assumed at velocity 91; how a real fingertip's release
-  changes with force is not measured, and soft Finger notes follow the
-  authored law. Against the recorded finger-to-pick contrast a plucked
-  note's ninth to twelfth partials still stand 8.8 dB over from E2 to B2
-  and 4.6 over from E3 to D#4, and its fifth to twentieth lie 5-9 dB under
-  from E4 to D#5; no one radius centres both. The Martin HD28 notes, whose
-  hand is not identified, are brighter than the Finger and fit the Pick
-  better.
+- Fingertip contact varies with the player. The 0.25 mm effective release
+  radius follows the legacy instrument's tone. The larger 0.7 mm radius in
+  1.9.44–1.9.50 followed one player's recorded finger-to-pick contrast.
+  No single radius reproduces every guitar, finger, fret and velocity.
 - A Finger re-plucking a ringing string still steps where the wave the
   fingertip stopped reaches the bridge, under a millisecond in: on a low E
   tremolo at 12 strokes a second, 0.004-0.019 at 48 kHz against a fresh

@@ -95,12 +95,10 @@ auto played(bool waves, bool axial = true, int fret = 12, float velocity = 0.9f)
     engine->setPerformanceRealism(realism);
     acustra::EngineParameters parameters;
     parameters.picking = acustra::PickingTechnique::Pick;
-    // The plectrum near the bridge, 77 mm from the saddle. At the default
-    // Pluck Position the Pick's hand (141 mm since 1.9.42, 60 mm before)
-    // meets the 12th-fret string at a third of its length, where the third
-    // partial is not excited and y_x^2 at 4 f0 is no longer mostly each
-    // partial's own square (wavesKeepTheUniformTension read -2.0 dB there).
-    parameters.pluckPosition = 0.0f;
+    // The uniform-source witness was measured with the plectrum 77 mm
+    // from the saddle. At a third of the stopped string the third partial
+    // has a node and y_x² at 4 f0 no longer measures that source.
+    parameters.pluckPosition = 0.24f;
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
     engine->setStringPerChannelMode(true);

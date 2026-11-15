@@ -37,17 +37,16 @@ struct AcustraEngineTestAccess
         // Independently apply Finger's authored radius response and point
         // compliance to the physical contact whose held force is above.
         const double velocity = v.velocity;
-        const double t = std::min(velocity * 127.0 / 81.0, 1.0);
-        const double forceScale = 0.2 + 0.8 * t * t * (3.0 - 2.0 * t);
+        const double forceScale = 0.2 + 0.8 * velocity * velocity * (3.0 - 2.0 * velocity);
         const double p = v.pluckPoint;
         const double boundary = std::clamp(std::pow(
             (v.speakingLengthMetres / 0.648) * p * (1.0 - p) / (0.18 * 0.82),
             0.22), 0.72, 1.35);
-        // 0.7 mm since 1.9.44, the radius the recorded finger lets go over.
-        const double radius = 0.7e-3 * std::exp2(2.0 * (0.58 - engine.parameters_.touch))
+        constexpr double nominalFingerRadius = 0.25e-3;
+        const double radius = nominalFingerRadius * std::exp2(2.0 * (0.58 - engine.parameters_.touch))
             * forceScale * std::pow(velocity, 0.233125) * boundary;
         const double nominalSpeed = speed / (velocity * forceScale * v.pluckForceGain);
-        const double time = std::max(radius / speed, 0.7e-3 / (3.0 * nominalSpeed));
+        const double time = std::max(radius / speed, nominalFingerRadius / (3.0 * nominalSpeed));
         return { std::exp(-1.0 / (time * engine.sampleRate_)),
                  v.excitationCoefficient, v.excitationReleaseCoefficient,
                  v.excitationColour, v.excitationEnvelope, v.excitationDecay,
