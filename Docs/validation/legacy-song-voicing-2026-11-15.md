@@ -2,9 +2,10 @@
 
 The reference is the released Reason Rack 1.3.3 ARM64 module, SHA-256
 `917197eaa395615841f51f38bdec294713ba5de27eeb81138a14fe4c9e6c7821`.
-The other native modules were the 1.9.50d1 engine and the recalibrated 1.9.51d1 candidate, SHA-256
-`24972b69a897ab5faa944ad676e16ebf09631b6c5a45c394d8fad689805e3e7d`. The song captures are from that candidate.
-This is a candidate for listening. There is no listening verdict yet.
+The comparisons use the 1.9.50d1 engine and the 1.9.51d1 Recon candidate.
+The packaged ARM64 module, SHA-256
+`1456b5725a3143e45467326b67d18ce7f40ba82467c61d19645b2680148e8c90`, reproduced all 24
+candidate renders byte for byte across the three saved-settings runs.
 
 ## Performance and capture
 
@@ -83,7 +84,10 @@ renders the same performance at two lower output gains, checks that both
 waveforms scale linearly and recovers the peak before output protection.
 The hardest stereo mic, mono mic and pickup peaks moved from +0.36, −0.29
 and +4.54 dBFS on 1.9.50 to +0.18, −0.91 and +1.23 dBFS respectively.
-These internal peaks can exceed full scale before the output limiter.
+The 108 construction/capture combinations measured −0.90 to +0.51 LU
+relative to the reference. All 36 hard Pick cases and 144 native strum
+checks met their calibration criteria. The output stage held the protected
+hard-strum peak on each capture to −1.5 dBFS.
 
 The Rack all-patch test includes fixed 1.3.3 harmonic and velocity references.
 Compare the same passage at stored level to judge a mix, and at matched level

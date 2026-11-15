@@ -14,7 +14,7 @@ namespace acustra::detail
 {
 // SHA256 Source/DSP/MeasuredBodyData.h: 1c54a31e2546db4095d373591a45a188fc21bac3820f9b0a3f72c66c96fd9be0
 // SHA256 Source/DSP/MeasuredJointBodyData.h: e8f076bedbc5807a33318adf6b8a16a74a9fd8fcd6db944749d068764064f2c9
-// SHA256 Tools/GenerateStudioCapture.py: ef6e99e07b3f96ab6f6f25c812406243fc304e527f3cf4e09065d6517b01a77a
+// SHA256 Tools/GenerateStudioCapture.py: 58e0a72e0ce4355c616ebbcef8f85ec2c6770320423e37f6161ca597e6aad389
 inline constexpr int studioGreenOrder = 112;
 inline constexpr double studioPoleScale = 1000.0;
 // Mode order: own A0/T1, joint A0/T1; columns are force and normalized moment.
