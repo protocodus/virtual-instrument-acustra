@@ -5,6 +5,63 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-16 — the wound strings' bending loss back to released 1.3.3's, 1.9.59 (A–B–C set sent; the owner took B)
+
+**What was heard.** On 1.9.58 the owner still heard "this unpleasant ringing
+in the high freq" that the voicing line had worked on.
+
+**What was ruled out first.** The fixed lines the voicing line treated
+(2.55, 2.86 and 3.55 kHz on Dreadnought Steel, 7 kHz on Palm Muted Steel
+Pick, 2.86 and 6.69 kHz on Jumbo Steel Pick) are still down in 1.9.58, within
+1-2 dB of the voicing line alone. The strings' lengthwise resonance is not it
+either: ten times its loss moved only 2871 Hz on Jumbo Steel Pick (-4.6 dB)
+and 7840 Hz on Palm Muted Steel Pick (-5.1 dB).
+
+**What it is.** `steelWoundBendingLoss` sets how fast a wound string's upper
+partials die. Released 1.3.3 has 0.0175, chosen by ear on 2026-10-10. 1.9.47
+cut it to the plain steel's 0.0023 after "a bit muddy", on a recorded
+Eastman's slower decay; that was heard with 1.9.44's 0.7 mm fingertip, and
+the letter was assumed, not chosen. 1.9.58's voicing brought back the
+released 0.25 mm release edge and kept the low loss, so the wound strings are
+bright at the stroke again and also ring long. One picked note per string at
+the default controls, against the 1.3.3 source (`d01b477`) built beside it;
+level of the 4-8 kHz band 0.1 s and 0.5 s after the stroke, relative to the
+note's level over its first second:
+
+| Note | 1.3.3 | A | C | B |
+| --- | --- | --- | --- | --- |
+| Low E | -45.9, -77.7 | -16.8, -50.2 | -24.8, -68.0 | -43.9, -79.1 |
+| A | -27.7, -65.8 | -15.6, -40.9 | -20.5, -51.2 | -29.9, -68.3 |
+| D | -21.1, -53.4 | -17.1, -41.6 | -19.5, -47.6 | -24.4, -59.4 |
+| G | -18.8, -45.5 | -16.5, -39.9 | -17.5, -42.9 | -20.0, -50.2 |
+| B (plain) | -8.6, -23.7 | -7.6, -25.1 | -7.6, -25.1 | -7.6, -25.1 |
+
+**The letters.** A: 1.9.58 (`5121eae`), 0.0023. B: 0.0175, released 1.3.3's
+value. C: 0.0064, halfway between on a ratio scale. Only that number differs.
+Material: Jumbo Steel Pick, Palm Muted Steel Pick and Piezo Stage Steel, the
+committed demo MIDI through `RenderAcustraPresetDemos` at 48 kHz, each preset
+as freshly loaded. Each demo matched to A's RMS over that demo: B +0.09,
++0.08 and +0.28 dB; C +0.04, +0.04 and +0.13 dB. Over a whole demo B is 1.3
+to 2.1 dB under A above 4 kHz on Jumbo Steel Pick and Piezo Stage Steel and
+within 1 dB below that; C is about half of it.
+
+**How it was decided.** By ear: the set went to the owner with its `key.md`
+unread by design, and the owner chose B on 2026-11-16. The measurement above
+says which letter is closest to 1.3.3; it did not choose. The choice licenses
+0.0175 for the wound strings' bending loss, and nothing else.
+
+**What the change needed.** The factory levels stay inside the 1.3.3 fixture
+(`Tests/Fixtures/FactoryLevels133.h`) with no Output trim moved. One fixture
+moved: the piezo clip-aliasing check needs a strum that clips U1B before
+U1A, and with the overtones damped the default-age strum reaches U1A first
+at every Pluck Position (U1B's gain rises with frequency). It now plays fresh
+strings at 10% Pluck Position, where U1B has a 12% interval at both rates and
+Touch values; the reason is beside it in `Tests/CaptureTests.cpp`.
+
+**Still open** from the voicing line's last audition: 1.3.3's strum accents
+and the 1.49 kHz band of a B-major chord, the 6.69 kHz Jumbo Pick repeat and
+the 1.85 kHz Parlor Thumb repeat.
+
 ## 2026-11-16 — the 1.3.3-matched voicing joined to the fretted-length tuning, 1.9.58 (A–B–C set sent; the owner took B)
 
 **What was joined.** Two lines grew from 1.9.50 (`e58c27e`) without each

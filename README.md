@@ -39,6 +39,19 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.59 — 2026-11-16 — the wound strings stop ringing in the highs
+
+The low E, A, D and G strings shed their upper overtones as fast as they do
+in the released Rack 1.3.3 again. Since 1.9.47 their bending loss was the
+plain steel's, a cut made after the sound was called a bit muddy while the
+fingertip was 0.7 mm wide; 1.9.58 brought back the released 0.25 mm release
+edge and kept the low loss, so a picked low E's 4-8 kHz band stood 29 dB over
+1.3.3's 0.1 s after the stroke and 27 dB over at 0.5 s, heard as a high
+ringing. It is now within 3 dB of 1.3.3 on all four wound strings. The B and
+high E strings are unchanged, the demos' levels stay within 0.3 dB, and their
+4-16 kHz bands fall 1.3 to 2.1 dB on Jumbo Steel Pick and Piezo Stage Steel.
+The owner chose it from an A-B-C listening set ([Decisions](Docs/decisions.md)).
+
 ### 1.9.58 — 2026-11-16 — the voicing toward released 1.3.3, on the fretted-length tuning
 
 This version joins two lines of work that grew beside each other from
