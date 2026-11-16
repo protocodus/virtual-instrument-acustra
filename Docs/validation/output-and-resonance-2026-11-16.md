@@ -43,7 +43,7 @@ The following readings integrate a 44 Hz window around each line after applying 
 | Jumbo Steel Pick 4.29–6.42 s | 2862 Hz | +18.6 dB | +6.0 dB | -12.6 dB |
 | Jumbo Steel Pick 6.45–7.7 s | 2865 Hz | +19.7 dB | +4.9 dB | -14.7 dB |
 
-Dreadnought’s second passage contains several harmonics. The improvement is largest at 2.86 kHz. The 3.55 kHz partial after the quieter repeated chord remains stronger than the release. The sustained Jumbo line is reduced on the opening D, middle A and closing D.
+Dreadnought’s second passage contains several harmonics. The improvement is largest at 2.86 kHz. The 3.55 kHz partial after the quieter repeated chord remains stronger than the release. It is the twelfth partial of D4 on the B string, fret 3. Suppressing that one note at the original timing removes 13.42 dB from this narrow band during the 5.53–5.70 s sustain window. The sustained Jumbo line is reduced on the opening D, middle A and closing D.
 
 ## Piezo Stage Steel
 
