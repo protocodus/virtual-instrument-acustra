@@ -39,6 +39,14 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.53 — 2026-11-16 — palm-muted steel pick
+
+With the heel down, picked strings shed their upper harmonics sooner. The
+microphones recover some of the 500 Hz–1 kHz body heard in released Rack
+1.3.3, while retaining 1.9.52's soundhole geometry. The eight saved Rack
+performances are checked against the real 1.3.3 module at the same controls.
+[Measurements and listening protocol](Docs/validation/palm-muted-pick-2026-11-16.md).
+
 ### 1.9.52 — 2026-11-16 — playing at the soundhole
 
 Pick, Thumb and Finger now strike at the soundhole or farther toward the

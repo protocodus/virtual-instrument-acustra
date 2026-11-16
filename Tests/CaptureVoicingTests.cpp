@@ -215,6 +215,50 @@ void testLowMidCancellationRegression()
               << " dB; summed-pressure contour " << 20. * std::log10(std::abs(measured)) << " dB\n";
 }
 
+void testPalmPickMicrophones(double rate)
+{
+    auto engine = std::make_unique<Engine>();
+    acustra::EngineParameters settings;
+    settings.picking = acustra::PickingTechnique::Pick;
+    engine->setParameters(settings);
+    engine->prepare(rate, 64);
+    const auto open = Access::filter(*engine);
+    const auto settle = [&] {
+        std::array<float, 64> l {}, r {};
+        for (int n = 0; n < 0.35 * rate; n += 64)
+            engine->process(l.data(), r.data(), 64);
+    };
+    engine->setPalmMutePressure(0.55f);
+    settle();
+    const auto muted = Access::filter(*engine);
+    const auto response = [rate](auto filter, double frequency) {
+        std::vector<float> impulse(static_cast<std::size_t>(rate * 0.08));
+        filter.reset();
+        for (std::size_t n = 0; n < impulse.size(); ++n)
+            impulse[n] = Access::sample(filter, n == 0 ? 1.0f : 0.0f, 0.0f)[0];
+        return std::abs(responseAt(impulse, frequency, rate));
+    };
+    const double mid = response(muted, 750.0) / response(open, 750.0);
+    const double bass = response(muted, 80.0) / response(open, 80.0);
+    expect(20.0 * std::log10(mid / bass) > 4.0,
+           "half palm on Pick did not restore the middle of the microphone spectrum");
+    expect(muted.gain < open.gain, "the microphone lift lost its saved-level compensation");
+    settings.picking = acustra::PickingTechnique::Thumb;
+    engine->setParameters(settings);
+    settle();
+    auto restored = Access::filter(*engine);
+    expect(restored.coefficients == open.coefficients && restored.gain == open.gain,
+           "changing technique under the heel retained the muted Pick contour");
+    settings.picking = acustra::PickingTechnique::Pick;
+    engine->setParameters(settings);
+    settle();
+    engine->setPalmMutePressure(0.0f);
+    settle();
+    restored = Access::filter(*engine);
+    expect(restored.coefficients == open.coefficients && restored.gain == open.gain,
+           "lifting the heel did not recover the original microphone response");
+}
+
 void testOriginalHistoryAndReprepare(double rate)
 {
     auto engine = std::make_unique<Engine>();
@@ -261,6 +305,7 @@ int main()
     for (double rate : { 8000., 24000., 44100., 48000., 96000., 192000., 384000. })
         testDigitalTransferAndReset(rate);
     testLowMidCancellationRegression();
+    for (double rate : { 8000., 48000., 192000. }) testPalmPickMicrophones(rate);
     for (double rate : { 44100., 48000., 96000. }) testOriginalHistoryAndReprepare(rate);
     return failures == 0 ? 0 : 1;
 }

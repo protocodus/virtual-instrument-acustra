@@ -1200,6 +1200,7 @@ private:
         std::uint32_t tuningFrequency { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
+        bool mutedPick { false };
 
         bool operator==(const VoiceConfigurationKey& other) const noexcept
         {
@@ -1212,7 +1213,8 @@ private:
                 && speakingFret == other.speakingFret
                 && lossDesignFrequency == other.lossDesignFrequency
                 && tuningFrequency == other.tuningFrequency
-                && age == other.age && palmMute == other.palmMute;
+                && age == other.age && palmMute == other.palmMute
+                && mutedPick == other.mutedPick;
         }
     };
 
@@ -1464,6 +1466,8 @@ private:
         float tailHandFrequency { 1.0f };
         float tailHandIntrinsicT60 { 1.0f };
         float tailHandIntrinsicHighLoss { 0.0f };
+        float tailHandCutoff { 0.0f };
+        bool tailWasPicked { false };
         float tailHandPressure { 0.0f };
         float tailCapturedHandPressure { 0.0f };
         std::array<float, 2> tailCapturedLoopGain {};
@@ -1829,6 +1833,10 @@ private:
             // centred on; 0 leaves that section flat.
             float airModeHz { 0.0f };
             float midPeakHz { 0.0f };
+            static constexpr std::size_t palmMidSection = 3;
+            std::array<double, 5> openMid {}, mutedMid {};
+            float openGain { 1.0f };
+            void setPalmPickPressure(float pressure) noexcept;
 
             void configure(double sampleRate, float airModeHz, float midPeakHz) noexcept;
             void reset() noexcept
@@ -2543,6 +2551,7 @@ private:
     float monoReference_ { 1.0f };
     float palmMute_ { 0.0f };
     float targetPalmMute_ { 0.0f };
+    float micPalmPickPressure_ { 0.0f };
     float palmMuteSmoothing_ { 0.5f };
     // An idle instrument settles on a rounding-level residue (about 1e-12 at
     // the output) that its strings and bridge hold between them; after

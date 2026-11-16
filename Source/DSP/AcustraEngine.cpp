@@ -4747,6 +4747,7 @@ void AcustraEngine::reset() noexcept
     plannedCount_ = 0;
     controlCounter_ = 0;
     parameters_ = sanitise(targetParameters_);
+    micPalmPickPressure_ = parameters_.picking == PickingTechnique::Pick ? palmMute_ : 0.0f;
     ++voiceConfigurationGeneration_;
     bodyAmount_ = parameters_.bodyAmount;
     width_ = parameters_.stereoWidth;
@@ -5205,6 +5206,19 @@ void AcustraEngine::updateControlState() noexcept
     palmMute_ += palmMuteSmoothing_ * (targetPalmMute_ - palmMute_);
     if (exact::abs(targetPalmMute_ - palmMute_) < 1.0e-6f)
         palmMute_ = targetPalmMute_;
+
+    // Follow the combined gesture so a technique switch while the heel
+    // is down eases the microphones back to their ordinary response.
+    const float micTarget = parameters_.picking == PickingTechnique::Pick ? targetPalmMute_ : 0.0f;
+    if (micTarget != micPalmPickPressure_)
+    {
+        micPalmPickPressure_ += palmMuteSmoothing_ * (micTarget - micPalmPickPressure_);
+        if (exact::abs(micTarget - micPalmPickPressure_) < 1.0e-6f)
+            micPalmPickPressure_ = micTarget;
+        bodyBank_.captureFilter.setPalmPickPressure(micPalmPickPressure_);
+        if (bodyModelFade_ < 1.0f)
+            fadingBodyBank_.captureFilter.setPalmPickPressure(micPalmPickPressure_);
+    }
     if (vibrato_ > 0.0f)
     {
         // Erkut's two measured rates as the wheel's endpoints, in the
@@ -5358,6 +5372,7 @@ void AcustraEngine::configureBody() noexcept
     bodyBank_.load(bodyModes_, configuration.count, configuration.ordered);
     bodyBank_.captureFilter.configure(sampleRate_, configuration.airModeHz,
                                       configuration.midPeakHz);
+    bodyBank_.captureFilter.setPalmPickPressure(micPalmPickPressure_);
     configuredBodyShape_ = parameters_.shape;
     configuredBodyMaterial_ = parameters_.bodyMaterial;
     bodyConfigured_ = true;
@@ -7005,6 +7020,34 @@ float fretHighLoss(float baseHighLoss, float openFrequency, float lossDesignFreq
         return baseHighLoss;
     return std::clamp(1.0f - std::pow(1.0f - baseHighLoss, exponent), 0.0f, 0.95f);
 }
+
+// The heel covers more of the upper partials of a picked string as it presses.
+// This pressure voicing is fitted against released 1.3.3 Palm Muted Steel Pick.
+constexpr float mutedPickCornerScale = 4.25f;
+constexpr float mutedPickExtraDecayRate = 14.0f;
+
+float stringLossCutoff(float age, float cutoffScale) noexcept
+{
+    return 12500.0f * std::exp(-0.9f * age) * cutoffScale;
+}
+
+float stringLossPole(float cutoff, float pickPressure) noexcept
+{
+    const float corner = cutoff / (1.0f + mutedPickCornerScale * pickPressure);
+    return std::exp(-twoPi * std::clamp(corner, 1200.0f, 0.44f * 48000.0f)
+        * (1.0f / 48000.0f));
+}
+
+float palmHighLoss(float intrinsic, float handRate, float pickPressure,
+                   float frequency) noexcept
+{
+    if (handRate <= 0.0f)
+        return intrinsic;
+    const float rate = (1.0f / 0.62f - 1.0f) * handRate + mutedPickExtraDecayRate * pickPressure;
+    return std::clamp(1.0f - (1.0f - intrinsic) * std::pow(0.001f,
+        rate / std::max(frequency, 1.0f)), 0.0f, 0.95f);
+}
+
 } // namespace
 
 void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
@@ -7205,12 +7248,17 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // re-plucking an already settled slide refreshes it, changing dispersion
     // order and polarization tuning even if every running pitch bit matches.
     // clearDelay always runs: it also resets the loops.
+    // New and queued contacts use the technique at the instant of the stroke.
+    // Subsequent control updates follow that note's actual excitation.
+    const bool picked = voice.played && ((clearDelay || refreshPickReference)
+        ? parameters_.picking == PickingTechnique::Pick : voice.attackFired && !voice.excitationSoft);
+    const float pickPressure = picked ? palmMute_ : 0.0f;
     const VoiceConfigurationKey configurationKey {
         voiceConfigurationGeneration_, stoppedMidi, voice.openMidi,
         exact::bits(frequency), exact::bits(tensionSemitones),
         exact::bits(soundingLength), exact::bits(pitch.speakingFret),
         exact::bits(lossDesignFrequency), exact::bits(pitch.tuningFrequency),
-        exact::bits(parameters_.stringAge), exact::bits(palmMute_) };
+        exact::bits(parameters_.stringAge), exact::bits(palmMute_), pickPressure > 0.0f };
     const bool usePickReference = (clearDelay || refreshPickReference)
         && sampleRate_ != 48000.0 && parameters_.picking == PickingTechnique::Pick;
     const bool referenceTuning = usePickReference
@@ -7244,12 +7292,10 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // at age 1 the high E above the 12th fret lost its upper partials four
     // times faster than the wound strings gained any loss at all. It sits
     // past the clamp below at the default age either way.
-    const float cutoff = 12500.0f * std::exp(-0.9f * age)
-        * physicalCalibration_.highLossCutoffScale;
-    const float lowpassCoefficient = std::exp(
-        -twoPi * clamp(cutoff, 1200.0f,
-                       0.44f * 48000.0f)
-        * (1.0f / 48000.0f));
+    const float cutoff = stringLossCutoff(age, physicalCalibration_.highLossCutoffScale);
+    const float intrinsicPole = stringLossPole(cutoff, 0.0f);
+    const float lowpassCoefficient = pickPressure > 0.0f
+        ? stringLossPole(cutoff, pickPressure) : intrinsicPole;
     const float baseHighLoss = clamp((0.035f
         + 0.42f * age
         + 0.018f * static_cast<float>(stringCount - 1 - stringIndex))
@@ -7282,11 +7328,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // Use the current loop pitch, including slides, tension bends and attack
     // settling. Using the original MIDI pitch applies this loss too often
     // on a raised note, changing the hand's time scale with the wheel.
-    const float mutedHighLoss = handRate > 0.0f
-        ? clamp(1.0f - (1.0f - highLoss) * std::pow(0.001f,
-              (1.0f / 0.62f - 1.0f) * handRate
-              / std::max(frequency, 1.0f)), 0.0f, 0.95f)
-        : highLoss;
+    const float mutedHighLoss = palmHighLoss(highLoss, handRate, pickPressure, frequency);
 
     // The broad one-pole shelf that stood in for the strings' frequency-
     // proportional loss - an authored 72 x 1.65e-4 (1 + 1.35 age) x
@@ -7425,7 +7467,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                               sampleRate_);
         const std::array<double, 14> arguments {
             inharmonicity, dispersionFitFrequency, sampleRate_,
-            designBroadLossCoefficient, broadLoss, lowpassCoefficient, fitHighLoss,
+            designBroadLossCoefficient, broadLoss, intrinsicPole, fitHighLoss,
             static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
             static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
             static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2),
@@ -7522,7 +7564,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
                               referenceRate);
         const auto [decayRatios, poleRatios] = solvedDispersion({
             inharmonicity, dispersionFitFrequency, referenceRate,
-            designBroadLossCoefficient, broadLoss, lowpassCoefficient, fitHighLoss,
+            designBroadLossCoefficient, broadLoss, intrinsicPole, fitHighLoss,
             static_cast<float>(fitBending.a1), static_cast<float>(fitBending.a2),
             static_cast<float>(fitConstant.a1), static_cast<float>(fitConstant.a2),
             static_cast<float>(fitConstant.n1), static_cast<float>(fitConstant.n2),
@@ -9584,6 +9626,8 @@ void AcustraEngine::captureTail(Voice& voice) noexcept
     voice.tailHandIntrinsicHighLoss = fretHighLoss(baseHighLoss,
         tunedMidiFrequency(voice.openMidi), voice.pitchGeometry.valid
             ? voice.pitchGeometry.value.lossDesignFrequency : 0.0f);
+    voice.tailWasPicked = voice.played && voice.attackFired && !voice.excitationSoft;
+    voice.tailHandCutoff = stringLossCutoff(age, physicalCalibration_.highLossCutoffScale);
     voice.tailHandPressure = voice.tailCapturedHandPressure = palmMute_;
     for (int plane = 0; plane < 2; ++plane)
     {
@@ -9604,6 +9648,16 @@ void AcustraEngine::updateTailHandLoss(Voice& voice) noexcept
     if (!voice.tailActive || palmMute_ == voice.tailHandPressure)
         return;
     voice.tailHandPressure = palmMute_;
+    const float pickPressure = voice.tailWasPicked ? palmMute_ : 0.0f;
+    if (voice.tailWasPicked)
+    {
+        const float pole = stringLossPole(voice.tailHandCutoff, pickPressure);
+        for (auto* loop : { &voice.tailLoop, &voice.tailParallelLoop })
+        {
+            loop->lowpassCoefficient = pole;
+            loop->lossFilter.configureRate(pole, sampleRate_);
+        }
+    }
     if (palmMute_ == voice.tailCapturedHandPressure)
     {
         voice.tailLoop.setLoopGain(voice.tailCapturedLoopGain[0]);
@@ -9622,11 +9676,7 @@ void AcustraEngine::updateTailHandLoss(Voice& voice) noexcept
             + palmMute_ * (std::log(0.080f) - std::log(4.0f)))
         : 0.0f;
     const float highLoss = voice.tailHandIntrinsicHighLoss;
-    const float mutedHighLoss = handRate > 0.0f
-        ? clamp(1.0f - (1.0f - highLoss) * std::pow(0.001f,
-              (1.0f / 0.62f - 1.0f) * handRate
-              / std::max(voice.tailHandFrequency, 1.0f)), 0.0f, 0.95f)
-        : highLoss;
+    const float mutedHighLoss = palmHighLoss(highLoss, handRate, pickPressure, voice.tailHandFrequency);
     float fundamentalT60 = voice.tailHandIntrinsicT60;
     if (handRate > 0.0f)
         fundamentalT60 = 1.0f / (1.0f / fundamentalT60 + handRate);
@@ -14579,7 +14629,16 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
     // The last two sections follow the construction: the dip at its air
     // mode and the dip at its mid-band peak (MicrophoneBalanceData.h), each
     // flat when its frequency is not known.
-    constexpr double doublePi = 3.141592653589793238462643383279502884;
+    const auto peakSection = [sampleRate](double hz, double gainDb, double q)
+    {
+        const double a = std::pow(10.0, gainDb / 40.0);
+        const double omega = 2.0 * piDouble * hz / sampleRate;
+        const double cosine = std::cos(omega);
+        const double alpha = std::sin(omega) / (2.0 * q);
+        const double a0 = 1.0 + alpha / a;
+        return std::array<double, 5> { (1.0 + alpha * a) / a0, -2.0 * cosine / a0,
+            (1.0 - alpha * a) / a0, -2.0 * cosine / a0, (1.0 - alpha / a) / a0 };
+    };
     for (int index = 0; index < sections; ++index)
     {
         const auto slot = static_cast<std::size_t>(index);
@@ -14601,26 +14660,16 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
             : detail::balancedOriginalCaptureSection(
                   detail::captureVoicingSections[slot]);
         const auto kind = section.kind;
-        const double frequency = section.frequencyHz;
-        const double gainDb = section.gainDb;
-        const double q = section.q;
-        const double amplitude = std::pow(10.0, gainDb / 40.0);
-        const double omega = 2.0 * doublePi * frequency / sampleRate;
-        const double cosine = std::cos(omega);
-        const double alpha = std::sin(omega) / (2.0 * q);
         if (kind == detail::CaptureVoicingKind::Peak)
         {
-            const double a0 = 1.0 + alpha / amplitude;
-            coefficients[slot] = {
-                (1.0 + alpha * amplitude) / a0,
-                -2.0 * cosine / a0,
-                (1.0 - alpha * amplitude) / a0,
-                -2.0 * cosine / a0,
-                (1.0 - alpha / amplitude) / a0
-            };
+            coefficients[slot] = peakSection(section.frequencyHz, section.gainDb, section.q);
         }
         else
         {
+            const double amplitude = std::pow(10.0, static_cast<double>(section.gainDb) / 40.0);
+            const double omega = 2.0 * piDouble * section.frequencyHz / sampleRate;
+            const double cosine = std::cos(omega);
+            const double alpha = std::sin(omega) / (2.0 * section.q);
             const bool low = kind == detail::CaptureVoicingKind::LowShelf;
             const double direction = low ? 1.0 : -1.0;
             const double slope = 2.0 * std::sqrt(amplitude) * alpha;
@@ -14636,6 +14685,27 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
             };
         }
     }
+    openMid = coefficients[palmMidSection];
+    mutedMid = peakSection(770.0, 4.5, 1.1);
+    openGain = gain;
+}
+
+void AcustraEngine::BodyBank::CaptureFilter::setPalmPickPressure(float pressure) noexcept
+{
+    static_assert(detail::captureVoicingSections[palmMidSection].kind == detail::CaptureVoicingKind::Peak
+        && detail::captureVoicingSections[palmMidSection].frequencyHz == 500.0f);
+    // With the heel down the archived Pick has too little 500 Hz–1 kHz
+    // body against the released 1.3.3 recording. Move the existing 500 Hz
+    // cut toward a broad 770 Hz lift, retaining the section's history.
+    // The normalized second-order stable denominator region is convex.
+    const double mix = pressure * (2.0 - pressure);
+    // Compensate the microphone lift in the saved mix. At the archived
+    // half-palm gesture, a 3 dB full-pressure trim removes about 2.3 dB.
+    constexpr double fullMuteMicGain = 0.7079457843841379;
+    gain = static_cast<float>(openGain * (1.0 + mix * (fullMuteMicGain - 1.0)));
+    auto& section = coefficients[palmMidSection];
+    for (std::size_t i = 0; i < section.size(); ++i)
+        section[i] = openMid[i] + mix * (mutedMid[i] - openMid[i]);
 }
 
 void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept

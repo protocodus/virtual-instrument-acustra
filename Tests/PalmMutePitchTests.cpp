@@ -27,16 +27,18 @@ struct AcustraEngineTestAccess
     };
     static State state(int string, int fret, double rate, float slide,
                        float member, float attackCents, float pressure,
-                       float age = 0.15f)
+                       float age = 0.15f, PickingTechnique technique = PickingTechnique::Finger)
     {
         auto engine = std::make_unique<AcustraEngine>();
         EngineParameters parameters;
         parameters.stringAge = age;
+        parameters.picking = technique;
         engine->setParameters(parameters);
         engine->prepare(rate, 64);
         engine->setLowerZoneMemberCount(15);
         auto& voice = engine->voices_[static_cast<std::size_t>(string)];
-        voice.played = voice.keyDown = voice.mpeMember = true;
+        voice.played = voice.keyDown = voice.mpeMember = voice.attackFired = true;
+        voice.excitationSoft = technique != PickingTechnique::Pick;
         voice.midiChannel = 2;
         voice.midiNote = voice.openMidi + fret;
         voice.attackPitchCents = attackCents;
@@ -68,6 +70,54 @@ struct AcustraEngineTestAccess
         result.frequency = rate / voice.contactPeriodSamples;
         return result;
     }
+    static bool pressureFollowsThePlayedPick(double rate)
+    {
+        auto engine = std::make_unique<AcustraEngine>();
+        EngineParameters parameters;
+        parameters.picking = PickingTechnique::Pick;
+        engine->setParameters(parameters);
+        engine->setPalmMutePressure(0.57f);
+        engine->prepare(rate, 64);
+        std::array<float, 64> left {}, right {};
+        auto& voice = engine->voices_[0];
+        engine->noteOn(40, 0.80f);
+        engine->process(left.data(), right.data(), 64);
+        if (!voice.played || !voice.attackFired)
+            return false;
+        const float pickedPole = voice.loops[0].lowpassCoefficient;
+        parameters.picking = PickingTechnique::Finger;
+        engine->setParameters(parameters);
+        engine->process(left.data(), right.data(), 64);
+        if (voice.loops[0].lowpassCoefficient != pickedPole)
+            return false;
+        // Retain that actual Pick, strike the same string with the finger,
+        // then lift and reapply the heel to the old picked state.
+        engine->captureTail(voice);
+        engine->palmMute_ = 0.0f;
+        engine->updateTailHandLoss(voice);
+        const float lifted = voice.tailLoop.lowpassCoefficient;
+        engine->palmMute_ = 0.57f;
+        engine->updateTailHandLoss(voice);
+        if (voice.tailLoop.lowpassCoefficient != pickedPole
+            || voice.tailParallelLoop.lowpassCoefficient != pickedPole || lifted >= pickedPole)
+            return false;
+        engine->noteOff(40);
+        engine->noteOn(40, 0.80f);
+        engine->process(left.data(), right.data(), 64);
+        if (!voice.attackFired || !voice.excitationSoft || voice.loops[0].lowpassCoefficient != lifted)
+            return false;
+        engine->noteOn(40, 0.80f, 1, 128);
+        parameters.picking = PickingTechnique::Pick;
+        engine->setParameters(parameters);
+        engine->process(left.data(), right.data(), 64);
+        if (voice.loops[0].lowpassCoefficient != lifted)
+            return false;
+        engine->process(left.data(), right.data(), 64);
+        engine->process(left.data(), right.data(), 64);
+        return voice.attackFired && !voice.excitationSoft
+            && voice.loops[0].lowpassCoefficient == pickedPole;
+    }
+
     // The played string's coupled detune once the palm has moved from where
     // the note was struck to where it is held, and settled there.
     static float settledDetune(int note, float struck, float held)
@@ -186,6 +236,36 @@ void testHandLossKeepsItsTimeScaleOnBendsAndRetainedWaves()
     expect(worstTailError < 0.02, "the retained wave uses a different hand loss");
 }
 
+void testPickedHeelAbsorbsTheUpperStringAndFollowsItsRetainedWave()
+{
+    using Access = acustra::AcustraEngineTestAccess;
+    using Picking = acustra::PickingTechnique;
+    double leastTrebleLoss = 1e6, worstTailError = 0.0;
+    for (double rate : { 8000.0, 44100.0, 48000.0, 96000.0, 192000.0 })
+        expect(Access::pressureFollowsThePlayedPick(rate),
+               "palm loss changed technique before the next stroke physically landed");
+    for (double rate : { 44100.0, 48000.0, 96000.0, 192000.0 })
+    {
+        const auto pick = Access::state(1, 2, rate, 0, 0, 0, 0.57f, 0.2f, Picking::Pick);
+        const auto finger = Access::state(1, 2, rate, 0, 0, 0, 0.57f, 0.2f, Picking::Finger);
+        expect(pick.dry.highMix == finger.dry.highMix && pick.dry.highPole == finger.dry.highPole,
+               "an unmuted Pick acquired a different loss shelf");
+        const double upper = decay(pick.held, pick.frequency, 57, rate)
+            - decay(finger.held, finger.frequency, 57, rate);
+        const double middle = decay(pick.held, pick.frequency, 6, rate)
+            - decay(finger.held, finger.frequency, 6, rate);
+        leastTrebleLoss = std::min(leastTrebleLoss, upper - middle);
+        for (int partial : { 1, 6, 57 })
+            worstTailError = std::max(worstTailError, std::abs(
+                decay(pick.held, pick.frequency, partial, rate)
+                - decay(pick.tail, pick.frequency, partial, rate)));
+    }
+    std::cout << "Picked B2 heel, upper vs mid excess decay " << leastTrebleLoss
+              << " dB/s, maximum held vs retained error " << worstTailError << " dB/s\n";
+    expect(leastTrebleLoss > 30.0, "the palm did not absorb the high picked string selectively");
+    expect(worstTailError < 0.02, "the captured Pick stopped following the palm");
+}
+
 void testAPalmThatMovesLeavesTheStringTunedForWhereItRests()
 {
     // The coupled pair is tuned on the palm's target and solves once per
@@ -261,6 +341,7 @@ int main()
 {
     testSlideAndPhysicalFretHaveTheSameHandLoss();
     testHandLossKeepsItsTimeScaleOnBendsAndRetainedWaves();
+    testPickedHeelAbsorbsTheUpperStringAndFollowsItsRetainedWave();
     testAPalmThatMovesLeavesTheStringTunedForWhereItRests();
     testAMovingPalmIsBlockPartitionInvariant();
     if (failures == 0) std::cout << "Palm-mute pitch tests passed\n";
