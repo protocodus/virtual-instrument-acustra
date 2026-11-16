@@ -32,6 +32,8 @@ struct AcustraEngineTestAccess
     using Loop = AcustraEngine::StringLoop;
     static void condition(Loop& loop, float position, bool stopVelocity = false)
     { AcustraEngine::conditionRepluckContact(loop, position, stopVelocity); }
+    static void conditionHold(Loop& loop, float position, float engagement)
+    { AcustraEngine::conditionRepluckContact(loop, position, true, engagement); }
     static std::array<double, 2> work(const Loop& fresh, const Loop& previous,
                                      float* increments = nullptr)
     { return AcustraEngine::repluckIncrementWork(fresh, previous, increments); }
@@ -569,6 +571,49 @@ std::array<double, 24> filterMemory(const Access::Loop& loop)
         loop.secondDispersion.y1, loop.appliedReleaseGain };
 }
 
+double contactMotion(const Access::Loop& loop, float position)
+{
+    const int length = static_cast<int>(std::ceil(loop.currentDelay)) + 1;
+    auto advanced = loop;
+    for (int age = 0; age < length; ++age)
+        advanced.delay[loopIndex(advanced, age)]
+            = loop.delay[loopIndex(loop, (age + length - 1) % length)];
+    return advanced.displacementAt(position) - loop.displacementAt(position);
+}
+
+void checkCompliantFingerHold(const Access::Loop& original, const Access::Loop& held,
+                              float position)
+{
+    const double incomingDisplacement = original.displacementAt(position);
+    const double incomingMotion = contactMotion(original, position);
+    const double incomingEnergy = slopeEnergy(original);
+    const double rigidRemoval = incomingEnergy - slopeEnergy(held);
+    for (float engagement : { 0.0f, 0.05f, 0.35f, 0.8f, 1.0f })
+    {
+        auto partial = original;
+        Access::conditionHold(partial, position, engagement);
+        const double retained = 1.0 - engagement;
+        expect(std::abs(partial.displacementAt(position) - retained * incomingDisplacement) < 2.0e-6,
+               "a soft fingertip grasp removed the wrong fraction of local displacement");
+        expect(std::abs(contactMotion(partial, position) - retained * incomingMotion) < 2.0e-6,
+               "a soft fingertip grasp removed the wrong fraction of local motion");
+        // The constrained component is orthogonal to the surviving wave in
+        // the cyclic slope norm. Its amplitude retains (1-g), its energy (1-g)^2.
+        const double expectedRemoval = (1.0 - retained * retained) * rigidRemoval;
+        const double removal = incomingEnergy - slopeEnergy(partial);
+        expect(removal >= -2.0e-6 * incomingEnergy
+                   && std::abs(removal - expectedRemoval) <= 2.0e-6 * incomingEnergy,
+               "a soft fingertip grasp changed energy outside its contact correction");
+        if (engagement == 0.0f || engagement == 1.0f)
+        {
+            const auto& endpoint = engagement == 0.0f ? original : held;
+            expect(std::equal(partial.delay.begin(), partial.delay.end(), endpoint.delay.begin())
+                       && partial.derivativeCrossesContact == endpoint.derivativeCrossesContact,
+                   "open or rigid fingertip contact changed its endpoint wave or observer state");
+        }
+    }
+}
+
 void testRingingContactIsPassiveAtTheActualFractionalPoint()
 {
     constexpr double twoPi = 6.2831853071795864769;
@@ -636,13 +681,9 @@ void testRingingContactIsPassiveAtTheActualFractionalPoint()
                            "contact changed samples outside the retained wave period");
                     auto held = original;
                     Access::condition(held, position, true);
-                    auto advanced = held;
-                    for (int age = 0; age < length; ++age)
-                        advanced.delay[loopIndex(advanced, age)]
-                            = held.delay[loopIndex(held, (age + length - 1) % length)];
+                    checkCompliantFingerHold(original, held, position);
                     expect(std::abs(held.displacementAt(position)) < 2.0e-6
-                               && std::abs(advanced.displacementAt(position)
-                                           - held.displacementAt(position)) < 2.0e-6,
+                               && std::abs(contactMotion(held, position)) < 2.0e-6,
                            "preceding hold left local displacement or ideal one-frame motion");
                     expect(slopeEnergy(held) <= before * (1.0 + 2.0e-6),
                            "stopping local contact motion added cyclic slope energy");
