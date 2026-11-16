@@ -42,6 +42,17 @@ struct AcustraEngineTestAccess
     { AcustraEngine::mergeRepluckLoop(fresh, previous, gain, increments); }
     static double gaussianStep(double argument, bool nearestRounding)
     { return AcustraEngine::gaussianReleaseStep(argument, nearestRounding); }
+    static float chordGrip(AcustraEngine& engine, PickingTechnique technique, float velocity,
+                           float length, int stringIndex, float palm = 0.0f, bool sweep = false)
+    {
+        engine.parameters_.picking = technique;
+        engine.palmMute_ = palm;
+        auto& voice = engine.voices_[static_cast<std::size_t>(stringIndex)];
+        voice.speakingLengthMetres = length;
+        voice.tensionNewtons = 70.0f;
+        voice.strumming = sweep;
+        return engine.chordRepluckEngagement(voice, stringIndex, 0.25f, velocity, 0.648f);
+    }
     static std::array<Loop, 2> sounding(const AcustraEngine& engine, int string = 0)
     { return engine.voices_[static_cast<std::size_t>(string)].loops; }
     static std::array<Loop, 2> retained(const AcustraEngine& engine)
@@ -612,6 +623,35 @@ void checkCompliantFingerHold(const Access::Loop& original, const Access::Loop& 
                    "open or rigid fingertip contact changed its endpoint wave or observer state");
         }
     }
+}
+
+void testChordContactFollowsThePluckingTool()
+{
+    using Technique = acustra::PickingTechnique;
+    auto engine = std::make_unique<acustra::AcustraEngine>();
+    const auto pick = [&](float velocity, float palm = 0.0f)
+    {
+        return Access::chordGrip(*engine, Technique::Pick, velocity, 0.40f, 4, palm);
+    };
+    const float lightPick = pick(0.70f);
+    const float mediumPick = pick(0.84f);
+    expect(lightPick > 0.0f && lightPick < mediumPick && mediumPick < 1.0f,
+           "the picked chord grip should yield more on a lighter stroke");
+    expect(pick(113.0f / 127.0f) == 1.0f && pick(0.70f, 0.70f) == 1.0f,
+           "hard and palm-muted picked chords must retain the firm catch");
+    const float lightThumb = Access::chordGrip(*engine, Technique::Thumb, 0.4f, 0.40f, 4);
+    const float firmThumb = Access::chordGrip(*engine, Technique::Thumb, 0.9f, 0.40f, 4);
+    expect(lightThumb > 0.0f && lightThumb < firmThumb && firmThumb < 1.0f,
+           "the thumb pad must stay compliant as it firms up with load");
+    expect(Access::chordGrip(*engine, Technique::Finger, 0.7f, 0.648f, 3) == 1.0f
+        && Access::chordGrip(*engine, Technique::Finger, 0.7f, 0.32f, 3) < 1.0f,
+           "the finger pad should catch a short fretted wound string more softly");
+    const float length = 0.648f;
+    const float stringStiffness = 70.0f / (length * 0.25f * (1.0f - 0.25f));
+    const float expectedPinch = 100.0f / (100.0f + stringStiffness);
+    expect(Access::chordGrip(*engine, Technique::Finger, 0.7f, length, 4) == expectedPinch
+        && Access::chordGrip(*engine, Technique::Finger, 0.7f, length, 4, 0.0f, true) == 1.0f,
+           "the plain-string pinch and the low-position sweep use different grips");
 }
 
 void testRingingContactIsPassiveAtTheActualFractionalPoint()
@@ -1208,6 +1248,7 @@ int main()
     testContinuousCommandForceAndMemory();
     testIndependentRateAndBlockInvariantSequence();
     testScheduledEqualVelocityRepeatUsesItsReleaseSample();
+    testChordContactFollowsThePluckingTool();
     testRingingContactIsPassiveAtTheActualFractionalPoint();
     testContactActsOnTheReleasedRepeatAndPreservesOtherCaptures();
     testElapsedRepeatUsesOnePhysicalStringPort();

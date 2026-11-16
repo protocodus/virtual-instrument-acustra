@@ -2039,6 +2039,8 @@ private:
                     bool sustained, float releaseVelocity = -1.0f,
                     bool immediateRelease = false) noexcept;
     void captureTail(Voice& voice) noexcept;
+    float chordRepluckEngagement(const Voice& voice, int stringIndex, float position,
+                                 float velocity, float openLength) const noexcept;
     // Remove the contact-coupled static displacement from a retained wave.
     // Orthogonal in the sampled delay-line slope norm; filter memories and
     // already emitted travelling contact waves remain unchanged.

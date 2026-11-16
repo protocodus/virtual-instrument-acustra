@@ -8982,20 +8982,8 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // either pass's arithmetic or adding delay-sized storage.
         const std::array<float*, 2> increments {
             pickReleaseDisplacement_.data(), pickReleaseVelocity_.data() };
-        float engagement = 1.0f;
-        if (fullSoftSlip && fingerChord && !voice.strumming && stringIndex >= 4)
-        {
-            // On a pinched plain treble string the soft pad yields as it
-            // catches the previous vibration. At x = pL the string presents
-            // T / (L p (1-p)) transverse stiffness. Two springs sharing the
-            // deflection give the fraction below. Applying it to both contact
-            // constraints approximates a partly engaged grip at release.
-            // The effective pad stiffness is voiced against released 1.3.3.
-            constexpr float padStiffness = 100.0f; // N/m
-            const float stringStiffness = voice.tensionNewtons
-                / (soundingLength * position * (1.0f - position));
-            engagement = padStiffness / (padStiffness + stringStiffness);
-        }
+        const float engagement = fingerChord
+            ? chordRepluckEngagement(voice, stringIndex, position, v, scaleLength) : 1.0f;
         for (int plane = 0; plane < 2; ++plane)
         {
             auto& previous = repluckOldLoops_[static_cast<std::size_t>(plane)];
@@ -9233,6 +9221,45 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
         voice.tailRetiring = true;
     configureVoice(voice, stringIndex, voice.openMidi, clearDelay, false,
                    !clearDelay);
+}
+
+float AcustraEngine::chordRepluckEngagement(const Voice& voice, int stringIndex, float position,
+                                           float velocity, float openLength) const noexcept
+{
+    // A string stopped at pL has transverse stiffness T / (L p (1-p)).
+    // The two springs share the contact displacement. These effective grip
+    // values were voiced on repeated chords against the released instrument.
+    const float length = voice.speakingLengthMetres;
+    const float stringStiffness = voice.tensionNewtons / (length * position * (1.0f - position));
+    const auto finiteGrip = [stringStiffness](float stiffness)
+    {
+        return stiffness / (stiffness + stringStiffness);
+    };
+    const auto smooth = [](float fraction)
+    {
+        const float x = std::clamp(fraction, 0.0f, 1.0f);
+        return x * x * (3.0f - 2.0f * x);
+    };
+    if (parameters_.picking == PickingTechnique::Pick)
+    {
+        // The edge flexes on light strokes and seats firmly on hard ones.
+        // Palm damping also brings the vibrating string to a firm catch.
+        const float lightStroke = smooth((0.88f - velocity) / 0.08f);
+        const float freeHand = std::clamp(1.0f - 2.0f * palmMute_, 0.0f, 1.0f);
+        return 1.0f - freeHand * lightStroke * stringStiffness / (300.0f + stringStiffness);
+    }
+    if (parameters_.picking == PickingTechnique::Thumb)
+    {
+        const float stiffness = 330.0f + 1900.0f * velocity * velocity * velocity * velocity;
+        return finiteGrip(stiffness);
+    }
+    // Keep the existing B/high-E fingertip pinch. On the other chord
+    // contacts fade pad compliance in as the stopped string gets shorter.
+    if (!voice.strumming && stringIndex >= 4)
+        return finiteGrip(100.0f);
+    const float shortening = 1.0f - length / openLength;
+    const float mix = smooth((shortening - 0.16f) / 0.30f);
+    return 1.0f + mix * (finiteGrip(300.0f) - 1.0f);
 }
 
 void AcustraEngine::conditionRepluckContact(StringLoop& loop,
