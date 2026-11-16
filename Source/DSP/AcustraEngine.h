@@ -2174,7 +2174,7 @@ private:
     void startNote(int stringIndex, int harmonic, int midiNote, float velocity,
                    int midiChannel, int delaySamples, bool strumMember,
                    const PickingGesture* capturedGesture = nullptr,
-                   float capturedParallelSign = 1.0f) noexcept;
+                   float capturedParallelSign = 1.0f, bool fingerChord = false) noexcept;
     void muteVacatedString(Voice& voice, int stringIndex) noexcept;
     void rememberFinger(int stringIndex, bool fingerWasDown = false) noexcept;
     void releaseFinger(int stringIndex) noexcept;

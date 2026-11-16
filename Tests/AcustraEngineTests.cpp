@@ -1,3 +1,4 @@
+#include "Fixtures/PluckForceReference.h"
 #include "DSP/AcustraEngine.h"
 #include "DSP/ConstructionLoudnessData.h"
 #include "DSP/MeasuredBodyData.h"
@@ -5872,15 +5873,16 @@ void testPickingChangesTheContactWithoutRetuningOrReplucking()
         expect(heldForce(pick) > heldForce(thumb)
                    && pick.peakDisplacement > 0.0 && thumb.peakDisplacement > 0.0,
                "pick/thumb did not retain their held force and released waves");
-        // The legacy Pick shares Finger's independently observed force/noise
-        // law. The 2026-10-15 refinement halves only the Pick's roughness;
-        // retain the former assertion and tolerance with its switch off,
-        // then check the selected default against that same Finger reference.
-        const double expectedLegacyPick = finger.noiseEnvelope;
+        // The Finger burst gives an independent reading of the same noise
+        // excitation. Account for each technique's calibrated stroke force
+        // before checking the separate half-amplitude roughness switch.
+        const double expectedLegacyPick = finger.noiseEnvelope
+            * acustra::test::velocityLevel(velocity, PickingTechnique::Pick)
+            / acustra::test::velocityLevel(velocity, PickingTechnique::Finger);
         expect(std::abs(legacyPick.noiseEnvelope - expectedLegacyPick)
                    <= 1.0e-5 * std::max(expectedLegacyPick, 1.0e-3),
                "the legacy pick's contact burst did not follow the shared amplitude law");
-        const double expectedPick = 0.5 * finger.noiseEnvelope;
+        const double expectedPick = 0.5 * expectedLegacyPick;
         expect(std::abs(pick.noiseEnvelope - expectedPick)
                    <= 1.0e-5 * std::max(expectedPick, 1.0e-3),
                "the restrained pick's contact burst did not retain half the shared amplitude");
@@ -6102,8 +6104,7 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
         return (low.heldDisplacement / (0.92 + 0.08 * low.touch))
             / (high.heldDisplacement / (0.92 + 0.08 * high.touch));
     };
-    constexpr auto force = [](double v) { return v * (0.2 + 0.8 * v * v * (3.0 - 2.0 * v)); };
-    constexpr double expectedRatio = force(0.2) / force(0.8);
+    constexpr double expectedRatio = acustra::test::fingerForce(0.2) / acustra::test::fingerForce(0.8);
     expect(std::abs(forceRatio(responsiveLow, responsiveHigh)
                        - forceRatio(fixedLow, fixedHigh)) < 1.0e-6
                && std::abs(forceRatio(responsiveLow, responsiveHigh) - expectedRatio) < 1.0e-6,

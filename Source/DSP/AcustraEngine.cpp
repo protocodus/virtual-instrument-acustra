@@ -11215,6 +11215,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
     // same-string joins; a changed planned placement uses the caught-tail
     // refret below, preserving the old wave while the new string is plucked.
     const int sameSamplePlannedString = plannedString(midiNote, midiChannel);
+    const bool fingerChord = plannedCount_ >= 3 && sameSamplePlannedString >= 0;
     for (int string = 0; string < stringCount; ++string)
     {
         auto& voice = voices_[static_cast<std::size_t>(string)];
@@ -11237,7 +11238,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             // The released MIDI owner is gone, but this is still its
             // physical string. Cancel that key-up before taking a new owner.
             startNote(string, voice.harmonic, midiNote, velocity, midiChannel,
-                      delaySamples, strumMember, nullptr, singleStrokeSign);
+                      delaySamples, strumMember, nullptr, singleStrokeSign, fingerChord);
             return;
         }
         if (voice.played && voice.midiNote == midiNote
@@ -11249,7 +11250,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             voice.strumming = strumMember;
             voice.pluckParallelSign = strumMember ? strumParallelSign_ : singleStrokeSign;
             voice.pluckGesture = strumMember ? strumGesture_ : PickingGesture {};
-            voice.pluckGesture.fingerChord = plannedCount_ >= 3 && sameSamplePlannedString >= 0;
+            voice.pluckGesture.fingerChord = fingerChord;
             voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
             voice.repluckPending = true;
             // The key is down again before the pick came: its key-up is
@@ -11310,7 +11311,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             return;
     }
     startNote(string, harmonic, midiNote, velocity, midiChannel, delaySamples,
-              strumMember, nullptr, singleStrokeSign);
+              strumMember, nullptr, singleStrokeSign, fingerChord);
 }
 
 bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
@@ -11505,7 +11506,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
                               float velocity, int midiChannel,
                               int delaySamples, bool strumMember,
                               const PickingGesture* capturedGesture,
-                              float capturedParallelSign) noexcept
+                              float capturedParallelSign, bool fingerChord) noexcept
 {
     auto& voice = voices_[static_cast<std::size_t>(string)];
     releaseHeldShapeOwner(string);
@@ -11598,7 +11599,7 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
     voice.pluckGesture = capturedGesture != nullptr
         ? *capturedGesture : strumMember ? strumGesture_ : PickingGesture {};
     if (capturedGesture == nullptr)
-        voice.pluckGesture.fingerChord = plannedCount_ >= 3 && plannedString(midiNote, midiChannel) >= 0;
+        voice.pluckGesture.fingerChord = fingerChord;
     voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
     voice.repluckPending = continuing;
     voice.attackFired = continuing;

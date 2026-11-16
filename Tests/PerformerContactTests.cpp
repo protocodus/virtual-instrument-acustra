@@ -1,5 +1,6 @@
 // External finger work, pull-off geometry and independently timed Finger pairs.
 // The physical invariants are separate from the authored gesture magnitudes.
+#include "Fixtures/PluckForceReference.h"
 #include "DSP/AcustraPerformer.h"
 #include <algorithm>
 #include <array>
@@ -63,8 +64,7 @@ void workAndRates(){
             auto softer=engine(hammer,true,rate);Access::quiet(*softer);expect(softer->transitionNote(hammer?43:45,hammer?45:43,.4f),"contact fixture transition rejected");
             // Contact work is proportional to the square of the pluck's
             // commanded force. Both gestures follow the full velocity curve.
-            constexpr auto force = [](double v) { return v * (0.2 + 0.8 * v * v * (3.0 - 2.0 * v)); };
-            constexpr double forceRatio = force(0.4) / force(0.8);
+            constexpr double forceRatio = acustra::test::fingerForce(0.4) / acustra::test::fingerForce(0.8);
             constexpr double workRatio = forceRatio * forceRatio;
             expect(std::abs(Access::contactEnergy(*softer)/work-workRatio)<1e-6,
                    "independent finger work did not follow the pluck force law");

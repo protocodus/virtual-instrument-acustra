@@ -1,5 +1,6 @@
 // Finger uses the actual release slip; Thumb retains its nominal reference
 // ratio. Both keep force-sensitive brightness without fitting new parameters.
+#include "Fixtures/PluckForceReference.h"
 #include "DSP/AcustraEngine.h"
 #include "DSP/AcustraPerformer.h"
 #include "DSP/AcustraPresets.h"
@@ -16,14 +17,6 @@
 
 namespace acustra
 {
-namespace
-{
-double expectedForceScale(double velocity)
-{
-    return 0.2 + 0.8 * velocity * velocity * (3.0 - 2.0 * velocity);
-}
-}
-
 struct AcustraEngineTestAccess
 {
     static void redrawForce(AcustraEngine& engine)
@@ -79,7 +72,7 @@ struct AcustraEngineTestAccess
                 0.22), 0.72, 1.35) : 1.0;
         const double radius
             = (engine.parameters_.picking == PickingTechnique::Finger ? 0.25e-3 : 0.2e-3)
-            * boundaryScale * expectedForceScale(voice.velocity)
+            * boundaryScale * test::forceGain(voice.velocity, engine.parameters_.picking)
             * (engine.parameters_.picking == PickingTechnique::Finger
                 ? std::pow(double(voice.velocity), 0.233125)
                 : 1.0 / double(voice.velocity));
@@ -448,7 +441,9 @@ void testPlayableAudibleVelocityRange()
                                "velocity probes do not rise monotonically in emitted audio");
                     for (std::size_t v = 0; v < minimumSpan.size(); ++v)
                     {
-                        const double span = levels.back() - levels[v];
+                        const double velocity = double(velocities[v]) / 127.0;
+                        const double trimDb = 20.0 * std::log10(acustra::test::velocityLevel(velocity, technique));
+                        const double span = levels.back() - levels[v] + trimDb;
                         expect(span >= minimumSpan[v] && span <= maximumSpan[v],
                                "emitted velocity contrast left the playable RMS bounds");
                     }
@@ -480,7 +475,7 @@ void testDenseFloatingVelocityResponse()
             const auto contact = Access::continuousContact(*engine);
             const double normalized = contact.force
                 / ((0.92 + 0.08 * contact.touch) * double(velocity)
-                   * acustra::expectedForceScale(velocity));
+                   * acustra::test::forceGain(velocity, technique));
             if (index == 0)
                 reference = normalized;
             const double error = std::abs(normalized / reference - 1.0);

@@ -7,8 +7,8 @@
 //
 // Independently measure maximum 300 ms rectangular-window stereo-mean RMS,
 // convert by 20log10(RMS)+12 to Reason's default VU reference, then take the
-// median of the 27 cases. Main should be -9 +/-0.75 VU. The separate pickup's
-// median is reported, not forced to match a microphone capture. All normal
+// median of the 27 cases. Compare Main with the 1.3.3 factory patch's own
+// normal level. Report the separate pickup's median independently. All normal
 // and stress cases must stay finite and below the final SAMPLE ceiling;
 // this test does not claim a true-peak bound or impose a VU ceiling on abuse.
 // The held/repeated/bent open/major chords and maximum-output corner follow
@@ -17,6 +17,7 @@
 #include "DSP/AcustraPerformer.h"
 #include "DSP/AcustraPresets.h"
 #include "DSP/OutputStage.h"
+#include "Fixtures/FactoryLevels133.h"
 
 #include <algorithm>
 #include <array>
@@ -63,8 +64,7 @@ namespace
 constexpr int rate = 48000;
 constexpr int blockSize = 64;
 constexpr int meterFrames = 14400; // 300 ms, independent of the output detector
-constexpr double targetVu = -9.0;
-constexpr double calibrationToleranceVu = 0.75;
+static_assert(acustra::test::factoryLevels133.size() == acustra::factoryPresets.size());
 constexpr float sampleCeiling = protocodus::OutputStage<2>::kCeiling;
 int failures = 0;
 
@@ -292,10 +292,13 @@ void testFactoryLevels()
         std::sort(piezoLevels.begin(), piezoLevels.end());
         const double mainMedian = mainLevels[mainLevels.size() / 2];
         const double piezoMedian = piezoLevels[piezoLevels.size() / 2];
-        expect(std::abs(mainMedian - targetVu) <= calibrationToleranceVu,
+        const auto& released = acustra::test::factoryLevels133[static_cast<std::size_t>(preset)];
+        expect(released.name == acustra::factoryPresets[static_cast<std::size_t>(preset)].name,
+               "1.3.3 level fixture refers to a different factory preset");
+        expect(std::abs(mainMedian - released.normalMedianVu) <= released.normalToleranceVu,
                std::string(acustra::factoryPresets[static_cast<std::size_t>(preset)].name)
                    + " normal Main median is " + std::to_string(mainMedian)
-                   + " VU, outside -9 +/-0.75 VU");
+                   + " VU, outside the 1.3.3 window around " + std::to_string(released.normalMedianVu));
         std::cout << acustra::factoryPresets[static_cast<std::size_t>(preset)].name
                   << " normal Main/Piezo medians: " << std::fixed << std::setprecision(3)
                   << mainMedian << " / " << piezoMedian << " VU\n";

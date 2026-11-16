@@ -1,5 +1,6 @@
 // Independent force/geometry, filter and state contracts for the authored
 // coupling between Finger's release time and its existing contact burst.
+#include "Fixtures/PluckForceReference.h"
 #include "DSP/AcustraEngine.h"
 
 #include <algorithm>
@@ -37,7 +38,7 @@ struct AcustraEngineTestAccess
         // Independently apply Finger's authored radius response and point
         // compliance to the physical contact whose held force is above.
         const double velocity = v.velocity;
-        const double forceScale = 0.2 + 0.8 * velocity * velocity * (3.0 - 2.0 * velocity);
+        const double forceScale = acustra::test::forceGain(velocity);
         const double p = v.pluckPoint;
         const double boundary = std::clamp(std::pow(
             (v.speakingLengthMetres / 0.648) * p * (1.0 - p) / (0.18 * 0.82),

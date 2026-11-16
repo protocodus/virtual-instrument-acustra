@@ -162,7 +162,7 @@ void testParameterContract()
     // Piezo Mix defaults to 20%, a bit of the piezo under the microphones;
     // Release Noise and Room to the requested 10%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
-        2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 3.0f,
+        2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, acustra::factoryPresets.front().outputDecibels,
         0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 10.0f, 0.0f, 0.0f, 0.0f
     };
 

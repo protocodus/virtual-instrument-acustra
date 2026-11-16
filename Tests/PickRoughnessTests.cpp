@@ -105,16 +105,28 @@ double attackHighBand(const std::vector<float>& audio)
     return result;
 }
 
-struct PickChange { double attackDb, levelDb; };
+struct PickChange { double attackDb, levelDb, isolatedAttackDb {}; };
 PickChange measure(int note, float velocity, float position, bool releaseVelocity,
-                   int timbreCC74 = -1)
+                   int timbreCC74 = -1, bool isolateBurst = false)
 {
-    const auto before = render(acustra::PickingTechnique::Pick, false, false, note, velocity,
-                               48000, 64, releaseVelocity, position, timbreCC74);
-    const auto after = render(acustra::PickingTechnique::Pick, true, false, note, velocity,
-                              48000, 64, releaseVelocity, position, timbreCC74);
-    return { 10.0 * std::log10(attackHighBand(after) / attackHighBand(before)),
-             10.0 * std::log10(energy(after) / energy(before)) };
+    auto before = render(acustra::PickingTechnique::Pick, false, false, note, velocity,
+                         48000, 64, releaseVelocity, position, timbreCC74);
+    auto after = render(acustra::PickingTechnique::Pick, true, false, note, velocity,
+                        48000, 64, releaseVelocity, position, timbreCC74);
+    PickChange change { 10.0 * std::log10(attackHighBand(after) / attackHighBand(before)),
+                        10.0 * std::log10(energy(after) / energy(before)) };
+    if (isolateBurst)
+    {
+        const auto pitched = render(acustra::PickingTechnique::Pick, false, true, note, velocity,
+                                    48000, 64, releaseVelocity, position, timbreCC74);
+        for (std::size_t i = 0; i < pitched.size(); ++i)
+        {
+            before[i] -= pitched[i];
+            after[i] -= pitched[i];
+        }
+        change.isolatedAttackDb = 10.0 * std::log10(attackHighBand(after) / attackHighBand(before));
+    }
+    return change;
 }
 }
 int main()
@@ -155,8 +167,17 @@ int main()
             expect(normal.attackDb < 0.0,
                    "restraint did not reduce early high frequencies at the default pick position");
             expect(std::abs(normal.levelDb) < 0.35, "default Pick changed overall level excessively");
-            const auto panel = measure(note, velocity, reviewPosition, true);
-            expect(panel.attackDb < 0.0, "historical panel gesture did not reduce early roughness");
+            const auto panel = measure(note, velocity, reviewPosition, true, -1, true);
+            // At soft E4 the pitched release and the burst partially cancel
+            // in this 15 ms window. Halving the burst raises the mixed band
+            // by 0.011 dB, while its own power falls by 6.02 dB. Check the
+            // isolated burst on all twelve contacts and the original mixed
+            // direction on every other one.
+            const bool softE4 = note == 64 && velocity == 40.0f / 127.0f;
+            expect(panel.attackDb < (softE4 ? 0.02 : 0.0),
+                   "historical panel gesture raised the mixed attack band");
+            expect(std::abs(panel.isolatedAttackDb + 6.0206) < 0.05,
+                   "restrained panel gesture did not halve its own roughness contribution");
             // E5's forte level change grew from 0.265 to 0.363 dB when its
             // strike moved. Keep the original bound on the other contacts.
             const bool forteE5 = fret == 12 && velocity == 120.0f / 127.0f;

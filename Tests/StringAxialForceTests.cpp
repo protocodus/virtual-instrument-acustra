@@ -692,11 +692,10 @@ void lowRateAxialRingDecaysWithoutInput()
     auto engine=std::make_unique<Engine>();
     engine->setParameters(acustra::engineParameters(acustra::factoryPresets[6]));
     // The wound core's loss factor pinned at 1.9.46's 0.0175, the value these
-    // known nonpassive and already-passive designs were found at; 1.9.47's
-    // smaller shipping loss makes the G-string fit passive and would leave the
-    // scalar fallback untested.
+    // known nonpassive and already-passive designs were found at. Keeping
+    // this fixture independent of shipping voicing exercises the fallback.
     auto calibration=acustra::fittedPhysicalCalibration;
-    calibration.steelWoundBendingLoss=0.0175f;
+    calibration.steelWoundAxialLoss=0.0175f;
     engine->setPhysicalCalibration(calibration);
     engine->prepare(11025,64);
     Access::configure(*engine,3,0);
@@ -732,6 +731,42 @@ void lowRateAxialRingDecaysWithoutInput()
     expect(unchanged.lossGain==0.8059226274490356f
            &&unchanged.lossPole==0.14545254409313202f,
            "already-passive low-rate coefficients remain bit-identical");
+}
+
+// The objectionable Dreadnought and Jumbo partials follow the wound G from
+// open G to fretted A. Measure the first longitudinal mode after a single
+// impulse so the simultaneous transverse chord cannot hide an axial whistle.
+void woundGResonanceDecaysAtBothChordPitches()
+{
+    for (int fret : { 0, 2 })
+    {
+        constexpr int string = 3;
+        auto engine = played(true);
+        Access::configure(*engine, string, fret);
+        auto& voice = Access::voice(*engine, string);
+        voice.played = false;
+        auto& axial = voice.stringAxialForce;
+        axial.ringing = true;
+        axial.increment = 1.0f;
+        axial.countdown = 1;
+        const double frequency = 2551.0 * std::exp2(fret / 12.0);
+        constexpr int window = 384, delay = 960;
+        std::array<std::complex<double>, 2> mode {};
+        for (int sample = 0; sample < window + delay; ++sample)
+        {
+            const double force = Access::render(*engine, string);
+            const int offset = sample >= delay ? sample - delay : sample;
+            if (offset >= window)
+                continue;
+            const double hann = 0.5 - 0.5 * std::cos(2.0 * pi * (offset + 0.5) / window);
+            mode[sample >= delay ? 1 : 0] += hann * force
+                * std::polar(1.0, -2.0 * pi * frequency * sample / rate);
+        }
+        std::cout << "wound G fret " << fret << " early " << std::abs(mode[0])
+                  << ", late " << std::abs(mode[1]) << ", loss " << voice.axialLossFactor << '\n';
+        expect(std::abs(mode[0]) > 0.001 && std::abs(mode[1]) < 0.18 * std::abs(mode[0]),
+               "wound G axial mode must lose at least 15 dB in 20 ms at both chord pitches");
+    }
 }
 
 void invalidStretchDoesNotEnterAxialFeedback()
@@ -772,6 +807,7 @@ int main(int argc, char** argv)
 {
     longitudinalLossIsPassiveAcrossControls();
     lowRateAxialRingDecaysWithoutInput();
+    woundGResonanceDecaysAtBothChordPitches();
     invalidStretchDoesNotEnterAxialFeedback();
     if(argc>1 && std::string(argv[1])=="--passivity-only") return failures==0?0:1;
     uniformStretchIntegratesFractionalSlopeCrossings();
