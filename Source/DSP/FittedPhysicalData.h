@@ -94,7 +94,8 @@ struct PhysicalCalibration
     float steelWoundBendingLoss { 0.0f };
 };
 
-// At the default panel position the Finger is 149 mm from the bridge.
+// Before placing the hand relative to the soundhole, the default panel
+// gesture requests a Finger distance of 149 mm from the bridge.
 // The early picked archtop fit placed the hand at 60 mm, the later Eastman
 // flat-top fit at 141 mm. At 82 mm the median Jumbo treble H3/H1 is within
 // 2.2 dB of the released Rack 1.3.3 at equal controls (8.2 dB at 141 mm;

@@ -22,7 +22,7 @@ rewrites this table. Longer technique and repertoire renders are described in
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
 | 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -1.7 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -2.6 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -2.4 dBFS |
 | 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -2.3 dBFS |
 | 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -1.5 dBFS |
 | 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -1.5 dBFS |
@@ -38,6 +38,18 @@ Each entry is a source version in this repository; none has been published
 as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
+
+### 1.9.52 — 2026-11-16 — playing at the soundhole
+
+Pick, Thumb and Finger now strike at the soundhole or farther toward the
+neck, even on high frets. The minimum distance from the saddle depends on
+the body. It is 100 mm on Dreadnought, 105 mm on Auditorium and Jumbo, and
+110 mm on Parlor. Pluck Position, MPE timbre and variations between strokes move
+smoothly near the rim. Existing songs keep their Position automation and
+MIDI velocities. Strokes that used to land close to the saddle change tone
+as the same force is applied farther along the string. The heel still mutes
+by the saddle.
+[Geometry and validation](Docs/validation/soundhole-geometry-2026-11-16.md).
 
 ### 1.9.51 — 2026-11-15 — song-compatibility audition
 
@@ -999,7 +1011,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Room** | Small-studio reflections around the microphones, 0-100% (10% for a new instance); the piezo stays dry. |
 | **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
 | **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |
-| **Pluck Position** | The hand from bridgeward toward the neck, bending smoothly toward 0.36 of a short string. |
+| **Pluck Position** | Moves the hand from the bridge side of the soundhole toward the neck. Both knob and MPE follow the body’s minimum distance on every fret. |
 | **Touch** | Contact width, transient colour and brightness, and how fast every technique lets the string go. |
 | **Body Amount** | Scales microphone radiation. |
 | **Stereo Width** | The stereo pair toward mono. |
@@ -1187,11 +1199,10 @@ separates verified errors from accepted approximations.
   attack deficits change with layer and corpus. The historical aggregate is
   not a universal high-register loss ratio. Technique-matched release
   measurements and a listener-accepted attack remain future evidence needs.
-- The Finger's pluck point at the 12th to 20th fret sits at 0.32-0.34 of the
-  speaking length on the low E, A and D strings (near 1/3) and is eased to
-  0.30-0.31 on the three treble strings (1.9.15 and 1.9.50, both chosen by
-  ear); where a player's hand actually shifts on high-fret low-string notes is
-  unmeasured.
+- The high-fret Finger gesture was tuned by ear in 1.9.15 and 1.9.50.
+  The 1.9.52 soundhole limit moves the realized strike farther from the
+  bridge when that gesture would fall short of the rim. Where a player's
+  hand shifts on high-fret, low-string notes remains unmeasured.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
   real spread is not measured. A picked note's partials and brightness now

@@ -506,19 +506,13 @@ struct Strum
 Strum hardStrum(double rate, float velocity, float touch,
                 acustra::PickingTechnique picking = acustra::PickingTechnique::Finger,
                 double seconds = 2.5, int strokes = 0, float pluckPosition = 0.28f,
-                float driveScale = 1.0f, float handDistance = 1.0f)
+                float driveScale = 1.0f)
 {
     acustra::EngineParameters parameters;
     parameters.touch = touch;
     parameters.picking = picking;
     parameters.pluckPosition = pluckPosition;
     auto engine = std::make_unique<acustra::AcustraEngine>();
-    if (handDistance != 1.0f)
-    {
-        auto calibration = acustra::fittedPhysicalCalibration;
-        calibration.steel.pluckDistanceScale *= handDistance;
-        engine->setPhysicalCalibration(calibration);
-    }
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
     engine->setStringPerChannelMode(true);
@@ -1133,15 +1127,16 @@ void testPiezoHeadroom()
 // PiezoCircuitTests.cpp; they cover the nonlinear input stage itself.
 void testPiezoClipAliasing()
 {
-    // This fixture needs the original 32 mm contact: its sharp force
-    // peaks can clip U1B before U1A reaches its input limit.
-    constexpr float nearBridge = 0.40f / acustra::pickHandDistanceRatio;
+    // On the physical fretboard this chord at 80% Pluck Position reaches
+    // U1B before U1A at both rates and touches. This gives the isolated
+    // rail clip a real strum with the shipping hand geometry.
+    constexpr float pluckPosition = 0.8f;
     for (const float touch : { 0.58f, 1.0f })
     for (int rate : { 44100, 48000 })
     {
     constexpr float calibrationDrive = 0.5f;
     const auto linear = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
-                                   1.0, 0, 0.0f, calibrationDrive, nearBridge);
+                                   1.0, 0, pluckPosition, calibrationDrive);
     double railUse = 0.0, inputUse = 0.0;
     for (std::size_t i = 0; i < linear.drive.size(); ++i)
     {
@@ -1181,7 +1176,7 @@ void testPiezoClipAliasing()
     {
         const float overdrive = overdrives[driveIndex];
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
-                               1.0, 0, 0.0f, overdrive, nearBridge);
+                               1.0, 0, pluckPosition, overdrive);
         bool inputKneesHidden = true;
         for (std::size_t i = 0; i < strum.drive.size(); ++i)
             inputKneesHidden = inputKneesHidden && std::isfinite(strum.freeDrive[i])
@@ -1259,7 +1254,7 @@ void testPiezoClipAliasing()
             + ", Touch " + std::to_string(touch);
         expect(strum.finiteCircuit && strum.followerPeak <= Design::commonModeLimit,
                "overdriven piezo has non-finite states or exceeds U1A's physical follower range, " + label);
-        expect(clipped > 0, "the Pick at the bridge driven harder does not clip the piezo preamp, "
+        expect(clipped > 0, "the overdriven Pick strum does not clip the piezo preamp, "
                                 + label);
         if (isolated)
         {
@@ -1277,7 +1272,7 @@ void testPiezoClipAliasing()
             }
         }
         std::cout << (isolated ? "Piezo isolated clip aliasing, " : "Piezo combined-circuit/free-clip error, ")
-                  << "Pick at velocity 127 at the bridge, " << label << ": "
+                  << "Pick at velocity 127 and 80% Pluck Position, " << label << ": "
                   << aliasDb << " dB, below 0.25 fs " << lowDb << " dB; passband "
                   << passbandDb << " dB vs bare " << passbandBareDb << " dB; a bare clip "
                   << bareDb << " dB (" << double(clipped) / factor

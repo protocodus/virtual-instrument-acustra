@@ -54,11 +54,11 @@ inline constexpr std::array<FactoryPreset, 8> factoryPresets {{
     { "Jumbo Steel Pick", "jumbo-steel-pick",
       BodyShape::Jumbo, BodyMaterial::Spruce, Tuning::Standard,
       PickingTechnique::Pick, CaptureType::StereoMic,
-      0.08f, 0.18f, 0.72f, 0.78f, 0.72f, 0.0f, 0.10f, 0.10f, 3.8f },
+      0.08f, 0.18f, 0.72f, 0.78f, 0.72f, 0.0f, 0.10f, 0.10f, 2.7f },
     { "Palm Muted Steel Pick", "palm-muted-steel-pick",
       BodyShape::Dreadnought, BodyMaterial::Mahogany, Tuning::Standard,
       PickingTechnique::Pick, CaptureType::StereoMic,
-      0.20f, 0.00f, 0.70f, 0.89f, 0.62f, 0.0f, 0.10f, 0.10f, 6.0f },
+      0.20f, 0.00f, 0.70f, 0.89f, 0.62f, 0.0f, 0.10f, 0.10f, 5.2f },
     { "DADGAD Mono Mic", "dadgad-mono-mic",
       BodyShape::Dreadnought, BodyMaterial::Mahogany, Tuning::Dadgad,
       PickingTechnique::Finger, CaptureType::MonoMic,
@@ -70,7 +70,7 @@ inline constexpr std::array<FactoryPreset, 8> factoryPresets {{
     { "Piezo Stage Steel", "piezo-stage-steel",
       BodyShape::Dreadnought, BodyMaterial::Spruce, Tuning::Standard,
       PickingTechnique::Pick, CaptureType::Piezo,
-      0.15f, 0.24f, 0.62f, 0.60f, 0.62f, 0.0f, 0.10f, 0.10f, 5.8f },
+      0.15f, 0.24f, 0.62f, 0.60f, 0.62f, 0.0f, 0.10f, 0.10f, 5.2f },
 }};
 
 inline EngineParameters engineParameters(const FactoryPreset& preset) noexcept

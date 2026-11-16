@@ -95,9 +95,6 @@ auto played(bool waves, bool axial = true, int fret = 12, float velocity = 0.9f)
     engine->setPerformanceRealism(realism);
     acustra::EngineParameters parameters;
     parameters.picking = acustra::PickingTechnique::Pick;
-    // The uniform-source witness was measured with the plectrum 77 mm
-    // from the saddle. At a third of the stopped string the third partial
-    // has a node and y_x² at 4 f0 no longer measures that source.
     parameters.pluckPosition = 0.24f;
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
@@ -219,14 +216,16 @@ void slowLimitIsKirchhoffCarrier()
 // A source uniform along the string reaches the saddle through the waves as
 // exactly beta times it at every frequency, as the uniform tension does, and
 // the rest of y_x^2 drives the longitudinal modes: a source shaped like mode
-// j at angular frequency w gives -beta q r^2 / (1 - r^2), r = w / w_j. On the
-// 12th-fret top E (f0 659 Hz, first mode 7.81 kHz) y_x^2 at 2 f0 and 4 f0 is
-// mostly uniform (each partial's own square), so the two forces agree there,
-// while the sum tones beside the first mode, 11 f0 and 12 f0, ring up.
-void wavesKeepTheUniformTension()
+// j at angular frequency w gives -beta q r^2 / (1 - r^2), r = w / w_j.
+// On open E and at fret 10 the actual pluck leaves a predominantly uniform
+// component at 2 f0 and 4 f0, and sum tones near the first longitudinal mode
+// at 11 f0 and 12 f0. At fret 12 the rim moves the attack near H3's node
+// and 4 f0 no longer isolates uniform tension. The independent prescribed
+// uniform source below exercises that exact fret regardless of hand position.
+void wavesKeepTheUniformTension(int fret)
 {
-    auto uniform = played(false);
-    auto waves = played(true);
+    auto uniform = played(false, true, fret);
+    auto waves = played(true, true, fret);
     constexpr int samples = static_cast<int>(0.5 * rate);
     std::vector<double> a(samples), b(samples);
     for (int sample = 0; sample < samples; ++sample)
@@ -236,7 +235,7 @@ void wavesKeepTheUniformTension()
         a[static_cast<std::size_t>(sample)] = Access::voice(*uniform, 5).stringAxialForce.force;
         b[static_cast<std::size_t>(sample)] = Access::voice(*waves, 5).stringAxialForce.force;
     }
-    const double f0 = 2.0 * topOpenFrequency;
+    const double f0 = std::exp2(fret / 12.0) * topOpenFrequency;
     // The strongest line within 60 Hz of a multiple of f0, 0.05-0.45 s,
     // through a Hann window.
     const auto line = [&] (const std::vector<double>& x, double near, double& at)
@@ -270,7 +269,7 @@ void wavesKeepTheUniformTension()
         const auto theirs = line(a, at, at);
         const double gainDb = 20.0 * std::log10(std::abs(ours) / std::abs(theirs));
         const double phase = std::abs(std::arg(ours / theirs)) * 180.0 / pi;
-        std::cout << "waves against uniform at " << multiple << " f0 (" << at << " Hz): "
+        std::cout << "waves against uniform at fret " << fret << ", " << multiple << " f0 (" << at << " Hz): "
                   << gainDb << " dB, " << phase << " degrees\n";
         if (multiple <= 4)
             expect(std::abs(gainDb) < 1.0 && phase < 15.0,
@@ -777,7 +776,8 @@ int main(int argc, char** argv)
     if(argc>1 && std::string(argv[1])=="--passivity-only") return failures==0?0:1;
     uniformStretchIntegratesFractionalSlopeCrossings();
     slowLimitIsKirchhoffCarrier();
-    wavesKeepTheUniformTension();
+    for (const int fret : { 0, 10 })
+        wavesKeepTheUniformTension(fret);
     uniformRetardedSourceKeepsUniformTension();
     ringIsTheLongitudinalString();
     ringsOutAndSwitchesOff();

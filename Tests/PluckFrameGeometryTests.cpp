@@ -15,7 +15,7 @@ struct AcustraEngineTestAccess
 {
     struct Release
     {
-        double point {}, period {};
+        double point {}, period {}, speakingLength {};
         std::array<std::vector<float>, 2> waves;
     };
     static Release release(const AcustraEngine& engine, int string)
@@ -24,6 +24,7 @@ struct AcustraEngineTestAccess
         Release result;
         result.point = voice.pluckPoint;
         result.period = voice.contactPeriodSamples;
+        result.speakingLength = voice.speakingLengthMetres;
         for (std::size_t plane = 0; plane < result.waves.size(); ++plane)
         {
             const auto& loop = voice.loops[plane];
@@ -67,7 +68,8 @@ double kinkSample(const std::vector<float>& wave)
 int main()
 {
     using Engine = acustra::AcustraEngine;
-    int above = 0, below = 0, cases = 0, unresolved = 0;
+    constexpr std::array rimMetres { 0.110, 0.105, 0.100, 0.105 };
+    int above = 0, nearRim = 0, cases = 0, unresolved = 0;
     double worst = 0.0;
     for (double rate : { 44100.0, 48000.0, 96000.0 })
         for (int shape = 0; shape < 4; ++shape)
@@ -126,10 +128,11 @@ int main()
                                 const double mapped = expected * release.period / release.waves[plane].size();
                                 const double observed = kinkSample(release.waves[plane]) / release.period;
                                 above += mapped > 0.60;
-                                below += mapped < 0.05;
+                                const double clearance = observed * release.speakingLength - rimMetres[shape];
+                                nearRim += clearance < 0.0508;
                                 const double error = std::abs(observed - expected);
                                 worst = std::max(worst, error);
-                                if (error > 0.0005)
+                                if (error > 0.0005 || clearance < -0.0005 * release.speakingLength)
                                 {
                                     if (failures < 12)
                                         std::fprintf(stderr, "Kink mismatch rate=%.0f shape=%d string=%d fret=%d timbre=%.0f bend=%.0f plane=%zu: %.9g vs %.9g\n",
@@ -140,12 +143,12 @@ int main()
                             }
                         }
         }
-    if (above < 10 || below < 10)
+    if (above < 10 || nearRim < 10)
     {
-        std::fprintf(stderr, "Frame-clamp coverage missing: %d above, %d below\n", above, below);
+        std::fprintf(stderr, "Frame coverage missing: %d above the old line clamp, %d within one radius of the rim\n", above, nearRim);
         ++failures;
     }
-    std::printf("Recovered release kink: %d resolved cases (%d overlapping endpoints), worst %.9g of string, %d above and %d below old numerical bounds, %d failures\n",
-                cases, unresolved, worst, above, below, failures);
+    std::printf("Recovered release kink: %d resolved cases (%d overlapping endpoints), worst %.9g of string, %d above old line clamp, %d within one radius of rim, %d failures\n",
+                cases, unresolved, worst, above, nearRim, failures);
     return failures == 0 ? 0 : 1;
 }

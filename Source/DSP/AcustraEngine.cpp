@@ -532,17 +532,37 @@ struct BodyGeometry
     float depth;
     float soundhole;
     float outline;
+    // Saddle to the bridge-facing rim, rounded up to clear the outer strings.
+    float soundholeNearEdge;
 
     constexpr float topArea() const noexcept { return outline * width * length; }
     constexpr float volume() const noexcept { return topArea() * depth; }
 };
 
 constexpr std::array<BodyGeometry, 4> steelStringBodies {{
-    { 0.343f, 0.467f, 0.108f, 0.1016f, 0.72f }, // Parlor
-    { 0.381f, 0.492f, 0.105f, 0.1016f, 0.72f }, // Auditorium
-    { 0.397f, 0.508f, 0.111f, 0.1016f, 0.75f }, // Dreadnought
-    { 0.432f, 0.533f, 0.124f, 0.1016f, 0.72f }  // Jumbo
+    { 0.343f, 0.467f, 0.108f, 0.1016f, 0.72f, 0.110f }, // Parlor
+    { 0.381f, 0.492f, 0.105f, 0.1016f, 0.72f, 0.105f }, // Auditorium
+    { 0.397f, 0.508f, 0.111f, 0.1016f, 0.75f, 0.100f }, // Dreadnought
+    { 0.432f, 0.533f, 0.124f, 0.1016f, 0.72f, 0.105f }  // Jumbo
 }};
+
+// See Docs/validation/soundhole-geometry-2026-11-16.md for the rim estimates.
+constexpr float normalPlanePluckOffset = -0.006f;
+
+float soundholePluckPoint(const BodyGeometry& body, float point, float length) noexcept
+{
+    // The normal wave starts slightly bridgeward of the contact centre.
+    // Reserve its offset as well. Within 25.4 mm of the rim, bend
+    // the position scale smoothly so adjacent knob/CC74 settings and
+    // individual takes still land at distinct points. At the join both
+    // the position and slope match the original mapping.
+    const float rim = body.soundholeNearEdge - normalPlanePluckOffset * length;
+    const float transition = 0.25f * body.soundhole;
+    const float gap = rim + transition - point * length;
+    if (gap <= 0.0f)
+        return point;
+    return (rim + transition * (transition / (transition + gap))) / length;
+}
 
 // Christensen and Vistisen, "Simple model for low-frequency guitar
 // function", J. Acoust. Soc. Am. 68(3) (1980) 758-766: the top plate is one
@@ -7006,6 +7026,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         voice.stringAxialForce.lineRewritten();
     }
     constexpr float scaleLength = 0.648f;
+    // Pitch automation can transpose beyond the fingerboard. Once the
+    // hand reaches its last fret, retain that physical string length for
+    // the contact geometry while the waveguide follows the requested pitch.
+    constexpr float lastFretLength = scaleLength * 0.31498026247f; // 2^(-20/12)
+    static_assert(fretCount == 20);
     // A natural harmonic is the open string vibrating in its nth mode, so the
     // waveguide runs at the open pitch and the mode number comes from the
     // released shape. voice.midiNote stays the requested note, which is what
@@ -7042,7 +7067,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f) / masterTuneRatio_,
             0.24f * static_cast<float>(sampleRate_) / masterTuneRatio_);
         const float length = slideInterval == 0.0f ? fretLength
-            : fretLength * fretFrequency / slideFrequency;
+            : std::max(lastFretLength, fretLength * fretFrequency / slideFrequency);
         vibratoInterval = vibratoSemitones(voice, length);
     }
     const float axialRigidity = stringAxialRigidity(stringIndex);
@@ -7079,7 +7104,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
             static_cast<float>(sampleRate_) / (activeDelaySamples() - 3.0f) / masterTuneRatio_,
             0.24f * static_cast<float>(sampleRate_) / masterTuneRatio_);
         const float soundingLength = slideInterval == 0.0f ? fretLength
-            : fretLength * fretFrequency / slideFrequency;
+            : std::max(lastFretLength, fretLength * fretFrequency / slideFrequency);
         // Apply the existing fret-decay calibration to the same fretting point,
         // including a fractional slide. Outside the playable fretboard retain
         // its nearest supported target rather than extrapolating the fit.
@@ -8079,12 +8104,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // 2.03 dB and keeps 0.02 (Tools/compare_reference_takes.py, since removed;
     // Docs/decisions.md, 2026-10-30).
     const float positionDraw = nextNoise(voice);
-    // MPE Timbre, CC74, on this note's own member channel says directly
-    // where the string was met (0-1 across the same 0.05-0.46 band the
-    // panel control reaches), in place of the panel's one hand position for
-    // every string. -1 is "no CC74 received this note", the panel's own
-    // distance-from-bridge law applies unchanged, and this is the only path
-    // reachable without a lower zone.
+    // CC74 on a member channel supplies this note's gesture in place of
+    // the shared panel position. Both go through the body's rim constraint.
+    // A member whose CC74 value is still -1 follows the panel.
     const std::size_t channelIndex
         = static_cast<std::size_t>(voice.midiChannel - 1);
     const bool hasTimbre = voice.mpeMember && voice.midiChannel >= 1
@@ -8131,21 +8153,9 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     float basePosition = hasTimbre
         ? 0.05f + 0.41f * mpeTimbre_[channelIndex]
         : distanceFromBridge / effectivePluckLength;
-    // A hand held at its distance from the bridge meets a short (stopped
-    // high on the neck) string ever further toward its middle, and a Thumb
-    // meets even the open strings there. No player lets a note sound from
-    // its own midpoint, where every even partial is nulled: the flat-top
-    // recordings' plain-string H2 stands 7 dB under H1 where renders plucked
-    // at the old band edge 0.46 stood 20 under. So past a quarter of the
-    // string the point bends smoothly toward 0.36 and never reaches it,
-    // p' = h - w^2 / (p - k + w), w = h - k: the same point and slope at the
-    // knee k = 0.25 and still rising wherever the hand moves. The hard
-    // 0.46 clamp this replaces, and a fold about the midpoint with a
-    // quarter-string floor, each left Pluck Position without effect on
-    // whole frets (the clamp a Thumb from the 11th fret up, the fold a
-    // Thumb at the 20th); the knee beat both, and a hard bound at 0.36, on
-    // the benchmark (Docs/decisions.md, 2026-09-30). CC74 still names any
-    // point of its published 0.05-0.46 band directly.
+    // Preserve the panel's established high-fret response before placing
+    // the hand on this body: beyond a quarter string it approaches 0.36
+    // with continuous slope. CC74 retains its own linear gesture range.
     const auto knee = [](float point)
     {
         constexpr float kneePoint = 0.25f;
@@ -8160,18 +8170,20 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // a pluck near the edge still varies from take to take. Clamping the
     // drawn point instead put every such pluck on exactly the edge.
     const float highestPoint = hasTimbre ? 0.46f : handLimit;
-    const float nominalPosition = clamp(basePosition, lowestPoint, highestPoint);
-    // The point the same hand meets the open string at, with no Finger
-    // easing (it acts only below the 4th fret's length): the reference the
-    // release amplitude is calibrated on.
-    const float openNominalPosition = hasTimbre
-        ? nominalPosition
+    const float nominalGesturePoint = clamp(basePosition, lowestPoint, highestPoint);
+    // The displacement/velocity fit was measured at this open-string
+    // gesture. It defines the applied hand force at the saved controls.
+    const float openGesturePoint = hasTimbre ? nominalGesturePoint
         : clamp(knee(distanceFromBridge / scaleLength), lowestPoint, handLimit);
-    float position = nominalPosition + takeOffset;
-    if (position > highestPoint)
-        position = 2.0f * highestPoint - position;
-    else if (position < lowestPoint)
-        position = 2.0f * lowestPoint - position;
+    float drawnPoint = nominalGesturePoint + takeOffset;
+    if (drawnPoint > highestPoint)
+        drawnPoint = 2.0f * highestPoint - drawnPoint;
+    else if (drawnPoint < lowestPoint)
+        drawnPoint = 2.0f * lowestPoint - drawnPoint;
+
+    const auto& body = targetBodyFor(parameters_.shape);
+    const float nominalPosition = soundholePluckPoint(body, nominalGesturePoint, soundingLength);
+    const float position = soundholePluckPoint(body, drawnPoint, soundingLength);
     voice.pluckPoint = position;
     voice.repluckContactPending = false;
     // Freeze the two transport paths at contact. D=2L/c, x=pL, hence the
@@ -8304,26 +8316,18 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     voice.lastPluckMidiChannel = voice.midiChannel;
     voice.lastPluckVelocity = v;
     voice.lastPluckSample = sampleClock_;
-    // A hand lets the string go at the force it can hold, not at a set
-    // displacement: a point force F at fraction p of a string of tension T
-    // and speaking length L deflects it by F L p (1 - p) / T, so the same
-    // stroke's release scales by L p (1 - p) against L0 p0 (1 - p0), p0 the
-    // point the same hand meets the open string at. The former ratio
-    // (1 - p)/(1 - a/L0) held the hand's distance a from the bridge fixed,
-    // but the Finger easing and the knee move the hand bridgeward on stopped
-    // strings, where the string is stiffer to it (at the 12th fret the
-    // compliance ratio is 0.59 where the fixed distance gave 0.91): the same
-    // stroke gave +2.8 to +3.5 dB saddle force at the 12th fret over open, and
-    // up to +9 dB peak level at the 13th on the low E
-    // (Tools/MeasureFretboardSweep.py, dreadnought steel).
+    // A point force F deflects the string by F L p (1 - p) / T. The open
+    // gesture is where the velocity-to-force law was calibrated. Use the
+    // actual hand position for compliance so moving it to the soundhole
+    // preserves the force of a saved stroke.
     const float heldDistance = position * soundingLength;
-    // Downward wheels can ask the finite model for a virtual string longer
-    // than its open length; a hostile wheel must not turn the minimum
-    // contact-position bound into a gain, so that case keeps unit scale.
-    const float releaseScale = soundingLength <= scaleLength
-        ? soundingLength * nominalPosition * (1.0f - nominalPosition)
-            / (scaleLength * openNominalPosition * (1.0f - openNominalPosition))
-        : 1.0f;
+    // A downward slide may request a string longer than the open scale.
+    // Hold the open-string displacement there, continuous across that limit.
+    const float complianceLength = std::min(soundingLength, scaleLength);
+    const float compliancePoint = soundingLength <= scaleLength ? nominalPosition
+        : soundholePluckPoint(body, openGesturePoint, scaleLength);
+    const float releaseScale = complianceLength * compliancePoint * (1.0f - compliancePoint)
+        / (scaleLength * openGesturePoint * (1.0f - openGesturePoint));
     // The random contact point is a small movement of the same hand force.
     // A taut string's point compliance is L*p*(1-p)/T: keeping displacement
     // fixed instead made a bridgeward take silently press harder. Reference
@@ -8559,13 +8563,12 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // preferred on 2026-09-30 (Docs/decisions.md). These are coordinates
         // of the numerical triangle, not another physical hand-position
         // limit. Its apex may pass 0.60 on stiff upper frets/MPE bends, or
-        // fall below 0.05 for the normal plane's bridgeward offset. Keep
-        // only endpoint guards for the triangle's divisions; the physical
-        // hand bands remain 0.05-0.36 (panel) and 0.05-0.46 (MPE).
+        // approach an endpoint on a very short digital line. These guards
+        // protect numerical divisions when the kink is under-resolved.
         const float frameScale = voice.contactPeriodSamples > 0.0f
             ? voice.contactPeriodSamples / static_cast<float>(length) : 1.0f;
         const float localPosition = clamp((position
-            + (polarisation == 0 ? -0.006f : 0.009f)) * frameScale, 0.01f, 0.95f);
+            + (polarisation == 0 ? normalPlanePluckOffset : 0.009f)) * frameScale, 0.01f, 0.95f);
         voice.releaseShapePosition[static_cast<std::size_t>(polarisation)] = localPosition;
         const float polarisationGain = polarisation == 0
             ? exact::sqrt(voice.polarisationMix)
