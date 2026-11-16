@@ -924,6 +924,17 @@ private:
         int intrinsicCoefficientSamples { 0 };
         void setIntrinsicCoefficients(const IntrinsicCoefficients& target,
                                       bool transition) noexcept;
+        // While a freshly written line makes its first pass, the string's
+        // own loss for the part of a round trip each arrival has travelled
+        // (firstPeriodBendingLoss in the .cpp): the bending section's a1 and
+        // a2 for 1/64, 1/32 ... 1/2 of a round trip, on the way from none to
+        // the design. Zero samples left is the design.
+        static constexpr std::size_t firstPeriodKnots = 6;
+        using FirstPeriodLoss = std::array<std::array<float, 2>, firstPeriodKnots>;
+        FirstPeriodLoss firstPeriodLoss {};
+        int firstPeriodSamples { 0 };
+        int firstPeriodLength { 1 };
+        void beginFirstPeriodLoss(const FirstPeriodLoss& loss) noexcept;
         StringLossShelf broadLossFilter {};
         StringLossShelf lossFilter {};
         SecondOrderAllpass dispersion {};
@@ -1610,6 +1621,8 @@ private:
         float dispersionDesignFrequency { 0.0f };
         float dispersionDesignInharmonicity { -1.0f };
         float dispersionDesignAge { -1.0f };
+        // The bending loss factor the sections below were designed for.
+        float bendingLossFactor { 0.0f };
         float dispersionDesignFrequencyLossScale { -1.0f };
         // Exact arguments of the last completed dispersion solve. Its fit
         // frequency is bounded beyond the playable fretboard plus the

@@ -1800,6 +1800,47 @@ BendingLossSection bendingLossSection(double factor, double inharmonicity,
     return section;
 }
 
+// A freshly written line has not been round the string yet. What reaches the
+// saddle a fraction t/T into the first period has travelled that fraction of
+// a round trip: the half of the released shape that set off for the saddle
+// from x has gone x, and the half that went by the nut L + (L - x). A string's
+// own losses are spread along it, but the loop charges them in one place, a
+// whole round trip's at every pass. Until 1.9.60 the first wave from the
+// pluck to the saddle, the brightest of the stroke, therefore arrived with a
+// round trip of loss it had not travelled: 13 dB at 7 kHz on a low E, 12 of
+// them the wound strings' bending loss, which is where restoring that loss in
+// 1.9.59 dulled the Pick's attack against released 1.3.3.
+//
+// Over the first period the loop therefore runs the bending section this same
+// law gives for the part travelled: L_n nepers a round trip is t/T L_n over
+// t/T of one, the law at t/T of its factor. These are its sections for 1/64,
+// 1/32 ... 1/2 of a round trip; the loop glides a1 and a2 from none through
+// them to the design (StringLoop::advance). Each step doubles the loss, and
+// on a low E the glide stays within 1 dB of the law up to Nyquist at 48 and
+// 96 kHz and never gains. Gliding straight from none to the design read up to
+// 1.6 dB of gain on the way, and sharing out the part the designed section
+// takes charged more at 3 kHz halfway than the whole round trip (probe,
+// 2026-11-16). From the second period on every pass is charged a whole round
+// trip as before, so no partial's decay rate changes. The constant loss
+// angles' section, whose design is a search too long for a pluck, runs as
+// designed and the loop charges the part travelled of what it takes: it takes
+// 1 dB a round trip at 7 kHz on a low E, and that share stays within 0.05 dB
+// of its law.
+std::array<std::array<float, 2>, 6> firstPeriodBendingLoss(
+    double factor, double inharmonicity, double fundamental, double sampleRate) noexcept
+{
+    std::array<std::array<float, 2>, 6> loss {};
+    double part = 1.0 / 64.0;
+    for (auto& knot : loss)
+    {
+        const auto section = bendingLossSection(factor * part, inharmonicity,
+                                                fundamental, sampleRate);
+        knot = { static_cast<float>(section.a1), static_cast<float>(section.a2) };
+        part *= 2.0;
+    }
+    return loss;
+}
+
 // A string's constant loss angles (Paté, Le Carrou and Fabre, "Predicting
 // the decay time of solid body electric guitar tones", JASA 135(5) (2014)
 // 3045-3055, Sec. III.A, after Valette). Besides air friction and the visco-
@@ -3511,6 +3552,7 @@ void AcustraEngine::StringLoop::reset() noexcept
     bendingLossY1 = 0.0f;
     bendingLossY2 = 0.0f;
     bendingLossSeed = false;
+    firstPeriodSamples = 0;
     constantLossX1 = 0.0f;
     constantLossX2 = 0.0f;
     constantLossY1 = 0.0f;
@@ -3611,6 +3653,13 @@ void AcustraEngine::StringLoop::setIntrinsicCoefficients(
         else
             *applied[index] = target[index];
     }
+}
+
+void AcustraEngine::StringLoop::beginFirstPeriodLoss(const FirstPeriodLoss& loss) noexcept
+{
+    firstPeriodLoss = loss;
+    firstPeriodLength = std::max(1, static_cast<int>(std::ceil(currentDelay)));
+    firstPeriodSamples = firstPeriodLength;
 }
 
 void AcustraEngine::StringLoop::setLoopGain(float gain, bool transition) noexcept
@@ -3993,6 +4042,32 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
     }
     const double low = lossFilter.process(reflected, lowpassCoefficient);
     reflected += highLossMix * (low - reflected);
+    // The bending section for the part of a round trip this arrival has
+    // travelled (firstPeriodBendingLoss): a1 and a2 glide from none through
+    // the knots to the design, which the last sample of the period reaches
+    // exactly, whatever a retune has made of it meanwhile.
+    const bool firstPeriod = firstPeriodSamples > 0;
+    double part = 1.0, firstA1 = 0.0, firstA2 = 0.0;
+    if (firstPeriod)
+    {
+        part = 1.0 - static_cast<double>(--firstPeriodSamples) / firstPeriodLength;
+        double from = 0.0;
+        double to = 1.0 / 64.0;
+        std::size_t knot = 0;
+        while (part > to && knot < firstPeriodKnots)
+        {
+            from = to;
+            to *= 2.0;
+            ++knot;
+        }
+        const double position = (part - from) / (to - from);
+        const double startA1 = knot == 0 ? 0.0 : firstPeriodLoss[knot - 1][0];
+        const double startA2 = knot == 0 ? 0.0 : firstPeriodLoss[knot - 1][1];
+        const double endA1 = knot == firstPeriodKnots ? bendingLossA1 : firstPeriodLoss[knot][0];
+        const double endA2 = knot == firstPeriodKnots ? bendingLossA2 : firstPeriodLoss[knot][1];
+        firstA1 = startA1 + position * (endA1 - startA1);
+        firstA2 = startA2 + position * (endA2 - startA2);
+    }
     if (bendingLossActive)
     {
         if (bendingLossSeed)
@@ -4009,9 +4084,12 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         // close on z = 1 and g falls under 0.01, where rounding the sum alone
         // put the direct form's gain at DC 4e-6 above one at 768 kHz.
         const double difference = reflected - bendingLossX1;
-        const double taken = (1.0f - bendingLossGain) * difference
-            - bendingLossA2 * bendingLossX2
-            - bendingLossA1 * bendingLossY1 - bendingLossA2 * bendingLossY2;
+        const double taken = firstPeriod
+            ? -(firstA1 + firstA2) * difference - firstA2 * bendingLossX2
+                - firstA1 * bendingLossY1 - firstA2 * bendingLossY2
+            : (1.0f - bendingLossGain) * difference
+                - bendingLossA2 * bendingLossX2
+                - bendingLossA1 * bendingLossY1 - bendingLossA2 * bendingLossY2;
         bendingLossX1 = reflected;
         bendingLossX2 = difference;
         bendingLossY2 = bendingLossY1;
@@ -4039,7 +4117,9 @@ ACUSTRA_FORCED_INLINE float AcustraEngine::StringLoop::advance(float delaySmooth
         constantLossX2 = difference;
         constantLossY2 = constantLossY1;
         constantLossY1 = taken;
-        reflected -= taken;
+        // Over the first period, the part travelled of what the section
+        // takes (firstPeriodBendingLoss).
+        reflected -= firstPeriod ? part * taken : taken;
     }
     reflected = dispersion.process(reflected, dispersionA1, dispersionA2);
     advanceReleaseGain(releaseGain);
@@ -4055,6 +4135,7 @@ ACUSTRA_FORCED_INLINE void AcustraEngine::StringLoop::advancePair(
         && parallel.loopGainTransitionSamples == 0
         && normal.intrinsicCoefficientSamples == 0
         && parallel.intrinsicCoefficientSamples == 0
+        && normal.firstPeriodSamples == 0 && parallel.firstPeriodSamples == 0
         && !normal.bendingLossSeed && !parallel.bendingLossSeed
         && !normal.constantLossSeed && !parallel.constantLossSeed
         && normal.broadLossMix == 0.0f && parallel.broadLossMix == 0.0f
@@ -6685,6 +6766,7 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         voice.dispersionDesignFrequency = lossDesignFrequency;
         voice.dispersionDesignInharmonicity = inharmonicity;
         voice.dispersionDesignAge = age;
+        voice.bendingLossFactor = bendingFactor;
         voice.dispersionDesignFrequencyLossScale
             = physical.frequencyLossScale;
     }
@@ -11300,6 +11382,14 @@ void AcustraEngine::firePluck(Voice& voice, int stringIndex) noexcept
         configureVoice(voice, stringIndex, voice.midiNote, !merge, true);
     }
     initialisePluck(voice, stringIndex, voice.velocity, merge);
+    // A re-pluck's retained wave shares the line and the sections, so it too
+    // is spared up to a round trip of the string's own loss, once. The
+    // alternative, the whole loss from the first sample, would make every
+    // repeated stroke duller than the first.
+    const auto firstPeriodLoss = firstPeriodBendingLoss(voice.bendingLossFactor,
+        voice.dispersionDesignInharmonicity, voice.dispersionDesignFrequency, sampleRate_);
+    for (auto& loop : voice.loops)
+        loop.beginFirstPeriodLoss(firstPeriodLoss);
     voice.stringAxialForce.lineRewritten();
     voice.attackFired = true;
     if (merge)

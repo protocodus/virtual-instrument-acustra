@@ -982,7 +982,7 @@ void testAgeAutomationPreservesTheMergedString()
         steady->process(referenceLeft.data(), referenceRight.data(), 256);
         double peak = std::max(std::abs(static_cast<double>(steadyBeforeLeft[delay - 1])),
                                std::abs(static_cast<double>(steadyBeforeRight[delay - 1])));
-        double stepDifference = 0.0;
+        double stepDifference = 0.0, sharpest = 0.0;
         for (std::size_t i = 0; i < left.size(); ++i)
         {
             expect(std::isfinite(left[i]) && std::isfinite(right[i]),
@@ -998,6 +998,8 @@ void testAgeAutomationPreservesTheMergedString()
             stepDifference = std::max({ stepDifference,
                 std::abs(leftStep - referenceLeftStep),
                 std::abs(rightStep - referenceRightStep) });
+            sharpest = std::max({ sharpest, std::abs(referenceLeftStep),
+                                  std::abs(referenceRightStep) });
         }
         // 2.7e-4 of the steady string's peak is the 2.0-2.2e-5 of full scale
         // that 2e-4 of its peak allowed before 2026-10-10, when that peak
@@ -1009,10 +1011,23 @@ void testAgeAutomationPreservesTheMergedString()
         // section to the new Age read 2.4-2.8e-5 of full scale, so an Age
         // change glides over a round trip instead, and the step reads about
         // 8e-6 (Docs/research/string-hf-loss-2026-10-10.md, section 11).
-        expect(peak > 1.0e-4 && stepDifference <= 2.7e-4 * peak,
+        //
+        // Since 1.9.60 the limit is held against the steady string's own
+        // sharpest adjacent-sample step in the window, not its peak. The
+        // first pass of a stroke no longer loses a round trip it has not
+        // travelled (firstPeriodBendingLoss), so that step is 0.37 of the
+        // peak here where 1.9.59 had 0.077, and what a 0.001 of Age changes
+        // in it grew with it: 4.1e-4 of the peak 16 samples after the stroke
+        // against 1.2e-4, the same event at the same sample, in proportion
+        // to the Age step (half and twice it read half and twice), and no
+        // different when the loss sections jump instead of gliding. 2.7e-4
+        // of the peak was 3.5e-3 of 1.9.59's sharpest step, which is the
+        // limit kept: 1.9.59 read 1.5e-3 of it and 1.9.60 reads 1.1e-3.
+        expect(peak > 1.0e-4 && stepDifference <= 3.5e-3 * sharpest,
                "a small Age step introduced a large adjacent-sample transient after a same-pitch merge");
         std::cout << "Merged Age delay=" << delay
-                  << " step difference/peak=" << stepDifference / peak << '\n';
+                  << " step difference/peak=" << stepDifference / peak
+                  << " /sharpest steady step=" << stepDifference / sharpest << '\n';
         const auto actual = Access::sounding(*changed), reference = Access::sounding(*steady);
         const double actualEnergy = slopeEnergy(actual[0]) + slopeEnergy(actual[1]);
         const double referenceEnergy = slopeEnergy(reference[0]) + slopeEnergy(reference[1]);
