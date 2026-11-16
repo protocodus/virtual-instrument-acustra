@@ -107,7 +107,7 @@ jobs:
 
       - name: Run plug-in wrapper tests
         run: |
-          ctest --test-dir "build-dsp" -R "^Acustra[.](PluginProcessor|PluginTempoRelease|ParameterReach)$" --no-tests=error --output-on-failure
+          ctest --test-dir "build-dsp" -R "^Acustra[.](PluginProcessor|PluginTempoRelease|ParameterReach|ParameterMatrixProtocol)$" --no-tests=error --output-on-failure
 
       - name: Package Linux VST3, CLAP and standalone
         id: linux-package

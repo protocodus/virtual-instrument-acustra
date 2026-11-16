@@ -162,8 +162,14 @@ int checkReleaseProtocol()
     // 7 sensor-alignment samples plus the approved 2 ms output limiter.
     constexpr double latencyAt48k = 7.0 + 96.0;
     const double expectedSeconds = 2.0 + (3000.0 + 1.0 + latencyAt48k) / 48000.0;
+    // The floor moves with an Output above unity (LimitsFor). This expected a
+    // bare 2.0e-3 while Output's default was 0 dB; since 1.9.58 the default is
+    // the first factory preset's trim, +1.1 dB, and the check failed on a
+    // bound nothing had changed.
+    const double expectedFloor = 2.0e-3 * std::max (1.0, std::pow (10.0,
+        acustra::factoryPresets.front().outputDecibels / 20.0));
     if (std::abs (limits.releaseSeconds - expectedSeconds) > 1.0e-12
-        || std::abs (limits.silenceFloor - 2.0e-3f) > 1.0e-10f)
+        || std::abs (limits.silenceFloor - expectedFloor) > 1.0e-8)
     {
         std::fprintf (stderr, "release protocol changed its physical-time or silence bound\n");
         return 1;
