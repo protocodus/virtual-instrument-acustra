@@ -262,7 +262,13 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // 9-36 dB under the recording over 0.08-0.9 s: the listener heard it as
     // mud. At the plain steel's, 27-33 dB/s and 0-14 dB under. This value
     // describes the decay of the transverse partials.
-    0.002334375f,
+    // 1.9.59 returns to 0.0175, released 1.3.3's value. The mud was heard
+    // with 1.9.44's 0.7 mm fingertip; 1.9.58 restored the released 0.25 mm
+    // release edge and kept the plain steel's loss here, so a picked low E's
+    // 4-8 kHz stood 29 dB over the 1.3.3 source 0.1 s after the stroke and
+    // 27 dB over at 0.5 s (A string 12 and 25), heard as a high ringing. At
+    // 0.0175 it is within 3 dB of 1.3.3 on all four wound strings.
+    0.0175f,
     // Matching the released guitar’s Dreadnought and Jumbo strums gives a
     // larger effective loss for longitudinal motion. The transverse fit
     // above left the wound G ringing near 2.55 and 2.86 kHz.
