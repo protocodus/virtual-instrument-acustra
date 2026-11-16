@@ -1293,6 +1293,7 @@ private:
         float pressure { 0.0f };
         bool active { false };
         bool chordSweep { false };
+        bool fingerChord { false };
     };
 
     // A bounded continuous posture in physical time, sampled only when a

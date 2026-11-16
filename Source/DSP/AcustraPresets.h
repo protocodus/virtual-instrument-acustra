@@ -43,7 +43,7 @@ inline constexpr std::array<FactoryPreset, 8> factoryPresets {{
     { "Dreadnought Steel", "dreadnought-steel",
       BodyShape::Dreadnought, BodyMaterial::Spruce, Tuning::Standard,
       PickingTechnique::Finger, CaptureType::StereoMic,
-      0.15f, 0.28f, 0.58f, 0.82f, 0.62f, 0.20f, 0.10f, 0.10f, 1.0f },
+      0.15f, 0.28f, 0.58f, 0.82f, 0.62f, 0.20f, 0.10f, 0.10f, 1.1f },
     { "Parlor Steel Fingerstyle", "parlor-steel-fingerstyle",
       BodyShape::Parlor, BodyMaterial::Mahogany, Tuning::Standard,
       PickingTechnique::Finger, CaptureType::StereoMic,

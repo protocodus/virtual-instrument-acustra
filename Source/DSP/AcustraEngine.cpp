@@ -8116,6 +8116,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     const auto& physical = physicalCalibration_.steel;
     const bool fullSoftSlip = parameters_.picking == PickingTechnique::Finger;
     const float touch = effectiveTouch(voice.velocity);
+    const bool fingerChord = voice.pluckGesture.fingerChord || voice.pluckGesture.chordSweep;
     if (!voice.strumming)
         voice.pluckGesture = nextPickingGesture();
     const auto gesture = voice.pluckGesture;
@@ -8490,10 +8491,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // moved the median 3–8 kHz share at 30–200 ms from 9.9 dB below that
     // release to 0.4 dB above it across four Finger patches (E2–A5, v40–120).
     // The Thumb uses its own reference-normalised 0.2 mm release.
-    // The fingertip spreads as it sweeps a chord under pressure. Single
-    // notes keep their measured contact radius, including firm strokes.
+    // Fingers holding a chord spread their pads under pressure, including a
+    // simultaneous pinch. Firm single notes keep their own contact radius.
     const float fingerReleaseRadius = fullSoftSlip
-        ? 0.25e-3f * (gesture.chordSweep ? 1.0f + v * v : 1.0f) : 0.2e-3f;
+        ? 0.25e-3f * (fingerChord ? 1.0f + v * v : 1.0f) : 0.2e-3f;
     // Playing force and release gesture have independent authored responses.
     // Raising soft-note force from v^2 to v also raises its release speed.
     // Finger and Thumb scale their effective edge by the same 1/v ratio to
@@ -11248,6 +11249,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
             voice.strumming = strumMember;
             voice.pluckParallelSign = strumMember ? strumParallelSign_ : singleStrokeSign;
             voice.pluckGesture = strumMember ? strumGesture_ : PickingGesture {};
+            voice.pluckGesture.fingerChord = plannedCount_ >= 3 && sameSamplePlannedString >= 0;
             voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
             voice.repluckPending = true;
             // The key is down again before the pick came: its key-up is
@@ -11595,6 +11597,8 @@ void AcustraEngine::startNote(int string, int harmonic, int midiNote,
         ? capturedParallelSign : strumParallelSign_;
     voice.pluckGesture = capturedGesture != nullptr
         ? *capturedGesture : strumMember ? strumGesture_ : PickingGesture {};
+    if (capturedGesture == nullptr)
+        voice.pluckGesture.fingerChord = plannedCount_ >= 3 && plannedString(midiNote, midiChannel) >= 0;
     voice.strokeEdgeGain = strumMember ? strumEdgeGain(string) : 1.0f;
     voice.repluckPending = continuing;
     voice.attackFired = continuing;
