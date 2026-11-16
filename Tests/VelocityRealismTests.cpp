@@ -1,5 +1,6 @@
 // Finger uses the actual release slip; Thumb retains its nominal reference
 // ratio. Both keep force-sensitive brightness without fitting new parameters.
+#include "Fixtures/PluckForceReference.h"
 #include "DSP/AcustraEngine.h"
 #include "DSP/AcustraPerformer.h"
 #include "DSP/AcustraPresets.h"
@@ -16,15 +17,6 @@
 
 namespace acustra
 {
-namespace
-{
-double expectedForceScale(double velocity)
-{
-    const double t = std::min(velocity * 127.0 / 81.0, 1.0);
-    return 0.2 + 0.8 * t * t * (3.0 - 2.0 * t);
-}
-}
-
 struct AcustraEngineTestAccess
 {
     static void redrawForce(AcustraEngine& engine)
@@ -59,10 +51,8 @@ struct AcustraEngineTestAccess
         const double displacement = voice.releaseStepRise
             * voice.releaseShapePosition[0] * length
             / (AcustraEngine::releaseStepShare * std::sqrt(voice.polarisationMix));
-        // Independently predict the default-Touch contact's r/u (the Finger's
-        // 0.7 mm since 1.9.44, the Thumb's 0.2 mm)
-        // release from observed held force and string geometry, rather than
-        // consulting plectrumSlipPole or the initializer's pole metadata.
+        // Predict the default-Touch contact's r/u release from its nominal
+        // edge radius, observed held force and measured string geometry.
         const double speakingLength = voice.speakingLengthMetres;
         const double a = voice.pluckPoint * speakingLength;
         // c*Z=T also holds for the string's tiny natural fretting detune.
@@ -81,8 +71,8 @@ struct AcustraEngineTestAccess
                 * double(voice.pluckPoint) * (1.0 - voice.pluckPoint) / (0.18 * 0.82),
                 0.22), 0.72, 1.35) : 1.0;
         const double radius
-            = (engine.parameters_.picking == PickingTechnique::Finger ? 0.7e-3 : 0.2e-3)
-            * boundaryScale * expectedForceScale(voice.velocity)
+            = (engine.parameters_.picking == PickingTechnique::Finger ? 0.25e-3 : 0.2e-3)
+            * boundaryScale * test::forceGain(voice.velocity, engine.parameters_.picking)
             * (engine.parameters_.picking == PickingTechnique::Finger
                 ? std::pow(double(voice.velocity), 0.233125)
                 : 1.0 / double(voice.velocity));
@@ -425,18 +415,14 @@ double renderedLevel(acustra::PickingTechnique technique,
 
 void testPlayableAudibleVelocityRange()
 {
-    // Bound the audible RMS contrast through the whole capture path. The
-    // soft notes are further below the full stroke, while the 96–127 range
-    // preserves the established response. Bounds cover the measured range
-    // across the three techniques and captures, with numerical margin.
-    // The soft bounds were 36 and 23 dB while the Finger let go over 0.2 mm.
-    // Over the 0.7 mm the recordings give it (1.9.44) a soft stroke on the
-    // low E string lets go over more of its period and its upper partials,
-    // which carry its level, fall further: 39.1 dB at velocity 16 and 26.0
-    // at 32 on the piezo. Every other cell stays inside the old bounds.
+    // Relative to the full stroke, extending the force curve from MIDI 81
+    // to 127 attenuates these four velocities by 1.57, 3.27, 3.54 and
+    // 1.11 dB. Translate the bounds by those amounts. At the lighter
+    // fingertip radius the low strokes again fit the original 36 and 23 dB
+    // upper bounds plus the intended change in force.
     constexpr std::array<int, 5> velocities { 16, 32, 64, 96, 127 };
-    constexpr std::array<double, 4> minimumSpan { 28.0, 17.5, 5.5, 1.0 };
-    constexpr std::array<double, 4> maximumSpan { 40.0, 27.0, 10.0, 4.0 };
+    constexpr std::array<double, 4> minimumSpan { 29.57, 20.77, 9.04, 2.11 };
+    constexpr std::array<double, 4> maximumSpan { 37.57, 26.27, 13.54, 5.11 };
     int cases = 0;
     for (double rate : { 44100.0, 96000.0 })
         for (auto technique : { acustra::PickingTechnique::Finger,
@@ -455,7 +441,9 @@ void testPlayableAudibleVelocityRange()
                                "velocity probes do not rise monotonically in emitted audio");
                     for (std::size_t v = 0; v < minimumSpan.size(); ++v)
                     {
-                        const double span = levels.back() - levels[v];
+                        const double velocity = double(velocities[v]) / 127.0;
+                        const double trimDb = 20.0 * std::log10(acustra::test::velocityLevel(velocity, technique));
+                        const double span = levels.back() - levels[v] + trimDb;
                         expect(span >= minimumSpan[v] && span <= maximumSpan[v],
                                "emitted velocity contrast left the playable RMS bounds");
                     }
@@ -487,7 +475,7 @@ void testDenseFloatingVelocityResponse()
             const auto contact = Access::continuousContact(*engine);
             const double normalized = contact.force
                 / ((0.92 + 0.08 * contact.touch) * double(velocity)
-                   * acustra::expectedForceScale(velocity));
+                   * acustra::test::forceGain(velocity, technique));
             if (index == 0)
                 reference = normalized;
             const double error = std::abs(normalized / reference - 1.0);

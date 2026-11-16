@@ -28,6 +28,10 @@ struct AcustraEngineTestAccess
     // sample its note-on arrived on: its delay. Zero once it has sounded.
     static int pluckDelay(const AcustraEngine& e, int string)
     { return e.voices_[static_cast<std::size_t>(string)].pluckDelay; }
+    static bool fingerChord(const AcustraEngine& e, int string)
+    { return e.voices_[static_cast<std::size_t>(string)].pluckGesture.fingerChord; }
+    static double releasePole(const AcustraEngine& e, int string)
+    { return e.voices_[static_cast<std::size_t>(string)].releaseSlipPole; }
 };
 }
 
@@ -190,6 +194,60 @@ Attacks attacks(Performer& performer, const std::vector<int>& notes, int count,
     });
     result.stringCount = static_cast<int>(used.size());
     return result;
+}
+
+void testPinchContactAtRelease()
+{
+    auto performer = player(acustra::PickingTechnique::Finger, true);
+    const std::vector<int> shape { 50, 57, 62, 66 };
+    play(*performer, chords(shape, 1, 9000), 1);
+    int pending = 0;
+    for (int note : shape)
+    {
+        const int string = performer->engine().heldString(note);
+        expect(string >= 0, "the pinched D chord lost a fretted note");
+        if (string < 0 || Access::pluckDelay(performer->engine(), string) == 0)
+            continue;
+        expect(!Access::strumming(performer->engine(), string)
+                   && Access::fingerChord(performer->engine(), string),
+               "a scheduled independent finger lost its chord contact");
+        ++pending;
+    }
+    expect(pending > 0, "the pinch did not schedule an independent finger");
+
+    // E2 has just one possible string. Hold the same force, fret and delay
+    // while changing only whether the hand planned a three-note grip.
+    const auto releaseTime = [](bool chord, bool retrigger, bool reset = false)
+    {
+        auto hand = player(acustra::PickingTechnique::Finger, true);
+        auto& engine = hand->engine();
+        constexpr std::array<int, 3> notes { 40, 47, 52 };
+        constexpr std::array<int, 3> later { 55, 59, 62 };
+        if (chord)
+            engine.planChord(notes.data(), 3, 1);
+        engine.noteOn(40, 0.8f, 1, 80);
+        std::array<float, 128> left {}, right {};
+        engine.process(left.data(), right.data(), 1);
+        engine.planChord(later.data(), 3, 1);
+        if (retrigger)
+            engine.noteOn(40, 0.8f, 1, 80);
+        if (reset)
+        {
+            engine.reset();
+            engine.noteOn(40, 0.8f, 1, 80);
+        }
+        engine.process(left.data(), right.data(), 128);
+        expect(engine.heldString(40) == 0, "a later plan reassigned the pending open E");
+        const double pole = Access::releasePole(engine, 0);
+        return -1.0 / std::log(pole);
+    };
+    const double solo = releaseTime(false, false);
+    expect(std::abs(releaseTime(true, false) / solo - 1.64) < 0.001,
+           "pinched and solo contact times do not follow their pad radii at velocity 0.8");
+    expect(releaseTime(true, true) == releaseTime(false, true),
+           "a new solo stroke on the waiting string inherited the chord's contact radius");
+    expect(releaseTime(true, false, true) == solo,
+           "reset retained a queued finger chord's contact radius");
 }
 
 void testFingersPluckChordsTogether()
@@ -381,6 +439,7 @@ int main()
 {
     std::cout << std::unitbuf;
     testDrawsFollowTheMeasuredLags();
+    testPinchContactAtRelease();
     testFingersPluckChordsTogether();
     testPlucksAreNotStrokes();
     testEverythingElseStillStrums();

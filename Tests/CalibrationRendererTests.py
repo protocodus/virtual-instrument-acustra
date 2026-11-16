@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check that recording-calibration controls actually reach the renderer."""
+from array import array
 from pathlib import Path
 import subprocess
 import sys
@@ -29,6 +30,11 @@ def main():
 
         default = render()
         assert default == render("--body-shape", "dreadnought", "--body-material", "spruce")
+        assert default == render("--output-scale", "1")
+        full = array("f", default)
+        quiet = array("f", render("--output-scale", "0.125"))
+        assert all(abs(a - 8 * b) < 1.0e-7 for a, b in zip(full, quiet)), \
+            "the quiet note must scale with the renderer's existing Output gain"
         shapes = [render("--body-shape", shape)
                   for shape in ("parlor", "auditorium", "dreadnought", "jumbo")]
         assert len(set(shapes)) == 4, "body-shape option did not reach the engine"
@@ -49,7 +55,10 @@ def main():
             render("--calibration", str(calibration), valid=False)
         for options in (("--body-shape", "unknown"), ("--body-material", "unknown"),
                         ("--body-material", "cedar"), ("--string-material", "nylon"),
-                        ("--body-shape",), ("--body-shape", "parlor", "--body-shape", "jumbo")):
+                        ("--body-shape",), ("--body-shape", "parlor", "--body-shape", "jumbo"),
+                        ("--output-scale", "-0.25"), ("--output-scale", "1.1"),
+                        ("--output-scale", "nan"), ("--output-scale", "1x"),
+                        ("--output-scale", "1", "--output-scale", "0.5")):
             render(*options, valid=False)
     print("Calibration renderer: defaults preserved, model controls effective, malformed input rejected")
 

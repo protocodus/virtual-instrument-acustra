@@ -518,8 +518,11 @@ void testHarmonicAndExtremeSlideAttackGeometry()
                            "extreme slide attack was nonfinite");
                     expect(attack.amplitude >= 0.0 && attack.amplitude <= 0.24001,
                            "virtual long string amplified the nominal release displacement");
-                    expect(attack.position >= 0.05 && attack.position <= 0.36,
-                           "extreme slide attack left the playable contact band");
+                    const double lastFretLength = 0.648 * std::exp2(-20.0 / 12.0);
+                    expect(attack.length >= lastFretLength - 1.0e-6
+                               && (attack.position - 0.006) * attack.length >= 0.100 - 1.0e-6
+                               && attack.position < 1.0,
+                           "extreme slide put the physical stop past fret 20 or the attack across the rim");
                 }
     }
 }

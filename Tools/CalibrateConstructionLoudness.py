@@ -23,9 +23,10 @@ level: each construction keeps its tone.
 It also plays the hardest case - velocity 127 with the Pick at Touch 1 and
 Pluck Position 0: an open E major downstroke with two strings repicked into
 it, all six strings on one sample, and a fast down-up pair - on every
-construction and reports the peak before the output's safety limiter (the
-limiter is inverted exactly; it is linear below its knee at -1 dBFS). The
-aim is that peak at least 1 dB under the knee, but loudness comes first: a
+construction and measures its peak before the output compressor and limiter.
+It reduces Output to 1/8 and 1/16 of its usual gain, verifies that both
+waveforms scale linearly, and scales the peak back. The aim is at least
+1 dB under the limiter ceiling (-1.5 dBFS), but loudness comes first: a
 Pick cell whose hardest case would come nearer sits under the target by
 what it needs, at most 0.9 LU (--max-headroom-cut), inside the tolerance.
 With the loudness fixed, a construction's peak is its own crest factor
@@ -131,8 +132,9 @@ TUNINGS = ("standard", "drop_d", "dadgad", "open_g")
 STRUM_TOLERANCE_DB = 9.0       # ConstructionMatrixTests' existing guard
 FIT_MARGIN_DB = 0.02          # leave room for float32 table rounding
 
-LIMIT_KNEE = 0.89125094        # safetyLimit's threshold, -1 dBFS
-LIMIT_HEADROOM = 1.0 - LIMIT_KNEE
+LIMIT_KNEE = 0.84139514        # OutputStage::kCeiling, -1.5 dBFS
+PEAK_SCALES = (0.125, 0.0625)
+PEAK_PROTOCOL = "AcustraPreProtectionDualGainV1"
 TOLERANCE_LU = 1.0
 HEADROOM_DB = 1.0
 # (shape, picking) cells that sit this much over the target on every capture
@@ -213,14 +215,14 @@ def hardest_case():
     return rows, 9.5
 
 
-def unlimited(samples: np.ndarray) -> np.ndarray:
-    """Invert AcustraEngine's safetyLimit (exactly linear below its knee)."""
-    magnitude = np.abs(samples.astype(np.float64))
-    over = magnitude > LIMIT_KNEE
-    excess = magnitude[over] - LIMIT_KNEE
-    magnitude[over] = LIMIT_KNEE + excess / np.maximum(
-        1.0 - excess / LIMIT_HEADROOM, 1.0e-12)
-    return magnitude
+def pre_protection_peak(louder: np.ndarray, quieter: np.ndarray) -> float:
+    """Recover the unattenuated peak after proving both gains are linear."""
+    gain, check_gain = PEAK_SCALES
+    peak = float(np.max(np.abs(louder)))
+    if (not np.isfinite(peak) or peak <= 0 or peak >= LIMIT_KNEE
+            or not np.allclose(quieter, louder * (check_gain / gain), rtol=1e-6, atol=1e-9)):
+        raise ValueError("the attenuated peak renders must be audible and scale linearly")
+    return float(20.0 * np.log10(peak / gain))
 
 
 def built_gains(path: Path = HEADER) -> dict[str, np.ndarray]:
@@ -258,8 +260,8 @@ def render(renderer: str, work: Path, performance: str, construction, picking,
 
 
 def measure(renderer: str, jobs: int, hardest_pickings=("pick",)) -> dict:
-    """Loudness per cell and capture, and the hardest case's peak before the
-    limiter, both as rendered (with whatever gains are built in)."""
+    """Loudness per cell and capture, and the hardest case's peak before
+    output protection, both as rendered (with whatever gains are built in)."""
     with tempfile.TemporaryDirectory(prefix="acustra-construction-") as scratch:
         work = Path(scratch)
         meter.write_performance(*phrase_set(), work / "phrases.txt")
@@ -272,9 +274,10 @@ def measure(renderer: str, jobs: int, hardest_pickings=("pick",)) -> dict:
 
         def peak(job):
             construction, picking, capture = job
-            audio = render(renderer, work, "hardest", construction, picking, capture,
-                           ("--touch", "1", "--pluck-position", "0"))
-            return job, float(20.0 * np.log10(np.max(unlimited(audio))))
+            quiet = [render(renderer, work, "hardest", construction, picking, capture,
+                            ("--touch", "1", "--pluck-position", "0", "--output-scale", str(scale)))
+                     for scale in PEAK_SCALES]
+            return job, pre_protection_peak(*quiet)
 
         loud_jobs = [(c, p, k) for c in constructions() for p in PICKINGS
                      for k in CAPTURES]
@@ -605,8 +608,8 @@ def print_report(summary: dict, title: str) -> None:
         print(f"    {group:<26} {row['min_lu']:+6.2f} {row['median_lu']:+6.2f}"
               f" {row['max_lu']:+6.2f}")
     for name, row in summary.get("hardest", {}).items():
-        print(f"  hardest case, {name:<17} peak {row['peak_dbfs']:+6.2f} dBFS before the"
-              f" limiter ({row['construction']}), median {row['median_peak_dbfs']:+6.2f};"
+        print(f"  hardest case, {name:<17} peak {row['peak_dbfs']:+6.2f} dBFS before"
+              f" output protection ({row['construction']}), median {row['median_peak_dbfs']:+6.2f};"
               f" {row['over_knee']} over the knee, {row['under_1db']}/{row['cells']}"
               " at least 1 dB under it")
 
@@ -710,11 +713,17 @@ def self_test() -> None:
         meter.write_performance(rows, seconds, Path(scratch) / "p.txt")
         meter.write_performance(*hardest_case(), Path(scratch) / "h.txt")
     assert all(row[4] == 127 for row in hardest_case()[0])
-    # The limiter inverts exactly (AcustraEngine.cpp safetyLimit).
-    raw = np.array([0.1, 0.8, 0.9, 1.2, 2.0, 5.0])
-    limited = np.where(raw <= LIMIT_KNEE, raw, LIMIT_KNEE + (raw - LIMIT_KNEE)
-                       / (1.0 + (raw - LIMIT_KNEE) / LIMIT_HEADROOM))
-    assert np.allclose(unlimited(limited.astype(np.float32)), raw, rtol=2e-4)
+    # The underlying peak may exceed full scale. Attenuation recovers it;
+    # a detector changing its gain between the two passes invalidates it.
+    raw = np.array([0.1, -0.8, 0.9, -1.2, 2.0, -3.0], dtype=np.float32)
+    louder, quieter = (raw * scale for scale in PEAK_SCALES)
+    assert abs(pre_protection_peak(louder, quieter) - 20 * np.log10(3.0)) < 1e-6
+    try:
+        pre_protection_peak(np.clip(louder, -0.3, 0.3), quieter)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("gain reduction in the quiet renders was accepted")
     # The header round-trips and the default cell is exactly 1.
     tables = {name: np.linspace(0.5, 2.0, CELLS) for name in ("mic", "mono", "piezo")}
     for name in tables:
@@ -827,7 +836,7 @@ def self_test() -> None:
     # At the target this Pick cell's stereo microphones would peak 0.4 dB
     # too near the knee, its mono microphone far too near it.
     pick = ("jumbo", "maple")
-    fake["peaks"] = {(pick, "pick", "stereo_mic"): -1.62 + 3.1,
+    fake["peaks"] = {(pick, "pick", "stereo_mic"): -2.12 + 3.1,
                      (pick, "pick", "mono_mic"): 10.0}
     capped = gains(fake)
     cell = index(*pick, "pick")
@@ -934,7 +943,7 @@ def self_test() -> None:
     with tempfile.TemporaryDirectory() as scratch:
         directory = Path(scratch)
         measurements = directory / "measured.json"
-        measurements.write_text(json.dumps({"as_rendered": serialise(flat),
+        measurements.write_text(json.dumps({"peak_protocol": PEAK_PROTOCOL, "as_rendered": serialise(flat),
                                              "without_gains": serialise(flat)}))
         bad_native = directory / "bad-native.json"
         bad_native.write_text(json.dumps({"schema": "invalid"}))
@@ -1031,6 +1040,9 @@ def main() -> int:
         return 0
     if arguments.measurements:
         saved = json.loads(arguments.measurements.read_text())
+        if (saved["as_rendered"].get("peaks") and saved.get("peak_protocol") != PEAK_PROTOCOL
+                and (arguments.write_header or arguments.check)):
+            parser.error("regenerate the hardest-case peaks with the dual-gain renderer before fitting or checking")
         measured = deserialise(saved["as_rendered"])
         raw = deserialise(saved["without_gains"])
     else:
@@ -1041,7 +1053,8 @@ def main() -> int:
         raw = raw_levels(measured, built_gains())
     target = measured["lufs"][(DEFAULT[:2], DEFAULT[2], "stereo_mic")]
     as_built = report(measured, target)
-    output = {"as_rendered": serialise(measured), "without_gains": serialise(raw),
+    protocol = saved.get("peak_protocol") if arguments.measurements else PEAK_PROTOCOL
+    output = {"peak_protocol": protocol, "as_rendered": serialise(measured), "without_gains": serialise(raw),
               "summary": as_built, "validation": {"status": "unvalidated_measurements",
                                                    "header_written": False}}
     # Preserve the expensive measurements even if constraint evidence or a

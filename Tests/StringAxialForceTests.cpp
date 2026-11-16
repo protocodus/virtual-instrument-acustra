@@ -95,12 +95,7 @@ auto played(bool waves, bool axial = true, int fret = 12, float velocity = 0.9f)
     engine->setPerformanceRealism(realism);
     acustra::EngineParameters parameters;
     parameters.picking = acustra::PickingTechnique::Pick;
-    // The plectrum near the bridge, 77 mm from the saddle. At the default
-    // Pluck Position the Pick's hand (141 mm since 1.9.42, 60 mm before)
-    // meets the 12th-fret string at a third of its length, where the third
-    // partial is not excited and y_x^2 at 4 f0 is no longer mostly each
-    // partial's own square (wavesKeepTheUniformTension read -2.0 dB there).
-    parameters.pluckPosition = 0.0f;
+    parameters.pluckPosition = 0.24f;
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
     engine->setStringPerChannelMode(true);
@@ -221,14 +216,16 @@ void slowLimitIsKirchhoffCarrier()
 // A source uniform along the string reaches the saddle through the waves as
 // exactly beta times it at every frequency, as the uniform tension does, and
 // the rest of y_x^2 drives the longitudinal modes: a source shaped like mode
-// j at angular frequency w gives -beta q r^2 / (1 - r^2), r = w / w_j. On the
-// 12th-fret top E (f0 659 Hz, first mode 7.81 kHz) y_x^2 at 2 f0 and 4 f0 is
-// mostly uniform (each partial's own square), so the two forces agree there,
-// while the sum tones beside the first mode, 11 f0 and 12 f0, ring up.
-void wavesKeepTheUniformTension()
+// j at angular frequency w gives -beta q r^2 / (1 - r^2), r = w / w_j.
+// On open E and at fret 10 the actual pluck leaves a predominantly uniform
+// component at 2 f0 and 4 f0, and sum tones near the first longitudinal mode
+// at 11 f0 and 12 f0. At fret 12 the rim moves the attack near H3's node
+// and 4 f0 no longer isolates uniform tension. The independent prescribed
+// uniform source below exercises that exact fret regardless of hand position.
+void wavesKeepTheUniformTension(int fret)
 {
-    auto uniform = played(false);
-    auto waves = played(true);
+    auto uniform = played(false, true, fret);
+    auto waves = played(true, true, fret);
     constexpr int samples = static_cast<int>(0.5 * rate);
     std::vector<double> a(samples), b(samples);
     for (int sample = 0; sample < samples; ++sample)
@@ -238,7 +235,7 @@ void wavesKeepTheUniformTension()
         a[static_cast<std::size_t>(sample)] = Access::voice(*uniform, 5).stringAxialForce.force;
         b[static_cast<std::size_t>(sample)] = Access::voice(*waves, 5).stringAxialForce.force;
     }
-    const double f0 = 2.0 * topOpenFrequency;
+    const double f0 = std::exp2(fret / 12.0) * topOpenFrequency;
     // The strongest line within 60 Hz of a multiple of f0, 0.05-0.45 s,
     // through a Hann window.
     const auto line = [&] (const std::vector<double>& x, double near, double& at)
@@ -272,7 +269,7 @@ void wavesKeepTheUniformTension()
         const auto theirs = line(a, at, at);
         const double gainDb = 20.0 * std::log10(std::abs(ours) / std::abs(theirs));
         const double phase = std::abs(std::arg(ours / theirs)) * 180.0 / pi;
-        std::cout << "waves against uniform at " << multiple << " f0 (" << at << " Hz): "
+        std::cout << "waves against uniform at fret " << fret << ", " << multiple << " f0 (" << at << " Hz): "
                   << gainDb << " dB, " << phase << " degrees\n";
         if (multiple <= 4)
             expect(std::abs(gainDb) < 1.0 && phase < 15.0,
@@ -695,11 +692,10 @@ void lowRateAxialRingDecaysWithoutInput()
     auto engine=std::make_unique<Engine>();
     engine->setParameters(acustra::engineParameters(acustra::factoryPresets[6]));
     // The wound core's loss factor pinned at 1.9.46's 0.0175, the value these
-    // known nonpassive and already-passive designs were found at; 1.9.47's
-    // smaller shipping loss makes the G-string fit passive and would leave the
-    // scalar fallback untested.
+    // known nonpassive and already-passive designs were found at. Keeping
+    // this fixture independent of shipping voicing exercises the fallback.
     auto calibration=acustra::fittedPhysicalCalibration;
-    calibration.steelWoundBendingLoss=0.0175f;
+    calibration.steelWoundAxialLoss=0.0175f;
     engine->setPhysicalCalibration(calibration);
     engine->prepare(11025,64);
     Access::configure(*engine,3,0);
@@ -735,6 +731,42 @@ void lowRateAxialRingDecaysWithoutInput()
     expect(unchanged.lossGain==0.8059226274490356f
            &&unchanged.lossPole==0.14545254409313202f,
            "already-passive low-rate coefficients remain bit-identical");
+}
+
+// The objectionable Dreadnought and Jumbo partials follow the wound G from
+// open G to fretted A. Measure the first longitudinal mode after a single
+// impulse so the simultaneous transverse chord cannot hide an axial whistle.
+void woundGResonanceDecaysAtBothChordPitches()
+{
+    for (int fret : { 0, 2 })
+    {
+        constexpr int string = 3;
+        auto engine = played(true);
+        Access::configure(*engine, string, fret);
+        auto& voice = Access::voice(*engine, string);
+        voice.played = false;
+        auto& axial = voice.stringAxialForce;
+        axial.ringing = true;
+        axial.increment = 1.0f;
+        axial.countdown = 1;
+        const double frequency = 2551.0 * std::exp2(fret / 12.0);
+        constexpr int window = 384, delay = 960;
+        std::array<std::complex<double>, 2> mode {};
+        for (int sample = 0; sample < window + delay; ++sample)
+        {
+            const double force = Access::render(*engine, string);
+            const int offset = sample >= delay ? sample - delay : sample;
+            if (offset >= window)
+                continue;
+            const double hann = 0.5 - 0.5 * std::cos(2.0 * pi * (offset + 0.5) / window);
+            mode[sample >= delay ? 1 : 0] += hann * force
+                * std::polar(1.0, -2.0 * pi * frequency * sample / rate);
+        }
+        std::cout << "wound G fret " << fret << " early " << std::abs(mode[0])
+                  << ", late " << std::abs(mode[1]) << ", loss " << voice.axialLossFactor << '\n';
+        expect(std::abs(mode[0]) > 0.001 && std::abs(mode[1]) < 0.18 * std::abs(mode[0]),
+               "wound G axial mode must lose at least 15 dB in 20 ms at both chord pitches");
+    }
 }
 
 void invalidStretchDoesNotEnterAxialFeedback()
@@ -775,11 +807,13 @@ int main(int argc, char** argv)
 {
     longitudinalLossIsPassiveAcrossControls();
     lowRateAxialRingDecaysWithoutInput();
+    woundGResonanceDecaysAtBothChordPitches();
     invalidStretchDoesNotEnterAxialFeedback();
     if(argc>1 && std::string(argv[1])=="--passivity-only") return failures==0?0:1;
     uniformStretchIntegratesFractionalSlopeCrossings();
     slowLimitIsKirchhoffCarrier();
-    wavesKeepTheUniformTension();
+    for (const int fret : { 0, 10 })
+        wavesKeepTheUniformTension(fret);
     uniformRetardedSourceKeepsUniformTension();
     ringIsTheLongitudinalString();
     ringsOutAndSwitchesOff();

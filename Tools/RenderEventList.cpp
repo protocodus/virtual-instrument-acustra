@@ -50,7 +50,7 @@ int main(int argc, char** argv)
         std::puts("usage: AcustraRenderEventList <preset> <events.txt> <out.wav> <seconds>"
                   " [--picking 0|1|2] [--room 0-1] [--release-noise 0-1]"
                   " [--axial-force 0|1] [--axial-waves 0|1]"
-                  " [--plain-bending-loss eta] [--wound-bending-loss eta]"
+                  " [--plain-bending-loss eta] [--wound-bending-loss eta] [--wound-axial-loss eta]"
                   " [--lookahead 0|1] [--pick-release-direction 0|1]");
         return 1;
     }
@@ -74,6 +74,8 @@ int main(int argc, char** argv)
             calibration.steelPlainBendingLoss = static_cast<float>(std::atof(argv[i + 1]));
         else if (option == "--wound-bending-loss")
             calibration.steelWoundBendingLoss = static_cast<float>(std::atof(argv[i + 1]));
+        else if (option == "--wound-axial-loss")
+            calibration.steelWoundAxialLoss = static_cast<float>(std::atof(argv[i + 1]));
         else if (option == "--picking")
             parameters.picking = static_cast<acustra::PickingTechnique>(std::atoi(argv[i + 1]));
         else if (option == "--room")

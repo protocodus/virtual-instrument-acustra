@@ -107,6 +107,11 @@ int main()
         auto engine = std::make_unique<acustra::AcustraEngine>();
         acustra::EngineParameters parameters;
         parameters.picking = technique;
+        // At fret 12 the 100 mm soundhole rim brings the default Finger
+        // and Thumb near H5's two-fifths node. The bridgeward panel setting
+        // excites H5 clearly in all three techniques, retaining the energy
+        // bracket and the beating limit of the original regression.
+        parameters.pluckPosition = 0.0f;
         parameters.room = 0.0f;
         parameters.releaseNoise = 0.0f;
         // Default Detune is zero on both the pre-polish negative control

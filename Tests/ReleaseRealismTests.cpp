@@ -386,8 +386,8 @@ void releasePadFollowsPhysicalSlideLength()
             {
                 // The normal +/-12-semitone wheel reaches virtual fret -4
                 // or 32 here. Beyond the nut the picking hand catches the
-                // string; above fret 20 the physical 18 mm pad must not
-                // follow the decay calibration's clamped fret index.
+                // string. Above fret 20 pitch continues to rise while
+                // the 18 mm pad stays inside the last physical stop.
                 // Conventional/manager wheels slide, a member wheel changes
                 // tension at a fixed length and must keep that pad geometry.
                 auto engine = configured(true, rate);
@@ -401,8 +401,8 @@ void releasePadFollowsPhysicalSlideLength()
                 advance(*engine, graceSamples(rate) + 2);
                 expect(Access::contact(*engine, 1),
                        "slide geometry fixture did not reach its release contact");
-                const double expectedLength = 0.648 * std::exp2(
-                    -(fret + (gesture == 2 ? 0.0 : bend)) / 12.0);
+                const double physicalFret = std::min(20.0, fret + (gesture == 2 ? 0.0 : bend));
+                const double expectedLength = 0.648 * std::exp2(-physicalFret / 12.0);
                 for (int plane = 0; plane < 2; ++plane)
                 {
                     const auto geometry = Access::contactGeometry(*engine, 1, plane);

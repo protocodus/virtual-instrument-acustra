@@ -162,7 +162,7 @@ void testParameterContract()
     // Piezo Mix defaults to 20%, a bit of the piezo under the microphones;
     // Release Noise and Room to the requested 10%; Sustain off.
     constexpr std::array<float, ids::parameterCount> expectedDefaults {
-        2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, 0.0f,
+        2.0f, 0.0f, 0.0f, 15.0f, 28.0f, 58.0f, 82.0f, 62.0f, acustra::factoryPresets.front().outputDecibels,
         0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 20.0f, 10.0f, 10.0f, 0.0f, 0.0f, 0.0f
     };
 
@@ -1825,11 +1825,12 @@ void testMalformedStateParameters()
                     continue;
                 const float expected = parameter->paramID == ids::capture ? 4.0f
                     : parameter->paramID == ids::upperMic ? 1.0f
+                    : parameter->paramID == ids::output ? 0.0f
                     : parameter->convertFrom0to1 (parameter->getDefaultValue());
                 const float actual = valueOf (target, parameter->paramID.toRawUTF8());
                 expect (std::isfinite (actual) && std::abs (actual - expected) < 0.011f,
-                        std::string { invalid } + " state did not recover the default for "
-                            + parameter->paramID.toStdString());
+                        std::string { invalid } + " state recovered " + parameter->paramID.toStdString()
+                            + " as " + std::to_string (actual) + ", expected " + std::to_string (expected));
             }
             const auto snapshot = target.snapshotEngineParameters();
             expect (snapshot.capture == acustra::CaptureType::StereoMic

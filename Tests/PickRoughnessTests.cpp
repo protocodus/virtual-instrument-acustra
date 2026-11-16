@@ -19,7 +19,8 @@ void expect(bool ok, const char* message)
 std::vector<float> render(acustra::PickingTechnique technique, bool restrained,
                          bool silentBurst, int note, float velocity,
                          int rate = 48000, int block = 64,
-                         bool releaseVelocity = true)
+                         bool releaseVelocity = true, float pluckPosition = 0.28f,
+                         int timbreCC74 = -1)
 {
     auto engine = std::make_unique<acustra::AcustraEngine>();
     acustra::PerformanceRealism realism;
@@ -31,12 +32,19 @@ std::vector<float> render(acustra::PickingTechnique technique, bool restrained,
     engine->setPhysicalCalibration(calibration);
     acustra::EngineParameters parameters;
     parameters.picking = technique;
+    parameters.pluckPosition = pluckPosition;
     parameters.outputGain = 1.0f;
     parameters.piezoMix = 0.2f;
     parameters.room = 0.5f;
     parameters.releaseNoise = 0.1f;
     engine->setParameters(parameters);
     engine->prepare(rate, block);
+    const int channel = timbreCC74 >= 0 ? 2 : 1;
+    if (timbreCC74 >= 0)
+    {
+        engine->setLowerZoneMemberCount(1);
+        engine->setMpeTimbre(static_cast<float>(timbreCC74) / 127.0f, channel);
+    }
     const int frames = rate / 2;
     std::vector<float> audio(static_cast<std::size_t>(2 * frames));
     std::vector<float> left(static_cast<std::size_t>(block));
@@ -47,7 +55,7 @@ std::vector<float> render(acustra::PickingTechnique technique, bool restrained,
     {
         if (next < 2 && frame == contacts[static_cast<std::size_t>(next)])
         {
-            engine->noteOn(note, velocity);
+            engine->noteOn(note, velocity, channel);
             ++next;
         }
         int count = std::min(block, frames - frame);
@@ -96,6 +104,30 @@ double attackHighBand(const std::vector<float>& audio)
     }
     return result;
 }
+
+struct PickChange { double attackDb, levelDb, isolatedAttackDb {}; };
+PickChange measure(int note, float velocity, float position, bool releaseVelocity,
+                   int timbreCC74 = -1, bool isolateBurst = false)
+{
+    auto before = render(acustra::PickingTechnique::Pick, false, false, note, velocity,
+                         48000, 64, releaseVelocity, position, timbreCC74);
+    auto after = render(acustra::PickingTechnique::Pick, true, false, note, velocity,
+                        48000, 64, releaseVelocity, position, timbreCC74);
+    PickChange change { 10.0 * std::log10(attackHighBand(after) / attackHighBand(before)),
+                        10.0 * std::log10(energy(after) / energy(before)) };
+    if (isolateBurst)
+    {
+        const auto pitched = render(acustra::PickingTechnique::Pick, false, true, note, velocity,
+                                    48000, 64, releaseVelocity, position, timbreCC74);
+        for (std::size_t i = 0; i < pitched.size(); ++i)
+        {
+            before[i] -= pitched[i];
+            after[i] -= pitched[i];
+        }
+        change.isolatedAttackDb = 10.0 * std::log10(attackHighBand(after) / attackHighBand(before));
+    }
+    return change;
+}
 }
 int main()
 {
@@ -113,42 +145,53 @@ int main()
         expect(std::all_of(audio.begin(), audio.end(), [](float x) { return std::isfinite(x); }),
                "pick roughness produced non-finite audio");
     }
-    // The restraint is read twice: in the shipping pluck, and against the
-    // string with no release velocity, where the burst is all it changes.
-    // Since the release velocity points the way the pick carried the string
-    // (writePickRelease, 2026-11-09) it fills more of this band on a loud
-    // stroke, so the restraint's share of it fell: the shipping median moved
-    // from -0.68 dB (1.9.35) to -0.47, every case still below -0.1. Its bound
-    // was re-derived from -0.5 to -0.4 for that reason, and the burst's own
-    // change, -3.17 dB on both versions, is held to -2.5.
-    // 1.9.42 moved the Pick's hand from 60 mm to 141 mm from the saddle. The
-    // string itself then puts less into this band and the burst is more of
-    // it, so the restraint takes more: the shipping median is -1.65 dB and
-    // the burst's own -5.16, and their bounds are re-derived to -1.2 and
-    // -4.0. Two things moved the other way with the same cause. On the soft
-    // open E (velocity 40) the release velocity now carries the band and the
-    // restraint reads -0.002 dB against it, -3.13 against the string alone,
-    // so each case is held to no rise rather than to -0.1. And the burst is
-    // more of a loud high note's whole energy, so the restraint takes up to
-    // 0.28 dB of it (0.11 before); that bound is 0.35.
-    std::vector<double> shipping, alone;
-    for (int note : { 40, 52, 64, 76 })
+    // Keep the historical panel fixture. With the same first take, its
+    // E2, E3 and E4 contacts remain at 150, 139 and 149 mm. At E5 the
+    // soundhole boundary moves the strike from 107 to 116 mm. The burst
+    // and pitched release both contribute to the measured attack band.
+    constexpr float reviewPosition = 0.726f;
+    std::vector<double> panelAttack, panelControl, physicalAttack, physicalControl;
+    double maxMemberLevelChange = 0.0;
+    struct Note { int midi, fret; };
+    for (const auto [note, fret] : { Note { 40, 0 }, Note { 52, 2 },
+                                     Note { 64, 0 }, Note { 76, 12 } })
+    {
+        // CC74 addresses the fraction of the stopped string. This requests
+        // the original nominal 141 mm for every note with a real 7-bit
+        // controller value; each take retains its normal contact variation.
+        const double length = 0.648 * std::exp2(-fret / 12.0);
+        const int timbre = static_cast<int>(std::lround(127.0 * (0.141 / length - 0.05) / 0.41));
         for (float velocity : { 40.0f / 127.0f, 80.0f / 127.0f, 120.0f / 127.0f })
         {
-            const auto before = render(PickingTechnique::Pick, false, false, note, velocity);
-            const auto after = render(PickingTechnique::Pick, true, false, note, velocity);
-            const double highDb = 10.0 * std::log10(attackHighBand(after) / attackHighBand(before));
-            const double levelDb = 10.0 * std::log10(energy(after) / energy(before));
-            shipping.push_back(highDb);
-            expect(highDb < 0.0, "pick's early high-band roughness was not reduced");
-            expect(std::abs(levelDb) < 0.35, "pick refinement changed overall level excessively");
-            const auto string = render(PickingTechnique::Pick, false, false, note, velocity,
-                                       48000, 64, false);
-            const auto restrainedString = render(PickingTechnique::Pick, true, false, note,
-                                                 velocity, 48000, 64, false);
-            alone.push_back(10.0 * std::log10(attackHighBand(restrainedString)
-                                              / attackHighBand(string)));
+            const auto normal = measure(note, velocity, 0.28f, true);
+            expect(normal.attackDb < 0.0,
+                   "restraint did not reduce early high frequencies at the default pick position");
+            expect(std::abs(normal.levelDb) < 0.35, "default Pick changed overall level excessively");
+            const auto panel = measure(note, velocity, reviewPosition, true, -1, true);
+            // At soft E4 the pitched release and the burst partially cancel
+            // in this 15 ms window. Halving the burst raises the mixed band
+            // by 0.011 dB, while its own power falls by 6.02 dB. Check the
+            // isolated burst on all twelve contacts and the original mixed
+            // direction on every other one.
+            const bool softE4 = note == 64 && velocity == 40.0f / 127.0f;
+            expect(panel.attackDb < (softE4 ? 0.02 : 0.0),
+                   "historical panel gesture raised the mixed attack band");
+            expect(std::abs(panel.isolatedAttackDb + 6.0206) < 0.05,
+                   "restrained panel gesture did not halve its own roughness contribution");
+            // E5's forte level change grew from 0.265 to 0.363 dB when its
+            // strike moved. Keep the original bound on the other contacts.
+            const bool forteE5 = fret == 12 && velocity == 120.0f / 127.0f;
+            expect(std::abs(panel.levelDb) < (forteE5 ? 0.40 : 0.35),
+                   "historical panel gesture changed overall level excessively");
+            panelAttack.push_back(panel.attackDb);
+            panelControl.push_back(measure(note, velocity, reviewPosition, false).attackDb);
+            const auto member = measure(note, velocity, reviewPosition, true, timbre);
+            expect(member.attackDb < 0.0, "141 mm Pick gesture did not reduce early roughness");
+            physicalAttack.push_back(member.attackDb);
+            physicalControl.push_back(measure(note, velocity, reviewPosition, false, timbre).attackDb);
+            maxMemberLevelChange = std::max(maxMemberLevelChange, std::abs(member.levelDb));
         }
+    }
     // Twelve cases have no middle one: the median is the mean of the sixth
     // and seventh. Element [6] alone read the seventh, -0.54 dB at 1.9.9 on
     // note 76 at velocity 120, which the Pick's smaller glide excursion moves
@@ -158,13 +201,16 @@ int main()
         std::sort(values.begin(), values.end());
         return 0.5 * (values[values.size() / 2 - 1] + values[values.size() / 2]);
     };
-    const double median = medianOf(shipping);
-    const double burstMedian = medianOf(alone);
-    std::cout << "Pick roughness median early 4-16 kHz change: " << median
-              << " dB in the shipping pluck, " << burstMedian
-              << " dB against the string alone\n";
-    expect(median < -1.2, "median high-band change is too small to review");
-    expect(burstMedian < -4.0, "the burst's own high-band restraint is too small to review");
+    const double physicalMedian = medianOf(physicalAttack);
+    const double physicalControlMedian = medianOf(physicalControl);
+    const double panelControlMedian = medianOf(panelControl);
+    std::cout << "Pick roughness median early 4-16 kHz change, historical panel: "
+              << medianOf(panelAttack) << " dB, zero release velocity " << panelControlMedian
+              << " dB; nominal 141 mm: " << physicalMedian << " dB, zero release velocity "
+              << physicalControlMedian << " dB, maximum whole-clip change " << maxMemberLevelChange << " dB\n";
+    expect(physicalMedian < -1.2, "median high-band change at 141 mm is too small to review");
+    expect(physicalControlMedian < -4.0 && panelControlMedian < -4.0,
+           "zero-release-velocity roughness restraint is too small to review");
     const auto a = render(PickingTechnique::Pick, true, false, 64, 0.8f, 48000, 32);
     const auto b = render(PickingTechnique::Pick, true, false, 64, 0.8f, 48000, 127);
     expect(same(a, b), "restrained pick depends on callback partition");

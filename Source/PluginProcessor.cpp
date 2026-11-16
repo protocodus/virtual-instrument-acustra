@@ -220,8 +220,12 @@ void sanitiseSavedParameterValues (
             child.getProperty ("id").toString());
         if (parameter != nullptr
             && ! std::isfinite (static_cast<float> (child.getProperty ("value"))))
-            child.setProperty ("value", parameter->convertFrom0to1 (
-                                   parameter->getDefaultValue()), nullptr);
+        {
+            // A damaged saved Output has always recovered to unity.
+            const float fallback = parameter->paramID == ids::output
+                ? 0.0f : parameter->convertFrom0to1 (parameter->getDefaultValue());
+            child.setProperty ("value", fallback, nullptr);
+        }
     }
 }
 
@@ -404,7 +408,8 @@ AcustraAudioProcessor::createParameterLayout()
 
     result.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ids::output, 1 }, "Output",
-        juce::NormalisableRange<float> { -24.0f, 6.0f, 0.1f }, 0.0f,
+        juce::NormalisableRange<float> { -24.0f, 6.0f, 0.1f },
+        acustra::factoryPresets.front().outputDecibels,
         juce::AudioParameterFloatAttributes()
             .withLabel ("dB")
             .withStringFromValueFunction ([] (float value, int)
@@ -892,31 +897,16 @@ void AcustraAudioProcessor::setStateInformation (const void* data,
             captureState.setProperty ("value", migrated, nullptr);
             restoredState.appendChild (captureState, nullptr);
         }
-        // A session saved before Release Noise existed keeps its silent
-        // key-ups; addMissingParameterDefaults would give it the new default.
-        if (! containsParameterState (restoredState, ids::releaseNoise))
+        // A partial older state recalls unity Output, dry microphones and
+        // silent key-ups. Explicit values, including zero, take precedence.
+        for (const auto* id : { ids::output, ids::room, ids::piezoMix, ids::releaseNoise })
         {
-            juce::ValueTree releaseState { "PARAM" };
-            releaseState.setProperty ("id", ids::releaseNoise, nullptr);
-            releaseState.setProperty ("value", 0.0f, nullptr);
-            restoredState.appendChild (releaseState, nullptr);
-        }
-        // Likewise a session saved before Piezo Mix existed keeps the
-        // microphones alone.
-        if (! containsParameterState (restoredState, ids::piezoMix))
-        {
-            juce::ValueTree piezoState { "PARAM" };
-            piezoState.setProperty ("id", ids::piezoMix, nullptr);
-            piezoState.setProperty ("value", 0.0f, nullptr);
-            restoredState.appendChild (piezoState, nullptr);
-        }
-        // Likewise a session saved before Room existed stays dry.
-        if (! containsParameterState (restoredState, ids::room))
-        {
-            juce::ValueTree roomState { "PARAM" };
-            roomState.setProperty ("id", ids::room, nullptr);
-            roomState.setProperty ("value", 0.0f, nullptr);
-            restoredState.appendChild (roomState, nullptr);
+            if (containsParameterState (restoredState, id))
+                continue;
+            juce::ValueTree parameterState { "PARAM" };
+            parameterState.setProperty ("id", id, nullptr);
+            parameterState.setProperty ("value", 0.0f, nullptr);
+            restoredState.appendChild (parameterState, nullptr);
         }
         addMissingParameterDefaults (restoredState, parameters, getParameters());
         parameters.replaceState (restoredState);

@@ -506,19 +506,13 @@ struct Strum
 Strum hardStrum(double rate, float velocity, float touch,
                 acustra::PickingTechnique picking = acustra::PickingTechnique::Finger,
                 double seconds = 2.5, int strokes = 0, float pluckPosition = 0.28f,
-                float driveScale = 1.0f, float handDistance = 1.0f)
+                float driveScale = 1.0f)
 {
     acustra::EngineParameters parameters;
     parameters.touch = touch;
     parameters.picking = picking;
     parameters.pluckPosition = pluckPosition;
     auto engine = std::make_unique<acustra::AcustraEngine>();
-    if (handDistance != 1.0f)
-    {
-        auto calibration = acustra::fittedPhysicalCalibration;
-        calibration.steel.pluckDistanceScale *= handDistance;
-        engine->setPhysicalCalibration(calibration);
-    }
     engine->setParameters(parameters);
     engine->prepare(rate, 64);
     engine->setStringPerChannelMode(true);
@@ -1133,29 +1127,16 @@ void testPiezoHeadroom()
 // PiezoCircuitTests.cpp; they cover the nonlinear input stage itself.
 void testPiezoClipAliasing()
 {
-    // The plectrum 32 mm from the saddle, where this fixture was built: the
-    // Pick's hand at Pluck Position 0 before 1.9.42 moved it out to 0.95 of
-    // the Finger's distance (77 mm there). So close to the saddle the strum
-    // is all sharp force peaks, which reach U1B's rails before the released
-    // load reaches U1A's input limit; from 77 mm U1A limits first (2.32
-    // against 2.41 times the shipped weights) and there is no interval in
-    // which U1B clips alone.
-    //
-    // The strum's largest peaks are where the six strings' pulses meet, so
-    // the two thresholds move with the strings' phases. With every loop at
-    // its stopped length (1.9.51) the 32 mm strum at 44.1 kHz and Touch 1
-    // reached U1A's limit at 0.972 times the shipped weights and U1B's rails
-    // at 0.989, and left no interval. The plectrum is now as near the saddle
-    // as the calibration lets the hand go (pluckDistanceScale's floor of
-    // 0.7, 30 mm), where U1B clips 4.1-4.6% before U1A limits in all four
-    // cases, and 3.8-4.2% on 1.9.50's engine.
-    constexpr float nearBridge = 0.36f / 0.95f;
+    // On the physical fretboard this chord at 80% Pluck Position reaches
+    // U1B before U1A at both rates and touches. This gives the isolated
+    // rail clip a real strum with the shipping hand geometry.
+    constexpr float pluckPosition = 0.8f;
     for (const float touch : { 0.58f, 1.0f })
     for (int rate : { 44100, 48000 })
     {
     constexpr float calibrationDrive = 0.5f;
     const auto linear = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
-                                   1.0, 0, 0.0f, calibrationDrive, nearBridge);
+                                   1.0, 0, pluckPosition, calibrationDrive);
     double railUse = 0.0, inputUse = 0.0;
     for (std::size_t i = 0; i < linear.drive.size(); ++i)
     {
@@ -1195,7 +1176,7 @@ void testPiezoClipAliasing()
     {
         const float overdrive = overdrives[driveIndex];
         auto strum = hardStrum(rate, 1.0f, touch, acustra::PickingTechnique::Pick,
-                               1.0, 0, 0.0f, overdrive, nearBridge);
+                               1.0, 0, pluckPosition, overdrive);
         bool inputKneesHidden = true;
         for (std::size_t i = 0; i < strum.drive.size(); ++i)
             inputKneesHidden = inputKneesHidden && std::isfinite(strum.freeDrive[i])
@@ -1273,7 +1254,7 @@ void testPiezoClipAliasing()
             + ", Touch " + std::to_string(touch);
         expect(strum.finiteCircuit && strum.followerPeak <= Design::commonModeLimit,
                "overdriven piezo has non-finite states or exceeds U1A's physical follower range, " + label);
-        expect(clipped > 0, "the Pick at the bridge driven harder does not clip the piezo preamp, "
+        expect(clipped > 0, "the overdriven Pick strum does not clip the piezo preamp, "
                                 + label);
         if (isolated)
         {
@@ -1291,7 +1272,7 @@ void testPiezoClipAliasing()
             }
         }
         std::cout << (isolated ? "Piezo isolated clip aliasing, " : "Piezo combined-circuit/free-clip error, ")
-                  << "Pick at velocity 127 at the bridge, " << label << ": "
+                  << "Pick at velocity 127 and 80% Pluck Position, " << label << ": "
                   << aliasDb << " dB, below 0.25 fs " << lowDb << " dB; passband "
                   << passbandDb << " dB vs bare " << passbandBareDb << " dB; a bare clip "
                   << bareDb << " dB (" << double(clipped) / factor

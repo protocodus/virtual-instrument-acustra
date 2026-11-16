@@ -143,8 +143,9 @@ and separate from the Mute control's damping of the strings.
   bridge, Thumb rounder and nearer the neck.
 - **String Age** (15 %): fresh strings at 0, worn and darker strings at
   100 %.
-- **Pluck Position** (28 %): near the bridge at 0, toward the neck at
-  100 %.
+- **Pluck Position** (28 %): bridge-side of the soundhole at 0%, farther toward
+  the neck as you turn it up. The body shape sets the minimum saddle distance
+  for Finger, Pick and Thumb. Member-channel MPE CC74 follows the same limit.
 - **Touch** (58 %): softer, darker contact at 0, harder and brighter at
   100 %.
 - **Release Noise** (10 %): the damping hand's contact as a note ends and
@@ -178,9 +179,10 @@ own range: E2-C6 (Standard; MIDI 40-84), D2-C6 (Drop D; 38-84) and D2-A#5
 (DADGAD and Open G; 38-82). Anything outside it is ignored. The on-screen keyboard spans D2-C6 (MIDI 38-84);
 its labels count middle C as C3, so its top key reads C5.
 
-**Velocity** is how hard the string is plucked. The force follows velocity
-in proportion, so a very soft note sits roughly 12 dB under a full one.
-Repeated strums at one velocity keep a steady level, apart from the natural
+**Velocity** is how hard the string is plucked. At ordinary playing levels,
+raising MIDI velocity from 72 to 100 gives an accent of about 5–6 dB on the
+factory Finger, Pick and Thumb patches. Repeated strums at one velocity keep
+a steady level, apart from the natural
 differences of stroke direction and strings still ringing. **Release velocity** sets
 how firmly the hand damps the string: 64 is nominal, softer key-ups ring
 up to about twice as long, firmer ones about half; it also sets the

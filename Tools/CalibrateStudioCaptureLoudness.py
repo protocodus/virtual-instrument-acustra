@@ -9,8 +9,9 @@ headroom-driven gain adjustment, or special default-cell constraint. Legacy
 construction references and the Piezo chain must stay untouched.
 
 The report includes both versions' hardest-case peaks for every cell and the
-predicted compensated peak before the safety limiter. Prediction inverts the
-existing limiter before applying the flat gain; it is not a final-engine test.
+predicted compensated peak before the safety limiter. The frozen pre-blend
+and raw-blend binaries use the original instantaneous limiter. Its inverse
+recovers their input peaks before applying the flat gain.
 Final gains must be rebuilt and checked by the independent construction tests.
 
   python3 Tools/CalibrateStudioCaptureLoudness.py \
@@ -44,6 +45,17 @@ ROOT = Path(__file__).resolve().parent.parent
 HEADER = ROOT / "Source/DSP/StudioCaptureLoudnessData.h"
 CAPTURES = ("stereo_mic", "mono_mic")
 SCHEMA = "AcustraStudioCaptureLevelMatchV1"
+LEGACY_LIMIT_KNEE = 0.89125094  # Frozen studio-blend renderers' safetyLimit
+
+
+def legacy_unlimited(samples):
+    """Recover pre-limiter magnitudes from the frozen studio-blend binaries."""
+    magnitude = np.abs(samples.astype(np.float64))
+    over = magnitude > LEGACY_LIMIT_KNEE
+    excess = magnitude[over] - LEGACY_LIMIT_KNEE
+    magnitude[over] = LEGACY_LIMIT_KNEE + excess / np.maximum(
+        1.0 - excess / (1.0 - LEGACY_LIMIT_KNEE), 1.0e-12)
+    return magnitude
 
 
 def sha(path):
@@ -84,11 +96,11 @@ def measure(baseline, blend, jobs):
                     audio = np.fromfile(output, dtype="<f4").reshape(-1, 2)
                     if not np.isfinite(audio).all() or not np.any(audio):
                         raise RuntimeError("invalid audio: " + key + " " + version)
-                    absolute = protocol.unlimited(audio)
+                    absolute = legacy_unlimited(audio)
                     item = {"audio_sha256": sha(output), "frames": len(audio),
                             "peak_dbfs": float(20 * np.log10(np.max(np.abs(audio)))),
                             "prelimiter_peak_dbfs": float(20 * np.log10(np.max(absolute))),
-                            "limiter_active_samples": int(np.sum(np.abs(audio) > protocol.LIMIT_KNEE))}
+                            "limiter_active_samples": int(np.sum(np.abs(audio) > LEGACY_LIMIT_KNEE))}
                     if name == "phrase":
                         item["lufs"] = protocol.meter.integrated_loudness(audio)
                     result[name] = item

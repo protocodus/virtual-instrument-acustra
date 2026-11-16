@@ -5,6 +5,81 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-16 — the 1.3.3-matched voicing joined to the fretted-length tuning, 1.9.58 (A–B–C set sent; the owner's verdict pending)
+
+**What was joined.** Two lines grew from 1.9.50 (`e58c27e`) without each
+other. Main took the fretted-length tuning as 1.9.51 (the entry below). The
+branch `codex/acustra-technique-repluck-1.9.57` (`c9230ac`, 19 commits) kept
+the 1.9 physical model and voiced it toward the released Rack 1.3.3 in seven
+steps it numbered 1.9.51 to 1.9.57: the contact and velocity calibration,
+playing at the soundhole, the palm-muted pick's body and presence, the
+picked Piezo's presence, the wound G's lengthwise damping, the factory
+Output trims fitted to each patch's 1.3.3 performance, and a returning-string
+contact per picking technique. Its evidence is in `Docs/validation/`
+(`legacy-song-voicing-2026-11-15.md` and the five documents dated
+2026-11-16), which keep the branch's version numbers and were measured
+before the join. 1.9.58 is the merge of the two.
+
+**The owner's direction** (2026-11-16): released 1.3.3 is the sound to keep;
+level and spectrum stay about the same, and realism and depth are added on
+top. The voicing line is that work.
+
+**Verdicts by ear already given on the voicing line**, as its review to the
+owner states them, not re-run here: the owner approved the revised Palm Muted
+Steel Pick (branch step 1.9.54); in an early Steel Pick audition the owner
+slightly preferred 1.9.50 on Jumbo and Palm Muted; in the last repeated-chord audition released 1.3.3 was still
+clearer than branch steps 1.9.56 and 1.9.57 and a uniform soft-contact
+trial. That audition's two measured reasons stay open: 1.3.3's strum accents
+(the fourth of four equal strokes 10.1 dB over the first, 2.1 dB under here)
+and the 1.49 kHz band of a B-major chord (63% of the early sustain in 1.3.3,
+6% here), with a 6.69 kHz Jumbo Pick repeat and a 1.85 kHz Parlor Thumb
+repeat.
+
+**What the join needed.** Five files conflicted. The Output trims and the
+piezo clipping fixture are the voicing line's. `Tests/PalmMutePitchTests.cpp`
+keeps the voicing line's picked-heel test and drops its check that a moved
+palm leaves the pair tuned for where it rests, since nothing is tuned at
+contact any more. One limit moved: `Acustra.FingerLookahead` held the finger
+slide 12.04 dB under the note it leads to; it read 12.43 dB in 1.9.51 alone
+and 12.16 in the voicing alone, and reads 12.036 together (the voicing lowers
+G#2 0.4 dB more than the slide, and the string at its fretted length answers
+the slide's noise 0.1 dB more than the note gains). It is held to 11.5 dB,
+with that reason beside it. The slide's level was the owner's choice by ear
+in 1.9.24 and nothing changed it. The `unit`, `audio` and `perf` tiers pass,
+including the 1.3.3 factory-level fixture (`Tests/Fixtures/FactoryLevels133.h`).
+
+**What the tuning does to the voicing, measured.** The eight factory demos
+through `RenderAcustraPresetDemos`, 1.9.58 against the voicing line alone:
+whole-file RMS within 0.29 dB and every octave band from 60 Hz to 16 kHz
+within 0.5 dB, with one exception. On the open E chords of Palm Muted Steel
+Pick the partial at 330 Hz, where the low E's 4th, the D string's 2nd and
+the high E's fundamental meet, dips about 15 dB 0.4 s after the stroke and
+returns, then rings 2-4 dB over; with the retune at contact it decays
+smoothly. That is three strings beating slowly at their own fretted lengths.
+Over the whole demo it reads -2.1 dB in the 250-500 Hz octave. Whether it is
+heard as a loss of body on that chord is the question the set asks.
+
+**The letters.** `acustra/listening-tests/2026-11-16-combined-model/` in the
+project files, not committed: **A** is 1.9.51 (main, `3199593`), **B** is
+1.9.58, **C** is the voicing line alone (`c9230ac`). Dreadnought Steel, Jumbo
+Steel Pick and Palm Muted Steel Pick, the committed demo MIDI at 48 kHz, one
+after another, 35.2 s. Each demo is matched to B's RMS over that demo (A
+trimmed -1.49, -3.30 and -7.33 dB; C -0.06, +0.14 and -0.19 dB), so the
+level the voicing gives back to 1.3.3 is not part of what the set tests.
+`key.md` is beside the files and unread by design.
+
+**Parked experiments read and not taken.** Seven `wip/acustra-*` snapshots
+of 8-14 November: `pick-bending` and `d3-tuning-cache` are on main already
+(and 1.9.51 removed the tuning cache); `carbon-models-optimization` landed
+as 1.9.48, and what is left of it speeds up the per-contact tuning solve
+1.9.51 removed; `allpass-conditioning` cured round-off in the first
+dispersion section, which main since cured by keeping that section's state
+in double precision; `d3-exact-cpu` is the Rack's four-cell axial sum, which
+1.9.50 replaced with the four-lane reduction; `attack-projection` and
+`d3-projection-cpu` are a pick-release projection written against 1.9.34,
+with no measurement or listening record, on a release that 1.9.36 to 1.9.50
+and the voicing line have since rewritten.
+
 ## 2026-11-16 — a string keeps its fretted length, 1.9.51 (the overtone error measured; A–B set sent, the owner took B)
 
 **What was found.** `configureVoice` retuned both of a note's loops at

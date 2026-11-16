@@ -39,6 +39,55 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.58 — 2026-11-16 — the voicing toward released 1.3.3, on the fretted-length tuning
+
+This version joins two lines of work that grew beside each other from
+1.9.50: the tuning of 1.9.51 below, and seven voicing steps that keep the
+1.9 physical model and bring its tone, dynamics and song levels back toward
+the released Rack 1.3.3. Those steps were numbered 1.9.51 to 1.9.57 on their
+own branch, and the linked validation documents keep those numbers; their
+measurements were taken before the two lines were joined. Joined, the eight
+factory demos stay within 0.3 dB in level and 0.5 dB in every octave band of
+the voicing alone, except that the 330 Hz partial of Palm Muted Steel Pick's
+open E chords now beats slowly between three strings
+([Decisions](Docs/decisions.md)).
+
+- **Contact and velocity.** Finger releases over a 0.25 mm edge and the pick
+  sits about 82 mm from the bridge at the reference panel position. Ordinary
+  keyboard accents have more contrast.
+  [Eight-song measurements and recall limits](Docs/validation/legacy-song-voicing-2026-11-15.md).
+- **Playing at the soundhole.** Pick, Thumb and Finger strike at the
+  soundhole or farther toward the neck, even on high frets. The minimum
+  distance from the saddle is 100 mm on Dreadnought, 105 mm on Auditorium and
+  Jumbo, and 110 mm on Parlor. Pluck Position, MPE timbre and variations
+  between strokes move smoothly near the rim. Existing songs keep their
+  Position automation and MIDI velocities; strokes that used to land close to
+  the saddle change tone as the same force is applied farther along the
+  string. The heel still mutes by the saddle.
+  [Geometry and validation](Docs/validation/soundhole-geometry-2026-11-16.md).
+- **Palm-muted steel pick.** With the heel down, picked strings shed their
+  upper harmonics sooner, the microphones recover some of the 500 Hz-1 kHz
+  body heard in 1.3.3, and the patch gains about 1 dB of presence between 2
+  and 4 kHz.
+  [Measurements and listening protocol](Docs/validation/palm-muted-pick-2026-11-16.md).
+- **Pickup presence, string damping and output.** The wound G sheds its
+  lengthwise vibration sooner on Dreadnought and Jumbo chords. Firm Finger
+  chord strokes release over a wider pad. The picked Piezo recovers some of
+  the presence around 1.35 kHz lost when the hand moved to the soundhole.
+  Soft strokes and strummed chords follow the dynamics of 1.3.3 more
+  closely, and each of the eight factory patches carries its own Output trim
+  measured against its original performance.
+  [Released 1.3.3 comparison](Docs/validation/output-and-resonance-2026-11-16.md).
+- **Repeated chords.** On a repeated Finger chord the pad yields as it
+  catches the already-ringing plain treble strings
+  ([Dreadnought comparison](Docs/validation/dreadnought-repluck-2026-11-16.md)),
+  and Finger, Thumb and Pick each have their own returning-string contact:
+  the thumb pad firms with stroke velocity, the pick yields on light strokes
+  and seats more firmly on hard attacks and short plain strings, and Finger
+  keeps the treble pinch heard in Dreadnought Steel and softens other
+  contacts as the fretted string shortens.
+  [Repeated-chord comparison with released 1.3.3](Docs/validation/technique-contact-2026-11-16.md).
+
 ### 1.9.51 — 2026-11-16 — a string keeps its fretted length, so its overtones stay in tune
 
 - Until 1.9.50 each note's two loops were retuned at contact so that the
@@ -921,10 +970,9 @@ slightly bridgeward on the three treble strings by ear while the low E, A and D
 keep the hand's physical distance from the bridge. The Pick adds a fitted release velocity, and every
 technique lets the string slide off a rounded edge, so softer strokes are
 released darker; a fingertip or thumb, unloading smoothly, releases at zero
-phase with a second-order fall above its half-power point. The fingertip's
-edge is the radius at which a plucked note loses its upper partials against
-a picked one as the Eastman E1D's player's do (0.7 mm), and the released
-wave starts where its rounded corner turns, at rest at the bridge. A short noise burst carries release detail. Most of a steel
+phase with a second-order fall above its half-power point. The 0.25 mm effective fingertip edge is fitted to the
+released instrument's note spectra. The released wave starts at rest at
+the bridge, where its rounded corner turns. A short noise burst carries release detail. Most of a steel
 pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
@@ -1024,7 +1072,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Room** | Small-studio reflections around the microphones, 0-100% (10% for a new instance); the piezo stays dry. |
 | **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
 | **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |
-| **Pluck Position** | The hand from bridgeward toward the neck, bending smoothly toward 0.36 of a short string. |
+| **Pluck Position** | Moves the hand from the bridge side of the soundhole toward the neck. Both knob and MPE follow the body’s minimum distance on every fret. |
 | **Touch** | Contact width, transient colour and brightness, and how fast every technique lets the string go. |
 | **Body Amount** | Scales microphone radiation. |
 | **Stereo Width** | The stereo pair toward mono. |
@@ -1162,15 +1210,10 @@ separates verified errors from accepted approximations.
   fingers of its own beyond a count of four and their barres. The cost of
   a fret past the twelfth, of a string crossing for the picking hand and the
   half-force slide of a shifting hand are authored, not measured.
-- The fingertip's 0.7 mm is fitted to one player's plucked and picked takes
-  of one guitar, both assumed at velocity 91; how a real fingertip's release
-  changes with force is not measured, and soft Finger notes follow the
-  authored law. Against the recorded finger-to-pick contrast a plucked
-  note's ninth to twelfth partials still stand 8.8 dB over from E2 to B2
-  and 4.6 over from E3 to D#4, and its fifth to twentieth lie 5-9 dB under
-  from E4 to D#5; no one radius centres both. The Martin HD28 notes, whose
-  hand is not identified, are brighter than the Finger and fit the Pick
-  better.
+- Fingertip contact varies with the player. The 0.25 mm effective release
+  radius follows the legacy instrument's tone. The larger 0.7 mm radius in
+  1.9.44–1.9.50 followed one player's recorded finger-to-pick contrast.
+  No single radius reproduces every guitar, finger, fret and velocity.
 - A Finger re-plucking a ringing string still steps where the wave the
   fingertip stopped reaches the bridge, under a millisecond in: on a low E
   tremolo at 12 strokes a second, 0.004-0.019 at 48 kHz against a fresh
@@ -1217,11 +1260,10 @@ separates verified errors from accepted approximations.
   attack deficits change with layer and corpus. The historical aggregate is
   not a universal high-register loss ratio. Technique-matched release
   measurements and a listener-accepted attack remain future evidence needs.
-- The Finger's pluck point at the 12th to 20th fret sits at 0.32-0.34 of the
-  speaking length on the low E, A and D strings (near 1/3) and is eased to
-  0.30-0.31 on the three treble strings (1.9.15 and 1.9.50, both chosen by
-  ear); where a player's hand actually shifts on high-fret low-string notes is
-  unmeasured.
+- The high-fret Finger gesture was tuned by ear in 1.9.15 and 1.9.50.
+  The 1.9.58 soundhole limit moves the realized strike farther from the
+  bridge when that gesture would fall short of the rim. Where a player's
+  hand shifts on high-fret, low-string notes remains unmeasured.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
   real spread is not measured. A picked note's partials and brightness now

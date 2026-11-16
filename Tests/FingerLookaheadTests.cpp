@@ -190,8 +190,13 @@ int main()
                    + " (" + std::to_string(20.0 * std::log10(before / plainBefore)) + " dB)");
         // 1.9.24 raised the slide 6 dB (the owner's choice by ear) and gave
         // each shift its own pressure, so a firm shift sits nearer the note
-        // than the old fixed level's -20 dB; it still stays 12 dB under.
-        expect(before < 0.25 * note,
+        // than the old fixed level's -20 dB; it still stayed 12 dB under.
+        // 1.9.58's voicing lowers G#2 0.4 dB more than the slide, and at
+        // 1.9.51's fretted length the string answers the noise 0.1 dB more
+        // than the note gains: the slide sits 12.04 dB under at shift 2
+        // (12.43 in 1.9.51 alone, 12.16 in the voicing alone), held to 11.5
+        // (0.266).
+        expect(before < 0.266 * note,
                "the slide stays far under the note it leads to, shift " + std::to_string(index)
                    + " (" + std::to_string(20.0 * std::log10(before / note)) + " dB)");
     }

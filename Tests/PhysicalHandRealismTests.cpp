@@ -1,3 +1,4 @@
+#include "Fixtures/PluckForceReference.h"
 #include "DSP/AcustraEngine.h"
 
 #include <algorithm>
@@ -118,7 +119,7 @@ void testPositionChangesComplianceWithoutChangingHandForce()
                 for (int fret : { 0, 12 })
                 {
                     double lowest = 1.0e30, highest = 0.0;
-                    double lowPoint = 1.0, highPoint = 0.0;
+                    double lowestCompliance = 1.0, highestCompliance = 0.0;
                     for (unsigned take = 1; take <= 12; ++take)
                     {
                         auto engine = make(rate, picking, hand);
@@ -128,11 +129,15 @@ void testPositionChangesComplianceWithoutChangingHandForce()
                         const auto contact = Access::inspect(*engine, 40 + fret);
                         lowest = std::min(lowest, contact.force);
                         highest = std::max(highest, contact.force);
-                        lowPoint = std::min(lowPoint, contact.position);
-                        highPoint = std::max(highPoint, contact.position);
+                        const double compliance = contact.position * (1.0 - contact.position);
+                        lowestCompliance = std::min(lowestCompliance, compliance);
+                        highestCompliance = std::max(highestCompliance, compliance);
                     }
-                    expect(lowPoint < highPoint - 0.005,
-                           "force fixture did not exercise different physical contact points");
+                    // At fixed displacement the force would vary inversely
+                    // with p(1-p). Even beside the rim, demand a variation
+                    // at least fifty times the force error permitted below.
+                    expect(highestCompliance / lowestCompliance > 1.0005,
+                           "force fixture could not distinguish prescribed displacement from force");
                     expect(lowest > 0.0 && highest / lowest < 1.00001,
                            "contact-point variation silently changed the prescribed hand force");
                     worstSpread = std::max(worstSpread, highest / lowest);
@@ -200,8 +205,7 @@ void testThumbRoughnessHasAFinitePhysicalRelease()
                 // Finger's pad does, so it goes as v^0.233. The 1/v alone
                 // this predicted before let a soft thumb go as 1/v^2 and
                 // brighten again below velocity 80 (Acustra.ThumbDynamics).
-                const double t = std::min(double(velocity) * 127.0 / 81.0, 1.0);
-                const double forceScale = 0.2 + 0.8 * t * t * (3.0 - 2.0 * t);
+                const double forceScale = acustra::test::forceGain(velocity, Picking::Thumb);
                 const double p = contact.position;
                 const double boundary = std::clamp(std::pow(
                     (contact.length / 0.648) * p * (1.0 - p) / (0.18 * 0.82),
