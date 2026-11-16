@@ -5,6 +5,90 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-16 — a string keeps its fretted length, 1.9.51 (the overtone error measured; A–B set rendered, key unread, B assumed under the standing rule)
+
+**What was found.** `configureVoice` retuned both of a note's loops at
+contact in two steps aimed at the fundamental: it took the bridge's
+reflection phase delay at the fundamental out of the loop
+(`bridgePhaseDelay`), then solved the coupled pole family and scaled the loop
+so that the family's centre sat on the nominal (`coupledPolarisationDetune`,
+on the loudness centre since 1.9.26). Both act on the whole loop, so every overtone
+moved with the fundamental, and the body does not pull the overtones the way
+it pulls the fundamental. The 2026-11-07 entry and its analysis read the
+fundamental only (the oracle's poles and an FFT peak), so the overtones were
+never measured.
+
+Measured on the shipping engine (1.9.50, Dreadnought, 48 kHz, the fretting
+draw off), the whole-loop shift each fret received, in cents sharp:
+
+| String | Largest shifts |
+| --- | --- |
+| Low E | open +1.5, f1 +4.2, f2 +9.3, f3 -3.9, f10 +4.7, f12 +5.2, f15 -5.4 |
+| A | f7 +4.3, f10 -3.7 |
+| D | open +1.8, f2 +4.4, f7 -2.1 |
+| G | open -1.4, the rest within 0.9 |
+| B, high E | +0.1 to +0.7 |
+
+The 2nd to 10th partials read those shifts against the stiff-string law:
++9.3 cents on the low E's F#2, with a 13-cent step between its F#2 and G2.
+Drop D's open D2 read +6.4 and the Jumbo's open low E about +8.
+A second symptom: a tension bend re-read the phase delay at the bent pitch
+but kept the contact's solve, so E3 bent a whole tone on the D string landed
+6-7 cents flat on every partial.
+
+**What changed.** The loop is the stopped string's own length
+(`tunedLoopDelay` and the 0.75-cent plane split, nothing else). The two
+corrections, the resting-string models and the per-contact solve with its
+caches are removed. Measured on 1.9.51: the 2nd to 5th partials' median is
+within 0.86 cent of the stiff-string law on every string at frets 0, 1, 2, 5,
+12, 15 and 20, at 44.1, 48 and 96 kHz (`Acustra.Engine`), and the parallel
+plane's loop alone is within 0.03 cent of the nominal by the independent pole
+oracle (`Acustra.ModalTuning`). The whole-tone bend lands within half a cent.
+
+**What it costs.** The fundamental is no longer put on the nominal. Where it
+meets a body mode it sits where the body pulls it. At the microphone output
+on the Dreadnought's low E: F2 -5.2, F#2 -6.9, G2 +6.6, D#3 -9.5, A3 +9.5
+cents; by the oracle's loudness centre: the Jumbo's open low E -8.2, E3 on
+the low E -4.7, E3 on the D string -4.0, D3 on the A string -2.7, the open G
++2.1. A real body does this to a string as well. Its size here follows the
+bridge mobility, which is morphed from one nylon-strung guitar and scaled to
+steel, so the size is not established (README, Known gaps). Where the
+overtones carry the pitch (the wound strings low on the neck, where the 2nd
+partial is 5-12 dB over the fundamental) the note is now in tune and was
+not; where the fundamental carries it (the low E above the 12th fret, the
+fundamental 20-30 dB over the 2nd partial) the pull is the pitch heard, and
+1.9.50 had that pitch right.
+
+**Not taken.** Retuning each string once on its open pitch (a player tuning
+by ear) moves all of a string's overtones by the open fundamental's pull,
+1.5 cents on the Dreadnought's low E and about 8 on the Jumbo's. Weighing the
+correction by the fundamental's share of the loudness needs a perceptual
+weight nobody measured. Neither ships.
+
+**The letters.** `acustra/listening-tests/2026-11-16-fretted-length-tuning/`
+in the project files, not committed: **A** is 1.9.50 (`da2f6e1`), **B** is
+1.9.51. Dreadnought Steel and Jumbo Steel Pick through the Performer with
+`AcustraRenderEventList` at 48 kHz in 256-frame blocks, same MIDI and seed,
+one string per channel, 39.5 s: low-E notes alone and in octaves with another
+string, open and barre chords, the low E at its 12th to 17th frets alone and
+in unison with another string, and the Jumbo's open E chord and open low E.
+Matched on whole-file RMS (A -25.57 dBFS, B trimmed +0.18 dB; untrimmed, B's
+Dreadnought part is 0.10 dB and its Jumbo part 0.45 dB under A's). `key.md`
+is beside the files and unread by design.
+
+**How it was decided.** The overtone error is measured, not heard. What the
+ear has to say is whether the fundamental's pull on the low E's upper frets
+is worth it; under the owner's standing rule the candidate, B, stands unless
+they say otherwise, and it is on a branch until the owner approves the merge.
+Nobody has listened to the set yet.
+
+**What it supersedes.** The pair's tuning on its loudness centre (2026-11-07,
+1.9.26) and where the palm comes to rest (2026-11-09, 1.9.37): there is no
+per-contact tuning any more. The 0.75-cent plane split (2026-10-30) stands.
+Open G Slide-ready's Output goes from 0.8 to 1.1 dB, which returns its factory
+level-check median from -9.83 to -9.53 VU (1.9.50: -9.56); the other presets
+moved 0.1 dB or less.
+
 ## 2026-11-14 — four-lane axial-stretch reduction and physical Finger pluck point on the low strings, 1.9.50 (two A–B sets; the owner chose B on both)
 
 **What was addressed.** After 1.9.48 and 1.9.49 landed every bit-exact DSP

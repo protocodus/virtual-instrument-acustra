@@ -30,8 +30,18 @@ struct AcustraEngineTestAccess
     static auto bridge(const AcustraEngine& e) { return e.bridgeLoad_; }
     static auto bridgeTable(const AcustraEngine& e) { return e.bridgeMobilityTable(); }
     static const auto& voices(const AcustraEngine& e) { return e.voices_; }
+    // The phase delay of a string's own reflection off the bridge as the
+    // engine's observer (bridgePortMobility) gives it. No string is tuned by
+    // it since 1.9.51; the tests that read the observer rely on it matching
+    // the bridge that plays.
     static float phase(const AcustraEngine& e, float f, int string)
-    { return e.bridgePhaseDelay(f, string); }
+    {
+        const auto port = e.bridgePortMobility(f, string);
+        const float admittance = 1.0f
+            / e.voices_[static_cast<std::size_t>(string)].characteristicImpedance;
+        const float omega = 2.0f * std::acos(-1.0f) * f / static_cast<float>(e.sampleRate_);
+        return -std::arg((admittance - port.normal) / (admittance + port.normal)) / omega;
+    }
     static bool rebasePending(const AcustraEngine& e)
     { return e.bridgeDerivativesCrossRelease_ || e.bridgeDerivativesCrossConfigure_; }
     static bool bodySettled(const AcustraEngine& e, BodyShape shape)
@@ -299,8 +309,8 @@ void testPhaseAndPassivity()
     // The analytic phase approximation and rounded float biquads already
     // differ by 0.289307 cents in the frozen native-bank baseline. Shape's
     // current worst case is 0.492829 cents. Keep a sub-cent reconstruction
-    // budget; the separate end-to-end note-tuning gates are unchanged.
-    expect(worstCents < 1.0, "shape tuning differs from its actual digital bridge");
+    // budget.
+    expect(worstCents < 1.0, "shape's bridge observer differs from its actual digital bridge");
 }
 
 // A0 and T1 of the measured bank as the Shape morph reads them: the
@@ -930,9 +940,12 @@ void process(Engine& e, int frames, double* energy, float* peak)
     }
 }
 
-void testRetuneAndTailOwnership()
+// A string's loop is its own stopped length and nothing else since 1.9.51,
+// so a new body changes the bridge under the string and leaves the string
+// alone. Until 1.9.50 each loop was also retuned to the new bridge's phase
+// and coupled pair here, and this test held that retune.
+void testShapeLeavesTheStringsAndTheirTails()
 {
-    double largestRetune = 0;
     {
         acustra::EngineParameters p;
         auto e = std::make_unique<Engine>();
@@ -942,18 +955,10 @@ void testRetuneAndTailOwnership()
         e->noteOn(45,.8f,1); e->noteOn(62,.8f,4);
         process(*e,64);
         const auto before = Access::voices(*e);
-        std::array<double,6> oldPhase {}, frequency {};
         int tailCount = 0;
         for (int i = 0; i < 6; ++i)
-        {
             tailCount += before[i].tailActive;
-            // The pitch the string plays includes its contact's own offset
-            // (the fretting finger's, and Detune's), not only the note's.
-            frequency[i] = 440*std::exp2((before[i].midiNote-69
-                +.01*(before[i].attackPitchCents+before[i].noteDetuneCents))/12.0);
-            oldPhase[i] = Access::phase(*e,static_cast<float>(frequency[i]),i);
-        }
-        expect(tailCount == 2,"retune fixture did not retain both repluck tails");
+        expect(tailCount == 2,"shape fixture did not retain both repluck tails");
         const float forceBefore = e->getLastBridgeReactionForce();
         p.shape = acustra::BodyShape::Parlor;
         e->setParameters(p);
@@ -972,19 +977,11 @@ void testRetuneAndTailOwnership()
                 && after[i].tailDamping == before[i].tailDamping
                 && after[i].tailCharacteristicImpedance == before[i].tailCharacteristicImpedance,
                 "shape discarded or changed a retained tail's own state");
-            // Both loops also carry the coupled pair's detune, which follows
-            // the new bridge too; the phase is taken on the bare length.
-            const double expected = (before[i].loops[0].targetDelay
-                    / (1.0+before[i].polarisationDetune)+oldPhase[i]
-                -Access::phase(*e,static_cast<float>(frequency[i]),i))
-                * (1.0+after[i].polarisationDetune);
-            expect(std::abs(after[i].loops[0].targetDelay-expected)<.002,
-                "shape did not retune an active or idle string to its new bridge");
-            largestRetune = std::max(largestRetune,
-                std::abs(double(after[i].loops[0].targetDelay-before[i].loops[0].targetDelay)));
+            expect(after[i].loops[0].targetDelay == before[i].loops[0].targetDelay
+                && after[i].loops[1].targetDelay == before[i].loops[1].targetDelay,
+                "shape retuned a string whose stopped length did not change");
         }
-        // The retuned strings' ports follow their new impedance and the
-        // rebuilt bridge fades its load, so nothing steps at the junction
+        // The rebuilt bridge fades its load, so nothing steps at the junction
         // and the bridge derivatives are not carried across one: carried
         // across anyway, they replaced a sample of the bridge's motion with
         // a straight line, a tick of its own (1.9.3).
@@ -1000,7 +997,7 @@ void testRetuneAndTailOwnership()
         process(*e,9600);
         for (const auto& voice : Access::voices(*e))
             expect(std::abs(voice.loops[0].targetDelay-voice.loops[0].currentDelay)<.02f,
-                   "string delay did not settle after a shape retune");
+                   "string delay did not stay settled after a shape change");
         e->noteOn(67,.75f,6);
         expect(Access::voices(*e)[5].midiNote == 67,
                "new note did not use the selected shape instrument");
@@ -1017,8 +1014,6 @@ void testRetuneAndTailOwnership()
                    == Access::voices(*fresh)[5].loops[0].targetDelay,
                "new note retained the previous shape's tuning compensation");
     }
-    std::cout << "largest immediate shape delay-target change samples=" << largestRetune << '\n';
-    expect(largestRetune>.001,"shape changed no actual string delay targets");
 }
 
 // A construction switched under a ringing chord must not tick: above 5 kHz,
@@ -1751,7 +1746,7 @@ int main()
     testPhaseAndPassivity();
     testTheStringsDrainIntoTheBridgeAlone();
     testAPartialDrainsAsItsBridgePredicts();
-    testRetuneAndTailOwnership();
+    testShapeLeavesTheStringsAndTheirTails();
     testStaticWorkAndRapidChanges();
     testConstructionSwitchesDoNotTick();
     testPitchProbeMatchesDirectFourierSum();

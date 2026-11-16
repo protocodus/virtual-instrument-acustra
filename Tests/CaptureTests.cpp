@@ -1140,7 +1140,16 @@ void testPiezoClipAliasing()
     // load reaches U1A's input limit; from 77 mm U1A limits first (2.32
     // against 2.41 times the shipped weights) and there is no interval in
     // which U1B clips alone.
-    constexpr float nearBridge = 0.40f / 0.95f;
+    //
+    // The strum's largest peaks are where the six strings' pulses meet, so
+    // the two thresholds move with the strings' phases. With every loop at
+    // its stopped length (1.9.51) the 32 mm strum at 44.1 kHz and Touch 1
+    // reached U1A's limit at 0.972 times the shipped weights and U1B's rails
+    // at 0.989, and left no interval. The plectrum is now as near the saddle
+    // as the calibration lets the hand go (pluckDistanceScale's floor of
+    // 0.7, 30 mm), where U1B clips 4.1-4.6% before U1A limits in all four
+    // cases, and 3.8-4.2% on 1.9.50's engine.
+    constexpr float nearBridge = 0.36f / 0.95f;
     for (const float touch : { 0.58f, 1.0f })
     for (int rate : { 44100, 48000 })
     {

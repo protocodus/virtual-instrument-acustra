@@ -120,7 +120,6 @@ struct AcustraEngineTestAccess
         for (const auto& voice : engine.voices_)
         {
             result.push_back(voice.characteristicImpedance);
-            result.push_back(voice.polarisationDetune);
             for (const auto& loop : voice.loops)
                 result.insert(result.end(), { loop.currentDelay, loop.targetDelay,
                     loop.loopGain, loop.targetLoopGain, loop.lowpassCoefficient,

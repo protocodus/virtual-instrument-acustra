@@ -1254,7 +1254,7 @@ private:
         float lossDesignFrequency { 0.0f };
         // The pitch the finger stopped at contact (the fret and the slide
         // held then), without a member's bend, the vibrato, a later slide
-        // or the fretting error: what the string is tuned at.
+        // or the fretting error: where the dispersion order is chosen.
         float tuningFrequency { 0.0f };
         float tension { 0.0f };
         float tensionSemitones { 0.0f };
@@ -1589,7 +1589,7 @@ private:
         float speakingFret { 0.0f };
         float attackPitchCents { 0.0f };
         // The slide the wheel held when this wave was struck, in semitones;
-        // the coupled tuning is solved there (configureVoice).
+        // the dispersion order is chosen there (configureVoice).
         float tuningSlideSemitones { 0.0f };
         float frozenMemberPitchBendSemitones { 0.0f };
         float attackSlopeEnergy { 0.0f };
@@ -1622,27 +1622,6 @@ private:
         float constantLossA2 { 0.0f };
         float constantLossN1 { 0.0f };
         float constantLossN2 { 0.0f };
-        // The fraction both polarisation loops were lengthened by so that the
-        // pair of modes they form through a rocking saddle is heard at the
-        // requested pitch (coupledPolarisationDetune); zero elsewhere.
-        float polarisationDetune { 0.0f };
-        // Common saddle tuning is a nominal-pitch calibration. The string's
-        // small attack glide does not change its frozen reference load.
-        using CommonTuningKey = std::array<std::uint32_t, 13>;
-        std::uint64_t commonTuningGeneration { 0 };
-        CommonTuningKey commonTuningKey {};
-        float commonTuningValue { 0.0f };
-        // The tunings this string had before the one in front, so a riff or
-        // a progression that comes back to a fret finds its solve (about
-        // 0.25 ms each) instead of running it again; a ring, oldest replaced.
-        struct CommonTuning
-        {
-            std::uint64_t generation { 0 };
-            CommonTuningKey key {};
-            float value { 0.0f };
-        };
-        std::array<CommonTuning, 7> commonTuningHistory {};
-        int commonTuningHistoryNext { 0 };
         // The dispersion sections' pole pairs relative to the
         // fundamental; a zero decay ratio is an unused section.
         std::array<float, stringDispersionSectionCount> dispersionDecayRatios {};
@@ -1927,11 +1906,12 @@ private:
     // gain at a frequency, its level included. This is the analog target;
     // the summed microphone pressure takes its causal digital filter.
     static float captureVoicingGain(float frequency) noexcept;
-    float bridgePhaseDelay(float frequency, int stringIndex) const noexcept;
     // The saddle's mobility at one string's two ports, at a frequency: the
     // measured bridge read at the normal port's lever arm, the parallel port
     // on the rocking (see saddleHeightRatio), and the transfer between them.
-    // The last two are zero wherever rocking was not measured.
+    // The last two are zero wherever rocking was not measured. An observer
+    // for tests and tools: the junction solves the bridge itself
+    // (BridgeLoad::process), and no string is tuned by this since 1.9.51.
     struct PortMobility
     {
         std::complex<float> normal {};
@@ -1944,8 +1924,7 @@ private:
     // bridgePortMobility's per-mode terms that do not depend on the string's
     // frequency - each included mode's prewarped omega (a tanf), its damping
     // and residues, and the plate floor's - for the bank, shape, host rate
-    // and calibration in the key. configureVoice asks for them six times per
-    // control update; they change only when one of those does.
+    // and calibration in the key. They change only when one of those does.
     struct BridgeMobilityTable
     {
         struct Mode
@@ -1973,14 +1952,6 @@ private:
     };
     const BridgeMobilityTable& bridgeMobilityTable() const noexcept;
     mutable BridgeMobilityTable bridgeMobilityTable_ {};
-    float bridgePhaseDelay(const PortMobility& port, float frequency,
-                           int stringIndex) const noexcept;
-    // How far, as a fraction of the request, the pair of modes the two
-    // polarisations form through a rocking saddle sits from the nominal
-    // shared-loop pitch (see AcustraEngine.cpp).
-    [[nodiscard]] float coupledPolarisationDetune(
-        Voice& voice, int stringIndex, float impedance, float frequency,
-        float normalGain, float parallelGain, float normalShare) noexcept;
     // The saddle crown's height over the measured body's rocking axis, over
     // the normalized rocking coordinate's half-spacing: what projects a
     // string's horizontal (soundboard-parallel) force onto the rocking
@@ -2261,26 +2232,6 @@ private:
     [[nodiscard]] std::pair<std::array<float, stringDispersionSectionCount>,
                             std::array<float, stringDispersionSectionCount>>
         solvedDispersion(const std::array<double, 14>& arguments) noexcept;
-    // History-free open-string branches used only by the base tuning model.
-    // The actual junction still carries every played string and retained tail.
-    struct RestingStringModel
-    {
-        float delay { 3.0f }, impedance { 1.0f }, loopGain { 1.0f };
-        float highCoefficient { 0.0f }, highMix { 0.0f };
-        OnePole highFilter {};
-        float bendingGain { 1.0f }, bendingA1 { 0.0f }, bendingA2 { 0.0f };
-        float constantGain { 1.0f }, constantA1 { 0.0f }, constantA2 { 0.0f };
-        float constantN2 { 0.0f };
-        std::array<float, 2 * stringDispersionSectionCount> dispersion {};
-        std::array<bool, stringDispersionSectionCount> dispersionActive {};
-    };
-    std::array<RestingStringModel, stringCount> restingStringModels_ {};
-    std::array<int, stringCount> restingStringNotes_ {};
-    std::uint64_t restingStringGeneration_ { 0 };
-    double restingStringRate_ { 0.0 };
-    float restingStringMasterTune_ { 0.0f };
-    [[nodiscard]] const std::array<RestingStringModel, stringCount>&
-        restingStringModels() noexcept;
     // writePickRelease's two released waves at every sample of the loop: its
     // energy pass evaluates them (ten Gaussian edges and ten corner lookups
     // a sample), and its write pass writes the same samples from them.
@@ -2292,9 +2243,6 @@ private:
     // Advanced whenever engine state that configureVoice reads changes; see
     // VoiceConfigurationKey. Starts past the keys' never-matching zero.
     std::uint64_t voiceConfigurationGeneration_ { 1 };
-    // The common saddle fit survives a playing-state reset. Preparation and
-    // explicit calibration changes invalidate its nominal reference load.
-    std::uint64_t tuningCalibrationGeneration_ { 1 };
     // The coupled body-shape factors configureBridge applies to the bridge
     // bank's A0 group, its modes up to T1 and the plate modes above; all
     // exactly 1 at each bank's anchor shape.

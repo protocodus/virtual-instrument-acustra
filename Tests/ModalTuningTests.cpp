@@ -2,11 +2,17 @@
 // peak can lie outside that family when unresolved modes cancel: old G3 and D3
 // are negative controls documented in the chorus math-oracle receipt. This test
 // independently reconstructs the ACTUAL digital bridge, all twelve string-loop
-// transfers and the microphone observer. It never calls the tuning helper.
+// transfers and the microphone observer.
 // Twelve bounded complex-root starts cover these five adversarial fixtures;
 // residual and mode-count checks prevent accepting a missed or spurious pole.
-// The energy-weighted radiated centre and dominant mode must stay within two cents,
-// while both polarisations retain one speaking length to protect higher partials.
+//
+// What is held since 1.9.51: the string's own loop, on a bridge that does not
+// move, resonates on the equal-tempered pitch of its stopped length, and the
+// body pulls the coupled family's centre from there only as far as a body
+// mode does. Until 1.9.50 the centre itself was held within two cents: both
+// loops were retuned at each contact to put it on the nominal, which moved
+// every overtone of the note with it (the loop alone read up to 9.3 cents
+// off, and so did its partials; Docs/decisions.md, 2026-11-16).
 
 #include "DSP/AcustraEngine.h"
 
@@ -225,6 +231,22 @@ struct AcustraEngineTestAccess
         return power * std::exp(2 * x.real() * e.sampleRate_ * time);
     }
 
+    // The fundamental of one loop alone, its bridge end held still: the
+    // root of 1 - H(x) nearest the nominal, in cents from it.
+    static double aloneCents(const AcustraEngine::StringLoop& l, double omega, double rate)
+    {
+        C x(-1. / rate, omega);
+        for (int iter = 0; iter < 40; ++iter)
+        {
+            const double ds = 1e-7;
+            const C step = (1. - loop(l, x)) / ((loop(l, x - ds) - loop(l, x + ds)) / (2 * ds));
+            x -= step;
+            if (std::abs(step) < 1e-13)
+                break;
+        }
+        return 1200 * std::log2(x.imag() / omega);
+    }
+
     static bool check(AcustraEngine& e, int st, int note, float velocity,
                       std::size_t minimumModes)
     {
@@ -298,28 +320,32 @@ struct AcustraEngineTestAccess
             sumCents += w * cents;
         }
         const double centre = sumCents / sumWeight;
-        valid &= std::isfinite(centre) && sumWeight > 0. && std::abs(centre) < 2.;
-        // A pair whose members share the loudness (E3 on the D string
-        // against the low E's second partial, 34 % and 66 % twelve cents
-        // apart; the jumbo's open E, 72 % and 28 %, 1.9.26) has no member
-        // that is the note on its own; the engine centres such a pair on
-        // the nominal, and only the centre can be held. Where one member
-        // holds three quarters of the loudness it is the note, and the
-        // centre must put it within two cents.
-        valid &= std::abs(dominantCents) < 2. || largestWeight < 0.75 * sumWeight;
-        // The planes once shared one speaking length to end the per-plane
-        // chorus; since 1.9.9 the normal plane is longer by the split the
-        // owner chose by ear (normalPlaneLagPeriods), and the roots above
-        // are its own and the parallel plane's, so the centre still holds.
+        // The body's pull on the fundamental is the instrument's, and is
+        // not tuned out. The largest among these fixtures, each chosen on a
+        // body mode or a unison, is the jumbo's open E on its air mode,
+        // -8.2 cents; a centre further out than 10 is a body or a junction
+        // that changed, not a string.
+        valid &= std::isfinite(centre) && sumWeight > 0. && std::abs(centre) < 10.;
+        // The string itself is on pitch: its parallel plane's loop alone
+        // sits on the nominal, and the normal plane's below it by the split
+        // the owner chose by ear (normalPlaneLagPeriods, 0.75 cent, 1.9.9).
+        // This is the check 1.9.50's retune fails: there the loop alone
+        // carried the whole correction. The largest reading here is 0.026
+        // cent (E3 on the low E at 96 kHz).
         const auto& planes = e.voices_[st].loops;
+        const double parallelAlone = aloneCents(planes[1], omega, e.sampleRate_),
+                     normalAlone = aloneCents(planes[0], omega, e.sampleRate_);
+        valid &= std::abs(parallelAlone) < 0.05
+            && std::abs(normalAlone - parallelAlone + 0.75) < 0.01;
         valid &= planes[0].targetDelay > planes[1].targetDelay;
         valid &= planes[0].currentDelay > planes[1].currentDelay;
         std::cout << "Modal tuning rate=" << e.sampleRate_ << " shape=" << int(e.parameters_.shape)
                   << " string=" << st << " note=" << note << " modes=" << roots.size()
                   << " centre=" << centre << " cents, dominant=" << dominantCents << " cents ("
-                  << 100. * largestWeight / sumWeight << " % of the loudness)\n";
+                  << 100. * largestWeight / sumWeight << " % of the loudness), loop alone "
+                  << parallelAlone << " and " << normalAlone << " cents\n";
         if (!valid)
-            std::cerr << "FAIL: physical modal tuning or shared speaking length\n";
+            std::cerr << "FAIL: the string's own length is off pitch, or its coupled family is\n";
         return valid;
     }
 };
@@ -363,6 +389,6 @@ int main()
                 *e, fixture.string, fixture.note, fixture.velocity, fixture.minimumModes);
         }
     if (valid)
-        std::cout << "Physical modal tuning and shared-plane coherence passed\n";
+        std::cout << "Fretted-length tuning and the coupled family's pull passed\n";
     return valid ? 0 : 1;
 }

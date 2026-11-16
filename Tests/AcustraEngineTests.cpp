@@ -282,11 +282,6 @@ struct AcustraEngineTestAccess
         double secondDispersionA2 { 0.0 };
         bool upperDispersionActive { false };
         std::array<float, 4> upperDispersionCoefficients {};
-        // The bridge's reflection lag, in samples, at the pitch the loop is
-        // tuned to: the loop is shortened by it (bridgePhaseDelay) and the
-        // bridge gives it back, so with it the loop resolves where the
-        // string sounds. Zero reads the loop alone.
-        double bridgeDelay { 0.0 };
     };
 
     // Completes a snapshot with the loop's sections that the positional
@@ -855,6 +850,12 @@ struct AcustraEngineTestAccess
                  std::complex<double>(port.parallel.real(), port.parallel.imag()) };
     }
 
+    // The stiffness the string's dispersion was designed for at its stop.
+    static double inharmonicity(const AcustraEngine& engine, int string)
+    {
+        return engine.voices_[static_cast<std::size_t>(string)].dispersionDesignInharmonicity;
+    }
+
     static double playedDelay(PhysicalCalibration calibration)
     {
         auto engineOwner = std::make_unique<AcustraEngine>();
@@ -961,10 +962,6 @@ struct AcustraEngineTestAccess
                               loop.dispersionA1, loop.dispersionA2,
                               selected->dispersionDesignInharmonicity, rate },
                               loop);
-            const int string = static_cast<int>(selected - engine.voices_.begin());
-            const float frequency = selected->pitchGeometry.value.frequency;
-            snapshot.bridgeDelay = engine.bridgePhaseDelay(
-                engine.bridgePortMobility(frequency, string), frequency, string);
             trace.push_back(snapshot);
         }
         return trace;
@@ -3266,45 +3263,27 @@ void testSteadyPitchIsCompensated()
     }
 }
 
-void testEveryStringStaysOnEqualTemperedPitch()
+void testEveryStringSoundsItsStoppedLength()
 {
-    // Preserve the single-peak acoustic guard. Open G's unresolved pair is
-    // independently covered by ModalTuning: its short-window FFT peak can
-    // lie outside both physical poles when their complex residues cancel.
-    // Since the planes were parted by 0.75 cent (1.9.9) the A string's 5th
-    // fret is such a pair too: its peak reads +4.2 cents where its poles'
-    // weighted centre is -1.9 and its strongest pole -0.2, which ModalTuning
-    // checks as its Dreadnought A-string D3 fixture.
+    // A string's loop is its stopped length (configureVoice), so what the
+    // fret fixes is the whole series: the 2nd to 5th partials sit on the
+    // stiff-string law of the equal-tempered pitch, read by their median so
+    // that one partial on a body mode does not stand for the string. The
+    // fundamental is the one partial a body mode pulls far. Its late peak is
+    // printed and not held: beside a body mode or another string's partial
+    // it is a pair, and a late window reads the pair's long member (D3 on
+    // the A string -12.5 cents, the open G +8.8) where the family's centre is
+    // -2.7 and +2.1. ModalTuning holds those families by their poles.
     //
-    // A note that meets a partial of another open string (every fifth fret
-    // meets the next string) forms a pair with it whose members are tuned
-    // as a family on their heard centre (coupledPolarisationDetune,
-    // 1.9.26): the member that moves the bridge is heard and gone in a
-    // second or two, and this late window reads the long, quiet one, cents
-    // off the centre (G3 on the D string -4.0). E3 on the low E is the same
-    // through the body: on the dreadnought's top resonance its two planes
-    // form a wide doublet, a member gone in 2 s at -7 cents and one
-    // ringing 10 s at +5, and this window reads the long one. ModalTuning
-    // checks those pairs by their poles (E3 on both strings, D3 on the A
-    // string).
-    const auto openNotes = acustra::AcustraEngine::openNotes(acustra::Tuning::Standard);
-    const auto meetsAnOpenString = [&] (int string, int note)
-    {
-        const double frequency = std::exp2(note / 12.0);
-        for (std::size_t other = 0; other < openNotes.size(); ++other)
-        {
-            if (static_cast<int>(other) == string) continue;
-            const double ratio = frequency / std::exp2(openNotes[other] / 12.0);
-            const double partial = std::round(ratio);
-            if (partial >= 1.0 && partial <= 8.0 && std::abs(ratio / partial - 1.0) < 0.012)
-                return true;
-        }
-        return false;
-    };
-    double worst = 0.0;
+    // Until 1.9.50 this held the fundamental's own peak within 1.8 cents
+    // (with six pairs excepted): each contact retuned both loops to land the
+    // fundamental's coupled pair on the nominal, which this passed while
+    // every overtone moved with the loop, +9.3 cents on the low E's 2nd fret
+    // and -5.4 on its 15th (Docs/decisions.md, 2026-11-16).
+    double worstOvertone = 0.0, worstFundamental = 0.0;
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
         for (int string = 0; string < 6; ++string)
-            for (int fret : { 0, 1, 5, 12, 20 })
+            for (int fret : { 0, 1, 2, 5, 12, 15, 20 })
             {
                 auto engine = std::make_unique<acustra::AcustraEngine>();
                 acustra::exactIntonation(*engine);
@@ -3313,23 +3292,38 @@ void testEveryStringStaysOnEqualTemperedPitch()
                 const int note = acustra::AcustraEngine::openNotes(
                     acustra::Tuning::Standard)[static_cast<std::size_t>(string)] + fret;
                 engine->noteOn(note, 0.6f, string + 1);
+                const double stiffness
+                    = acustra::AcustraEngineTestAccess::inharmonicity(*engine, string);
                 const int count = static_cast<int>(2.8 * rate);
                 Audio audio { std::vector<float>(static_cast<std::size_t>(count)),
                               std::vector<float>(static_cast<std::size_t>(count)) };
                 engine->process(audio.left.data(), audio.right.data(), count);
                 const double expected = 440.0 * std::exp2((note - 69.0) / 12.0);
-                const double actual = spectralPeakFrequency(
-                    audio, expected, 18.0, 1.6, 2.7, rate);
-                const double cents = 1200.0 * std::log2(actual / expected);
-                worst = std::max(worst, std::abs(cents));
-                if (!(string == 3 && fret == 0) && !(string == 1 && fret == 5)
-                    && !(string == 0 && fret == 12) && !meetsAnOpenString(string, note))
-                    expect(std::abs(cents) < 1.8,
-                       "string " + std::to_string(string + 1) + " fret "
-                           + std::to_string(fret) + " missed equal tuning by "
-                           + std::to_string(cents) + " cents at " + std::to_string(rate));
+                std::array<double, 4> overtones {};
+                for (int partial = 2; partial <= 5; ++partial)
+                {
+                    const double law = expected * partial * std::sqrt(
+                        (1.0 + stiffness * partial * partial) / (1.0 + stiffness));
+                    overtones[static_cast<std::size_t>(partial - 2)] = 1200.0 * std::log2(
+                        spectralPeakFrequency(audio, law, 15.0, 0.15, 0.95, rate) / law);
+                }
+                std::sort(overtones.begin(), overtones.end());
+                const double overtone = 0.5 * (overtones[1] + overtones[2]);
+                const double fundamental = 1200.0 * std::log2(spectralPeakFrequency(
+                    audio, expected, 18.0, 1.6, 2.7, rate) / expected);
+                worstOvertone = std::max(worstOvertone, std::abs(overtone));
+                worstFundamental = std::max(worstFundamental, std::abs(fundamental));
+                // The worst median is 0.86 cent (the A string's 12th fret
+                // at 44.1 kHz), the dispersion design's own residual; 1.9.50
+                // reads up to 9.3 here.
+                expect(std::abs(overtone) < 1.2,
+                       "string " + std::to_string(string + 1) + " fret " + std::to_string(fret)
+                           + " at " + std::to_string(rate)
+                           + ": the overtones miss the stopped length by "
+                           + std::to_string(overtone) + " cents");
             }
-    std::cout << "Every-string equal tuning: worst sustained error " << worst << " cents\n";
+    std::cout << "Every string's stopped length: worst overtone median " << worstOvertone
+              << " cents; worst late fundamental peak " << worstFundamental << " cents\n";
 }
 
 void testPhysicalSustainSettlesNearRequestedPitch()
@@ -3364,44 +3358,16 @@ void testPhysicalSustainSettlesNearRequestedPitch()
             * std::exp2((static_cast<double>(midiNote) - 69.0) / 12.0);
         const double alone = 1200.0 * std::log2(spectralPeakFrequency(
             isolated(midiNote, false), expected, 20.0, 0.82, 1.32) / expected);
-        // The bridge phase this loop is tuned against is the string's own
-        // point on the saddle, and B3 ends a quarter of the way in from the
-        // treble impact, three semitones above the archive's 208.7 Hz
-        // rocking mode. With the rocking bank in, that termination is
-        // reactive enough for the string to form a resolvable pair with it,
-        // where the one-point bridge read a single peak 0.09 cents flat; the
-        // pull vanishes with the mobility scale (0.06 cents at its 0.25
-        // floor), so this is the coupling and not a compensation error.
-        // The bound is 1.6 rather than 1.5 because the whole engine moved
-        // +0.31 cents when the radiating polarisation stopped carrying the
-        // old authored split's 0.32-cent detune of itself. B3 is the only
-        // note near the bound and is what sets it: at the shipping calibration the six
-        // read +0.432 (MIDI 40), +0.274 (45), +0.322 (52), +1.515 (59),
-        // +0.087 (64) and -0.214 (71) cents, so the other five sit inside
-        // half a cent and B3 has 0.08 cents of headroom. That coupling has
-        // since been measured: with the parallel polarisation on the rocking
-        // coordinate the open B forms a mode pair through it, a
-        // normal-dominated member that sheds 0.24 dB a period and a
-        // parallel-dominated one 6.4 cents above that sheds 0.011, so the
-        // sustain this window reads was 6.6 cents sharp before the pair was
-        // tuned by its sustained, energy-weighted centre
-        // (coupledPolarisationDetune). Tuned, B3 read +1.67 cents, where the
-        // uncoupled string read +1.52: the same reactive-termination pair as
-        // before, read through a doublet. With the end correction at zero
-        // (chosen by ear) the two planes start in tune, the rocking mixes
-        // them into a closer pair, and B3 reads +2.53 against that pair's
-        // sustained centre; the other five stay inside a cent. The bound is
-        // 2.8 for that reason.
-        //
-        // E3 on the low E sits by the dreadnought's top resonance; its
-        // pair is a wide doublet, a member at -7 cents shedding its energy
-        // in about two seconds and a long member at +5 that radiates little
-        // but is what is left by this window (1.9.26, the pair tuned on its
-        // loudness centre; it read +6.9 on its energy centre, and 1.9.25
-        // tuned the long member alone, +0.3 here with the attack 11 cents
-        // flat). ModalTuning checks the pair by its poles; here the long
-        // member's pull is bounded.
-        expect(std::abs(alone) < (midiNote == 52 ? 8.0 : 2.8),
+        // The loop is the string's stopped length, so this peak is the
+        // fundamental where the body leaves it: -2.94 cents (MIDI 40, the
+        // open E under the body's low modes), +0.04 (45), -2.27 (52), +0.16
+        // (59), -1.49 (64) and -2.98 (71). Held to 3.5. Until 1.9.50 each
+        // contact retuned the loop to land this peak's coupled pair on the
+        // nominal, and the bound was 2.8, with 8 for E3, whose pair that
+        // retune left as a wide doublet read on its long member; the retune
+        // moved every overtone with the loop (Docs/decisions.md,
+        // 2026-11-16), which testEveryStringSoundsItsStoppedLength holds.
+        expect(std::abs(alone) < 3.5,
                "the played steel string missed settled pitch for MIDI "
                    + std::to_string(midiNote) + " by "
                    + std::to_string(alone) + " cents");
@@ -3428,7 +3394,12 @@ void testPhysicalSustainSettlesNearRequestedPitch()
     }
 }
 
-void testLoadedE2IsCentredAndNotSplit()
+// The open E's fundamental at the bridge sits where the body's low modes
+// leave it, 1.7 cents under the nominal as it starts and 2.7 once it has
+// settled, and is one mode, not a split pair. Until 1.9.50 the loop was
+// retuned to put the late reading on the nominal (held within 1.5), which
+// set the string's overtones 1.5 cents sharp instead.
+void testLoadedE2IsOneModeNearItsPitch()
 {
     const double expected = 440.0 * std::exp2((40.0 - 69.0) / 12.0);
     auto engineOwner = std::make_unique<acustra::AcustraEngine>();
@@ -3455,7 +3426,7 @@ void testLoadedE2IsCentredAndNotSplit()
     expect(std::abs(earlyCents) < 3.0,
            "loaded steel E2 early mode missed tuning by "
                + std::to_string(earlyCents) + " cents");
-    expect(std::abs(lateCents) < 1.5,
+    expect(std::abs(lateCents) < 3.5,
            "loaded steel E2 late mode missed tuning by "
                + std::to_string(lateCents) + " cents");
 
@@ -3603,8 +3574,7 @@ double loopPhase(const acustra::AcustraEngineTestAccess::StringLoopSnapshot& loo
         + mixedPolePhase(loop.broadCoefficient, loop.broadMix)
         + mixedPolePhase(loop.highCoefficient, loop.highMix)
         + bendingLag
-        + allpassPhase
-        + omega * loop.bridgeDelay;
+        + allpassPhase;
 }
 
 // The bracket is widened by the caller when the resonance can sit further
@@ -5389,9 +5359,11 @@ void testBodyAndBridgeCalibrationChangePhysicalDescriptors()
     expect(acustra::AcustraEngineTestAccess::bridgeAdmittance(low)
                > acustra::AcustraEngineTestAccess::bridgeAdmittance(lowMeasured),
            "the plate conductance floor did not add junction conductance");
-    expect(std::abs(acustra::AcustraEngineTestAccess::playedDelay(high)
-                  - acustra::AcustraEngineTestAccess::playedDelay(low)) > 0.05,
-           "bridge mobility did not reach speaking-string phase delay");
+    // A livelier bridge pulls the note's partials at the junction; it does
+    // not retune the string, whose loop is its stopped length (1.9.51).
+    expect(acustra::AcustraEngineTestAccess::playedDelay(high)
+               == acustra::AcustraEngineTestAccess::playedDelay(low),
+           "bridge mobility retuned a string whose stopped length did not change");
 }
 
 // A Finger or Thumb release (applyPadRelease) runs the contact's line
@@ -8592,10 +8564,8 @@ void testTheSteelBanksFillTheirSlotsAndStayPassive()
                "the steel bridge bank has an empty mode");
     }
     // A bank with no rocking residue at all is a one-degree-of-freedom
-    // bridge, and bridgePhaseDelay's 2x2 adjugate collapses to zero on it
-    // and falls back to the scalar port. The shipped bank carries rocking
-    // modes (30 of 47), so the shipped tuning compensation is always the
-    // two-point one.
+    // bridge, which gives the parallel plane nothing to drive. The shipped
+    // bank carries rocking modes (30 of 47).
     expect(rocking > 0, "the steel bridge bank carries no rocking mode");
 
     // Every string's own mobility must then be a positive conductance at its
@@ -10359,9 +10329,9 @@ int main(int argc, char** argv)
     testAttackPitchIsBoundedAndVelocityResponsive();
     testFreshPickAttackPitchIsRateIndependent();
     testSteadyPitchIsCompensated();
-    testEveryStringStaysOnEqualTemperedPitch();
+    testEveryStringSoundsItsStoppedLength();
     testPhysicalSustainSettlesNearRequestedPitch();
-    testLoadedE2IsCentredAndNotSplit();
+    testLoadedE2IsOneModeNearItsPitch();
     testSteelDispersionTracksTheStiffStringLaw();
     testDispersionSolveCacheMatchesForcedRecomputation();
     testConfigurationKeysAndObserversLeaveTheOutputUnchanged();

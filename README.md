@@ -39,6 +39,36 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.51 — 2026-11-16 — a string keeps its fretted length, so its overtones stay in tune
+
+- Until 1.9.50 each note's two loops were retuned at contact so that the
+  fundamental's coupled pair with the body sat on the nominal pitch. The
+  retune moved the whole string, so every overtone moved with it: `+9.3`
+  cents on the low E's 2nd fret, `+5.2` on its 12th, `-5.4` on its 15th,
+  `+4.3` on the A string's 7th fret and `+4.4` on the D string's 2nd, with a
+  13-cent step between the low E's F#2 and G2, and about `+8` on the Jumbo's
+  open low E. Those overtones are most of what is heard of a wound-string
+  note. The loop is now the stopped string's own length: the 2nd to 5th
+  partials' median sits within `0.9` cent of the stiff-string law on every
+  string and fret measured, at 44.1, 48 and 96 kHz.
+- The fundamental is now where the body leaves it, as on the instrument:
+  within a cent or two on most notes, and several cents from the nominal
+  where it meets a body mode (the low E's F#2 `-6.9`, G2 `+6.6`, D#3 `-9.5`
+  and A3 `+9.5` on the Dreadnought; the Jumbo's open low E `-8.2` on its
+  coupled centre). On notes whose fundamental carries the pitch, the low E
+  above its 12th fret, that pull is the pitch heard.
+- A whole-tone MPE bend lands on its pitch: E3 bent to F#3 on the D string
+  read 6-7 cents flat on every partial, because the bend moved off the pitch
+  the retune was solved for; it now reads within half a cent.
+- Changing Shape, Body Material or the palm's pressure no longer retunes
+  ringing strings, and a note-on no longer solves the coupled tuning (about
+  0.25 ms on the development machine).
+- Open G Slide-ready's Output is `1.1 dB` (was `0.8`), which returns it to
+  its 1.9.50 level on the factory level check; the other presets moved
+  0.1 dB or less.
+- An A-B listening set was rendered for the owner; see
+  [Decisions](Docs/decisions.md).
+
 ### 1.9.50 — 2026-11-14 — physical Finger pluck point on the low strings, and faster saddle stretch
 
 - Under Finger, notes past the 4th fret on the low E, A and D strings now
@@ -898,12 +928,14 @@ wave starts where its rounded corner turns, at rest at the bridge. A short noise
 pluck goes into the plane parallel to the top, which reaches the body through
 the saddle's measured rocking and gives partials their beating doublets; the
 normal plane sounds 0.75 cent under the parallel one, chosen by ear, so the
-2nd-4th partials swell and fade as a recorded guitar's do. Through the
-rocking the two planes form a pair of coupled modes a few cents apart, and
-both loops are lengthened so that the pair's centre, each member weighed by
-its loudness over its life, sits on the pitch the finger stopped at contact, the body and the idle
-strings folded into the solve (since 1.9.26; before it the member with the
-most energy left after three seconds was tuned, heard or not). A
+2nd-4th partials swell and fade as a recorded guitar's do. Each loop is the
+stopped string's own length, on the equal-tempered pitch of its fret, so the
+overtones follow the stiff-string law from there. Through the rocking the
+two planes form a pair of coupled modes a few cents apart, and where a
+partial meets a body mode the body pulls that partial alone, which is mostly
+the fundamental of a low note (1.9.26 to 1.9.50 retuned both loops at each
+contact to put the fundamental's pair on the nominal, which moved every
+overtone with it). A
 bounded Kirchhoff-Carrier surrogate sharpens the attack pitch; a plectrum
 lets go at 0.69 of the finger's excursion, so a hard pick starts as sharp as
 the reference bank's Shinyguitar archtop. The stretch a vibrating string adds to
@@ -946,7 +978,7 @@ Mono mic uses its right observation.
 Fixed torso/back and forearm/top contact add two passive structural losses
 to the body modes. These are conservative authored frequency envelopes,
 not measurements of a player's posture. They shorten free body ringing
-while the bridge and tuning observer follow the same loaded body; string
+while the bridge follows the same loaded body; string
 release, palm muting and room decay remain separate mechanisms. See the
 [contact model](Docs/research/player-contact-2026-10-20.md).
 
@@ -1282,23 +1314,13 @@ separates verified errors from accepted approximations.
   planes form is wide: E3 on the low E has one member ringing 10 s and
   another gone in 2 s, 12 cents apart; F3 on the low E's 13th fret and the
   D string's 3rd is a wolf, one member gone in 0.45 s and the other ringing
-  10 s, 22 cents apart (1.9.26, `Docs/research/coupled-tuning-2026-11-07.md`).
-  Tuned on their centre, such a note attacks a few cents flat and sustains a
-  few sharp. A measured rocking admittance of a steel-string bridge would
+  10 s, 22 cents apart (`Docs/research/coupled-tuning-2026-11-07.md`).
+  A measured rocking admittance of a steel-string bridge would
   say whether the split is that wide. The 0.75-cent split between the planes is chosen by ear, not
   derived: what parts a real string's planes (the saddle's or nut's
   sideways hold, the string's own asymmetry) is not modelled. It costs
   fingered notes about 1.5 dB of their brightening with velocity
   (Docs/decisions.md, 2026-10-30).
-- A note-on's tuning solve costs 0.1-0.25 ms on the development machine
-  (48 kHz, 64-sample blocks), so six note-ons struck in one block cost
-  0.7-1.25 ms with the block's own rendering, close to the block's 1.33 ms
-  on chords that meet open-string unisons the first time they are played
-  (1.9.25: 0.5-0.7 ms, but 0.1-0.9 ms a block for every note held under a
-  vibrato); a fret played again on a string within its last eight finds
-  its tuning without the solve (1.9.28). Spreading a chord's solves
-  over its first blocks would close it; the development-machine figures are
-  not Reason's (`Docs/research/coupled-tuning-2026-11-07.md`, Cost).
 - The target of no 256-sample block above 10% of one core is not met. On
   the development machine at 48 kHz a held six-string chord takes 8-12% of a
   block, the block in which a six-note chord is first struck 35-40%, and a
@@ -1312,8 +1334,14 @@ separates verified errors from accepted approximations.
   17-26% out of the presets at 48 kHz (`Docs/benchmarks/cpu-pass-2026-11-14.md`),
   bringing held six-string blocks within 10% while a first-time chord's worst
   block remains above 10%.
-- Notes near strong lossy body modes sit a few cents from their request, and
-  coincident partials in chords pull up to about 10 cents; each Shape has an
+- A fundamental near a strong body mode sits several cents from its fret's
+  pitch while the note's overtones stay on it: up to 9.5 cents on the
+  Dreadnought's low E (D#3 and A3), and 8.2 on the Jumbo's open low E
+  (1.9.51). The body does this to a real string too, but how far depends on
+  the bridge's mobility, which is morphed from one nylon-strung guitar and
+  scaled to steel (above), so the size of the pull is not established. A
+  bridge mobility measured on a steel-string guitar would settle it.
+  Coincident partials in chords pull up to about 10 cents; each Shape has an
   air-mode note that drains fast, and the Parlor's B2 and A#2 stand 3-5 dB over
   their neighbours.
 - Low-frequency damping is too fast below 180 Hz and too slow above; the

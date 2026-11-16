@@ -1,5 +1,10 @@
 # Coupled tuning: what the string is tuned to, 1.9.26 — 2026-11-07
 
+> Superseded by 1.9.51 (2026-11-16): the per-contact tuning described here
+> moved every overtone with the fundamental and was removed; a string's loop
+> is now its stopped length. The pole measurements below stand; the source
+> paths refer to 1.9.50 and earlier. See `Docs/decisions.md`, 2026-11-16.
+
 **Question.** The owner asked again for the physical model to be reviewed,
 suspecting the recent rounds, and for every playable note at two velocities
 to be checked for outliers in tone, level, resonance and tuning. The 1.9.25

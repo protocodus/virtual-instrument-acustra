@@ -66,7 +66,7 @@ inline constexpr std::array<FactoryPreset, 8> factoryPresets {{
     { "Open G Slide-ready", "open-g-slide-ready",
       BodyShape::Auditorium, BodyMaterial::Mahogany, Tuning::OpenG,
       PickingTechnique::Finger, CaptureType::StereoMic,
-      0.30f, 0.28f, 0.55f, 0.82f, 0.62f, 0.0f, 0.10f, 0.10f, 0.8f },
+      0.30f, 0.28f, 0.55f, 0.82f, 0.62f, 0.0f, 0.10f, 0.10f, 1.1f },
     { "Piezo Stage Steel", "piezo-stage-steel",
       BodyShape::Dreadnought, BodyMaterial::Spruce, Tuning::Standard,
       PickingTechnique::Pick, CaptureType::Piezo,

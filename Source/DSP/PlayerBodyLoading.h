@@ -12,7 +12,7 @@ namespace acustra::detail
 // Independent passive losses add as inverse Q. Existing pole frequencies
 // and mechanical residues stay fixed, so each positive-real bridge mode
 // retains its positive-semidefinite residue matrix. This helper runs only
-// while configuring a body or building the tuning observer, never per sample.
+// while configuring a body or building the bridge observer, never per sample.
 inline float playerLoadedBodyQ(float frequency, float q, bool enabled) noexcept
 {
     if (!enabled)
