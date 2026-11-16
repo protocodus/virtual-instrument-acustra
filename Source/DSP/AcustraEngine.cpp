@@ -9246,7 +9246,14 @@ float AcustraEngine::chordRepluckEngagement(const Voice& voice, int stringIndex,
         // Palm damping also brings the vibrating string to a firm catch.
         const float lightStroke = smooth((0.88f - velocity) / 0.08f);
         const float freeHand = std::clamp(1.0f - 2.0f * palmMute_, 0.0f, 1.0f);
-        return 1.0f - freeHand * lightStroke * stringStiffness / (300.0f + stringStiffness);
+        // On the plain B and high E, keep the firmer upper-position catch
+        // that controls sustained partials in the release comparison.
+        // Taper over frets 12 to 15 using the actual sounding length.
+        constexpr float fifteenthFretRatio = 0.4204482f; // 2^(-15/12)
+        const float firmLength = openLength * fifteenthFretRatio;
+        const float span = stringIndex < 4 ? 1.0f
+            : smooth((length - firmLength) / (0.5f * openLength - firmLength));
+        return 1.0f - freeHand * span * lightStroke * stringStiffness / (300.0f + stringStiffness);
     }
     if (parameters_.picking == PickingTechnique::Thumb)
     {

@@ -639,6 +639,9 @@ void testChordContactFollowsThePluckingTool()
            "the picked chord grip should yield more on a lighter stroke");
     expect(pick(113.0f / 127.0f) == 1.0f && pick(0.70f, 0.70f) == 1.0f,
            "hard and palm-muted picked chords must retain the firm catch");
+    expect(Access::chordGrip(*engine, Technique::Pick, 0.65f, 0.270f, 4) == 1.0f
+        && Access::chordGrip(*engine, Technique::Pick, 0.65f, 0.270f, 3) < 1.0f,
+           "short plain strings should retain the firm catch on softer picked chords");
     const float lightThumb = Access::chordGrip(*engine, Technique::Thumb, 0.4f, 0.40f, 4);
     const float firmThumb = Access::chordGrip(*engine, Technique::Thumb, 0.9f, 0.40f, 4);
     expect(lightThumb > 0.0f && lightThumb < firmThumb && firmThumb < 1.0f,
