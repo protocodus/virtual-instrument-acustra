@@ -17,7 +17,6 @@
 #include "PlayerBodyLoading.h"
 #include "PickBendingProfile.h"
 #if !defined(JUKEBOX_SDK)
-#include "NativeComplexDivision.h"
 #endif
 
 #include <algorithm>
@@ -211,53 +210,12 @@ inline std::complex<float> divide(const std::complex<float>& z,
     return { x, y };
 }
 
-// The double path uses the SDK's identical complex division arithmetic.
-// Scaling a normal value to another normal value only changes its exponent,
-// without rounding. Zero keeps its sign. Every exceptional, subnormal, or
-// out-of-range scaling case is delegated to the SDK's complete algorithm.
 inline std::uint64_t doubleBits(double value) noexcept
 {
     std::uint64_t result;
     __builtin_memcpy(&result, &value, sizeof(result));
     return result;
 }
-
-inline bool scaleNormalOrZero(double& value, int shift) noexcept
-{
-    const std::uint64_t word = doubleBits(value);
-    if ((word & 0x7fffffffffffffffull) == 0)
-        return true;
-    const int exponent = static_cast<int>((word >> 52) & 0x7ffu);
-    const int shifted = exponent + shift;
-    if (exponent == 0 || exponent == 0x7ff || shifted <= 0 || shifted >= 0x7ff)
-        return false;
-    const std::uint64_t result = (word & 0x800fffffffffffffull)
-        | (static_cast<std::uint64_t>(shifted) << 52);
-    __builtin_memcpy(&value, &result, sizeof(value));
-    return true;
-}
-
-inline std::complex<double> divide(const std::complex<double>& z,
-                                   const std::complex<double>& w) noexcept
-{
-    const double a = z.real(), b = z.imag();
-    double c = w.real(), d = w.imag();
-    const std::uint64_t magnitude = std::max(doubleBits(c) & 0x7fffffffffffffffull,
-                                            doubleBits(d) & 0x7fffffffffffffffull);
-    if (!__builtin_isfinite(a) || !__builtin_isfinite(b)
-        || magnitude < 0x0010000000000000ull || magnitude >= 0x7ff0000000000000ull)
-        return z / w;
-    const int exponent = static_cast<int>(magnitude >> 52) - 1023;
-    if (!scaleNormalOrZero(c, -exponent) || !scaleNormalOrZero(d, -exponent))
-        return z / w;
-    const double denominator = c * c + d * d;
-    double x = (a * c + b * d) / denominator;
-    double y = (b * c - a * d) / denominator;
-    if (!scaleNormalOrZero(x, -exponent) || !scaleNormalOrZero(y, -exponent))
-        return z / w;
-    return { x, y };
-}
-
 
 inline double doubleFromBits(std::uint64_t word) noexcept
 {
@@ -304,35 +262,16 @@ inline double magnitude(const std::complex<double>& value) noexcept
     return exact::sqrt(y1 * t1 - (w * (-w) - (y2 * t1 + b * t2)));
 }
 
-inline std::complex<double> complexSqrt(const std::complex<double>& value) noexcept
-{
-    if (__builtin_flt_rounds() != 1
-        || !exact::isfinite(value.real()) || !exact::isfinite(value.imag()))
-        return std::sqrt(value);
-    // This is libc++'s finite complex sqrt expression, with its scalar sqrt
-    // and hypot computed above; polar and arg keep the SDK's own routines.
-    return std::polar(exact::sqrt(magnitude(value)), std::arg(value) / 2.0);
-}
-
 #else
 inline std::complex<float> divide(const std::complex<float>& z,
                                   const std::complex<float>& w) noexcept
 {
     return z / w;
 }
-inline std::complex<double> divide(const std::complex<double>& z,
-                                   const std::complex<double>& w) noexcept
-{
-    return nativeComplexDivision::divide(z, w);
-}
 
 inline double magnitude(const std::complex<double>& value) noexcept
 {
     return std::abs(value);
-}
-inline std::complex<double> complexSqrt(const std::complex<double>& value) noexcept
-{
-    return std::sqrt(value);
 }
 
 #endif
