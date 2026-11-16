@@ -1834,7 +1834,9 @@ private:
             float airModeHz { 0.0f };
             float midPeakHz { 0.0f };
             static constexpr std::size_t palmMidSection = 3;
+            static constexpr std::size_t palmPresenceSection = 5;
             std::array<double, 5> openMid {}, mutedMid {};
+            std::array<double, 5> openPresence {}, mutedPresence {};
             float openGain { 1.0f };
             void setPalmPickPressure(float pressure) noexcept;
 

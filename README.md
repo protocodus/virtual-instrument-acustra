@@ -39,6 +39,13 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.54 — 2026-11-16 — palm-muted pick presence
+
+Palm Muted Steel Pick gains about 1 dB of presence between 2 and 4 kHz in
+both marked passages. The soundhole strike position and upper-string loss
+carry over from 1.9.53. The 7 kHz decay in those passages is within 0.1 dB
+of that revision. [Comparison with released Rack 1.3.3](Docs/validation/palm-muted-pick-2026-11-16.md#presence-audition-in-1954).
+
 ### 1.9.53 — 2026-11-16 — palm-muted steel pick
 
 With the heel down, picked strings shed their upper harmonics sooner. The

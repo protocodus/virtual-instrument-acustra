@@ -243,6 +243,19 @@ void testPalmPickMicrophones(double rate)
     expect(20.0 * std::log10(mid / bass) > 4.0,
            "half palm on Pick did not restore the middle of the microphone spectrum");
     expect(muted.gain < open.gain, "the microphone lift lost its saved-level compensation");
+    // 1.9.53 already changed the 500 Hz section with the heel down. Keep
+    // that contour and its gain to isolate the new presence adjustment.
+    auto preceding = muted;
+    preceding.coefficients = open.coefficients;
+    preceding.coefficients[muted.palmMidSection] = muted.coefficients[muted.palmMidSection];
+    const auto changeDb = [&](double hz) {
+        return 20.0 * std::log10(response(muted, hz) / response(preceding, hz));
+    };
+    const double presenceDb = changeDb(2000.0);
+    expect(presenceDb > 1.2 && presenceDb < 2.3, "muted Pick lost its modest 2 kHz lift");
+    if (rate > 16000.0)
+        expect(std::abs(changeDb(7000.0)) < 0.3, "presence adjustment reached the ringing partials");
+
     settings.picking = acustra::PickingTechnique::Thumb;
     engine->setParameters(settings);
     settle();

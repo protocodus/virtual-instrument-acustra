@@ -38,3 +38,24 @@ The full-phrase 2–4 kHz band is 4.9 dB below released 1.3.3, compared
 with 2.9 dB below in 1.9.52. The other seven archived performances
 reproduced 1.9.52 byte for byte at both matched and stored qualities.
 These results cover the archived parts and controls.
+
+## Presence audition in 1.9.54
+
+In both reported time windows, the largest remaining deficit in the
+presence range was around 2 kHz. With the heel down, the microphone's
+existing 1.4 kHz peak now moves toward 1.58 kHz and broadens slightly.
+The string and its soundhole strike keep their 1.9.53 behavior.
+
+| Same archived performance | Released 1.3.3 | 1.9.53d1 | 1.9.54d1 |
+| --- | ---: | ---: | ---: |
+| 0–2 s, 2–4 kHz relative to release (dB) | 0.00 | −2.79 | −1.71 |
+| 4–6 s, 2–4 kHz relative to release (dB) | 0.00 | −4.02 | −2.94 |
+| 0–2 s, 7 kHz decay at 75–150 ms (dB from attack) | −60.12 | −33.57 | −33.50 |
+| 4–6 s, 7 kHz decay at 75–150 ms (dB from attack) | −60.19 | −33.36 | −33.36 |
+| Full phrase, saved loudness relative to release (LU) | 0.00 | +0.51 | +0.67 |
+
+The 2–4 kHz values use the same stereo power normalization and archived
+MIDI as the earlier comparison. For the upper partials, the measurements
+isolate 6.84–7.29 kHz and compare the tail with the first 24 ms of the E2/B2
+strokes. The listener can switch between the three complete renders or
+loop either reported passage at matched loudness.

@@ -14687,6 +14687,13 @@ void AcustraEngine::BodyBank::CaptureFilter::configure(double sampleRate,
     }
     openMid = coefficients[palmMidSection];
     mutedMid = peakSection(770.0, 4.5, 1.1);
+    // In the archived E2/B2 riff the widest remaining presence deficit
+    // against released 1.3.3 is near 2 kHz. Reshape the existing 1.4 kHz
+    // section under the heel, keeping the high partials off its shoulder.
+    static_assert(detail::captureVoicingSections[palmPresenceSection].kind == detail::CaptureVoicingKind::Peak
+        && detail::captureVoicingSections[palmPresenceSection].frequencyHz == 1400.0f);
+    openPresence = coefficients[palmPresenceSection];
+    mutedPresence = peakSection(1580.0, 7.1, 1.02);
     openGain = gain;
 }
 
@@ -14703,9 +14710,13 @@ void AcustraEngine::BodyBank::CaptureFilter::setPalmPickPressure(float pressure)
     // half-palm gesture, a 3 dB full-pressure trim removes about 2.3 dB.
     constexpr double fullMuteMicGain = 0.7079457843841379;
     gain = static_cast<float>(openGain * (1.0 + mix * (fullMuteMicGain - 1.0)));
-    auto& section = coefficients[palmMidSection];
-    for (std::size_t i = 0; i < section.size(); ++i)
-        section[i] = openMid[i] + mix * (mutedMid[i] - openMid[i]);
+    auto& mid = coefficients[palmMidSection];
+    auto& presence = coefficients[palmPresenceSection];
+    for (std::size_t i = 0; i < mid.size(); ++i)
+    {
+        mid[i] = openMid[i] + mix * (mutedMid[i] - openMid[i]);
+        presence[i] = openPresence[i] + mix * (mutedPresence[i] - openPresence[i]);
+    }
 }
 
 void AcustraEngine::BodyBank::CaptureFilter::render(BodyOutput& output) noexcept
