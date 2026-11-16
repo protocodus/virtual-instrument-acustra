@@ -8982,10 +8982,24 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
         // either pass's arithmetic or adding delay-sized storage.
         const std::array<float*, 2> increments {
             pickReleaseDisplacement_.data(), pickReleaseVelocity_.data() };
+        float engagement = 1.0f;
+        if (fullSoftSlip && fingerChord && !voice.strumming && stringIndex >= 4)
+        {
+            // On a pinched plain treble string the soft pad yields as it
+            // catches the previous vibration. At x = pL the string presents
+            // T / (L p (1-p)) transverse stiffness. Two springs sharing the
+            // deflection give the fraction below. Applying it to both contact
+            // constraints approximates a partly engaged grip at release.
+            // The effective pad stiffness is voiced against released 1.3.3.
+            constexpr float padStiffness = 100.0f; // N/m
+            const float stringStiffness = voice.tensionNewtons
+                / (soundingLength * position * (1.0f - position));
+            engagement = padStiffness / (padStiffness + stringStiffness);
+        }
         for (int plane = 0; plane < 2; ++plane)
         {
             auto& previous = repluckOldLoops_[static_cast<std::size_t>(plane)];
-            conditionRepluckContact(previous, position, true);
+            conditionRepluckContact(previous, position, true, engagement);
             const auto work = repluckIncrementWork(
                 voice.loops[static_cast<std::size_t>(plane)], previous,
                 increments[static_cast<std::size_t>(plane)]);
@@ -9223,9 +9237,9 @@ void AcustraEngine::returnToOpenString(Voice& voice, int stringIndex,
 
 void AcustraEngine::conditionRepluckContact(StringLoop& loop,
                                             float position,
-                                            bool stopVelocity) noexcept
+                                            bool stopVelocity, float engagement) noexcept
 {
-    if (!(position > 0.0f && position < 1.0f))
+    if (!(position > 0.0f && position < 1.0f) || !(engagement > 0.0f))
         return;
     const float period = loop.currentDelay;
     const int length = std::clamp(static_cast<int>(std::ceil(period)) + 1,
@@ -9351,6 +9365,10 @@ void AcustraEngine::conditionRepluckContact(StringLoop& loop,
         removed[0] = (cross[0] * norm[1] - cross[1] * mixedNorm) / determinant;
         removed[1] = (cross[1] * norm[0] - cross[0] * mixedNorm) / determinant;
     }
+    // A compliant catch removes a fraction of the rigid correction. The
+    // slope-energy removed is then (2g - g*g) times the rigid removal.
+    removed[0] *= engagement;
+    removed[1] *= engagement;
     if (removed[0] == 0.0 && removed[1] == 0.0)
         return;
     cumulativeWeight = {};

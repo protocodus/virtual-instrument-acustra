@@ -2043,7 +2043,7 @@ private:
     // Orthogonal in the sampled delay-line slope norm; filter memories and
     // already emitted travelling contact waves remain unchanged.
     static void conditionRepluckContact(StringLoop& loop, float position,
-                                         bool stopVelocity = false) noexcept;
+                                         bool stopVelocity = false, float engagement = 1.0f) noexcept;
     void retainRepluckArrivals(Voice& voice) noexcept;
     static float alignedRepluckIncrement(const StringLoop& fresh,
         const StringLoop& previous, int age) noexcept;
