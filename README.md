@@ -39,6 +39,14 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.56 — 2026-11-16 — softer fingertip catch on ringing treble strings
+
+On a repeated Finger chord the pad yields as it catches the already-ringing
+plain treble strings. In Dreadnought Steel at 0:05.48 this reduces D4’s
+3.55 kHz overtone by 14 dB, with a 0.024 LU change to the song level.
+The soundhole geometry and the factory Output settings carry over from 1.9.55.
+[Comparison with released 1.3.3](Docs/validation/dreadnought-repluck-2026-11-16.md).
+
 ### 1.9.55 — 2026-11-16 — pickup presence, string damping and output
 
 The wound G sheds its lengthwise vibration sooner on Dreadnought and Jumbo
