@@ -21,14 +21,14 @@ rewrites this table. Longer technique and repertoire renders are described in
 
 | # | Preset | Demo | Length | Peak |
 | --- | --- | --- | --- | --- |
-| 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -1.7 dBFS |
-| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -2.4 dBFS |
-| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -2.3 dBFS |
-| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -1.5 dBFS |
-| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -1.5 dBFS |
-| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.wav](Docs/audio/06-dadgad-mono-mic.wav) | 11.2 s | -1.5 dBFS |
-| 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -1.5 dBFS |
-| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -1.5 dBFS |
+| 1 | Dreadnought Steel | [01-dreadnought-steel.wav](Docs/audio/01-dreadnought-steel.wav) | 11.7 s | -3.6 dBFS |
+| 2 | Parlor Steel Fingerstyle | [02-parlor-steel-fingerstyle.wav](Docs/audio/02-parlor-steel-fingerstyle.wav) | 11.6 s | -12.1 dBFS |
+| 3 | Mahogany Steel Thumb | [03-mahogany-steel-thumb.wav](Docs/audio/03-mahogany-steel-thumb.wav) | 11.8 s | -10.2 dBFS |
+| 4 | Jumbo Steel Pick | [04-jumbo-steel-pick.wav](Docs/audio/04-jumbo-steel-pick.wav) | 11.1 s | -4.8 dBFS |
+| 5 | Palm Muted Steel Pick | [05-palm-muted-steel-pick.wav](Docs/audio/05-palm-muted-steel-pick.wav) | 11.2 s | -2.9 dBFS |
+| 6 | DADGAD Mono Mic | [06-dadgad-mono-mic.wav](Docs/audio/06-dadgad-mono-mic.wav) | 11.2 s | -11.6 dBFS |
+| 7 | Open G Slide-ready | [07-open-g-slide-ready.wav](Docs/audio/07-open-g-slide-ready.wav) | 11.5 s | -5.8 dBFS |
+| 8 | Piezo Stage Steel | [08-piezo-stage-steel.wav](Docs/audio/08-piezo-stage-steel.wav) | 10.6 s | -7.5 dBFS |
 
 <!-- audio-demos-end -->
 
@@ -38,6 +38,16 @@ Each entry is a source version in this repository; none has been published
 as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
+
+### 1.9.55 — 2026-11-16 — pickup presence, string damping and output
+
+The wound G sheds its lengthwise vibration sooner on Dreadnought and Jumbo
+chords. Firm Finger chord strokes release over a wider pad. The picked Piezo
+recovers some of the presence around 1.35 kHz lost when the hand moved to
+the soundhole. Soft strokes and strummed chords follow the dynamics of
+released Rack 1.3.3 more closely, and each of the eight factory patches
+carries its own Output trim measured against its original performance.
+[Released 1.3.3 comparison](Docs/validation/output-and-resonance-2026-11-16.md).
 
 ### 1.9.54 — 2026-11-16 — palm-muted pick presence
 
