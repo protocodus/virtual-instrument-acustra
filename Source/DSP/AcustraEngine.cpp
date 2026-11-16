@@ -3471,7 +3471,9 @@ PhysicalCalibration AcustraEngine::sanitise(
         bounded(source.steelPlainBendingLoss, 0.0f, 2.0f,
                 fittedPhysicalCalibration.steelPlainBendingLoss),
         bounded(source.steelWoundBendingLoss, 0.0f, 2.0f,
-                fittedPhysicalCalibration.steelWoundBendingLoss)
+                fittedPhysicalCalibration.steelWoundBendingLoss),
+        bounded(source.steelWoundAxialLoss, 0.0f, 2.0f,
+                fittedPhysicalCalibration.steelWoundAxialLoss)
     };
 }
 
@@ -4610,6 +4612,7 @@ void AcustraEngine::prepare(double sampleRate, int)
     {
         using D = PiezoDesign;
         preparePiezoSaddleBank(sampleRate_);
+        pickupPresence_.prepare(sampleRate_);
         // The input section as deviations from its operating point. The jack
         // node carries only capacitors, so its charge stays where it was and
         // V_J = (Cp V_oc + C1 V_IN) / (Cs + C1); the IN node then sees C1 in
@@ -4759,6 +4762,7 @@ void AcustraEngine::reset() noexcept
     outputReference_ = outputReferenceFor(parameters_);
     monoReference_ = monoReferenceFor(parameters_);
     piezoTrim_ = PiezoDesign::trim * piezoReferenceFor(parameters_);
+    pickupPresence_.mix = parameters_.picking == PickingTechnique::Pick ? 1.0f : 0.0f;
     captureMix_.fill(0.0f);
     captureMix_[static_cast<std::size_t>(parameters_.capture)] = 1.0f;
     bodyConfigured_ = false;
@@ -4816,6 +4820,7 @@ void AcustraEngine::resetSoundState() noexcept
     idleFlushHeld_ = false;
     guitarNoises_.clear();
     resetPiezo();
+    pickupPresence_.state1 = pickupPresence_.state2 = 0.0;
     micDelayLeft_.fill(0.0f);
     micDelayRight_.fill(0.0f);
     micDelayMono_.fill(0.0f);
@@ -4923,6 +4928,7 @@ void AcustraEngine::settleSuspendedParameters() noexcept
     outputReference_ = outputReferenceFor(parameters_);
     monoReference_ = monoReferenceFor(parameters_);
     piezoTrim_ = PiezoDesign::trim * piezoReferenceFor(parameters_);
+    pickupPresence_.mix = parameters_.picking == PickingTechnique::Pick ? 1.0f : 0.0f;
     // Match the ordinary construction update's reciprocal-port refinement.
     // Only the delay endpoint moves; delay/filter waves and contact memory
     // stay intact, as do controller and performance histories.
@@ -7423,14 +7429,11 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
         ? std::max(0.0f, physicalCalibration_.steelWoundBendingLoss * woundAgeing
                              - frictionLoss)
         : physicalCalibration_.steelPlainBendingLoss;
-    // The longitudinal waves stretch the core, so they lose by its Young's
-    // modulus loss factor, the one its bending loses by, with the dislocation
-    // angle: Woodhouse (Acta Acustica 103, 2017, doi:10.3813/aaa.919135)
-    // gives the axial and bending stiffness the same loss factor. The
-    // winding friction is the turns sliding as the string flexes, so it is
-    // left out here.
+    // Plain steel uses its modulus loss for both bending and extension.
+    // On a wound string the effective longitudinal decay is calibrated
+    // independently so tuning the transverse overtones preserves its ring.
     voice.axialLossFactor = dislocationLoss + (wound
-        ? physicalCalibration_.steelWoundBendingLoss * woundAgeing
+        ? physicalCalibration_.steelWoundAxialLoss * woundAgeing
         : physicalCalibration_.steelPlainBendingLoss);
     // A dispersion design for these complete arguments, from the solves
     // already made when one matches exactly, otherwise solved and kept.
@@ -7925,14 +7928,17 @@ float AcustraEngine::mpePressureFor(const Voice& voice) const noexcept
 
 namespace
 {
-float softPluckGain(float velocity) noexcept
+float softPluckGain(float velocity, PickingTechnique technique) noexcept
 {
-    // Retain the soft floor and full-force endpoint. Extending the rise
-    // across the whole keyboard velocity range lets ordinary accents carry
-    // the level contrast of parts written on 1.3.3.
-    constexpr float minimumGain = 0.20f;
-    return minimumGain + (1.0f - minimumGain) * velocity * velocity
+    const float base = 0.20f + 0.80f * velocity * velocity
         * (3.0f - 2.0f * velocity);
+    // The released Rack's low-velocity single notes fall farther beneath
+    // their own full stroke, especially with a pick. Scale force and its
+    // release-edge reference together so velocity keeps its contact colour.
+    const float remaining = 1.0f - velocity;
+    const float lightStroke = technique == PickingTechnique::Pick
+        ? 0.70f * (1.0f - velocity * velocity) : 0.30f;
+    return base * (1.0f - remaining * lightStroke);
 }
 
 float xorshiftNoise(std::uint32_t& state) noexcept
@@ -8076,6 +8082,7 @@ void AcustraEngine::beginStrum(int strokeSpanSamples,
     strumEntryString_ = entryString;
     strumExitString_ = exitString;
     strumGesture_ = nextPickingGesture();
+    strumGesture_.chordSweep = entryString >= 0 && exitString >= 0;
     // A stroke's own pick speed varies stroke to stroke (GuitarSet's
     // comping tracks, Tools/MeasureStrums.py -- see strumDelaySamples and
     // noteOn's strumMember path for the measured figures this scale is
@@ -8238,7 +8245,13 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
             (1.0f - 0.5f * position) * voice.contactPeriodSamples);
     // The velocity-to-force curve is independent of the fitted brightness
     // depth. The release gesture below keeps its separate contact-time law.
-    const float velocityGain = softPluckGain(v);
+    float velocityGain = softPluckGain(v, parameters_.picking);
+    // The 1.3.3 chord phrases carry more level than the current shared
+    // sweep at the same MIDI velocity. Raise the swept pick/thumb stroke
+    // independently of separate notes and simultaneous fingertip attacks.
+    if (gesture.chordSweep && !fullSoftSlip)
+        velocityGain *= parameters_.picking == PickingTechnique::Pick
+            ? 1.2589254f : 1.1220185f; // +2 dB pick, +1 dB thumb
     const float velocityForce = v * velocityGain;
     // Retain small string-contact differences at a fixed strum velocity.
     // GuitarSet's +/-7.74 dB spread (a 4.47 dB std) copied the players'
@@ -8327,7 +8340,7 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
                 * (0.92 + 0.08 * touch);
             const float previousVelocity = voice.lastPluckVelocity;
             const double previousForce = static_cast<double>(
-                previousVelocity * softPluckGain(previousVelocity))
+                previousVelocity * softPluckGain(previousVelocity, parameters_.picking))
                 * (0.92 + 0.08 * effectiveTouch(previousVelocity));
             const double forceChange = exact::abs(std::log(nominalForce / previousForce));
             recent = fade(elapsed);
@@ -8477,7 +8490,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // moved the median 3–8 kHz share at 30–200 ms from 9.9 dB below that
     // release to 0.4 dB above it across four Finger patches (E2–A5, v40–120).
     // The Thumb uses its own reference-normalised 0.2 mm release.
-    const float fingerReleaseRadius = fullSoftSlip ? 0.25e-3f : 0.2e-3f;
+    // Firmer fingertip strokes spread the pad and round the upper partials
+    // on the sustained chord. Keep the light touch at the original radius.
+    const float fingerReleaseRadius = fullSoftSlip
+        ? 0.25e-3f * (1.0f + v * v) : 0.2e-3f;
     // Playing force and release gesture have independent authored responses.
     // Raising soft-note force from v^2 to v also raises its release speed.
     // Finger and Thumb scale their effective edge by the same 1/v ratio to
@@ -11438,7 +11454,7 @@ bool AcustraEngine::transitionNote(int sourceMidiNote, int targetMidiNote,
         const double tensionRatio = voice.tensionNewtons > 0.0f
             ? std::min(1.0, static_cast<double>(voice.pitchGeometry.value.tension)
                 / voice.tensionNewtons) : 1.0;
-        const double amplitude = 0.24 * velocity * softPluckGain(velocity)
+        const double amplitude = 0.24 * velocity * softPluckGain(velocity, PickingTechnique::Finger)
             * (hammer ? 0.35 : 0.30)
             * length * p * (1.0 - p) / (0.648 * 0.16 * 0.84) * tensionRatio;
         work = amplitude * amplitude / (contactPeriod * p * (1.0 - p));
@@ -15191,6 +15207,41 @@ void AcustraEngine::configurePiezoUnit() noexcept
                                    * piezoMidbandGain_);
 }
 
+void AcustraEngine::PickupPresence::prepare(double rate) noexcept
+{
+    // The 1.3.3 Stage Steel performance has 7.37 dB more 1–2 kHz at
+    // identical Output and 2x. Keep the physical hand position and pickup
+    // circuit; a broad downstream presence bell restores part of that range.
+    constexpr double centreHz = 1350.0, q = 0.75, gainDb = 6.5;
+    const double a = std::pow(10.0, gainDb / 40.0);
+    const double omega = 2.0 * piDouble * centreHz / rate;
+    const double alpha = std::sin(omega) / (2.0 * q * a);
+    const double a0 = 1.0 + alpha;
+    // Store just the bandpassed difference between the RBJ peak and unity.
+    feed = alpha * (a * a - 1.0) / a0;
+    feedback1 = 2.0 * std::cos(omega) / a0;
+    feedback2 = (alpha - 1.0) / a0;
+}
+
+float AcustraEngine::PickupPresence::process(float input, bool picked, float smoothing) noexcept
+{
+    mix = settlingGlide(mix, picked ? 1.0f : 0.0f, smoothing);
+    if (mix == 0.0f)
+    {
+        state1 = state2 = 0.0;
+        return input;
+    }
+    const double driven = feed * input;
+    const double band = driven + state1;
+    const double next1 = state2 + feedback1 * band;
+    const double next2 = feedback2 * band - driven;
+    state1 = exact::abs(next1) < 1.0e-30 ? 0.0 : next1;
+    state2 = exact::abs(next2) < 1.0e-30 ? 0.0 : next2;
+    // Match the saved pickup performance's level after the presence lift.
+    constexpr double pickedTrim = 0.74989421; // −2.5 dB
+    return static_cast<float>(input + mix * (pickedTrim * (input + band) - input));
+}
+
 float AcustraEngine::renderPiezo(float force) noexcept
 {
     using D = PiezoDesign;
@@ -16012,10 +16063,12 @@ void AcustraEngine::process(float* left, float* right, const OutputBuses& buses,
         // Advance the whole piezo chain even while unheard, so selecting it
         // crossfades to the voltage of the already-ringing instrument. The
         // piezo force keeps the original zero-sign normalization.
-        const float loadedPiezo = renderPiezo(pickupForce);
+        const float pickupVoltage = renderPiezo(pickupForce);
+        const float loadedPiezo = pickupPresence_.process(pickupVoltage,
+            parameters_.picking == PickingTechnique::Pick, parameterSmoothing_);
         const float idlePeak = std::max({ exact::abs(body.left),
             exact::abs(body.right), exact::abs(body.upper),
-            exact::abs(loadedPiezo) });
+            exact::abs(pickupVoltage) });
         // Independent output dynamics follow the physical pickup circuit.
         // Always clock this stage, even without an output pointer, so late
         // cabling reads warm state and cannot change Main or its detector.

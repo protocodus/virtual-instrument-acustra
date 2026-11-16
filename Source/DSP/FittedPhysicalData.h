@@ -92,6 +92,8 @@ struct PhysicalCalibration
     // winding friction above and in place of steelPlainBendingLoss, and
     // String Age scales it as it scales the friction.
     float steelWoundBendingLoss { 0.0f };
+    // Effective loss angle for the wound strings’ longitudinal modes.
+    float steelWoundAxialLoss { steelWoundBendingLoss };
 };
 
 // Before placing the hand relative to the soundhole, the default panel
@@ -259,10 +261,12 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // 34-49 dB/s against the Eastman E1D's 20-35 and left their 5-8 kHz
     // 9-36 dB under the recording over 0.08-0.9 s: the listener heard it as
     // mud. At the plain steel's, 27-33 dB/s and 0-14 dB under. This value
-    // is also the core's loss for the longitudinal waves
-    // (voice.axialLossFactor), so it cannot go to zero: at zero those waves
-    // ring on and a released chord never falls silent.
-    0.002334375f
+    // describes the decay of the transverse partials.
+    0.002334375f,
+    // Matching the released guitar’s Dreadnought and Jumbo strums gives a
+    // larger effective loss for longitudinal motion. The transverse fit
+    // above left the wound G ringing near 2.55 and 2.86 kHz.
+    0.030f
 };
 
 } // namespace acustra
