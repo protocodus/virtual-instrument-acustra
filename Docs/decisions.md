@@ -5,6 +5,89 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-16 — a stroke's first pass loses only the part of a round trip it has travelled, 1.9.60 (the fault measured; A–B set sent, the owner took B)
+
+**What failed.** Nobody heard this one first. The Rack device's saved-patch
+check (`AllPatchRenderTest`, "saved palm-muted pick") holds the palm-muted
+Pick's attack to released 1.3.3, and 1.9.59 failed it: the 2-4 kHz share of
+the attack read -15.87 dB against a limit of -14.81, and the first 7 kHz
+-22.07 against -20.01. Every suite here was green. Asked how to square that
+with the ringing fix, the owner chose to keep 1.9.59's damping and restore
+the attack.
+
+**What it is.** The loop charges a string's own losses (bending, the constant
+section) in one place, a whole round trip's at every pass. That is exact for
+a wave that has gone round. The first wave of a stroke reaches the saddle
+after t/T of a round trip and was charged all of it: 13 dB at 7 kHz on a low
+E, 12 of it the bending loss 1.9.59 restored. In 1.9.60, over the first
+period after every pluck, the bending section runs the loss law's own design
+for the part travelled (`firstPeriodBendingLoss`: six designs at 1/64 to 1/2
+of the factor, glided through to the live design), and the constant section
+is charged that part of what it takes. Against the law redesigned at each
+fraction the glide is within 1 dB up to Nyquist at 48 and 96 kHz and never
+gains; the constant share is within 0.05 dB. From the second period on the
+loop is 1.9.59's, so no partial's
+decay rate moves. The derivation and these figures are beside the code.
+
+**What was tried and rejected, by measurement.** Gliding the section's
+coefficients straight from none to the design charges almost nothing for
+most of the period and gains up to 1.6 dB; it passed the Rack check for the
+wrong reason. Charging the travelled part of what the full design takes
+over-charges 2-4 kHz (-2.65 dB at 3 kHz halfway, where the law gives -1.22)
+and failed the Rack's presence limit by 0.007 dB. Neither was offered as a
+letter.
+
+**The letters.** A: 1.9.59 (`899d2ac`). B: the change above, and nothing
+else. Material: Jumbo Steel Pick, Palm Muted Steel Pick, Piezo Stage Steel
+and Dreadnought Steel in a row, the committed demo MIDI through
+`RenderAcustraPresetDemos` at 48 kHz, each preset as freshly loaded. Each
+demo matched to A's RMS over that demo: B 0.00, +0.01, -0.01 and +0.01 dB.
+Over a whole demo B is 0.1 to 0.5 dB above A from 4 kHz up. One picked open
+note per string, first 20 ms, share of the note's energy in 2-4, 4-8 and
+8-16 kHz (dB), against the 1.3.3 source (`d01b477`) built beside it:
+
+| Note | 1.3.3 | A | B |
+| --- | --- | --- | --- |
+| Low E | -11.7, -12.8, -10.0 | -12.0, -16.4, -15.7 | -10.6, -12.5, -15.4 |
+| A | -13.1, -12.7, -13.9 | -11.2, -13.5, -17.5 | -11.1, -11.6, -15.5 |
+| D | -12.0, -13.7, -16.0 | -14.1, -14.1, -19.4 | -14.0, -13.2, -16.7 |
+| G | -14.0, -15.5, -17.8 | -18.8, -17.4, -20.0 | -19.0, -17.2, -19.2 |
+| B (plain) | -8.1, -10.0, -12.0 | -14.1, -12.1, -11.1 | -14.1, -12.1, -11.1 |
+
+Fingered single notes move under 0.6 dB. The ring stays cured: a picked low
+E's 4-8 kHz band 0.1 s and 0.5 s after the stroke reads -49.4 and -83.3 on
+1.3.3, -56.2 and -85.9 on A, -54.5 and -81.9 on B.
+
+**How it was decided.** The fault and its size are measured, and the law the
+first pass now follows is the one the string already obeys from the second
+pass on. Whether the result is the better guitar was decided by ear: the set
+went to the owner with its `key.md` unread by design, and the owner chose B
+on 2026-11-16.
+
+**A choice inside it.** A re-pluck's retained wave shares the line and the
+sections with the new stroke, so it too is spared up to a round trip of the
+string's own loss, once. The alternative makes every repeated stroke duller
+than the first. On a repeated G2 the first 20 ms of B are 2-6 dB above A in
+2-8 kHz; in 2-4 kHz within 1 dB of 1.3.3, in 4-8 kHz a fingered repeat 2-4
+dB above 1.3.3 and a picked one 1-2 dB below.
+
+**What the change needed.** `Acustra.MutedPickAttack` is the Rack's check at
+engine level, with references measured from the 1.3.3 source by the same
+file, so an engine change meets it before the Rack pin moves. B reads mids
+-12.56, presence -13.72, first 7 kHz -20.10 and decay -57.11 dB there, and
+passes the Rack's own check through its host mock with presence -14.77 dB
+against the limit of -14.81: a margin of 0.04 dB. One fixture moved:
+`RepeatedPluckRealism`'s Age-step limit is held against the steady string's
+sharpest step instead of its peak, because the first pass is now 0.37 of the
+peak where it was 0.077 and a step of Age changes it in proportion. The
+number is the same limit on 1.9.59 (3.5e-3 of the sharpest step, which was
+2.7e-4 of the peak); 1.9.59 reads 1.5e-3 and 1.9.60 reads 1.1e-3. The reason
+is beside it.
+
+**Still open** from the voicing line's last audition: 1.3.3's strum accents
+and the 1.49 kHz band of a B-major chord, the 6.69 kHz Jumbo Pick repeat and
+the 1.85 kHz Parlor Thumb repeat.
+
 ## 2026-11-16 — the wound strings' bending loss back to released 1.3.3's, 1.9.59 (A–B–C set sent; the owner took B)
 
 **What was heard.** On 1.9.58 the owner still heard "this unpleasant ringing

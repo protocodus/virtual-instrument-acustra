@@ -39,6 +39,23 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.60 — 2026-11-16 — the pick's attack on the wound strings is back
+
+A stroke's first wave no longer arrives dulled. The model charges a string's
+own high-frequency damping once per trip round the string, in one place.
+That is right from the second trip on, but the first wave of a stroke
+reaches the bridge after only part of a trip and was charged a whole one:
+13 dB at 7 kHz on a low E once 1.9.59 had restored the wound strings'
+damping. Each arrival in the first period now loses what the same loss law
+gives for the part of a trip it has travelled. The first 20 ms of a picked
+low E hold -12.5 dB of their energy in 4-8 kHz, where 1.9.59 had -16.4 and
+the released Rack 1.3.3 has -12.8, and Palm Muted Steel Pick is inside
+1.3.3's attack windows again (`Acustra.MutedPickAttack`). Repeated strokes
+gain the same 2-6 dB in 2-8 kHz at the stroke. From the second period on
+nothing differs, so the ringing 1.9.59 cured stays cured; the demos' levels
+move by 0.01 dB and their bands above 4 kHz rise 0.1 to 0.5 dB. The owner
+chose it from an A-B listening set ([Decisions](Docs/decisions.md)).
+
 ### 1.9.59 — 2026-11-16 — the wound strings stop ringing in the highs
 
 The low E, A, D and G strings shed their upper overtones as fast as they do
