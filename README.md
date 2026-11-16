@@ -66,7 +66,7 @@ long per-version notes are in the
 - Open G Slide-ready's Output is `1.1 dB` (was `0.8`), which returns it to
   its 1.9.50 level on the factory level check; the other presets moved
   0.1 dB or less.
-- An A-B listening set was rendered for the owner; see
+- The owner took the candidate from an A-B listening set; see
   [Decisions](Docs/decisions.md).
 
 ### 1.9.50 — 2026-11-14 — physical Finger pluck point on the low strings, and faster saddle stretch

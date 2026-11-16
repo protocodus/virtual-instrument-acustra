@@ -5,7 +5,7 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-16 — a string keeps its fretted length, 1.9.51 (the overtone error measured; A–B set rendered, key unread, B assumed under the standing rule)
+## 2026-11-16 — a string keeps its fretted length, 1.9.51 (the overtone error measured; A–B set sent, the owner took B)
 
 **What was found.** `configureVoice` retuned both of a note's loops at
 contact in two steps aimed at the fundamental: it took the bridge's
@@ -78,9 +78,8 @@ is beside the files and unread by design.
 
 **How it was decided.** The overtone error is measured, not heard. What the
 ear has to say is whether the fundamental's pull on the low E's upper frets
-is worth it; under the owner's standing rule the candidate, B, stands unless
-they say otherwise, and it is on a branch until the owner approves the merge.
-Nobody has listened to the set yet.
+is worth it. The set was sent to the owner with both sides of that trade
+stated, and the owner took B on 2026-11-16 and approved the merge.
 
 **What it supersedes.** The pair's tuning on its loudness centre (2026-11-07,
 1.9.26) and where the palm comes to rest (2026-11-09, 1.9.37): there is no
