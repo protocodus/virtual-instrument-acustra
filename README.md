@@ -49,8 +49,8 @@ own branch, and the linked validation documents keep those numbers; their
 measurements were taken before the two lines were joined. Joined, the eight
 factory demos stay within 0.3 dB in level and 0.5 dB in every octave band of
 the voicing alone, except that the 330 Hz partial of Palm Muted Steel Pick's
-open E chords now beats slowly between three strings
-([Decisions](Docs/decisions.md)).
+open E chords now beats slowly between three strings. The owner took the
+joined model from an A-B-C listening set ([Decisions](Docs/decisions.md)).
 
 - **Contact and velocity.** Finger releases over a 0.25 mm edge and the pick
   sits about 82 mm from the bridge at the reference panel position. Ordinary

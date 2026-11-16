@@ -5,7 +5,7 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-16 — the 1.3.3-matched voicing joined to the fretted-length tuning, 1.9.58 (A–B–C set sent; the owner's verdict pending)
+## 2026-11-16 — the 1.3.3-matched voicing joined to the fretted-length tuning, 1.9.58 (A–B–C set sent; the owner took B)
 
 **What was joined.** Two lines grew from 1.9.50 (`e58c27e`) without each
 other. Main took the fretted-length tuning as 1.9.51 (the entry below). The
@@ -67,6 +67,11 @@ after another, 35.2 s. Each demo is matched to B's RMS over that demo (A
 trimmed -1.49, -3.30 and -7.33 dB; C -0.06, +0.14 and -0.19 dB), so the
 level the voicing gives back to 1.3.3 is not part of what the set tests.
 `key.md` is beside the files and unread by design.
+
+**How it was decided.** The set was sent with the 330 Hz beat named as the
+one thing the tuning changes in the voicing. The owner took B on 2026-11-16,
+by ear, over the voicing alone (C) and main as it stood (A), which licensed
+merging 1.9.58 into main and staging the Rack device from it.
 
 **Parked experiments read and not taken.** Seven `wip/acustra-*` snapshots
 of 8-14 November: `pick-bending` and `d3-tuning-cache` are on main already
