@@ -8490,10 +8490,10 @@ void AcustraEngine::initialisePluck(Voice& voice, int stringIndex,
     // moved the median 3–8 kHz share at 30–200 ms from 9.9 dB below that
     // release to 0.4 dB above it across four Finger patches (E2–A5, v40–120).
     // The Thumb uses its own reference-normalised 0.2 mm release.
-    // Firmer fingertip strokes spread the pad and round the upper partials
-    // on the sustained chord. Keep the light touch at the original radius.
+    // The fingertip spreads as it sweeps a chord under pressure. Single
+    // notes keep their measured contact radius, including firm strokes.
     const float fingerReleaseRadius = fullSoftSlip
-        ? 0.25e-3f * (1.0f + v * v) : 0.2e-3f;
+        ? 0.25e-3f * (gesture.chordSweep ? 1.0f + v * v : 1.0f) : 0.2e-3f;
     // Playing force and release gesture have independent authored responses.
     // Raising soft-note force from v^2 to v also raises its release speed.
     // Finger and Thumb scale their effective edge by the same 1/v ratio to
