@@ -13296,7 +13296,7 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
 // e D + x (1 - e) and D (1 + e) - x (1 + e). Each wave's slope is averaged
 // over cells exactly - the difference of the line across a cell over the
 // cell's span of the line - so the slope sums never alias between cells.
-// A cell spans `stride` samples of the outgoing wave's line, four cells per
+// A cell spans `stride` samples of the outgoing wave's line, two cells per
 // period of a cut-off at the first longitudinal mode or 5 kHz, whichever is
 // lower. This is spatial quadrature only: F is evaluated every host sample
 // and its one-sample change drives the host-rate ring. Subsampling F at the
@@ -13382,7 +13382,11 @@ ACUSTRA_NOINLINE void AcustraEngine::redesignStringAxialForce(
     const double beta = 0.5 * (rigidity - static_cast<double>(tension));
     const double rate = sampleRate_;
     const double cutoff = std::min(fundamental, 5000.0);
-    axial.stride = std::max(1, static_cast<int>(std::floor(rate / (4.0 * cutoff))));
+    // Two cells per period of the cut-off, its Nyquist rate: a numerical
+    // convention, not a property of the string. Four cells were kept by ear on
+    // 2026-11-09; on 1.9.61 the owner heard no difference from two and took
+    // them for the CPU (Docs/decisions.md, 2026-11-17).
+    axial.stride = std::max(1, static_cast<int>(std::floor(rate / (2.0 * cutoff))));
     axial.outgoingScale = -1.0f / static_cast<float>(axial.stride);
     // Preserve the established force bandwidth and smoothing of a ring
     // redesign. This output filter is not the source's anti-alias filter:

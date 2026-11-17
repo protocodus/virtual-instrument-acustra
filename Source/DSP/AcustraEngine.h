@@ -173,11 +173,11 @@ struct AcustraEngineTestAccess;
 // new pair of exact bits, and reads them until either moves.
 struct AxialCellTable
 {
-    // Interior cells held. A loop has about four cells per wavelength of
-    // its axial cutoff, up to twice that where the stride rounds down: the
-    // eight demos and stress phrases need at most 138 (at 22.05 kHz; 90 at
-    // 48 kHz, 80 from 96 to 768 kHz). A longer loop sums without the table.
-    static constexpr int capacity = 256;
+    // Interior cells held. A loop has about two cells per wavelength of its
+    // axial cutoff, up to twice that where the stride rounds down: the eight
+    // demos and stress phrases need at most 62 (at 8 kHz; 49 at 22.05 kHz, 39
+    // from 48 to 768 kHz). A longer loop sums without the table.
+    static constexpr int capacity = 128;
     std::uint32_t periodBits { 0 };
     std::uint32_t spanBits { 0 };
     // Cells recorded for this key, from cell 1.

@@ -39,6 +39,21 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.62 — 2026-11-17 — the stretch sampled at two cells per period, chosen by ear
+
+- The sum behind a string's lengthwise stretch, which bends a loud note's
+  pitch as it rings, reads the string at two cells per period of its cut-off
+  (its Nyquist rate) instead of four. The owner kept four by ear on
+  2026-11-09; on this engine they heard no difference in a blind A-B and took
+  two ([decisions](Docs/decisions.md)).
+- It is a change of sound, though a small one: against 1.9.61 three demos'
+  residual sits 27-57 dB below their level, and the largest third-octave
+  change is +0.74 dB at 8 kHz on Palm Muted Steel Pick.
+- The demos and stress phrases take 13% less calling-thread CPU than 1.9.61
+  compiled as the Rack device is (21-23% less than 1.9.60) and 11-13% less
+  built with gcc -O3 (14-15%).
+- [Benchmark](Docs/benchmarks/cpu-pass-2026-11-16.md).
+
 ### 1.9.61 — 2026-11-16 — a ringing string's stretch costs less, identical output
 
 - The sum that turns a string's shape into its lengthwise stretch, the
@@ -1376,9 +1391,11 @@ separates verified errors from accepted approximations.
   Woodhouse (2017) measured overtaking the normal one above about 5 kHz, is
   not modelled; the measured bridge holds no such input. Which way the
   normal plane's positive displacement points is assumed (away from the
-  top). The stretch is sampled four times per period of 5 kHz, or of the
+  top). The stretch is sampled twice per period of 5 kHz, or of the
   first longitudinal mode where that is lower (the wound strings, and the
-  plain strings below the 5th fret), a numerical convention after Ducceschi,
+  plain strings below the 5th fret), the cut-off's Nyquist rate (four times
+  until 1.9.61; two chosen by ear, Docs/decisions.md, 2026-11-17), a
+  numerical convention after Ducceschi,
   Russo and Webb (DAFx-26), and kept to twice that, so the plain strings'
   first longitudinal mode drops out of the force above the top E's 16th
   fret. It reads the slope off lines whose dispersion is lumped into
@@ -1413,9 +1430,9 @@ separates verified errors from accepted approximations.
 - The target of no 256-sample block above 10% of one core is not met. On
   the development machine at 48 kHz a held six-string chord takes 8-12% of a
   block, the block in which a six-note chord is first struck 35-40%, and a
-  held chord that has come to rest still 7.7%. Half of a held block is the
-  stretch sum at the four cells kept by ear; no change that leaves the
-  output exact reaches the target
+  held chord that has come to rest still 7.7%. Half of a held block was the
+  stretch sum at the four cells kept by ear until 1.9.61; no change that
+  leaves the output exact reaches the target
   (`Docs/benchmarks/cpu-consolidation-2026-11-09.md`). 1.9.41 takes a
   further 2-3% of the instructions out of a chord's first block and none out
   of a held one (`Docs/benchmarks/cpu-fix-pass-2026-11-10.md`); 1.9.48–1.9.50
@@ -1424,7 +1441,9 @@ separates verified errors from accepted approximations.
   bringing held six-string blocks within 10% while a first-time chord's worst
   block remains above 10%. 1.9.61 takes 9-11% of the CPU out of the demos as
   the Rack builds them and 3% natively at identical output, and none out of a
-  chord's first block (`Docs/benchmarks/cpu-pass-2026-11-16.md`).
+  chord's first block (`Docs/benchmarks/cpu-pass-2026-11-16.md`). 1.9.62's
+  two cells, chosen by ear, take another 11-13%, and a first-time chord's
+  worst block still stands at 21-26% of its period in the stress phrases.
 - A fundamental near a strong body mode sits several cents from its fret's
   pitch while the note's overtones stay on it: up to 9.5 cents on the
   Dreadnought's low E (D#3 and A3), and 8.2 on the Jumbo's open low E

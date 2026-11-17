@@ -5,6 +5,42 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-17 — the axial stretch takes two cells per cut-off period, 1.9.62 (chosen by ear; the owner heard no difference and took B)
+
+**What was decided.** Whether the axial stretch sum, the largest cost of a
+held note, could sample the string at two cells per period of its cut-off
+(the cut-off's Nyquist rate) instead of four. The cell count is a numerical
+convention; on 2026-11-09 the owner kept four by ear on 1.9.37 (entry
+below), which allowed a later change to the sum to go back to the ear. The
+engine had moved a long way since (the fretted-length tuning, the voicing
+toward 1.3.3, the wound strings' top and attack), so it went back on 1.9.61.
+
+**The letters.** A was the shipping engine, main 1.9.60 (`6a4826a`), which
+1.9.61's exact CPU pass renders bit for bit. B was 1.9.61 with the stride
+`rate / (2 cutoff)` for `rate / (4 cutoff)`, still evaluated every sample.
+The material was three README demo phrases (Jumbo Steel Pick, Palm Muted
+Steel Pick, Dreadnought Steel) through the demo renderer at 48 kHz, with the
+same MIDI, seed, block size and controls. Level was matched on whole-file
+RMS, both channels, B trimmed to A's: +0.003, -0.004 and +0.000 dB. The set
+was not committed. B does not null against A: its residual sits 35.4, 27.1
+and 57.1 dB below A's RMS on the three phrases, and its largest third-octave
+change is +0.74 dB at 8 kHz on the palm-muted pick. It passes the whole of
+`Acustra.StringAxialForce` and the Rack's released-1.3.3 level, attack and
+release checks (`AllPatchRenderTest` over the host mock). Two candidates
+that evaluated the stretch every other sample (-25% and -26%) failed
+`Acustra.StringAxialForce` and were withdrawn before listening.
+
+**The choice.** The owner reported no audible difference between A and B and
+took B for its CPU. It was chosen by ear, not settled by a measurement. Over
+two runs with the Rack's flags B takes 13% less calling-thread CPU than 1.9.61
+(21-23% less than 1.9.60), and 11-13% less natively (14-15%).
+
+**What it licenses.** Two cells per period, the convention beside
+`redesignStringAxialForce`. Nothing coarser: fewer than two cells per period
+samples the string below the cut-off's Nyquist rate, and every-sample
+evaluation of the force stays. A later change to this sum has to null
+against 1.9.62 or come back to the ear.
+
 ## 2026-11-16 — a stroke's first pass loses only the part of a round trip it has travelled, 1.9.60 (the fault measured; A–B set sent, the owner took B)
 
 **What failed.** Nobody heard this one first. The Rack device's saved-patch
