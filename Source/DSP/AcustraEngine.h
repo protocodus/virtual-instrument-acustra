@@ -165,6 +165,27 @@ struct EngineParameters
 
 struct AcustraEngineTestAccess;
 
+// One string loop's interior stretch cells as the contiguous slope sum reads
+// them (sumAxialCells in AcustraEngine.cpp): each cell's returning-wave
+// sample, as a negative offset from the newest, and its interpolation
+// weight. They depend only on the loop's period and the cells' returning
+// span, so the sum records them as it computes them the first sample of a
+// new pair of exact bits, and reads them until either moves.
+struct AxialCellTable
+{
+    // Interior cells held. A loop has about four cells per wavelength of
+    // its axial cutoff, up to twice that where the stride rounds down: the
+    // eight demos and stress phrases need at most 138 (at 22.05 kHz; 90 at
+    // 48 kHz, 80 from 96 to 768 kHz). A longer loop sums without the table.
+    static constexpr int capacity = 256;
+    std::uint32_t periodBits { 0 };
+    std::uint32_t spanBits { 0 };
+    // Cells recorded for this key, from cell 1.
+    int filled { 0 };
+    std::array<std::int32_t, capacity> back {};
+    std::array<float, capacity> part {};
+};
+
 class AcustraEngine
 {
 public:
@@ -2687,6 +2708,10 @@ private:
     // corpus's absolute-ms one, is what a single per-stroke speed draw
     // should match. std of h*U(-1,1) is h/sqrt(3), so h = 0.3647*sqrt(3).
     static constexpr float strumSpeedJitterHalfWidth = 0.6317f;
+    // Each played string's two loops' stretch cells (AxialCellTable), last
+    // so the hot members above keep their offsets. A pure cache keyed by its
+    // inputs: copies, resets and rate changes need not touch it.
+    std::array<std::array<AxialCellTable, 2>, stringCount> axialCellTables_ {};
 };
 
 } // namespace acustra

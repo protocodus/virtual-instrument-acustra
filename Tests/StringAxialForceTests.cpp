@@ -11,6 +11,7 @@
 #include <cmath>
 #include <complex>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <limits>
@@ -37,6 +38,16 @@ struct AcustraEngineTestAccess
         engine.configureVoice(v, string, v.midiNote, false);
         design(engine, string);
     }
+    // Forget every string's stretch-cell table, so the next sums compute
+    // their cells again.
+    static void forgetCellTables(AcustraEngine& engine)
+    {
+        for (auto& tables : engine.axialCellTables_)
+            for (auto& table : tables)
+                table = AxialCellTable {};
+    }
+    static const AxialCellTable& cellTable(const AcustraEngine& engine, int string, int loop)
+    { return engine.axialCellTables_[static_cast<std::size_t>(string)][static_cast<std::size_t>(loop)]; }
     static auto bend(const AcustraEngine& engine, int string)
     { return engine.voiceBend(engine.voices_[static_cast<std::size_t>(string)]); }
     static float excursion(AcustraEngine& engine, int string)
@@ -535,6 +546,60 @@ void sourceDoesNotFoldAtSpatialStride()
                "the nonlinear source has no reduced-rate fold at " + std::to_string(hostRate));
     }
 }
+
+// The stretch sum's cell table (AxialCellTable) is a cache of the sum's own
+// arithmetic: an engine that forgets its tables before every sample, so that
+// every sum computes its cells, renders the same bits as one that reads them,
+// through a loud pick, a bend that moves the period and a second note.
+void cellTableIsAPureCache()
+{
+    for (const double hostRate : { 22050.0, 48000.0, 96000.0 })
+    {
+        std::array<std::unique_ptr<Engine>, 2> engines;
+        for (auto& engine : engines)
+        {
+            engine = std::make_unique<Engine>();
+            acustra::EngineParameters parameters;
+            parameters.picking = acustra::PickingTechnique::Pick;
+            engine->setParameters(parameters);
+            engine->prepare(hostRate, 64);
+            engine->setStringPerChannelMode(true);
+            engine->noteOn(40, 1.0f, 1);
+            engine->noteOn(64, 0.9f, 6);
+        }
+        auto& reading = *engines[0];
+        auto& computing = *engines[1];
+        const int count = static_cast<int>(hostRate * 0.75);
+        int mismatches = 0, heldKeys = 0;
+        std::uint32_t previousKey = 0;
+        for (int sample = 0; sample < count; ++sample)
+        {
+            if (sample == count / 3)
+                for (auto* engine : { &reading, &computing })
+                    engine->setPitchBend(1.0f, 6);
+            if (sample == 2 * count / 3)
+                for (auto* engine : { &reading, &computing })
+                    engine->noteOn(45, 1.0f, 2);
+            Access::forgetCellTables(computing);
+            std::array<float, 4> out {};
+            reading.process(&out[0], &out[1], 1);
+            computing.process(&out[2], &out[3], 1);
+            if (std::memcmp(&out[0], &out[2], 2 * sizeof(float)) != 0)
+                ++mismatches;
+            const auto& table = Access::cellTable(reading, 0, 0);
+            if (table.filled > 0 && table.periodBits == previousKey)
+                ++heldKeys;
+            previousKey = table.periodBits;
+        }
+        std::cout << "cell table at " << hostRate << " Hz: " << heldKeys << " of " << count
+                  << " samples read the low string's table\n";
+        // Only to show the comparison covered the table's reads: how often a
+        // loop holds its period is the playing's, not a property under test.
+        expect(heldKeys > count / 100, "the low string's held loop reads its cell table");
+        expect(mismatches == 0, "reading the cell table renders the bits computing it does at "
+               + std::to_string(hostRate));
+    }
+}
 } // namespace
 
 
@@ -819,6 +884,7 @@ int main(int argc, char** argv)
     ringsOutAndSwitchesOff();
     newtonsHaveOneSharedUnit();
     sourceDoesNotFoldAtSpatialStride();
+    cellTableIsAPureCache();
     if (failures == 0)
         std::cout << "String axial force tests passed\n";
     return failures == 0 ? 0 : 1;

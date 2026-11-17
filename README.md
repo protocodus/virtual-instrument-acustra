@@ -39,6 +39,23 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.61 — 2026-11-16 — a ringing string's stretch costs less, identical output
+
+- The sum that turns a string's shape into its lengthwise stretch, the
+  largest cost of a held note, worked out every cell's place on the string
+  again each sample. It now writes them into a table the first sample a
+  loop's length and cell span take new values and reads them while both
+  hold their exact bits.
+- Built as the Rack device is, the sum also takes its fast contiguous path
+  again: in the device's extended sample-rate layout it read its newest
+  sample outside the line's active length three samples in four, and fell
+  back to the masked path.
+- The eight demos and their stress phrases take 9-11% less calling-thread
+  CPU compiled as the Rack device is and 3% less built with gcc -O3; the Rack
+  build of demo 1 runs 18% fewer instructions.
+- The output is bit for bit as before.
+- [Benchmark](Docs/benchmarks/cpu-pass-2026-11-16.md).
+
 ### 1.9.60 — 2026-11-16 — the pick's attack on the wound strings is back
 
 A stroke's first wave no longer arrives dulled. The model charges a string's
@@ -1405,7 +1422,9 @@ separates verified errors from accepted approximations.
   together take 20-28% of the calling-thread CPU out of a held chord and
   17-26% out of the presets at 48 kHz (`Docs/benchmarks/cpu-pass-2026-11-14.md`),
   bringing held six-string blocks within 10% while a first-time chord's worst
-  block remains above 10%.
+  block remains above 10%. 1.9.61 takes 9-11% of the CPU out of the demos as
+  the Rack builds them and 3% natively at identical output, and none out of a
+  chord's first block (`Docs/benchmarks/cpu-pass-2026-11-16.md`).
 - A fundamental near a strong body mode sits several cents from its fret's
   pitch while the note's overtones stay on it: up to 9.5 cents on the
   Dreadnought's low E (D#3 and A3), and 8.2 on the Jumbo's open low E

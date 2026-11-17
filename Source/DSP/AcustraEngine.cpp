@@ -13000,7 +13000,7 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                    int stride, int first, int end, float period,
                    float returningSpan, float outgoingScale,
                    float returningScale, float& outgoing, float& returning,
-                   float& sum) noexcept
+                   float& sum, AxialCellTable& table) noexcept
 {
     const auto tap = [line, mask, newest] (float samplesAgo)
     {
@@ -13054,25 +13054,69 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
             && static_cast<unsigned>(lastCell * stride) <= newest)
         {
             const float* const head = line + newest;
-            const char* const headM1Bytes = reinterpret_cast<const char*>(head - 1);
-            const auto runContiguous = [&] (auto fixedStride) noexcept
+            // A loop whose period and span hold their bits reads its cells'
+            // ages and weights from the table (AxialCellTable), which the
+            // arithmetic below records the first sample of a new key; the
+            // sum is the same.
+            bool tabled = false, record = false;
+            if (first == 1 && 4 * groups <= AxialCellTable::capacity)
+            {
+                const auto periodBits = exact::bits(period);
+                const auto spanBits = exact::bits(returningSpan);
+                if (table.periodBits == periodBits && table.spanBits == spanBits
+                    && table.filled >= 4 * groups)
+                    tabled = true;
+                else
+                {
+                    table.periodBits = periodBits;
+                    table.spanBits = spanBits;
+                    table.filled = 4 * groups;
+                    record = true;
+                }
+            }
+            std::int32_t* tableBack = table.back.data();
+            float* tablePart = table.part.data();
+            const auto runContiguous = [&] (auto fixedStride, auto fromTable) noexcept
             {
                 constexpr int fixed = decltype(fixedStride)::value;
+                constexpr bool read = decltype(fromTable)::value;
                 const int step = fixed > 0 ? fixed : stride;
                 const float* outgoingAt = head - cell * step;
                 const std::ptrdiff_t outgoingAdvance = -4 * static_cast<std::ptrdiff_t>(step);
                 const auto stepContiguous = [&] (Floats& targetPartial) noexcept
                 {
-                    const Floats age = periodV - spanV * cells;
-                    const Ints whole = __builtin_convertvector(age, Ints);
-                    const Floats part = age - __builtin_convertvector(whole, Floats);
+                    Floats part;
+                    std::ptrdiff_t back[4];
+                    if constexpr (read)
+                    {
+                        __builtin_memcpy(&part, tablePart, sizeof(Floats));
+                        for (int lane = 0; lane < 4; ++lane)
+                            back[lane] = tableBack[lane];
+                        tablePart += 4;
+                        tableBack += 4;
+                    }
+                    else
+                    {
+                        const Floats age = periodV - spanV * cells;
+                        const Ints whole = __builtin_convertvector(age, Ints);
+                        part = age - __builtin_convertvector(whole, Floats);
+                        const Ints negated = -whole;
+                        for (int lane = 0; lane < 4; ++lane)
+                            back[lane] = negated[lane];
+                        if (record)
+                        {
+                            __builtin_memcpy(tablePart, &part, sizeof(Floats));
+                            __builtin_memcpy(tableBack, &negated, sizeof(Ints));
+                            tablePart += 4;
+                            tableBack += 4;
+                        }
+                    }
 #ifdef ACUSTRA_AXIAL_SHUFFLE
-                    const Ints byteOff = -(whole << 2);
                     Float2 p0, p1, p2, p3;
-                    __builtin_memcpy(&p0, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[0]), sizeof(Float2));
-                    __builtin_memcpy(&p1, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[1]), sizeof(Float2));
-                    __builtin_memcpy(&p2, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[2]), sizeof(Float2));
-                    __builtin_memcpy(&p3, headM1Bytes + static_cast<std::ptrdiff_t>(byteOff[3]), sizeof(Float2));
+                    __builtin_memcpy(&p0, head - 1 + back[0], sizeof(Float2));
+                    __builtin_memcpy(&p1, head - 1 + back[1], sizeof(Float2));
+                    __builtin_memcpy(&p2, head - 1 + back[2], sizeof(Float2));
+                    __builtin_memcpy(&p3, head - 1 + back[3], sizeof(Float2));
                     const Floats p01 = __builtin_shufflevector(p0, p1, 0, 1, 2, 3);
                     const Floats p23 = __builtin_shufflevector(p2, p3, 0, 1, 2, 3);
                     const Floats b = __builtin_shufflevector(p01, p23, 0, 2, 4, 6);
@@ -13110,10 +13154,10 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                     const Floats previousReturning
                         = __builtin_shufflevector(returningCarry, nextReturning, 3, 4, 5, 6);
 #else
-                    const Floats a = { head[-whole[0]], head[-whole[1]],
-                                       head[-whole[2]], head[-whole[3]] };
-                    const Floats b = { head[-whole[0] - 1], head[-whole[1] - 1],
-                                       head[-whole[2] - 1], head[-whole[3] - 1] };
+                    const Floats a = { head[back[0]], head[back[1]],
+                                       head[back[2]], head[back[3]] };
+                    const Floats b = { head[back[0] - 1], head[back[1] - 1],
+                                       head[back[2] - 1], head[back[3] - 1] };
                     const Floats nextReturning = a + part * (b - a);
                     const Floats nextOutgoing = { outgoingAt[0], outgoingAt[-step],
                                                   outgoingAt[-2 * step],
@@ -13128,7 +13172,11 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                     targetPartial += slope * slope;
                     outgoingCarry = nextOutgoing;
                     returningCarry = nextReturning;
-                    cells += four;
+                    // Read from the table, the cells' positions are not
+                    // needed here: kept out of the loop, they leave it
+                    // registers to work in.
+                    if constexpr (!read)
+                        cells += four;
                     outgoingAt += outgoingAdvance;
                 };
                 int group = 0;
@@ -13140,15 +13188,25 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                 if (group < groups)
                     stepContiguous(partial0);
                 cell += 4 * groups;
+                if constexpr (read)
+                    cells = Floats { static_cast<float>(cell), static_cast<float>(cell + 1),
+                                     static_cast<float>(cell + 2), static_cast<float>(cell + 3) };
             };
-            if (stride == 1)
-                runContiguous(std::integral_constant<int, 1> {});
-            else if (stride == 2)
-                runContiguous(std::integral_constant<int, 2> {});
-            else if (stride == 3)
-                runContiguous(std::integral_constant<int, 3> {});
+            const auto runStride = [&] (auto fromTable) noexcept
+            {
+                if (stride == 1)
+                    runContiguous(std::integral_constant<int, 1> {}, fromTable);
+                else if (stride == 2)
+                    runContiguous(std::integral_constant<int, 2> {}, fromTable);
+                else if (stride == 3)
+                    runContiguous(std::integral_constant<int, 3> {}, fromTable);
+                else
+                    runContiguous(std::integral_constant<int, 0> {}, fromTable);
+            };
+            if (tabled)
+                runStride(std::true_type {});
             else
-                runContiguous(std::integral_constant<int, 0> {});
+                runStride(std::false_type {});
         }
         for (int maskedGroup = 0; end - cell >= 4; cell += 4, ++maskedGroup)
         {
@@ -13478,10 +13536,14 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
     {
         const auto& loop = voice.loops[loopIndex];
         // displacementAt's read, age 0 the newest sample, on the
-        // line's own power-of-two ring.
+        // line's own power-of-two ring. Every read masks, so `newest` is
+        // taken inside the ring: with ACUSTRA_EXTENDED_SAMPLE_RATES the
+        // write index runs over the whole capacity while the mask is the
+        // rate's active size, and unmasked it kept sumAxialCells off its
+        // contiguous path three samples in four. Same reads.
         const float* line = loop.delay.data();
         const auto mask = static_cast<unsigned>(loop.delay.size()) - 1u;
-        const auto newest = static_cast<unsigned>(loop.writeIndex - 1);
+        const auto newest = static_cast<unsigned>(loop.writeIndex - 1) & mask;
         const auto sample = [line, mask, newest] (int samplesAgo)
         {
             return line[(newest - static_cast<unsigned>(samplesAgo)) & mask];
@@ -13584,7 +13646,8 @@ void AcustraEngine::evaluateStringAxialStretch(Voice& voice, int stringIndex) no
         {
             sumAxialCells(line, mask, newest, stride, 1, geo.cells, period,
                           geo.returningSpan, axial.outgoingScale, geo.returningScale,
-                          outgoing, returning, sum);
+                          outgoing, returning, sum,
+                          axialCellTables_[static_cast<std::size_t>(stringIndex)][loopIndex]);
             sum *= geo.width;
             const float numOut = tap(geo.outgoingEndAge) - outgoing;
             const float numRet = tap(geo.shearPeriod) - returning;
