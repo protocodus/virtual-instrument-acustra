@@ -1232,7 +1232,6 @@ private:
         std::uint32_t tuningFrequency { 0 };
         std::uint32_t age { 0 };
         std::uint32_t palmMute { 0 };
-        bool mutedPick { false };
 
         bool operator==(const VoiceConfigurationKey& other) const noexcept
         {
@@ -1245,8 +1244,7 @@ private:
                 && speakingFret == other.speakingFret
                 && lossDesignFrequency == other.lossDesignFrequency
                 && tuningFrequency == other.tuningFrequency
-                && age == other.age && palmMute == other.palmMute
-                && mutedPick == other.mutedPick;
+                && age == other.age && palmMute == other.palmMute;
         }
     };
 
@@ -1500,8 +1498,6 @@ private:
         float tailHandFrequency { 1.0f };
         float tailHandIntrinsicT60 { 1.0f };
         float tailHandIntrinsicHighLoss { 0.0f };
-        float tailHandCutoff { 0.0f };
-        bool tailWasPicked { false };
         float tailHandPressure { 0.0f };
         float tailCapturedHandPressure { 0.0f };
         std::array<float, 2> tailCapturedLoopGain {};
@@ -1848,12 +1844,6 @@ private:
             // centred on; 0 leaves that section flat.
             float airModeHz { 0.0f };
             float midPeakHz { 0.0f };
-            static constexpr std::size_t palmMidSection = 3;
-            static constexpr std::size_t palmPresenceSection = 5;
-            std::array<double, 5> openMid {}, mutedMid {};
-            std::array<double, 5> openPresence {}, mutedPresence {};
-            float openGain { 1.0f };
-            void setPalmPickPressure(float pressure) noexcept;
 
             void configure(double sampleRate, float airModeHz, float midPeakHz) noexcept;
             void reset() noexcept
@@ -2353,15 +2343,6 @@ private:
     std::array<double, 12> piezoStage_ {};
     double piezoOutputVolts_ { 0.0 };
     double piezoOutputScale_ { 0.0 };
-    // Direct pickup playback voicing follows the physical circuit and feeds
-    // its main capture, mic blend and dedicated output from the same signal.
-    struct PickupPresence
-    {
-        void prepare(double rate) noexcept;
-        float process(float input, bool picked, float smoothing) noexcept;
-        double feed {}, feedback1 {}, feedback2 {}, state1 {}, state2 {};
-        float mix {};
-    } pickupPresence_;
     // PiezoDesign item 2 at run time: newtons per engine force unit, the
     // calibration's displacement unit per 48 kHz sample; the mid-band gain
     // from the element's open-circuit voltage to the DI that the level match
@@ -2548,7 +2529,6 @@ private:
     float monoReference_ { 1.0f };
     float palmMute_ { 0.0f };
     float targetPalmMute_ { 0.0f };
-    float micPalmPickPressure_ { 0.0f };
     float palmMuteSmoothing_ { 0.5f };
     // An idle instrument settles on a rounding-level residue (about 1e-12 at
     // the output) that its strings and bridge hold between them; after

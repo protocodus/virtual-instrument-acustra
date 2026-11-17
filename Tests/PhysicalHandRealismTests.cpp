@@ -134,7 +134,7 @@ void testPositionChangesComplianceWithoutChangingHandForce()
                         highestCompliance = std::max(highestCompliance, compliance);
                     }
                     // At fixed displacement the force would vary inversely
-                    // with p(1-p). Even beside the rim, demand a variation
+                    // with p(1-p). Even at a band edge, demand a variation
                     // at least fifty times the force error permitted below.
                     expect(highestCompliance / lowestCompliance > 1.0005,
                            "force fixture could not distinguish prescribed displacement from force");

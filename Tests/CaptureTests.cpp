@@ -1128,15 +1128,19 @@ void testPiezoHeadroom()
 // PiezoCircuitTests.cpp; they cover the nonlinear input stage itself.
 void testPiezoClipAliasing()
 {
-    // On fresh strings this chord at 10% Pluck Position reaches U1B before
+    // On fresh strings this chord at 75% Pluck Position reaches U1B before
     // U1A at both rates and touches. This gives the isolated rail clip a
     // real strum with the shipping hand geometry. Until 1.9.59 it was the
     // default String Age at 80%: U1B's gain rises with frequency, and with
     // the wound strings' overtones damped as in 1.3.3 that strum reaches
     // U1A 6% sooner than U1B (3.75 against 3.97 times the shipped weights
-    // at 44.1 kHz, Touch 0.58), as it does at every Pluck Position. Fresh
-    // strings at 10% leave U1B an interval of 12% at each rate and Touch.
-    constexpr float pluckPosition = 0.1f, stringAge = 0.0f;
+    // at 44.1 kHz, Touch 0.58), as it does at every Pluck Position. Until
+    // 1.9.62 the fixture was fresh strings at 10%, which the soundhole's rim
+    // then held at 110 mm. 1.9.63 frees the hand, and a Pick at 10% is
+    // 42 mm from the saddle, where U1A limits first at 48 kHz (1.29 against
+    // 1.32). At 75% the Pick is 105 mm out again and U1B has an interval of
+    // 11% at each rate and Touch.
+    constexpr float pluckPosition = 0.75f, stringAge = 0.0f;
     for (const float touch : { 0.58f, 1.0f })
     for (int rate : { 44100, 48000 })
     {
@@ -1278,7 +1282,7 @@ void testPiezoClipAliasing()
             }
         }
         std::cout << (isolated ? "Piezo isolated clip aliasing, " : "Piezo combined-circuit/free-clip error, ")
-                  << "Pick at velocity 127, 10% Pluck Position, fresh strings, " << label << ": "
+                  << "Pick at velocity 127, 75% Pluck Position, fresh strings, " << label << ": "
                   << aliasDb << " dB, below 0.25 fs " << lowDb << " dB; passband "
                   << passbandDb << " dB vs bare " << passbandBareDb << " dB; a bare clip "
                   << bareDb << " dB (" << double(clipped) / factor

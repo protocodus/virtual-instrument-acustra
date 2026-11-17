@@ -143,9 +143,9 @@ and separate from the Mute control's damping of the strings.
   bridge, Thumb rounder and nearer the neck.
 - **String Age** (15 %): fresh strings at 0, worn and darker strings at
   100 %.
-- **Pluck Position** (28 %): bridge-side of the soundhole at 0%, farther toward
-  the neck as you turn it up. The body shape sets the minimum saddle distance
-  for Finger, Pick and Thumb. Member-channel MPE CC74 follows the same limit.
+- **Pluck Position** (28 %): near the bridge at 0%, farther toward the neck
+  as you turn it up. The Pick plays at 0.40 of the Finger's distance from the
+  bridge and the Thumb at about twice it.
 - **Touch** (58 %): softer, darker contact at 0, harder and brighter at
   100 %.
 - **Release Noise** (10 %): the damping hand's contact as a note ends and

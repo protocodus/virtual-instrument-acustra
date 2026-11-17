@@ -5,6 +5,138 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-17 — the hand is free of the soundhole's rim, and the Pick is back at 60 mm, 1.9.63 (the fault measured; an A–B–C–D set sent, verdict pending)
+
+**What was decided.** The owner heard 1.9.62 as dull and hollow, with an
+unpleasant ringing, most of all in the low mids, and asked for the balance of
+released 1.3.3. A sweep of four bodies, three woods, three techniques and
+both captures (72 combinations, 18 notes and three chords each, the same
+events and controls through 1.9.62 and through 1.3.3's engine source,
+`rack-1.3.3f1-engine`, at 48 kHz) found three causes, each a mechanism
+1.9.52 to 1.9.58 added and 1.3.3 does not have.
+
+- **The hand was held at the soundhole's rim.** Since 1.9.52 no stroke could
+  land nearer the saddle than 100-110 mm. Nothing stops a hand there: the
+  strings run over the top between the saddle and the opening, and a
+  plectrum is commonly played in that span. The default Pick asked for
+  82 mm and was bent to 113 mm, 0.174 of an open string, which nulls the
+  5th and 6th partials. On the low E, A and D strings they stood 5-18 dB
+  under 1.3.3's (412-880 Hz), and picked single notes carried 2.4 dB less
+  of their level in 500 Hz-1 kHz and 4.4 dB less in 1-2 kHz. Picked chords
+  read +3 dB under 250 Hz, -6 dB at 1-2 kHz and, three seconds on, +4.7 dB
+  in 250-500 Hz: the hollow, ringing low mids. Four corrections had been
+  laid over it: a 6.5 dB bell at 1.35 kHz on the picked piezo, Palm Muted
+  Steel Pick moved to Position 0% and Body 89%, and under the heel a
+  steeper loss on a picked string (1.9.53) and a microphone lift at 770 Hz
+  and 1.58 kHz (1.9.53, 1.9.54).
+- **A chord's fingertips were widened** by 1 + v^2 (1.9.55), to shorten a
+  2.5 kHz line. A Finger chord's first half second then stood 4.0, 5.0, 5.9
+  and 9.0 dB under 1.3.3 in the octaves from 500 Hz to 8 kHz.
+- **The 2.5-2.9 kHz line itself** is the wound strings' lengthwise mode
+  pressing on the saddle (1.9.14); 1.3.3 has no such force.
+
+**What 1.9.63 does.** The rim constraint is removed, so the hand's distance
+law is 1.3.3's again, and the Pick takes 1.3.3's 0.40 of the Finger's
+distance (60 mm at the default Position). A chord's fingertips keep the
+single note's 0.25 mm. The piezo's bell and its -2.5 dB trim are removed.
+Palm Muted Steel Pick loads 1.3.3's Position 16% and Body 82%, and the
+heel's two voicings for the Pick are removed: with the hand at 1.3.3's 48 mm
+and both still on, the muted Pick's first 21 ms above 5 kHz stood 4-9 dB
+under 1.3.3's and its 7 kHz share 3.2 dB under, outside
+`Acustra.MutedPickAttack`'s 2 dB; without them it is 1.2 dB under, and
+500 Hz-1 kHz is 2.1 dB under where it had been 2.0 over. The upper partials
+they were added to shorten have fallen as 1.3.3's do since 1.9.59 restored
+the wound strings' bending loss (-56 dB by 85 ms against -58). The wound
+strings' lengthwise loss goes from 0.030 to 0.12.
+
+**Measured against 1.3.3** (same events, each engine's own factory values,
+equal Output; mean absolute difference over six bands from 80 Hz to 8 kHz):
+
+| Demo | 1.9.62 | 1.9.63 |
+| --- | ---: | ---: |
+| Dreadnought Steel | 1.90 | 1.02 |
+| Parlor Steel Fingerstyle | 0.41 | 0.54 |
+| Mahogany Steel Thumb | 0.30 | 0.31 |
+| Jumbo Steel Pick | 2.94 | 0.56 |
+| Palm Muted Steel Pick | 1.77 | 0.37 |
+| DADGAD Mono Mic | 1.53 | 1.42 |
+| Open G Slide-ready | 0.95 | 1.04 |
+| Piezo Stage Steel | 1.65 | 0.68 |
+| Mean | 1.43 | 0.74 |
+
+Across the sweep a picked note's level now differs from 1.3.3's with a
+standard deviation of 0.7 dB (2.0 in 1.9.62). The Output trims of the four
+patches whose loudness moved were re-pinned: Dreadnought +1.1 to +0.8 dB and
+Jumbo -5.1 to -6.3 keep each demo's integrated loudness where 1.9.62 had
+fitted it to 1.3.3. Palm Muted (-8.2 to -4.8) and Piezo Stage (-8.0 to -9.0)
+sit 0.8 and 0.7 LU over that, because `Acustra.OutputLevels` holds their
+median note and chord to 1.3.3's as well and that median reads 1.2 and
+1.4 dB under 1.3.3's at these trims: in both patches the low strings are
+now louder against the rest than in 1.3.3, and one trim cannot serve both. Mahogany
+Steel Thumb goes from -5.9 to -5.6: the Rack device's saved-patch check read
+its held open E chord 1.06 dB under 1.3.3's, 0.06 dB outside the window.
+
+**The lengthwise loss is a fit, not a measurement.** With the Pick back at
+60 mm the Jumbo demo's 2.86 kHz line stood 16 dB over 1.3.3's at 0.030, 11 at
+0.06, 7 at 0.12 and 5 at 0.25, against 4 with the force switched off. 0.12 is
+the smallest of those within 3 dB of that floor. No published loss angle for
+a wound guitar string's lengthwise mode was found; the value answers to the
+released sound and to the owner's ear, and letter C exists so it can be
+heard.
+
+**A drift the Rack's saved-patch check found.** At 0.12 and 48 kHz the open
+G string's two-mode loss fit came out passive by a hair (a static gain of
+0.999771 round the ring), so the ring kept a stroke's static stretch for
+1.6 s and returned it as a 4-16 Hz drift, -67 dBFS a second after a
+palm-muted strum; 44.1 and 96 kHz gave none, and neither did 0.11 or 0.13.
+The fit is now kept only while that static term leaks within 0.1 s, a
+numerical convention written beside `redesignStringAxialForce`; the G string
+at 48 kHz takes the pole-free loss it already takes at 44.1 kHz, and every
+other fit at 44.1, 48 and 96 kHz is unchanged (the slowest leaks in 88 ms).
+
+**Two verdicts of the owner's this candidate overrides, to be confirmed by
+ear.** On 2026-11-16 the owner approved 1.9.54's palm-muted voicing by ear,
+and in an early audition slightly preferred 1.9.50's Pick on Jumbo and Palm
+Muted. Both were heard with the hand held at the soundhole's rim. This
+candidate removes that voicing and puts the Pick back at 1.3.3's distance,
+on measurement against 1.3.3 alone; nobody has listened to it. If the owner
+prefers A on the palm-muted set, the voicing returns.
+
+**A recorded guitar, as a check on direction only.** The owner shared the
+FreshGuitar library (a Freshman steel-string, a dynamic microphone near the
+soundhole and a piezo; fetched for analysis, not committed). Its low E's 3rd
+to 6th partials stand 4-13 and 18-26 dB under its strongest over the first
+half second. 1.9.62's Pick gave 12-15 and 27-33, 1.9.63's gives 10 and
+17-19. The recording's technique and strike point are not documented, so
+it supports the direction and pins nothing.
+
+**The letters.** A is 1.9.62 (`8021674`). B is 1.9.63. C is B with the
+lengthwise loss left at 0.030. D is 1.3.3's engine source with 1.3.3's
+factory values, a reference and not a candidate. Material: the Jumbo Steel
+Pick, Palm Muted Steel Pick, Piezo Stage Steel and Dreadnought Steel demo
+MIDI, and eight picked low-string notes with four open chords. Level matched
+on whole-file RMS to A (trims in the set's `levels.json`). The set was not
+committed. **The owner has not yet chosen**; B is built as 1.9.63 so it can
+be played, and nothing is merged until they do.
+
+**Fixtures that asserted the retired rules** were corrected with the reason
+beside each: the strike's bounds in the hand-geometry, pluck-frame, Engine
+and StringPitchRealism suites (now the hand's own band, and no body moving
+it), the pinched pad's 1.64 ratio, ChorusRegression's fifth-partial
+references, the piezo clip fixture's Position (10% to 75%, the same 105 mm),
+the lengthwise mode's excitation guard, and the tests of the removed bell
+and heel voicings.
+
+**What this does not fix.** A chord's 250-500 Hz still starts 1.5-3 dB under
+1.3.3 and rings 1.5-2.6 dB over it three seconds on, with every technique;
+that follows the fretted-length tuning the owner took by ear on 2026-11-16.
+Through the piezo a held chord's 1-8 kHz still falls 4-10 dB faster than
+1.3.3's. Notes above A4 are 2-3.6 dB quieter against the low strings than in
+1.3.3. The low E reads 3-10 cents flat on Parlor, Auditorium and Jumbo.
+A palm-muted Pick's attack above 5 kHz is still 2-8 dB under 1.3.3's
+over its first 21 ms. A full-velocity Pick strum on fresh strings at
+Position 0% clips the pickup's preamp model (0.86 of the shipped drive).
+
 ## 2026-11-17 — the axial stretch takes two cells per cut-off period, 1.9.62 (chosen by ear; the owner heard no difference and took B)
 
 **What was decided.** Whether the axial stretch sum, the largest cost of a

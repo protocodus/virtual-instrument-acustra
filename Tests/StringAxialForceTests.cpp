@@ -829,7 +829,11 @@ void woundGResonanceDecaysAtBothChordPitches()
         }
         std::cout << "wound G fret " << fret << " early " << std::abs(mode[0])
                   << ", late " << std::abs(mode[1]) << ", loss " << voice.axialLossFactor << '\n';
-        expect(std::abs(mode[0]) > 0.001 && std::abs(mode[1]) < 0.18 * std::abs(mode[0]),
+        // The first guard proves the impulse rang the mode. It was 0.001 at
+        // the 0.030 loss of 1.9.62; at 1.9.63's 0.12 the mode reads 3e-4 over
+        // these first 8 ms and 2e-10 after 20, so 1e-4 still stands six
+        // orders over what is left.
+        expect(std::abs(mode[0]) > 1.0e-4 && std::abs(mode[1]) < 0.18 * std::abs(mode[0]),
                "wound G axial mode must lose at least 15 dB in 20 ms at both chord pitches");
     }
 }

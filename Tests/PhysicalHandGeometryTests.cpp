@@ -108,7 +108,8 @@ auto fresh(double rate, Picking picking, float posture,
     auto engine = std::make_unique<Engine>();
     acustra::EngineParameters parameters;
     parameters.picking = picking;
-    // Put each technique's unconstrained hand about 175 mm from the saddle.
+    // Put the Finger and Thumb about 175 mm from the saddle. The Pick, 0.40
+    // of the Finger's distance since 1.9.63, reaches only 130 mm.
     parameters.pluckPosition = picking == Picking::Pick ? 1.0f
         : picking == Picking::Thumb ? 0.035f : 0.40f;
     parameters.room = 0.0f;
@@ -230,29 +231,42 @@ void queuedStrokeKeepsItsPhysicalPostureThroughASlide()
            "later hand posture replaced a queued strum's captured physical position");
 }
 
-// Soundhole measurements in Docs/validation/soundhole-geometry-2026-11-16.md.
-constexpr std::array<double, 4> nearRimMetres { 0.110, 0.105, 0.100, 0.105 };
+// 1.9.52 to 1.9.62 held every strike neckward of its body's soundhole rim;
+// 1.9.63 frees the hand again. The strike now stays inside the hand's own
+// band of the sounding string (AcustraEngine::initialisePluck: 0.05 to 0.36
+// from the panel, to 0.46 from a member's CC74, a take reflected at either
+// edge), and each written plane sits its authored offset from that centre.
+constexpr double lowestPoint = 0.05, panelHighest = 0.36, memberHighest = 0.46;
+constexpr std::array<double, 2> planeOffsets { -0.006, 0.009 };
 
-void checkStrike(const Access::Contact& contact, std::size_t shape, bool checkPlanes = true)
+void checkStrike(const Access::Contact& contact, double highest, bool checkPlanes = true)
 {
-    constexpr double rounding = 5.0e-7; // half a micrometre
-    const double centre = contact.point * contact.length;
+    constexpr double rounding = 1.0e-6; // float band edges and their reflection
     expect(contact.fired, "the requested physical strike did not fire");
-    expect(centre >= nearRimMetres[shape] + 0.006 * contact.length - rounding
-               && centre < contact.length,
-           "the strike centre leaves its normal plane outside the soundhole");
+    expect(contact.point >= lowestPoint - rounding && contact.point <= highest + rounding,
+           "the strike centre left the hand's band of the sounding string");
     if (checkPlanes)
-        for (double distance : contact.planeMetres)
-            expect(distance >= nearRimMetres[shape] - rounding && distance < contact.length,
-                   "the written transverse wave strikes bridgeward of the soundhole or past the stop");
+        for (std::size_t plane = 0; plane < planeOffsets.size(); ++plane)
+        {
+            const double distance = contact.planeMetres[plane];
+            expect(distance >= (lowestPoint + planeOffsets[plane] - rounding) * contact.length
+                       && distance <= (highest + planeOffsets[plane] + rounding) * contact.length,
+                   "the written transverse wave left the hand's band or passed the stop");
+        }
 }
 
 void allStringsRespectTheirBodyAtBothPositionEndpoints()
 {
     const auto open = Engine::openNotes(acustra::Tuning::Standard);
-    std::array<double, 4> closest { 1.0, 1.0, 1.0, 1.0 };
+    constexpr std::size_t shapes = 4;
+    std::array<double, shapes> closest { 1.0, 1.0, 1.0, 1.0 };
+    // Since 1.9.63 the body no longer moves the strike: every shape must
+    // place each endpoint stroke exactly where the first body did.
+    std::vector<double> firstBodyPoints;
     int strikes = 0;
-    for (std::size_t shape = 0; shape < nearRimMetres.size(); ++shape)
+    for (std::size_t shape = 0; shape < shapes; ++shape)
+    {
+        std::size_t index = 0;
         for (auto picking : { Picking::Finger, Picking::Pick, Picking::Thumb })
         {
             auto engine = fresh(48000.0, picking, 0.0f);
@@ -289,10 +303,17 @@ void allStringsRespectTheirBodyAtBothPositionEndpoints()
                             expect(engine->heldString(note, channel) == string
                                        && std::abs(contact.length - 0.648 * std::exp2(-fret / 12.0)) < 1e-6,
                                    "the position endpoint missed its intended string and fret");
-                            checkStrike(contact, shape);
+                            checkStrike(contact, member ? memberHighest : panelHighest);
                             expect(std::isfinite(contact.force) && contact.force > 0.0,
                                    "a position endpoint dropped the fresh note's excitation");
                             closest[shape] = std::min(closest[shape], contact.planeMetres[0]);
+                            if (shape == 0)
+                                firstBodyPoints.push_back(contact.point);
+                            else
+                                expect(index < firstBodyPoints.size()
+                                           && contact.point == firstBodyPoints[index],
+                                       "the body shape moved the strike");
+                            ++index;
                             if (control == 0.0f)
                                 lower = contact.point;
                             else if (member || fret == 0)
@@ -308,9 +329,7 @@ void allStringsRespectTheirBodyAtBothPositionEndpoints()
                         }
                     }
         }
-    expect(closest[0] > closest[1] + 0.003 && closest[1] > closest[2] + 0.003
-               && std::abs(closest[1] - closest[3]) < 1e-6,
-           "the four bodies lost their measured differences in bridge-side contact");
+    }
     std::cout << strikes << " endpoint strikes; closest normal contact by shape (mm):";
     for (double distance : closest)
         std::cout << ' ' << 1000.0 * distance;
@@ -329,7 +348,7 @@ void changingHandsAndBodiesRefreshTheNextStrike()
     engine->setMpeTimbre(1.0f, 2);
     engine->noteOn(45, 0.75f, 2);
     const auto first = Access::contact(*engine, 1);
-    checkStrike(first, 2);
+    checkStrike(first, memberHighest);
     render(*engine, 4800);
     parameters.shape = acustra::BodyShape::Parlor;
     engine->setParameters(parameters);
@@ -341,12 +360,12 @@ void changingHandsAndBodiesRefreshTheNextStrike()
     expect(delay > 0, "the return stroke was never queued");
     render(*engine, delay);
     const auto second = Access::contact(*engine, 1);
-    checkStrike(second, 0);
+    checkStrike(second, memberHighest);
     expect(first.point - second.point > 0.10,
            "re-plucking a ringing string reused the previous contact position");
     const auto audio = render(*engine, 1600);
     expect(std::any_of(audio.begin(), audio.end(), [](float sample) { return std::abs(sample) > 1e-5f; }),
-           "re-plucking inside the soundhole silenced the ringing string");
+           "re-plucking near the bridge silenced the ringing string");
 
     engine->reset();
     engine->setParameters(parameters);
@@ -355,7 +374,7 @@ void changingHandsAndBodiesRefreshTheNextStrike()
     expect(std::abs(harmonic.length - 0.648) < 1e-6
                && engine->getStringActivity()[5].harmonic == 2,
            "the touched node lost the open string's physical length");
-    checkStrike(harmonic, 0);
+    checkStrike(harmonic, panelHighest);
 }
 
 void extremeVirtualLengthsRespectTheFretboardAndRetainPitch()
@@ -370,7 +389,7 @@ void extremeVirtualLengthsRespectTheFretboardAndRetainPitch()
                 const auto contact = Access::contact(*engine, 0);
                 // A wave with only a few samples per period cannot resolve two
                 // represented kinks. Its hand, force and emitted audio still exist.
-                checkStrike(contact, 2, contact.period >= 32.0);
+                checkStrike(contact, panelHighest, contact.period >= 32.0);
                 if (slide > Engine::fretCount)
                 {
                     const double lastFret = 0.648 * std::exp2(-Engine::fretCount / 12.0);

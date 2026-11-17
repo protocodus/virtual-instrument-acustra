@@ -39,6 +39,31 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.63 — 2026-11-17 — picked notes get their low mids back
+
+- **The hand is free again.** A stroke lands wherever the hand's distance
+  from the bridge puts it, between the saddle and the soundhole as well as
+  over the opening, as in 1.3.3. Since 1.9.52 nothing could land nearer the
+  saddle than 100-110 mm, which put the default Pick where it nulls the 5th
+  and 6th partials: picked wound strings stood 5-18 dB under 1.3.3 there and
+  picked chords read hollow, with 250-500 Hz ringing on. The Pick is back at
+  0.40 of the Finger's distance, 60 mm at the default Position.
+- **Finger chords are clearer.** A chord's fingertips keep the single note's
+  width; their first half second had been 4-9 dB under 1.3.3 from 500 Hz up.
+- **The picked piezo plays as its circuit gives it.** The 1.35 kHz lift that
+  stood in for the moved hand is gone, and so are the palm-muted Pick's
+  extra string loss and microphone lift of 1.9.53 and 1.9.54.
+- **Less whistle on the wound strings.** Their lengthwise vibration is damped
+  four times harder; the 2.86 kHz line of Jumbo Steel Pick is 9 dB lower.
+- **Sessions.** A saved Pick part sounds brighter in the mids and leaner
+  under 250 Hz, as it did in 1.3.3. Palm Muted Steel Pick loads Position 16%
+  and Body 82% again, and five factory Output trims moved to keep each
+  patch's loudness (Dreadnought +0.8 dB, Mahogany Steel Thumb -5.6, Jumbo
+  -6.3, Palm Muted -4.8, Piezo Stage -9.0). Saved values recall as stored.
+- Against 1.3.3 the eight factory demos' six bands from 80 Hz to 8 kHz now
+  differ by a mean 0.74 dB (1.43 in 1.9.62). The owner's listening verdict
+  is pending ([decisions](Docs/decisions.md)).
+
 ### 1.9.62 — 2026-11-17 — the stretch sampled at two cells per period, chosen by ear
 
 - The sum behind a string's lengthwise stretch, which bends a loud note's
@@ -1127,14 +1152,14 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Shape** | Parlor, Auditorium, Dreadnought or Jumbo: the measured body's A0 and T1 re-coupled for that box, with the plate modes scaled with the top; all three captures hear it. |
 | **Body Material** | Spruce, Mahogany or Maple plate material at fixed geometry; a session saved with Cedar loads as Mahogany. |
 | **Tuning** | Standard, Drop D, DADGAD or Open G; a retuned string keeps its gauge, so its tension follows its pitch. |
-| **Picking** | Finger, Pick (sharper, at the Finger's place over the soundhole, darker when soft) or Thumb (rounder, nearer the neck). |
+| **Picking** | Finger, Pick (sharper, 0.40 of the Finger's distance from the bridge, darker when soft) or Thumb (rounder, nearer the neck). |
 | **Capture** | Stereo mic, a single measured mono mic, or the under-saddle piezo through its preamp. |
 | **Piezo Mix** | The piezo beneath the microphones on Main; 20% for a new instance, 0% for an older session. |
 | **Release Noise** | The damping hand's touch as a note ends, faint friction on held wound-string slides, and a finger sliding along a wound string into a new fret (before the note with Finger Lookahead on); 0% adds nothing. |
 | **Room** | Small-studio reflections around the microphones, 0-100% (10% for a new instance); the piezo stays dry. |
 | **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
 | **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |
-| **Pluck Position** | Moves the hand from the bridge side of the soundhole toward the neck. Both knob and MPE follow the body’s minimum distance on every fret. |
+| **Pluck Position** | Moves the hand from near the bridge toward the neck; it keeps its distance from the bridge on every fret. |
 | **Touch** | Contact width, transient colour and brightness, and how fast every technique lets the string go. |
 | **Body Amount** | Scales microphone radiation. |
 | **Stereo Width** | The stereo pair toward mono. |
@@ -1323,9 +1348,8 @@ separates verified errors from accepted approximations.
   not a universal high-register loss ratio. Technique-matched release
   measurements and a listener-accepted attack remain future evidence needs.
 - The high-fret Finger gesture was tuned by ear in 1.9.15 and 1.9.50.
-  The 1.9.58 soundhole limit moves the realized strike farther from the
-  bridge when that gesture would fall short of the rim. Where a player's
-  hand shifts on high-fret, low-string notes remains unmeasured.
+  Where a player's hand shifts on high-fret, low-string notes remains
+  unmeasured.
 - Attack colour varies less between repeated takes than real round robins
   (34-81 against about 270-290 cents of centroid spread); the plucking angle's
   real spread is not measured. A picked note's partials and brightness now

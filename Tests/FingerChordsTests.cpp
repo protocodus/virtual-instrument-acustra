@@ -242,8 +242,12 @@ void testPinchContactAtRelease()
         return -1.0 / std::log(pole);
     };
     const double solo = releaseTime(false, false);
-    expect(std::abs(releaseTime(true, false) / solo - 1.64) < 0.001,
-           "pinched and solo contact times do not follow their pad radii at velocity 0.8");
+    // 1.9.55 widened the pad by 1 + v^2 on firm chord strokes, 1.64 here.
+    // 1.9.63 retires that: it left a finger chord's first half second 3.5 to
+    // 9 dB under released 1.3.3 from 250 Hz to 8 kHz. A pinched string now
+    // leaves the same pad as a solo one.
+    expect(releaseTime(true, false) == solo,
+           "a pinched string left a different pad from a solo one at velocity 0.8");
     expect(releaseTime(true, true) == releaseTime(false, true),
            "a new solo stroke on the waiting string inherited the chord's contact radius");
     expect(releaseTime(true, false, true) == solo,

@@ -1,5 +1,10 @@
 # Steel-string soundhole contact geometry
 
+> Superseded by 1.9.63 (2026-11-17): the minimum strike distance described
+> here was removed. A hand can meet the string between the saddle and the
+> soundhole, and holding it at the rim hollowed picked notes
+> ([decisions](../decisions.md)). The rim estimates below remain as measured.
+
 Acustra models a 648 mm open string and a 101.6 mm soundhole on all four
 bodies. Its acoustic body model describes the outline, depth and opening
 diameter. The distance between the saddle and opening was estimated from

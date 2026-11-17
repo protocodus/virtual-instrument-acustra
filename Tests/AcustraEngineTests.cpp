@@ -4856,12 +4856,12 @@ void testMpeTimbreSetsPerNotePluckPointOnMemberChannelOnly()
         = AcustraEngineTestAccess::mpeTimbrePluckPoint(0.6f, 2);
     const double memberHigh
         = AcustraEngineTestAccess::mpeTimbrePluckPoint(0.9f, 2);
-    // Low CC74 moves the hand through the soundhole rim transition.
-    // Above it the original fractional CC74 scale retains its exact slope.
+    // CC74 moves the hand linearly from 0.05 to 0.46 of the string. Since
+    // 1.9.63 no soundhole rim bends its bridgeward end.
     expect(memberLow < memberMid && memberMid < memberHigh && memberHigh <= 0.46 + 1.0e-6,
-           "CC74 did not move the hand from the rim towards the neck");
+           "CC74 did not move the hand from the bridge towards the neck");
     expect(std::abs((memberHigh - memberMid) - 0.3 * gestureSpan) < 1.0e-4,
-           "neckward CC74 travel changed outside the soundhole rim transition");
+           "neckward CC74 travel lost the fractional CC74 slope");
     for (const auto picking : { acustra::PickingTechnique::Pick,
                                 acustra::PickingTechnique::Thumb })
     {
@@ -6000,8 +6000,8 @@ void testMaterialCalibrationChangesStringAndPluckDescriptors()
 
     auto nearBridge = acustra::fittedPhysicalCalibration;
     nearBridge.steel.pluckDistanceScale = 0.7f;
-    // The minimum requests a stroke near the rim. The fitted Finger
-    // calibration reaches beyond its transition at this note.
+    // The minimum requests a stroke near the bridge; the fitted Finger
+    // calibration reaches further along the string at this note.
     const auto nearPluck = acustra::AcustraEngineTestAccess::pluck(
         nearBridge, 0.8f);
     const auto farPluck = acustra::AcustraEngineTestAccess::pluck(
@@ -8385,11 +8385,14 @@ void testNoTwoPlucksLandInTheSamePlace()
         const std::string name = "MIDI " + std::to_string(pluck.note);
         // Reflection at either position limit cannot increase this span.
         // Preserve the old 0.0001 normalized rounding allowance in metres.
+        // 1.9.52 to 1.9.62 also held every pluck past the soundhole rim;
+        // since 1.9.63 the panel's band, 0.05 to 0.36 of the string, bounds
+        // it (AcustraEngine::initialisePluck).
         const double spanMetres = (*highest - *lowest) * length;
         const double maximumSpanMetres = 2.0 * 0.02 * 0.70 * 0.648
             + (2.0 * 0.02 * 0.30 + 0.0001) * length;
         expect(spanMetres <= maximumSpanMetres
-                   && (*lowest - 0.006) * length >= 0.100 - 1.0e-6 && *highest < 1.0,
+                   && *lowest >= 0.05 - 1.0e-6 && *highest <= 0.36 + 1.0e-6,
                "a pluck of " + name + " landed outside the physical hand spread");
         std::cout << name << " hand span metres=" << spanMetres
                   << " bound=" << maximumSpanMetres << '\n';
@@ -8807,8 +8810,8 @@ void testAPlectrumReleasesWithVelocity()
     // Brightness grows with dynamics under Pick: the loud-over-soft rise of
     // the upper partials against the lower ones, read on the excitation alone
     // (bridge coupling off), is compared with the same plectrum released
-    // from rest. Keep the historical bridgeward gesture calibration: on
-    // the fretboard that gesture now lands inside the soundhole rim.
+    // from rest. Keep the historical bridgeward gesture calibration this
+    // check was set against.
     plain.steel.pluckDistanceScale = 0.88819512f;
     auto fitted = plain;
     fitted.pickReleaseVelocityShare = 1.5f;
@@ -9695,8 +9698,8 @@ void testThePluckKinkLandsAtThePluckPoint()
 }
 
 // Pluck Position changes the stroke on every string at every fret, for every
-// technique. The soundhole occupies a fixed place on the guitar. On high
-// frets even the bridge-facing rim can be past the string's midpoint.
+// technique, and every stroke stays inside the panel's band of the sounding
+// string.
 void testPluckPositionChangesEveryFret()
 {
     using Access = acustra::AcustraEngineTestAccess;
@@ -9727,10 +9730,14 @@ void testPluckPositionChangesEveryFret()
                 for (std::size_t index = 0; index < positions.size(); ++index)
                 {
                     highestPoint = std::max(highestPoint, strokes[index].first);
-                    const double lengthMetres = 0.648 * std::exp2(-fret / 12.0);
-                    const double bridgewardPlane = (strokes[index].first - 0.006) * lengthMetres;
-                    expect(bridgewardPlane >= 0.100 - 1.0e-6 && strokes[index].first < 1.0,
-                           "a stroke left the string or crossed the dreadnought soundhole rim, " + where);
+                    // 1.9.52 to 1.9.62 held every stroke past the dreadnought's
+                    // 100 mm soundhole rim. Since 1.9.63 the hand is free:
+                    // the stroke stays within 0.05 to 0.36 of the sounding
+                    // string, a take reflected at either edge
+                    // (AcustraEngine::initialisePluck).
+                    expect(strokes[index].first >= 0.05 - 1.0e-6
+                               && strokes[index].first <= 0.36 + 1.0e-6,
+                           "a stroke left the panel's band of the sounding string, " + where);
                 }
                 // A clamp puts every stroke past it on exactly one point (the
                 // strokes share their take offset); the knee never does, if
@@ -9768,7 +9775,7 @@ void testHighRegisterFingerEasesItsReachAndScalesRoundTripLoss()
     using acustra::PickingTechnique;
     for (const int fret : { 8, 12, 16, 20 })
     {
-        // A fixed physical rim can pass H3's node as the fret changes.
+        // A fixed physical hand distance can pass H3's node as the fret changes.
         // Compare the two strings at an identical length and take: the
         // treble Finger retains its bridgeward easing above fret four.
         const auto treble = Access::pluckAtFret(PickingTechnique::Finger, 0.28f, 5, fret);

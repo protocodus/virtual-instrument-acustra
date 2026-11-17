@@ -96,13 +96,14 @@ struct PhysicalCalibration
     float steelWoundAxialLoss { steelWoundBendingLoss };
 };
 
-// Before placing the hand relative to the soundhole, the default panel
-// gesture requests a Finger distance of 149 mm from the bridge.
+// At the default panel position the Finger is 149 mm from the bridge.
 // The early picked archtop fit placed the hand at 60 mm, the later Eastman
-// flat-top fit at 141 mm. At 82 mm the median Jumbo treble H3/H1 is within
-// 2.2 dB of the released Rack 1.3.3 at equal controls (8.2 dB at 141 mm;
-// E4–B5, velocities 48/85/110, 40–210 ms, distance varied alone).
-inline constexpr float pickHandDistanceRatio = 0.55f;
+// flat-top fit at 141 mm. The Pick takes 0.40 of the Finger's distance,
+// 60 mm, released 1.3.3's value: with the hand free to land between the
+// saddle and the soundhole (initialisePluck), the picked factory demos' six
+// bands from 80 Hz to 8 kHz stand a mean 0.25-0.69 dB from 1.3.3's
+// (1.77-2.94 dB with 1.9.62's 0.55 behind the soundhole's rim).
+inline constexpr float pickHandDistanceRatio = 0.40f;
 
 // Refit on 2026-09-04 around the two-way junction and the saddle anchor, by a
 // bounded pattern search rather than the one-sided Gauss-Newton stages that
@@ -272,7 +273,12 @@ inline constexpr PhysicalCalibration fittedPhysicalCalibration {
     // Matching the released guitar’s Dreadnought and Jumbo strums gives a
     // larger effective loss for longitudinal motion. The transverse fit
     // above left the wound G ringing near 2.55 and 2.86 kHz.
-    0.030f
+    // 0.030 until 1.9.62. With the Pick back at 60 mm the Jumbo Steel Pick
+    // demo's 2.86 kHz line stood 16 dB over 1.3.3's at 0.030, 11 at 0.06,
+    // 7 at 0.12 and 5 at 0.25, against 4 with the stretch force off
+    // (1.3.3 has none): 0.12 is within 3 dB of that floor. Fitted to the
+    // released sound, not a measured loss angle.
+    0.12f
 };
 
 } // namespace acustra

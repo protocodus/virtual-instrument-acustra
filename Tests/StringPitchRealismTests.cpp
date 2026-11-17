@@ -519,10 +519,13 @@ void testHarmonicAndExtremeSlideAttackGeometry()
                     expect(attack.amplitude >= 0.0 && attack.amplitude <= 0.24001,
                            "virtual long string amplified the nominal release displacement");
                     const double lastFretLength = 0.648 * std::exp2(-20.0 / 12.0);
+                    // 1.9.52 to 1.9.62 also held the attack past the soundhole
+                    // rim. Since 1.9.63 the panel's band, 0.05 to 0.36 of the
+                    // sounding string, bounds it (AcustraEngine::initialisePluck).
                     expect(attack.length >= lastFretLength - 1.0e-6
-                               && (attack.position - 0.006) * attack.length >= 0.100 - 1.0e-6
-                               && attack.position < 1.0,
-                           "extreme slide put the physical stop past fret 20 or the attack across the rim");
+                               && attack.position >= 0.05 - 1.0e-6
+                               && attack.position <= 0.36 + 1.0e-6,
+                           "extreme slide put the physical stop past fret 20 or the attack outside the hand's band");
                 }
     }
 }

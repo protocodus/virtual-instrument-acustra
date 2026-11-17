@@ -1,5 +1,10 @@
 # Palm-muted steel pick
 
+> Superseded by 1.9.63 (2026-11-17): the picked string's extra loss under
+> the heel and the microphone's 770 Hz and 1.58 kHz lifts described here
+> were removed with the soundhole limit they compensated
+> ([decisions](../decisions.md)).
+
 Use the released Rack 1.3.3 ARM64 module as the reference for every Acustra
 sound change. Its SHA-256 is
 `917197eaa395615841f51f38bdec294713ba5de27eeb81138a14fe4c9e6c7821`.

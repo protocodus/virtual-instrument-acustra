@@ -91,10 +91,15 @@ int main()
     // allowed. The Pick's references were re-observed on 1.9.42, which
     // moved its hand from 60 mm to 141 mm from the saddle: the fifth
     // partial's place on the pluck's comb moved with it, 7.5 dB up from
-    // 0.000492141 and 0.000494366.
+    // 0.000492141 and 0.000494366. All three were re-observed on 1.9.63,
+    // which let the hand reach bridgeward of the soundhole's rim again and
+    // put the Pick back at 0.40 of the Finger's distance: at this fixture's
+    // bridgeward panel setting the fifth partial's place on the comb moved
+    // 3.9 dB down under Finger, 6.1 dB up under Pick and 1.0 dB down under
+    // Thumb.
     constexpr double referenceAmplitude[2][3] {
-        { 0.00134199, 0.00117303, 0.00108866 },
-        { 0.00125877, 0.00113555, 0.00102439 }
+        { 0.000855174, 0.00236626, 0.000971067 },
+        { 0.000848562, 0.00227032, 0.000898072 }
     };
     for (const double rate : { 48000.0, 96000.0 })
     for (const auto technique : { acustra::PickingTechnique::Finger,
@@ -107,10 +112,9 @@ int main()
         auto engine = std::make_unique<acustra::AcustraEngine>();
         acustra::EngineParameters parameters;
         parameters.picking = technique;
-        // At fret 12 the 100 mm soundhole rim brings the default Finger
-        // and Thumb near H5's two-fifths node. The bridgeward panel setting
-        // excites H5 clearly in all three techniques, retaining the energy
-        // bracket and the beating limit of the original regression.
+        // The bridgeward panel setting excites H5 clearly in all three
+        // techniques, retaining the energy bracket and the beating limit
+        // of the original regression.
         parameters.pluckPosition = 0.0f;
         parameters.room = 0.0f;
         parameters.releaseNoise = 0.0f;

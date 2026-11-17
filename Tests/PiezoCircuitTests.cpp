@@ -31,7 +31,6 @@ namespace acustra
 struct AcustraEngineTestAccess
 {
     using Design = AcustraEngine::PiezoDesign;
-    using PickupPresence = AcustraEngine::PickupPresence;
     // One sample of the chain from a rigid-saddle force in newtons; returns
     // the DI's voltage seven samples back.
     static double volts(AcustraEngine& engine, double newtons)
@@ -109,35 +108,6 @@ void expect(bool condition, const std::string& message)
 }
 
 double decibels(double magnitude) { return 20.0 * std::log10(magnitude); }
-
-void testPickedPresence()
-{
-    constexpr std::array<double, 3> frequencies { 80.0, 1350.0, 7000.0 };
-    for (double rate : { 44100.0, 48000.0, 96000.0, 192000.0 })
-    {
-        Access::PickupPresence output;
-        output.prepare(rate);
-        std::array<std::complex<double>, frequencies.size()> response {};
-        for (int n = 0; n < static_cast<int>(0.025 * rate); ++n)
-        {
-            const double value = output.process(n == 0 ? 1.0f : 0.0f, true, 1.0f);
-            for (std::size_t band = 0; band < frequencies.size(); ++band)
-                response[band] += value * std::polar(1.0, -2.0 * pi * n * frequencies[band] / rate);
-        }
-        expect(std::abs(decibels(std::abs(response[0])) + 2.5) < 0.1,
-               "picked pickup low register follows level trim");
-        expect(std::abs(decibels(std::abs(response[1])) - 4.0) < 0.05,
-               "picked pickup presence centre includes level trim");
-        const double trebleDb = decibels(std::abs(response[2]));
-        expect(trebleDb > -2.5 && trebleDb < -2.0, "picked pickup keeps 7 kHz below unity");
-        expect(std::abs(output.state1) + std::abs(output.state2) < 1.0e-12,
-               "picked pickup impulse decays within 25 ms");
-        for (float sample : { -0.1f, 0.12f, 0.0f, 0.005f })
-            expect(output.process(sample, false, 1.0f) == sample, "finger and thumb retain pickup voltage");
-        expect(std::abs(output.process(0.25f, true, 0.001f) - 0.25f) < 0.001f,
-               "engaging picked pickup preserves the first sample of the transition");
-    }
-}
 
 // ------------------------------------------------------------ fixtures
 struct Table
@@ -984,7 +954,6 @@ int main(int argc, char** argv)
     if (wanted("saddle")) testSaddleFilter();
     if (wanted("load")) { testSaddleLoadBank(); testLiveSaddleLoad(); }
     if (wanted("small")) testSmallSignal();
-    if (wanted("presence")) testPickedPresence();
     if (wanted("harmonics")) testHarmonics();
     if (wanted("aliasing")) testAliasing();
     if (wanted("overload")) testOverload();
