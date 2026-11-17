@@ -61,8 +61,9 @@ long per-version notes are in the
   patch's loudness (Dreadnought +0.8 dB, Mahogany Steel Thumb -5.6, Jumbo
   -6.3, Palm Muted -4.8, Piezo Stage -9.0). Saved values recall as stored.
 - Against 1.3.3 the eight factory demos' six bands from 80 Hz to 8 kHz now
-  differ by a mean 0.74 dB (1.43 in 1.9.62). The owner's listening verdict
-  is pending ([decisions](Docs/decisions.md)).
+  differ by a mean 0.74 dB (1.43 in 1.9.62). The owner approved shipping it
+  on 2026-11-17 without a per-letter listening verdict
+  ([decisions](Docs/decisions.md)).
 
 ### 1.9.62 — 2026-11-17 — the stretch sampled at two cells per period, chosen by ear
 

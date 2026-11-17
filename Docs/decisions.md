@@ -5,7 +5,7 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
-## 2026-11-17 — the hand is free of the soundhole's rim, and the Pick is back at 60 mm, 1.9.63 (the fault measured; an A–B–C–D set sent, verdict pending)
+## 2026-11-17 — the hand is free of the soundhole's rim, and the Pick is back at 60 mm, 1.9.63 (the fault measured; an A–B–C–D set sent; shipped on the owner's approval, no letter chosen)
 
 **What was decided.** The owner heard 1.9.62 as dull and hollow, with an
 unpleasant ringing, most of all in the low mids, and asked for the balance of
@@ -126,6 +126,13 @@ it), the pinched pad's 1.64 ratio, ChorusRegression's fifth-partial
 references, the piezo clip fixture's Position (10% to 75%, the same 105 mm),
 the lengthwise mode's excitation guard, and the tests of the removed bell
 and heel voicings.
+
+**The outcome.** The set went to the owner with its key. Later on
+2026-11-17 the owner replied "ok cool, lets push all to origin main and
+rebuild u45 for recon testing". That approves shipping B as 1.9.63; it names
+no letter and says nothing about what was heard, so nothing here is recorded
+as chosen by ear, and the two overridden verdicts above stand unconfirmed.
+The U45 goes to Recon for the owner to listen to it there.
 
 **What this does not fix.** A chord's 250-500 Hz still starts 1.5-3 dB under
 1.3.3 and rings 1.5-2.6 dB over it three seconds on, with every technique;
