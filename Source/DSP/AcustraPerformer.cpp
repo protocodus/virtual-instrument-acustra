@@ -268,7 +268,7 @@ void Performer::beginBlock(float* left, float* right,
 }
 
 void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
-                           int size) noexcept
+                           int size, bool independentFret) noexcept
 {
     if (data == nullptr)
         size = 0;
@@ -279,7 +279,7 @@ void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
         return;
     if (direct_)
     {
-        static_cast<void>(handleEvent(sample, data, size));
+        static_cast<void>(handleEvent(sample, data, size, independentFret));
         return;
     }
 
@@ -300,6 +300,7 @@ void Performer::handleMidi(int sampleOffset, const std::uint8_t* data,
     held.size = size;
     std::copy_n(data, size, held.bytes.begin());
     held.gathered = false;
+    held.independentFret = independentFret;
     held.fresh = fingerLookahead_ && size >= 3
         && (static_cast<unsigned>(data[0]) & 0xf0u) == 0x90u && (data[2] & 0x7fu) != 0u;
     held.tempo = false;
@@ -363,7 +364,7 @@ void Performer::endBlock() noexcept
             const bool joined = handleEvent(
                 static_cast<int>(std::max<std::int64_t>(
                     0, held.due - processedSamples_)),
-                held.bytes.data(), held.size);
+                held.bytes.data(), held.size, held.independentFret);
             // An MPE member channel's notes are allocated one at a time
             // (planChord is inert there) and its CC74, pressure and bend
             // precede each note: gathering would pull a note ahead of them.
@@ -799,10 +800,8 @@ void Performer::releaseMemberKeysBeforeBend(int controllerChannel) noexcept
     for (int index = 0; index < pendingNoteOffCount_; ++index)
     {
         const auto off = pendingNoteOffs_[static_cast<std::size_t>(index)];
-        const auto keyWord = static_cast<std::size_t>(off.note / 32);
-        const auto keyBit = 1u << (off.note % 32);
-        const bool downNow = (keysDown_[static_cast<std::size_t>(off.channel - 1)][keyWord]
-                              & keyBit) != 0u;
+        const bool downNow = frets_[static_cast<std::size_t>(off.channel - 1)]
+                                   [static_cast<std::size_t>(off.note)].holds != 0;
         const bool pairedStrum = downNow && std::any_of(
             strumRequests_.begin(), strumRequests_.begin() + strumRequestCount_,
             [this, &off](const StrumRequest& request)
@@ -828,16 +827,13 @@ void Performer::collectStrum(const StrumRequest& request) noexcept
     {
         if (!inStrumScope(request.channel, channel))
             continue;
-        auto& down = keysDown_[static_cast<std::size_t>(channel - 1)];
-        auto& silent = silentKeys_[static_cast<std::size_t>(channel - 1)];
         for (int note = 0; note < 128; ++note)
         {
-            const auto word = static_cast<std::size_t>(note / 32);
-            const auto bit = 1u << (note % 32);
-            if ((down[word] & bit) == 0u || pendingNoteOnCount_ == sampleGroupCapacity)
+            auto& fret = frets_[static_cast<std::size_t>(channel - 1)][static_cast<std::size_t>(note)];
+            if (fret.holds == 0 || pendingNoteOnCount_ == sampleGroupCapacity)
                 continue;
-            const bool wasSilent = (silent[word] & bit) != 0u;
-            silent[word] &= ~bit;
+            const bool wasSilent = fret.silent == fret.holds;
+            if (wasSilent) --fret.silent;
             pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
                 = { note, channel, request.velocity, 0,
                     !wasSilent && engine_.heldString(note, channel) >= 0 };
@@ -850,10 +846,7 @@ void Performer::clearKeys(int midiChannel) noexcept
 {
     for (int channel = 1; channel <= 16; ++channel)
         if (midiChannel == 0 || channel == midiChannel)
-        {
-            keysDown_[static_cast<std::size_t>(channel - 1)] = {};
-            silentKeys_[static_cast<std::size_t>(channel - 1)] = {};
-        }
+            frets_[static_cast<std::size_t>(channel - 1)] = {};
     if (midiChannel == 0)
         strumRequestCount_ = 0;
 }
@@ -862,7 +855,7 @@ void Performer::clearKeys(int midiChannel) noexcept
 // of its sample or dispatches it. Returns true when a Note On joined the
 // group at its sample.
 bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
-                            int size) noexcept
+                            int size, bool independentFret) noexcept
 {
     if (groupedSample_ >= 0 && eventSample != groupedSample_)
         flushNoteGroup();
@@ -919,7 +912,13 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
                 pendingNoteOnCount_ = static_cast<int>(std::remove_if(
                     pendingNoteOns_.begin(), pendingNoteOns_.begin() + pendingNoteOnCount_,
                     [this, midiChannel](const PendingNoteOn& pending)
-                    { return inStrumScope(midiChannel, pending.channel); })
+                    {
+                        if (!inStrumScope(midiChannel, pending.channel)) return false;
+                        auto& fret = frets_[static_cast<std::size_t>(pending.channel - 1)]
+                                           [static_cast<std::size_t>(pending.note)];
+                        if (fret.silent < fret.holds) ++fret.silent;
+                        return true;
+                    })
                     - pendingNoteOns_.begin());
             }
             else
@@ -929,31 +928,23 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
         }
         return false;
     }
-    const auto keyWord = static_cast<std::size_t>(key / 32);
-    const auto keyBit = 1u << (key % 32);
-    auto& down = keysDown_[static_cast<std::size_t>(midiChannel - 1)][keyWord];
-    auto& silent = silentKeys_[static_cast<std::size_t>(midiChannel - 1)][keyWord];
-    const bool wasDown = (down & keyBit) != 0u;
-    if (positiveNoteOn)
+    auto& fret = frets_[static_cast<std::size_t>(midiChannel - 1)][static_cast<std::size_t>(key)];
+    if (positiveNoteOn && strokeMode_ == StrokeMode::Keys)
     {
-        down |= keyBit;
-        if (strokeMode_ == StrokeMode::Keys)
+        if (fret.holds == 0 || independentFret)
         {
-            // Keys mode: a newly pressed key frets its string and waits for a
-            // strum key; a key already sounding keeps its Note Off live.
-            if (!wasDown)
-                silent |= keyBit;
-            return false;
+            ++fret.holds;
+            ++fret.silent;
         }
-        silent &= ~keyBit;
+        return false;
     }
     if (noteOff)
     {
-        down &= ~keyBit;
-        if ((silent & keyBit) != 0u)
+        if (fret.holds > 0) --fret.holds;
+        if (fret.silent > 0)
         {
-            // Never struck, so nothing sounds to release.
-            silent &= ~keyBit;
+            // Keep the sounding owner until the last physical input releases.
+            --fret.silent;
             return false;
         }
     }
@@ -961,6 +952,7 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
     {
         if (pendingNoteOnCount_ < sampleGroupCapacity)
         {
+            fret.strike(independentFret);
             pendingNoteOns_[static_cast<std::size_t>(pendingNoteOnCount_++)]
                 = { static_cast<int>(data[1] & 0x7fu), midiChannel,
                     static_cast<float>(data[2] & 0x7fu) / 127.0f, 0 };
@@ -1139,8 +1131,8 @@ void Performer::gatherChord(int first) noexcept
             = { note, channel, static_cast<float>(held.bytes[2] & 0x7fu) / 127.0f, 0 };
         // It never reaches handleEvent, which is where a key is noted as
         // held for the strum keys.
-        keysDown_[static_cast<std::size_t>(channel - 1)]
-                 [static_cast<std::size_t>(note / 32)] |= noteBit;
+        frets_[static_cast<std::size_t>(channel - 1)][static_cast<std::size_t>(note)]
+            .strike(held.independentFret);
         held.gathered = true;
     }
 }
@@ -1482,19 +1474,19 @@ void Performer::resetControllerScope(int midiChannel) noexcept
 }
 
 void Performer::queueMessage(int sampleOffset, std::uint8_t status, int data1,
-                             int data2, int size) noexcept
+                             int data2, int size, bool independentFret) noexcept
 {
     const std::array<std::uint8_t, 3> bytes {
         status, static_cast<std::uint8_t>(dataByte(data1)),
         static_cast<std::uint8_t>(dataByte(data2))
     };
-    handleMidi(sampleOffset, bytes.data(), size);
+    handleMidi(sampleOffset, bytes.data(), size, independentFret);
 }
 
 void Performer::noteOn(int sampleOffset, int channel, int note,
-                       int velocity) noexcept
+                       int velocity, bool independentFret) noexcept
 {
-    queueMessage(sampleOffset, statusByte(0x90u, channel), note, velocity, 3);
+    queueMessage(sampleOffset, statusByte(0x90u, channel), note, velocity, 3, independentFret);
 }
 
 void Performer::noteOff(int sampleOffset, int channel, int note,
