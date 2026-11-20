@@ -348,6 +348,8 @@ private:
         // MIDI's release velocity, 0-1, or -1 when the key-up carried none
         // (a Note On at velocity 0, or a Note Off at 0).
         float releaseVelocity { -1.0f };
+        // An off listed before the on of a zero-length note at this sample.
+        bool initiallyUnheld { false };
     };
 
     // A due time counts samples since prepare.

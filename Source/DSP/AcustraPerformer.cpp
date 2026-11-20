@@ -779,6 +779,14 @@ void Performer::flushStroke(StrokeMode strokeMode, bool strumKey,
 
 void Performer::sendNoteOff(const PendingNoteOff& note) noexcept
 {
+    if (note.initiallyUnheld)
+    {
+        // The engine processes this group's presses before its releases.
+        // Match the fret to the key-up even when the host listed it first.
+        auto& fret = frets_[static_cast<std::size_t>(note.channel - 1)][static_cast<std::size_t>(note.note)];
+        if (fret.holds > 0) --fret.holds;
+        if (fret.silent > 0) --fret.silent;
+    }
     if (note.pedalMoved)
         engine_.noteOffWithVelocity(note.note, note.channel,
                                     note.sustained, note.releaseVelocity,
@@ -938,6 +946,7 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
         }
         return false;
     }
+    const bool initiallyUnheld = fret.holds == 0;
     if (noteOff)
     {
         if (fret.holds > 0) --fret.holds;
@@ -970,7 +979,8 @@ bool Performer::handleEvent(int eventSample, const std::uint8_t* data,
             static_cast<int>(data[1] & 0x7fu), midiChannel,
             engine_.sustainHolds(midiChannel), false, false,
             hasReleaseVelocity
-                ? static_cast<float>(data[2] & 0x7fu) / 127.0f : -1.0f
+                ? static_cast<float>(data[2] & 0x7fu) / 127.0f : -1.0f,
+            initiallyUnheld
         };
     }
     else

@@ -648,6 +648,21 @@ void testExplicitSmallStrokes()
 void testSharedFretOwners()
 {
     using P = acustra::Performer;
+    // The Performer groups simultaneous presses before releases, in either
+    // incoming order. A zero-length note cannot be fretted by a later strum.
+    for (bool offFirst : { false, true })
+    {
+        auto p = explicitStrokePerformer(acustra::PickingTechnique::Pick, true);
+        std::array<float, 64> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 64);
+        if (offFirst) p->noteOff(5, 1, 64);
+        p->noteOn(5, 1, 64, 100);
+        if (!offFirst) p->noteOff(5, 1, 64);
+        p->endBlock();
+        keyswitch(*p, P::keyswitchStrumUp, true);
+        expect(p->engine().heldString(64, 1) < 0,
+               "a later strum revived a zero-length note");
+    }
     for (bool gathered : { false, true })
         for (bool keysMode : { false, true })
             for (bool strumBeforeRelease : { false, true })
