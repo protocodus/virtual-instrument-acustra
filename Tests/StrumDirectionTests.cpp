@@ -645,6 +645,55 @@ void testExplicitSmallStrokes()
         }
 }
 
+void testSharedFretOwners()
+{
+    using P = acustra::Performer;
+    // The Performer groups simultaneous presses before releases, in either
+    // incoming order. A zero-length note cannot be fretted by a later strum.
+    for (bool offFirst : { false, true })
+    {
+        auto p = explicitStrokePerformer(acustra::PickingTechnique::Pick, true);
+        std::array<float, 64> left {}, right {};
+        p->beginBlock(left.data(), right.data(), 64);
+        if (offFirst) p->noteOff(5, 1, 64);
+        p->noteOn(5, 1, 64, 100);
+        if (!offFirst) p->noteOff(5, 1, 64);
+        p->endBlock();
+        keyswitch(*p, P::keyswitchStrumUp, true);
+        expect(p->engine().heldString(64, 1) < 0,
+               "a later strum revived a zero-length note");
+    }
+    for (bool gathered : { false, true })
+        for (bool keysMode : { false, true })
+            for (bool strumBeforeRelease : { false, true })
+            {
+                auto p = explicitStrokePerformer(acustra::PickingTechnique::Pick, true);
+                p->setGatherChords(gathered);
+                const auto play = [&](int note, bool on, bool independent = false)
+                {
+                    std::array<float, 1> left {}, right {};
+                    p->beginBlock(left.data(), right.data(), 1);
+                    if (on) p->noteOn(0, 1, note, 100, independent);
+                    else p->noteOff(0, 1, note);
+                    p->endBlock();
+                    advance(*p, 2000);
+                };
+                if (keysMode) play(P::keyswitchStrumDown, true);
+                play(64, true);
+                play(64, true, keysMode);
+                if (strumBeforeRelease) play(P::keyswitchStrumDown, true);
+                play(64, false);
+                play(P::keyswitchStrumUp, true);
+                const int string = p->engine().heldString(64, 1);
+                expect(string >= 0 && Access::sign(p->engine(), string) == -1.0f,
+                       "releasing one input removed a shared fret from the next upstroke");
+                play(64, false);
+                play(P::keyswitchStrumDown, true);
+                expect(p->engine().heldString(64, 1) < 0,
+                       "a shared fret remained in the chord after its last release");
+            }
+}
+
 void testStrumKeyRepeatedNotesMultiChannelAndMpe()
 {
     using P = acustra::Performer;
@@ -809,6 +858,7 @@ int main()
     testStrumKeyStrikesAGatheredChord();
     testExplicitSmallStrokes();
     testStrumKeyRepeatedNotesMultiChannelAndMpe();
+    testSharedFretOwners();
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
     {
         const auto reference = phrase(rate, 17);

@@ -39,6 +39,14 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.64 — 2026-11-20 — shared frets
+
+When two inputs hold the same pitch, the strum keys keep striking it after
+one input releases. Its final key-up removes it from the chord.
+
+The scalar Windows build now reuses interpolation weights for a settled
+string's longitudinal stretch, as the vector builds already do.
+
 ### 1.9.63 — 2026-11-17 — picked notes get their low mids back
 
 - **The hand is free again.** A stroke lands wherever the hand's distance
