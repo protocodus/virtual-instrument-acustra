@@ -263,7 +263,8 @@ public:
     // MidiBuffer's do; one earlier than an event already handled plays at
     // that event's time. Messages longer than three bytes (SysEx) only mark
     // their sample.
-    void handleMidi(int sampleOffset, const std::uint8_t* data, int size) noexcept;
+    void handleMidi(int sampleOffset, const std::uint8_t* data, int size,
+                    bool independentFret = false) noexcept;
     void endBlock() noexcept;
     // Finish only this prefix when a front end splits for a control change.
     // The unrendered suffix is untouched, and the clock advances by exactly
@@ -285,7 +286,10 @@ public:
 
     // --- MIDI spelt for front ends without MIDI ------------------------------
     // Channels are 1-16, data values 0-127; out-of-range values are clamped.
-    void noteOn(int sampleOffset, int channel, int note, int velocity) noexcept;
+    // A second physical input sharing this channel/pitch can fret it
+    // independently. A repeated raw MIDI press in Keys mode stays one fret.
+    void noteOn(int sampleOffset, int channel, int note, int velocity,
+                bool independentFret = false) noexcept;
     // Release velocity is spelt into the Note Off: a key-up damps its note
     // however fast it is lifted. An explicit firm contact shortens its
     // damping tail and sets the optional release noise; 64 is nominal.
@@ -344,6 +348,8 @@ private:
         // MIDI's release velocity, 0-1, or -1 when the key-up carried none
         // (a Note On at velocity 0, or a Note Off at 0).
         float releaseVelocity { -1.0f };
+        // An off listed before the on of a zero-length note at this sample.
+        bool initiallyUnheld { false };
     };
 
     // A due time counts samples since prepare.
@@ -353,6 +359,7 @@ private:
         std::array<std::uint8_t, 3> bytes {};
         int size { 0 };
         bool gathered { false };
+        bool independentFret { false };
         // A Note On queued this block, not yet shown to the engine's
         // lookahead (anticipateHeldNotes).
         bool fresh { false };
@@ -378,7 +385,7 @@ private:
         float velocity { 0.0f };
     };
 
-    bool handleEvent(int eventSample, const std::uint8_t* data, int size) noexcept;
+    bool handleEvent(int eventSample, const std::uint8_t* data, int size, bool independentFret) noexcept;
     void handleTempoEvent(int eventSample, double bpm) noexcept;
     void flushNoteGroup() noexcept;
     void flushStroke(StrokeMode strokeMode, bool strumKey,
@@ -419,7 +426,7 @@ private:
     [[nodiscard]] bool channelIsInControllerScope(int controllerChannel,
                                                   int targetChannel) const noexcept;
     void queueMessage(int sampleOffset, std::uint8_t status, int data1,
-                      int data2, int size) noexcept;
+                      int data2, int size, bool independentFret = false) noexcept;
     // Drops the oldest queued continuous gesture to make room in a full
     // queue; false when nothing continuous is queued.
     bool evictContinuousHeldEvent() noexcept;
@@ -435,11 +442,21 @@ private:
     bool pickTechnique_ { false };
     bool fingerTechnique_ { true };
     StrokeMode strokeMode_ { StrokeMode::Automatic };
-    // Keys down per channel, a bit per note, and those of them Keys mode
-    // left silent (fretted, not yet struck).
-    using KeyBits = std::array<std::uint32_t, 4>;
-    std::array<KeyBits, 16> keysDown_ {};
-    std::array<KeyBits, 16> silentKeys_ {};
+    // A strum visits each physical pitch once. Several inputs can hold it;
+    // silent holds have not acquired a sounding string owner yet.
+    struct Fret {
+        unsigned holds {};
+        unsigned silent {};
+
+        void strike(bool independent) noexcept
+        {
+            // A repeated raw press after leaving Keys mode strikes the
+            // previously silent fret. Two physical inputs retain both holds.
+            if (silent > 0 && !independent) --silent;
+            else ++holds;
+        }
+    };
+    std::array<std::array<Fret, 128>, 16> frets_ {};
     // Strum keys on the sample being grouped, one entry per channel scope
     // (the whole MPE lower zone, or one MIDI channel outside it).
     std::array<StrumRequest, 16> strumRequests_ {};

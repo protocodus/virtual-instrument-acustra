@@ -12933,14 +12933,18 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
                    float returningScale, float& outgoing, float& returning,
                    float& sum, AxialCellTable& table) noexcept
 {
-    const auto tap = [line, mask, newest] (float samplesAgo)
+    const auto interpolate = [line, mask, newest] (int whole, float part)
     {
-        const int whole = static_cast<int>(samplesAgo);
-        const float part = samplesAgo - static_cast<float>(whole);
         const unsigned at = newest - static_cast<unsigned>(whole);
         const float a = line[at & mask];
         const float b = line[(at - 1u) & mask];
         return a + part * (b - a);
+    };
+    const auto returningCell = [&] (int index)
+    {
+        const float age = period - returningSpan * static_cast<float>(index);
+        const int whole = static_cast<int>(age);
+        return interpolate(whole, age - static_cast<float>(whole));
     };
     int cell = first;
 #if (defined(JUKEBOX_SDK) || defined(__aarch64__) || defined(__ARM_NEON) \
@@ -13187,13 +13191,42 @@ void sumAxialCells(const float* line, unsigned mask, unsigned newest,
         const Floats partial = partial0 + partial1;
         sum += (partial[0] + partial[1]) + (partial[2] + partial[3]);
     }
+    const auto& readReturning = returningCell;
+#else
+    // The scalar backend uses the same exact period/span key. Only the tap
+    // address and weight are cached; this loop retains its own sum order.
+    const int count = end - first;
+    const bool cacheable = first == 1 && count > 0 && count <= AxialCellTable::capacity;
+    if (cacheable)
+    {
+        const auto periodBits = exact::bits(period);
+        const auto spanBits = exact::bits(returningSpan);
+        if (table.periodBits != periodBits || table.spanBits != spanBits || table.filled < count)
+        {
+            table.periodBits = periodBits;
+            table.spanBits = spanBits;
+            table.filled = count;
+            for (int index = first; index < end; ++index)
+            {
+                const float age = period - returningSpan * static_cast<float>(index);
+                const int whole = static_cast<int>(age);
+                table.back[index - 1] = -whole;
+                table.part[index - 1] = age - static_cast<float>(whole);
+            }
+        }
+    }
+    const auto readReturning = [&] (int index)
+    {
+        if (!cacheable)
+            return returningCell(index);
+        return interpolate(-table.back[index - 1], table.part[index - 1]);
+    };
 #endif
     for (; cell < end; ++cell)
     {
         const float nextOutgoing = line[(newest
             - static_cast<unsigned>(cell * stride)) & mask];
-        const float nextReturning = tap(period
-            - returningSpan * static_cast<float>(cell));
+        const float nextReturning = readReturning(cell);
         const float slope = (nextOutgoing - outgoing) * outgoingScale
             + (nextReturning - returning) * returningScale;
         sum += slope * slope;
