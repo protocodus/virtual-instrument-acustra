@@ -6288,7 +6288,7 @@ void testBendingLossFollowsItsLaw()
 // bending section (above). It takes delta_disl = steel.frequencyLossScale /
 // 5500 and delta_W = steelWoundFrictionLoss on the four wound strings, String
 // Age scaling the first by (1 + 1.35 age) / (1 + 1.35 x 0.15) and the second
-// by max(0.2, 1 + 8 (age - 0.15)). Per round trip of the fundamental period
+// by max(0.2, 1 + 8 (age - 0.15)) to each wound string's power. Per round trip of the fundamental period
 // the section adds pi (f_n / f0) (delta_disl + delta_W) nepers within 20%
 // wherever that adds 5 to 250 dB/s - two decades of loss, inside the band it
 // is fitted over - and within 0.75 dB/s where it adds less, at 44.1 to
@@ -6346,9 +6346,19 @@ void testConstantLossFollowsItsLaw()
                     const double dislocation
                         = calibration.values->steel.frequencyLossScale / 5500.0
                         * (1.0 + 1.35 * age) / (1.0 + 1.35 * defaultAge);
+                    // Each wound string's share of the ageing, from Woodhouse
+                    // et al. 2012, Table I: its used-over-new eta_B against
+                    // the four's geometric mean (1.9.65).
+                    const std::array<double, 4> usedOverNew {
+                        3.8 / 0.3, 2.9 / 0.4, 4.1 / 1.1, 6.8 / 1.8 };
+                    double meanLog = 0.0;
+                    for (const double ratio : usedOverNew)
+                        meanLog += 0.25 * std::log(ratio);
                     const double friction = wound
                         ? calibration.values->steelWoundFrictionLoss
-                            * std::max(0.2, 1.0 + 8.0 * (age - defaultAge))
+                            * std::pow(std::max(0.2, 1.0 + 8.0 * (age - defaultAge)),
+                                  std::log(usedOverNew[static_cast<std::size_t>(
+                                      planes.stringIndex)]) / meanLog)
                         : 0.0;
                     const double fundamental = 440.0 * std::exp2(
                         (static_cast<double>(midiNote) - 69.0) / 12.0);

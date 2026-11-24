@@ -39,6 +39,13 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.65 — 2026-11-25 — a set of strings ages unevenly
+
+String Age now ages the low E most and the D and G least, in the proportions
+measured on a new and a used bronze set, inside the range it had. Presets at
+String Age 15% are unchanged; the others move by at most 0.02 dB. Chosen by
+ear ([decisions](Docs/decisions.md)).
+
 ### 1.9.64 — 2026-11-20 — shared frets
 
 When two inputs hold the same pitch, the strum keys keep striking it after
@@ -1167,7 +1174,7 @@ Zollner, *Physics of the Electric Guitar*, ch. 6, ESP
 | **Release Noise** | The damping hand's touch as a note ends, faint friction on held wound-string slides, and a finger sliding along a wound string into a new fret (before the note with Finger Lookahead on); 0% adds nothing. |
 | **Room** | Small-studio reflections around the microphones, 0-100% (10% for a new instance); the piezo stays dry. |
 | **Sustain** | Every released note rings as under the pedal, on every channel, until its string is taken or the switch goes off. |
-| **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first. |
+| **String Age** | Lower string cutoff and more loss; an old set's basses lose their upper partials first, the low E soonest. |
 | **Pluck Position** | Moves the hand from near the bridge toward the neck; it keeps its distance from the bridge on every fret. |
 | **Touch** | Contact width, transient colour and brightness, and how fast every technique lets the string go. |
 | **Body Amount** | Scales microphone radiation. |

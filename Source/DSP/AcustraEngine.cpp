@@ -6628,7 +6628,21 @@ void AcustraEngine::configureVoice(Voice& voice, int stringIndex,
     // where a plain string only dulls. String Age scales it as it scaled the
     // wound strings' loss before (by ear, 2026-09-30), pivoted on the
     // default age: 0.2 of it on fresh strings, 7.8 times it at age 1.
-    const float woundAgeing = std::max(0.2f, 1.0f + 8.0f * (age - 0.15f));
+    // A set does not age evenly: Woodhouse et al. (Acta Acustica 98 (2012),
+    // Table I, one Martin 80/20 bronze set new and used) measured the wound
+    // strings' bending loss eta_B rising 12.7, 7.3, 3.7 and 3.8 times on the
+    // low E, A, D and G. The range above stays; each string takes it to the
+    // power ln(its ratio) / mean ln(ratio), so the low E ages most and the
+    // geometric mean of the four is what all four had (chosen by ear as C
+    // against the uniform law and the measured ratios outright,
+    // Docs/decisions.md, 2026-11-25). One at the default age.
+    constexpr std::array<float, 4> woundAgeingShare {{
+        1.41747332f, 1.10596526f, 0.734523773f, 0.742037892f
+    }};
+    const float woundAgeing = wound
+        ? std::pow(std::max(0.2f, 1.0f + 8.0f * (age - 0.15f)),
+                   woundAgeingShare[static_cast<std::size_t>(stringIndex)])
+        : 1.0f;
     const float frictionLoss = wound
         ? physicalCalibration_.steelWoundFrictionLoss * woundAgeing : 0.0f;
     // Both constant loss angles in one section (constantLossSection), and

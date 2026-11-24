@@ -793,8 +793,11 @@ void lowRateAxialRingDecaysWithoutInput()
     // Frozen previously-passive reference from the same physical fixture.
     Access::configure(*engine,0,0);
     const auto& unchanged=Access::voice(*engine,0).stringAxialForce;
-    expect(unchanged.lossGain==0.8059226274490356f
-           &&unchanged.lossPole==0.14545254409313202f,
+    // Re-frozen at 1.9.65: this fixture is the low E at String Age 30%, whose
+    // axial loss now ages by its own share (2.2^1.417 = 3.06 times, not 2.2).
+    // Until then the pair was 0.8059226274490356, 0.14545254409313202.
+    expect(unchanged.lossGain==0.74402904510498047f
+           &&unchanged.lossPole==0.19876150786876678f,
            "already-passive low-rate coefficients remain bit-identical");
 }
 

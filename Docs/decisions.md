@@ -5,6 +5,41 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-25 — String Age ages each wound string by its own measured share, 1.9.65 (chosen by ear: C)
+
+**What was decided.** Whether String Age should age the four wound strings
+alike, as it had since 2026-09-30, or each by the amount measured on a real
+set. Woodhouse et al. (Acta Acustica 98 (2012), Table I) measured one Martin
+80/20 bronze set new and used: the bending loss eta_B rose 12.7, 7.3, 3.7 and
+3.8 times on the low E, A, D and G, and the winding-friction term eta_F 2.0,
+1.5, 3.7 and 1.5 times. The plain strings' bending loss did not move.
+
+**The letters.** One six-string E major strum on Dreadnought Steel left to
+ring for 8 s, at String Age 0% and at 80%, the same events through each,
+48 kHz in 256-sample blocks, whole-file RMS matched to A (trims 0.50 to
+0.98 dB, listed in the set's key).
+
+- **A**: 1.9.64. All four wound strings' loss scales alike, 0.2 times at 0%
+  to 7.8 times at 100%, pivoted on 15%.
+- **B**: Table I outright. Each string's bending loss and friction scale by
+  its own measured used-over-new ratio between 0% and 100%, pivoted on 15%.
+- **C**: A's range, shared out per string: each string takes A's factor to
+  the power ln(its eta_B ratio) / mean ln(ratio), 1.417, 1.106, 0.735 and
+  0.742, so the four's geometric mean is A's.
+
+All three are bit-identical at 15%. On the strum phrase through the presets
+away from 15%, B moved level by up to 0.24 dB (residual against A -18 to
+-29 dB) and C by up to 0.02 dB (-27 to -39 dB).
+
+**The choice.** The owner chose **C** by ear. It licenses the per-string
+shares in `AcustraEngine.cpp` and nothing else: the range stays the one set
+by ear on 2026-09-30, the plain strings age as before, and the measured rise
+in the wound strings' bending stiffness with use (8 to 66%) is not modelled.
+The evidence is one set in one state of wear, and identifying 0% with its
+"new" and 100% with its "used" was not taken. The idea of reading String Age
+from these measurements came from comparing GRM Guitar (AGPL; no code of it
+is used).
+
 ## 2026-11-17 — the hand is free of the soundhole's rim, and the Pick is back at 60 mm, 1.9.63 (the fault measured; an A–B–C–D set sent; shipped on the owner's approval, no letter chosen)
 
 **What was decided.** The owner heard 1.9.62 as dull and hollow, with an
