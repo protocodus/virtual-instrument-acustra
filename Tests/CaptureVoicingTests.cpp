@@ -186,7 +186,13 @@ void testLowMidCancellationRegression()
     bank.count = 141;
     auto dry = bank;
     dry.captureFilter.enabled = false;
-    constexpr double frequency = 493.883301; // B4, treble-string force/moment.
+    // C#5, treble-string force/moment. The fixture was B4, where the former
+    // weighting stood only 0.8 dB over the reference, on the 589 and 655 Hz
+    // modes' rocking residues; under 1.9.66's rocking rule
+    // (RockingRadiationData.h) it cuts there too, 5.2 dB under. At C#5 it
+    // stands 4.0 dB over the reference on the bank as measured and 9.8 dB
+    // over under the rule, where the intended contour cuts 5.4 dB.
+    constexpr double frequency = 554.365262; // C#5
     constexpr double arm = 1.25;
     const auto raw = modalResponse(bank, frequency, arm, false);
     const auto old = modalResponse(bank, frequency, arm, true);
@@ -211,7 +217,7 @@ void testLowMidCancellationRegression()
         / responseAt(reference, frequency, 48000.0);
     expect(std::abs(measured - desired) < .001 * std::abs(desired),
            "rendered pressure did not retain cancellation through the intended capture cut");
-    std::cout << "B4 capture: former modal weighting " << oldDb
+    std::cout << "C#5 capture: former modal weighting " << oldDb
               << " dB; summed-pressure contour " << 20. * std::log10(std::abs(measured)) << " dB\n";
 }
 

@@ -110,6 +110,10 @@ struct PerformanceRealism
     // (AcustraEngine::writePickRelease). Off, the direction follows the sign
     // of a sampled cross term, which flips with velocity on some notes.
     bool pickReleaseDirection { true };
+    // Hold the measured body's rocking (moment) radiation to the anechoic
+    // flamencas' median where it stands over it, from 300 Hz to 3 kHz
+    // (RockingRadiationData.h). Off, the body radiates its moment as measured.
+    bool typicalRocking { true };
 };
 
 } // namespace acustra

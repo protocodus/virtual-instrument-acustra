@@ -34,6 +34,10 @@ struct AcustraEngineTestAccess
             { mode.rightMomentReal, mode.rightMomentImaginary }
         }} };
     }
+    static int count(const AcustraEngine& engine, int shape, int wood)
+    {
+        return engine.bodyConfigurations_[3 * shape + wood].count;
+    }
 };
 }
 
@@ -109,9 +113,12 @@ void testApprovedObservation(const std::vector<Reference>& rows)
     auto engine = std::make_unique<Engine>();
     // Frozen approved microphone mixture precedes player-contact damping.
     // Preserve that observation fixture; production loaded rate mapping and
-    // calibration-domain checks below remain enabled.
+    // calibration-domain checks below remain enabled. It precedes 1.9.66's
+    // rocking rule too, which scales the measured moment paths the mixture
+    // observes, not the mixture (testRockingRuleScope).
     auto realism = engine->performanceRealism();
     realism.playerBodyLoading = false;
+    realism.typicalRocking = false;
     engine->setPerformanceRealism(realism);
     engine->prepare(48000, 64);
     double worst = 0.0;
@@ -129,6 +136,39 @@ void testApprovedObservation(const std::vector<Reference>& rows)
     }
     std::cout << "approved observer: " << rows.size() * 4
               << " complex residues, max relative error " << worst << '\n';
+}
+
+// The rocking rule (RockingRadiationData.h) scales the moment input's
+// observations only: every pole and every force observation is the body's
+// as measured, at every construction.
+void testRockingRuleScope()
+{
+    auto typical = std::make_unique<Engine>();
+    auto measured = std::make_unique<Engine>();
+    auto realism = measured->performanceRealism();
+    realism.typicalRocking = false;
+    measured->setPerformanceRealism(realism);
+    typical->prepare(48000, 64);
+    measured->prepare(48000, 64);
+    int changed = 0;
+    for (int shape = 0; shape < 4; ++shape)
+        for (int wood = 0; wood < 3; ++wood)
+        {
+            const int count = Access::count(*typical, shape, wood);
+            expect(count == Access::count(*measured, shape, wood),
+                   "the rocking rule changed a construction's mode count");
+            for (int slot = 0; slot < count; ++slot)
+            {
+                const auto a = Access::observation(*typical, shape, wood, slot);
+                const auto b = Access::observation(*measured, shape, wood, slot);
+                expect(a.pole == b.pole && a.residue[0] == b.residue[0] && a.residue[1] == b.residue[1],
+                       "the rocking rule reached a pole or a force observation at construction "
+                       + std::to_string(3 * shape + wood) + ", slot " + std::to_string(slot));
+                changed += (a.residue[2] != b.residue[2]) + (a.residue[3] != b.residue[3]);
+            }
+        }
+    expect(changed > 0, "the rocking rule changed no moment observation");
+    std::cout << "rocking rule: " << changed << " moment observations scaled, poles and force kept\n";
 }
 
 void testRateMapping(const std::vector<Reference>& rows)
@@ -241,6 +281,7 @@ int main(int argc, char** argv)
         if (argc != 2) throw std::runtime_error("expected approved fixture path");
         const auto rows = readReference(argv[1]);
         testApprovedObservation(rows);
+        testRockingRuleScope();
         testRateMapping(rows);
         testCalibrationDomain();
     }

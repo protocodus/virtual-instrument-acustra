@@ -7,6 +7,7 @@
 #include "MeasuredBridgeData.h"
 #endif
 #include "MeasuredJointBodyData.h"
+#include "RockingRadiationData.h"
 #include "SteelBodyBlend.h"
 #include "ConstructionLoudnessData.h"
 #include "CaptureVoicingData.h"
@@ -1410,6 +1411,19 @@ static_assert(steelBlendBridgeModeCount <= ACUSTRA_BRIDGE_MODE_COUNT,
 static_assert(detail::measuredSteelT1PlateQWeight == detail::steelBlendT1PlateQWeight,
               "MeasuredBodyData.h was written with another D weight than "
               "SteelBodyBlend.h's: rerun Tools/GenerateBodyForcePair.py --plate-q median");
+constexpr bool rockingScalesMatchBank() noexcept
+{
+    for (std::size_t index = 0; index < detail::measuredSteelBodyModes.size(); ++index)
+        if (detail::measuredSteelRockingScales[index].frequency
+            != detail::measuredSteelBodyModes[index].frequency)
+            return false;
+    return true;
+}
+static_assert(detail::measuredSteelRockingScales.size()
+                  == detail::measuredSteelBodyModes.size()
+              && rockingScalesMatchBank(),
+              "RockingRadiationData.h was written for another body bank: "
+              "rerun Tools/GenerateRockingRadiation.py --write");
 
 // The joint-pole body's own Shape morph: its A0 and T1 are its own modes.
 BodyShapeMorph steelJointMorph(const AnchorTransform& anchor,
@@ -5037,17 +5051,19 @@ void AcustraEngine::setPhysicalCalibration(
 void AcustraEngine::setPerformanceRealism(
     const PerformanceRealism& options) noexcept
 {
-    const bool bodyLoadingChanged = options.playerBodyLoading
-        != performanceRealism_.playerBodyLoading;
+    // Both reshape the body's modes, which prepare builds once.
+    const bool bodyChanged = options.playerBodyLoading
+            != performanceRealism_.playerBodyLoading
+        || options.typicalRocking != performanceRealism_.typicalRocking;
     performanceRealism_ = options;
-    if (bodyLoadingChanged)
+    if (bodyChanged)
         bodyConfigurationsReady_ = false;
     bridgeMobilityTable_.valid = false;
     ++voiceConfigurationGeneration_;
     restartRandomDraws();
     if (prepared_)
     {
-        if (bodyLoadingChanged)
+        if (bodyChanged)
             prepareBodyConfigurations();
         room_.prepare(sampleRate_, performanceRealism_.directionalRoom,
                       performanceRealism_.roomRateConversion);
@@ -5399,14 +5415,16 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
 
     // One radiation mode into the next slot: `index` is its place in the bank
     // it was fitted in and `layerMorph` that bank's Shape morph; `share` is
-    // its part's share of the steel blend (exactly 1 outside it).
+    // its part's share of the steel blend (exactly 1 outside it); `rocking`
+    // scales its moment residues at each microphone.
     int slot = 0;
     // Keep the original observations until their high-band statistical
     // continuation has been generated. The audition mixed completed banks;
     // regenerating its power density from the blend would be a different model.
     std::array<std::array<std::complex<float>, 4>, bodyModeCount> captured {};
     const auto place = [&] (const detail::MeasuredBodyMode& measured, int index,
-                            const BodyShapeMorph& layerMorph, float share, int spatialMode)
+                            const BodyShapeMorph& layerMorph, float share, int spatialMode,
+                            const detail::RockingRadiationScale& rocking)
     {
         auto& mode = configuration.modes[static_cast<std::size_t>(slot++)];
         const auto& morph = layerMorph;
@@ -5503,9 +5521,9 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
         mode.leftImaginary = left.imag();
         mode.rightReal = right.real();
         mode.rightImaginary = right.imag();
-        const auto leftMoment = airGain * scaledResidue(
+        const auto leftMoment = airGain * rocking.treble * scaledResidue(
             measured.leftMomentReal, measured.leftMomentImaginary);
-        const auto rightMoment = scaledResidue(
+        const auto rightMoment = rocking.upper * scaledResidue(
             measured.upperMomentReal, measured.upperMomentImaginary);
         mode.leftMomentReal = leftMoment.real();
         mode.leftMomentImaginary = leftMoment.imag();
@@ -5519,13 +5537,16 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
         {
             const auto treble = input == 0
                 ? std::complex<float>(measured.leftReal, measured.leftImaginary)
-                : std::complex<float>(measured.leftMomentReal, measured.leftMomentImaginary);
+                : rocking.treble * std::complex<float>(
+                    measured.leftMomentReal, measured.leftMomentImaginary);
             const auto bass = input == 0
                 ? std::complex<float>(measured.rightReal, measured.rightImaginary)
-                : std::complex<float>(measured.rightMomentReal, measured.rightMomentImaginary);
+                : rocking.bass * std::complex<float>(
+                    measured.rightMomentReal, measured.rightMomentImaginary);
             const auto upperBout = input == 0
                 ? std::complex<float>(measured.upperReal, measured.upperImaginary)
-                : std::complex<float>(measured.upperMomentReal, measured.upperMomentImaginary);
+                : rocking.upper * std::complex<float>(
+                    measured.upperMomentReal, measured.upperMomentImaginary);
             // .4 original + .2 unboosted treble + .1 measured blend. The
             // three .1 compensated spatial variants retain the original
             // observation outside their identified A0/T1 modes.
@@ -5542,19 +5563,36 @@ void AcustraEngine::buildBodyConfiguration(BodyConfiguration& configuration,
     };
     // Steel on its Original guitar plays the blend (SteelBodyBlend.h): g21's
     // bank, then the joint-pole body's kept modes on its own morph.
+    //
+    // g21's rocking radiation is held to the anechoic flamencas' where it
+    // stands out, from 300 Hz to 3 kHz (RockingRadiationData.h,
+    // Tools/GenerateRockingRadiation.py). A steel pluck reaches the body
+    // mostly as the bridge's rocking, and of the archive's 63 guitars g21's
+    // rocking path at the upper-bout microphone stands second highest at
+    // 1.3-1.5 kHz: 10.7 dB over its own 0.5-3 kHz level where the others'
+    // median is 2.0 dB. The Jumbo's morph puts that group on 1176 Hz, the
+    // partial G, C and Cadd9 share across four strings, which strummed chords
+    // piled up as one resonance (Docs/decisions.md, 2026-11-25). Its pushing
+    // residues, every pole and the bridge are as measured; the joint body's
+    // kept modes (under 550 Hz, where the rule moves g21's by under 0.5 dB)
+    // keep theirs.
+    constexpr detail::RockingRadiationScale asMeasured { 0.0f, 1.0f, 1.0f, 1.0f };
     constexpr int ownCount = static_cast<int>(std::min(
         bank.size(), static_cast<std::size_t>(bodyModeCount)));
     for (int index = 0; index < ownCount; ++index)
         place(bank[static_cast<std::size_t>(index)], index, shapeMorph,
               steelBlendG21Share(bank[static_cast<std::size_t>(index)].frequency),
-              index < 2 ? index : -1);
+              index < 2 ? index : -1,
+              performanceRealism_.typicalRocking
+                  ? detail::measuredSteelRockingScales[static_cast<std::size_t>(index)]
+                  : asMeasured);
     if (steelBlendJointShare > 0.0f)
     {
         const auto jointMorph = steelJointMorph(wideSteelAnchorTransform, shape, material);
         for (const auto index : steelJointKept)
             place(steelJointRadiationModes[index], static_cast<int>(index),
                   jointMorph, steelBlendJointShare,
-                  index == 1 ? 2 : (index == 2 ? 3 : -1));
+                  index == 1 ? 2 : (index == 2 ? 3 : -1), asMeasured);
     }
     const int measuredCount = slot;
     // The measured banks stop where their fit stopped (10 kHz before the

@@ -5,6 +5,161 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-25 — the measured body's rocking held to the anechoic flamencas' from 300 Hz to 3 kHz, 1.9.66 (the owner chose B, then C: B up to 3 kHz)
+
+**What was decided.** The owner heard overtones pile up around 1.2 kHz on
+Jumbo Steel Pick, most on the strummed G, Cadd9 and C of the playing-styles
+demo's fourth scene (about 0:23 and 0:25), and asked for the cause rather than
+a cut. Two lines carry it: 1176 Hz, the partial G, C and Cadd9 share across
+four strings (1175-1177 Hz), which alone holds 11% of that strum's power, and
+1319 Hz, the E and A strings' shared partial. Two mechanisms feed them.
+
+- **The measured body rocks unusually hard at 1.3-1.5 kHz.** Steel's body is
+  Mores' g21. About 70% of a steel pluck lies parallel to the top, so the
+  bridge rocks, and the body radiates that through its moment residues
+  (Rm = (Rt - Rb)/2). g21 has a rocking group at 1320.6, 1371.0 and
+  1441.2 Hz: at the upper-bout microphone its rocking path stands 10.7 dB
+  over its own median 0.5-3 kHz sixth-octave level in the 1414 Hz sixth
+  octave, where the archive's other 62 guitars' median stands 2.0 dB over
+  theirs (2nd of 63; the set's key, referred to the power mean over
+  0.5-3 kHz, gave +7.6 against +0.7 and the same rank). The Jumbo's Shape
+  morph (x0.82) puts the group on 1176 Hz.
+- **The Pick plucks at 60 mm**, 1.3.3's 0.40 of the Finger's distance,
+  restored on 2026-11-17, where the recorded player picked at 141 mm.
+
+**The first set.** Jumbo Steel Pick as loaded, through `acustra::Performer`
+at 48 kHz in 64-sample blocks: scene 4 of the playing-styles demo (8.5 s) and
+the factory demo phrase (10 s). Whole-file RMS of both channels matched to A:
+B +0.70 and +0.71 dB, C +3.71 and +4.31, D +4.06 and +4.65 (strum, demo).
+
+- **A**: 1.9.65 as shipped.
+- **B**: each g21 mode's moment residues scaled, per microphone, down to the
+  median of the anechoic flamencas the plate-Q rule reads (g37, g38, g39,
+  g42, g43), never raised, from 300 Hz to 10 kHz.
+- **C**: the Pick at 141 mm, 0.95 of the Finger's distance, as 1.9.42
+  measured on the Eastman E1D.
+- **D**: B and C together.
+
+Each region's power against the file's 70 Hz-11 kHz total, change from A,
+on the same renders before trimming:
+
+| | B | C | D |
+| --- | ---: | ---: | ---: |
+| 1170-1190 Hz, strum | -4.8 | -2.3 | -8.7 |
+| 1170-1190 Hz, demo | -4.8 | -5.4 | -11.7 |
+| 1310-1325 Hz, strum | +0.1 | -5.8 | -6.1 |
+| 1.15-1.35 kHz against 250-500 Hz, strum | -2.6 | -6.6 | -10.5 |
+| 1.15-1.35 kHz against 250-500 Hz, demo | -2.0 | -8.2 | -10.4 |
+
+B moves no third octave outside 1-1.3 kHz by more than 2 dB. C and D darken
+the whole picked tone, 99-400 Hz up 2-5 dB and 0.8-3 kHz down 2-7 dB
+against the total, the direction the owner heard as dull on 2026-11-17.
+
+**The first choice.** The owner chose **B** on the decision card on
+2026-11-25, after the set was sent with its key. The measurements describe the
+letters; they did not choose.
+
+**What B broke.** B ran over the plate-Q rule's band, 300 Hz to 10 kHz.
+Above 3 kHz, the top of the band its levels are referred to, it also took up
+to 5.5 dB off g21's rocking near 3.2 kHz and at 7-10 kHz, where g21's
+rocking ranks 2nd to 12th of the 63 at the treble and bass microphones (2nd
+at 3175 Hz and 4th at 8 kHz on the treble side). On Palm Muted Steel Pick
+that lands on the pick's attack. `Acustra.MutedPickAttack`, the 1.3.3 check
+the Rack device runs on its saved patch, holds the share of the first 21 ms
+at 6.8-7.3 kHz within 2 dB of released 1.3.3's -18.98 dB: 1.9.65 reads
+-20.30, B -22.47, 3.49 dB under. Of the other unit suites only
+`Acustra.CaptureObserverBlend` failed under B, on a frozen fixture that
+predates the rule (below).
+
+**The second set.** A, B as chosen, and C: the same rule from 300 Hz up to
+3 kHz, the body above it as A's. Scene 4's strum (A and B are the first set's
+files) and Palm Muted Steel Pick's factory demo phrase (11.2 s), with 1.9.65's
+Output trims on every letter; whole-file RMS matched to A, strum B +0.70 and
+C +0.67 dB, palm B +0.39 and C +0.39. Change from A before trimming, each
+region against the file's 70 Hz-11 kHz total:
+
+| | strum B | strum C | palm B | palm C |
+| --- | ---: | ---: | ---: | ---: |
+| 1170-1190 Hz | -4.9 | -5.0 | -3.9 | -3.9 |
+| 1.15-1.35 kHz against 250-500 Hz | -2.6 | -3.0 | -2.5 | -2.7 |
+| 2-4 kHz | +0.2 | +0.8 | +0.3 | +0.5 |
+| 6-7.5 kHz | -0.4 | +1.4 | -1.4 | +0.4 |
+| 8-11 kHz | +0.4 | +0.7 | +0.0 | +0.4 |
+
+The strum's B line reads -4.9 here and -4.8 in the first table: the same
+render, measured again. On the factory Jumbo demo phrase C takes the 1176 Hz
+line down 5.0 dB (B 4.8). C moves no third octave outside 1-1.3 kHz by more
+than 1.4 dB on the strum and 0.9 dB on the demo phrase; its rises above
+3 kHz are A's own top end against a total the rule has lowered. C reads
+-20.01 dB on the attack check.
+
+**The second choice.** C went to the owner on a decision card on
+2026-11-25, recommended, beside B as heard with the attack check widened to
+4 dB, after the second set was sent with its key. The owner chose **C**.
+The measurements describe the letters; they did not choose.
+
+**What it licensed.** `Tools/GenerateRockingRadiation.py` writes
+`Source/DSP/RockingRadiationData.h` from the archive's raw records by the
+rule at its head: per sixth octave from 300 Hz to 3 kHz, the population's
+median rocking level less g21's, each path referred to its own median band
+over 0.5-3 kHz, interpolated in log frequency to each bank mode; a mode's
+factor at a microphone is min(1, 10^(d/20)). The engine multiplies g21's
+moment residues by it at the treble, bass and upper-bout microphones. Force
+residues, poles, the bridge and the joint-pole body's kept modes (all under
+550 Hz, where the rule would move g21's modes by under 0.5 dB) are
+unchanged. The table is the one the second set's C was rendered with, and the
+engine differs from that render only by `PerformanceRealism::typicalRocking`,
+whose default takes the same path. The rule takes no invented number: its
+levels are the archive's, its population and lower edge the plate-Q rule's,
+its upper edge its own reference band's, its sixth octaves the audit tools'.
+Those conventions move the 1.3-1.5 kHz group's factors by at most 1.5 dB
+(the bank's 250 ms fit in place of the raw record), 1.2 dB (300 Hz-10 kHz as
+the reference) and 0.8 dB (g41 included).
+
+**What the change needed.**
+
+- `PerformanceRealism::typicalRocking`, on by default, switches the rule off
+  for offline comparisons. `Acustra.CaptureObserverBlend`'s approved
+  microphone-mixture fixture predates the rule, as it predates player-body
+  loading; it now compares the mixture with both off, and its new
+  `testRockingRuleScope` holds that the rule reaches only moment
+  observations: at all 12 constructions every pole and force observation is
+  identical with the rule on and off, and 954 moment observations change.
+- `Acustra.CaptureVoicing`'s check that the former modal weighting fails
+  moved from B4 to C#5. B4's cancellation rested on the 589 and 655 Hz
+  modes' rocking residues, and under the rule the former weighting cuts
+  there too (5.2 dB under the reference). C#5 exposes it on the measured
+  bank and under the rule alike, 4.0 and 9.8 dB over the reference against
+  a 5.4 dB cut. The reason is beside the fixture.
+- Construction loudness: `CalibrateConstructionLoudness.py --check` holds
+  all 36 cells within ±1 LU on every capture (stereo Pick median -0.39 LU,
+  -0.14 before; the default reference moved from -26.63 to -26.80 LUFS), so
+  `ConstructionLoudnessData.h` was not re-pinned. Its Pick headroom rule
+  fails on all 12 Pick cells, as it does on 1.9.65: that failure predates
+  this change and stays open.
+- Six factory Output trims were re-pinned to keep each demo's BS.1770
+  integrated loudness where 1.9.65 had it, as 1.9.63 did. Untrimmed, the
+  demos fell by 0.02-0.61 LU (Jumbo 0.61, Palm Muted 0.48, Dreadnought 0.35,
+  Parlor 0.20, Open G 0.09, Mahogany 0.06, DADGAD 0.02). Main's output stage
+  holds the loudest demos' peaks, so their trims move further than their
+  loss: Dreadnought +0.8 to +1.3 dB, Parlor -6.5 to -6.3, Mahogany Steel
+  Thumb -5.6 to -5.5, Jumbo -6.3 to -5.5, Palm Muted -4.8 to -4.2, Open G
+  -1.5 to -1.4. Every demo now sits within 0.05 LU of 1.9.65, and every
+  normal Main median inside its 1.3.3 window in `Acustra.OutputLevels`
+  (Dreadnought 3.17 dB over 1.3.3's, of a 3.50 dB window).
+  The Rack's factory patches mirror these values and take them when its pin
+  advances.
+
+**What it did not license.** Above 3 kHz g21's rocking is as measured,
+though it ranks high among the 63 there: the rule's levels are referred to
+0.5-3 kHz, and released 1.3.3's attack holds the palm-muted pick there. The
+first set's C and D were not chosen: the Pick stays at 60 mm. No
+steel-string body's rocking was measured; the rule makes g21 typical of five
+flamencas, not of a jumbo. Modes under 300 Hz are as measured. The 1319 Hz
+line stays within 0.5 dB of where it was. It answers to the Pick's
+position: the first set's C, at 141 mm, took 5.8 dB off it and darkened the
+whole tone with it.
+
 ## 2026-11-25 — String Age ages each wound string by its own measured share, 1.9.65 (chosen by ear: C)
 
 **What was decided.** Whether String Age should age the four wound strings

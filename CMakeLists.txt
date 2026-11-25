@@ -28,7 +28,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # JUCE's macOS AU and Standalone wrappers compile C/Objective-C translation
 # units, so non-Xcode generators require both languages here.
-project(Acustra VERSION 1.9.65 LANGUAGES C CXX)
+project(Acustra VERSION 1.9.66 LANGUAGES C CXX)
 include(cmake/Distribution.cmake)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -827,6 +827,13 @@ if(BUILD_TESTING)
                                  "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateBodyForcePair.py"
                                  --self-test)
                 set_tests_properties(Acustra.GenerateBodyForcePair PROPERTIES TIMEOUT 180)
+                # g21's rocking radiation against the anechoic flamencas'
+                # (Source/DSP/RockingRadiationData.h); --check needs the archive.
+                add_test(NAME Acustra.GenerateRockingRadiation
+                         COMMAND "${Python3_EXECUTABLE}"
+                                 "${CMAKE_CURRENT_SOURCE_DIR}/Tools/GenerateRockingRadiation.py"
+                                 --self-test)
+                set_tests_properties(Acustra.GenerateRockingRadiation PROPERTIES TIMEOUT 60)
                 # The steel blend's parallel part (Source/DSP/SteelBodyBlend.h).
                 add_test(NAME Acustra.GenerateJointBody
                          COMMAND "${Python3_EXECUTABLE}"

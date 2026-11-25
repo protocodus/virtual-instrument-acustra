@@ -98,6 +98,14 @@ complex H1 force-to-pressure responses to the upper, treble-side and bass-side
 microphones, each 10 cm above the top plate. Their common time origin and
 relative phase are retained.
 
+`Source/DSP/RockingRadiationData.h` scales the moment residues of
+`MeasuredBodyData.h` per mode and microphone, from the same records of g21
+and of the archive's anechoically measured flamenca blancas g37, g38, g39,
+g42 and g43: each guitar's `(Ht - Hb)/2` response in sixth octaves, read by
+`Tools/GenerateRockingRadiation.py`, whose docstring states the rule. It is a
+derived correction, not an additional measurement, and retains the CC BY 4.0
+attribution above.
+
 `Source/DSP/StudioCaptureData.h` adapts four complex pressure modes from
 these fitted tables and `MeasuredJointBodyData.h` into constrained and free
 plate/hole source strengths. `Tools/GenerateStudioCapture.py` records the

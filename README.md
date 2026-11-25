@@ -39,6 +39,24 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.66 — 2026-11-25 — strummed chords no longer ring at 1.2 kHz
+
+The measured body twists unusually hard at 1.3-1.5 kHz, second of the
+archive's 63 guitars there, and steel strings drive it mostly by twisting the
+bridge. On the Jumbo that peak lands on the partial G, C and Cadd9 share
+across four strings, so strummed chords rang at 1176 Hz. Between 300 Hz and
+3 kHz, the body's modes now twist no harder than the median of five
+flamencas measured in an anechoic room, at each microphone; nothing is
+raised, and the body's tuning, its push, the bridge and everything above
+3 kHz are unchanged. On Jumbo Steel Pick's strummed G, Cadd9 and C the
+1176 Hz line falls 5 dB against the rest of the sound, and no third octave
+outside 1-1.3 kHz moves by more than 1.4 dB. Six factory Output trims moved
+to keep each demo's loudness (Dreadnought +1.3 dB, Parlor -6.3, Mahogany
+Steel Thumb -5.5, Jumbo -5.5, Palm Muted -4.2, Open G -1.4); saved values
+recall as stored. The owner chose the rule from a listening set and its
+3 kHz limit from a second, which keeps the palm-muted pick's attack within
+2 dB of released 1.3.3's ([decisions](Docs/decisions.md)).
+
 ### 1.9.65 — 2026-11-25 — a set of strings ages unevenly
 
 String Age now ages the low E most and the D and G least, in the proportions
@@ -1120,8 +1138,12 @@ the loss a real top keeps between its high modes. All six strings, played or
 idle, are members of one two-way junction, which bounds sympathetic ringing.
 The body's normal force and moment drive 132 measured radiation poles, shared
 with the bridge where both measurements see the same resonance, continued
-statistically above the fitted 10 kHz band. Steel plays a lighter blend
-measured to stand in for the listener's preferred mix
+statistically above the fitted 10 kHz band. Where the measured guitar's
+moment radiates more than the median of five anechoically measured
+flamencas between 300 Hz and 3 kHz, its moment residues are held to that
+median at each microphone
+([`RockingRadiationData.h`](Source/DSP/RockingRadiationData.h)). Steel
+plays a lighter blend measured to stand in for the listener's preferred mix
 ([`SteelBodyBlend.h`](Source/DSP/SteelBodyBlend.h)). The microphone
 observation is a fixed weighted mix of measured and spatial pressure paths;
 Mono mic uses its right observation.
@@ -1453,7 +1475,11 @@ separates verified errors from accepted approximations.
 - Shape and Body Material morph one measured, nylon-strung flamenca (g21);
   the steel-string mobility level comes from one other guitar. A measured body
   of each size, and a bridge mobility measured strung on a steel-string
-  guitar, would replace the morphs.
+  guitar, would replace the morphs. Where g21's moment radiation stands over
+  five anechoically measured flamencas' median between 300 Hz and 3 kHz it
+  is held to that median (1.9.66): a population rule that makes g21 typical
+  of flamencas, not a measured steel-string body. Above 3 kHz, where g21's
+  rocking also ranks high among the archive's 63 guitars, it is as measured.
 - The parallel polarisation reaches the body through the measured rocking,
   not a measured tangential admittance; the saddle's in-plane translation is
   unmeasured. Where the fundamental sits on a body mode the pair the two
