@@ -114,6 +114,11 @@ struct PerformanceRealism
     // flamencas' median where it stands over it, from 300 Hz to 3 kHz
     // (RockingRadiationData.h). Off, the body radiates its moment as measured.
     bool typicalRocking { true };
+    // In a line played legato, a key overlapping the last note takes that
+    // note's string when no free string is under the hand
+    // (AcustraEngine::chooseString). Off, a note never takes a string whose
+    // key is down while another serves.
+    bool legatoLines { true };
 };
 
 } // namespace acustra

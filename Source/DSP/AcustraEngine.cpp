@@ -4764,6 +4764,8 @@ void AcustraEngine::reset() noexcept
     lastNoteOnSample_.fill(0);
     chordStartSample_.fill(0);
     noteOnSeen_.fill(false);
+    legatoOnsetSample_.fill(0);
+    legatoSeen_.fill(false);
     plannedCount_ = 0;
     controlCounter_ = 0;
     parameters_ = sanitise(targetParameters_);
@@ -10275,7 +10277,7 @@ float AcustraEngine::pickCrossingCost(int string) const noexcept
             / (static_cast<double>(handMemoryTimeConstantSeconds) * sampleRate_)));
 }
 
-int AcustraEngine::chooseString(int midiNote) const noexcept
+int AcustraEngine::chooseString(int midiNote, int midiChannel) const noexcept
 {
     // A note repeated after its key came up is replucked on the string still
     // sounding it, as a guitarist does, rather than hopping to whichever free
@@ -10346,6 +10348,60 @@ int AcustraEngine::chooseString(int midiNote) const noexcept
             bestFret = fret;
             bestRinging = ringing;
             bestOrder = voice.startOrder;
+        }
+    }
+    // A key that goes down while the line's last note is still held, on a
+    // keyboard whose player lets each key go a moment after the next, is the
+    // line's next note played legato, not a second voice. Kept off the held
+    // string, each such note took a string further across and three to five
+    // frets higher, so a two-octave C major scale played legato climbed to
+    // the A and low E strings' twentieth fret (F4 and C4) where the same
+    // scale detached stays in first position. A player frets it on the
+    // string under the finger, which ends the note it leaves. So a note
+    // within a hand's four frets of the last one takes its string when every
+    // free string would move or stretch the hand at least legatoReach frets
+    // further. Notes left to ring over each other look the same when they
+    // are struck (the DADGAD demo's melody, a bass under its line, an
+    // arpeggio held), so this needs the playing to have shown a line: the
+    // note before the last one was let go within legatoOverlapSeconds of the
+    // last one being struck (releaseKey). A line's first overlap, anything
+    // wider than a major third, a chord still forming (reshapeFormingChord)
+    // and a note not yet struck or held by two inputs keep their strings.
+    const auto channelIndex = static_cast<std::size_t>(midiChannel - 1);
+    if (best >= 0 && !bestSteal && performanceRealism_.legatoLines
+        && legatoSeen_[channelIndex])
+    {
+        int last = -1;
+        for (int string = 0; string < stringCount; ++string)
+        {
+            const auto& voice = voices_[static_cast<std::size_t>(string)];
+            if (voice.played && voice.keyDown && voice.midiChannel == midiChannel
+                && (last < 0 || voice.startOrder
+                    > voices_[static_cast<std::size_t>(last)].startOrder))
+                last = string;
+        }
+        if (last >= 0)
+        {
+            const auto& voice = voices_[static_cast<std::size_t>(last)];
+            const int fret = midiNote - voice.openMidi;
+            const int interval = std::abs(midiNote - voice.midiNote);
+            const auto chordWindow = static_cast<std::uint64_t>(
+                static_cast<double>(chordWindowSeconds) * sampleRate_);
+            if (fret >= 0 && fret <= fretCount && interval >= 1
+                && interval <= handStretchSpan
+                && legatoOnsetSample_[channelIndex] == voice.onsetSample
+                && voice.harmonic == 1 && voice.ownerCount == 1
+                && voice.attackFired
+                && sampleClock_ - voice.onsetSample > chordWindow)
+            {
+                StringFrets frets {};
+                frets.fill(-1);
+                frets[static_cast<std::size_t>(last)] = fret;
+                const float cost = shapeCost(frets, 0u, weights)
+                    + pickCrossingCost(last);
+                if (bestCost - cost >= legatoReach)
+                    return last;
+            }
         }
     }
     return best;
@@ -10574,7 +10630,7 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
         // controller's notes are placed as they always were.
         if (string < 0)
             string = isLowerZoneMember(midiChannel)
-                ? chooseStringWithoutHand(midiNote) : chooseString(midiNote);
+                ? chooseStringWithoutHand(midiNote) : chooseString(midiNote, midiChannel);
         if (string >= 0 && !planned && !isLowerZoneMember(midiChannel))
             string = reshapeFormingChord(midiNote, midiChannel, string);
         // Outside the fretted range (canSound) the guitar answers nothing.
@@ -11647,6 +11703,37 @@ void AcustraEngine::releaseKey(int midiNote, int midiChannel,
 {
     if (midiChannel < 1 || midiChannel > midiChannelCount)
         return;
+    // A key let go just after the next one went down is a legato overlap,
+    // and the newer note the line's last (chooseString). The key may be one
+    // whose string that line has already taken, so this comes before the
+    // search for its voice.
+    {
+        int newest = -1;
+        int released = -1;
+        for (int string = 0; string < stringCount; ++string)
+        {
+            const auto& voice = voices_[static_cast<std::size_t>(string)];
+            if (!voice.played || !voice.keyDown || voice.midiChannel != midiChannel)
+                continue;
+            int& slot = voice.midiNote == midiNote ? released : newest;
+            if (slot < 0 || voice.startOrder
+                    > voices_[static_cast<std::size_t>(slot)].startOrder)
+                slot = string;
+        }
+        const auto window = static_cast<std::uint64_t>(
+            static_cast<double>(legatoOverlapSeconds) * sampleRate_);
+        if (newest >= 0
+            && (released < 0 || voices_[static_cast<std::size_t>(released)].startOrder
+                    < voices_[static_cast<std::size_t>(newest)].startOrder)
+            && sampleClock_ - voices_[static_cast<std::size_t>(newest)].onsetSample
+                <= window)
+        {
+            const auto channelIndex = static_cast<std::size_t>(midiChannel - 1);
+            legatoOnsetSample_[channelIndex]
+                = voices_[static_cast<std::size_t>(newest)].onsetSample;
+            legatoSeen_[channelIndex] = true;
+        }
+    }
     int candidateIndex = -1;
     for (int string = 0; string < stringCount; ++string)
     {
@@ -12492,7 +12579,7 @@ void AcustraEngine::anticipateNoteOn(int midiNote, int midiChannel, int samplesA
                 voice.keyDown = false;
         }
         string = isLowerZoneMember(midiChannel)
-            ? chooseStringWithoutHand(midiNote) : chooseString(midiNote);
+            ? chooseStringWithoutHand(midiNote) : chooseString(midiNote, midiChannel);
         for (int index = 0; index < stringCount; ++index)
             voices_[static_cast<std::size_t>(index)].keyDown
                 = keyDown[static_cast<std::size_t>(index)];

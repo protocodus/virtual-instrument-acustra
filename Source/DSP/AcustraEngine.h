@@ -2096,7 +2096,7 @@ private:
     // A pedal-up's effect on one voice: nothing while another pedal still
     // holds it, else the hand lets it go.
     void letGoUnlessPedalled(Voice& voice, int stringIndex) noexcept;
-    int chooseString(int midiNote) const noexcept;
+    int chooseString(int midiNote, int midiChannel = 1) const noexcept;
     int chooseStringWithoutHand(int midiNote) const noexcept;
     // The fretting hand (see chooseString). Each string remembers the last
     // fretted note it sounded and when a finger last held it there.
@@ -2613,6 +2613,11 @@ private:
     std::array<std::uint64_t, midiChannelCount> lastNoteOnSample_ {};
     std::array<std::uint64_t, midiChannelCount> chordStartSample_ {};
     std::array<bool, midiChannelCount> noteOnSeen_ {};
+    // The onset of the channel's last note that briefly overlapped the one
+    // before it, which was then let go: a legato line's last note
+    // (releaseKey, chooseString).
+    std::array<std::uint64_t, midiChannelCount> legatoOnsetSample_ {};
+    std::array<bool, midiChannelCount> legatoSeen_ {};
     // planChord's shape for the notes of one sample.
     std::array<int, stringCount> plannedNotes_ {};
     std::array<int, stringCount> plannedStrings_ {};
@@ -2648,6 +2653,23 @@ private:
     // under the hand beats an open string across the neck, and an open
     // string next door still beats any fret.
     static constexpr float pickCrossingPerString = 0.25f;
+    // How much further, in frets, the nearest free string must take the hand
+    // before a legato line's next note takes its last note's string instead
+    // (chooseString). Half a fret, a stretch's cost: the line leaves its
+    // string only for a free one already under the hand. An ordering choice,
+    // not a figure.
+    static constexpr float legatoReach = 0.5f;
+    // A key let go within this of the next one going down was overlapped,
+    // not left to ring. Pianists overlap successive legato keys, by more as
+    // the tempo slows (Repp, "Acoustics, perception, and production of legato
+    // articulation on a digital piano", J. Acoust. Soc. Am.,
+    // doi:10.1121/1.413065; Jacobs and Bullock, "A two-process model for
+    // control of legato articulation across a wide range of tempos during
+    // piano performance"). No figure of theirs is taken: the value is
+    // authored, under the committed demos' shortest ringing overlap, 0.188 s
+    // (06-dadgad-mono-mic). A note it misreads is one the playing had shown
+    // would be let go within the window anyway.
+    static constexpr float legatoOverlapSeconds = 0.15f;
     // The listener's direction, not a measurement: a note released less
     // than handMemorySeconds ago still places the hand, weighted by
     // exp(-age / handMemoryTimeConstantSeconds); held notes weigh 1. With

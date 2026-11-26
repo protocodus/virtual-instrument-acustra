@@ -5,6 +5,120 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-26 — a legato line keeps its string, 1.9.67 (the fault measured; an A–B set sent; not chosen by ear)
+
+**What was decided.** The owner asked for a pass over the instrument, sound
+first and playability second, and named impossible fingering. The pass
+([flagship audit](validation/flagship-audit-2026-11-26.md)) found one in the
+most ordinary playing there is: a line played legato on a keyboard, each key
+held a moment into the next. A note never took a string whose key was down
+while another string could sound it, so every overlapped note went a string
+across and three to five frets up, and the next one further. A two-octave C
+major scale from C3 at eighth notes, keys overlapping 20 ms, was fingered
+`A3 D0 A7 D3 G0 D7 G4 B1 G7 B5 e1 B8 e5 B12 e8 B12 G14 D17 A20 e0 A17 E20 B0
+E17 G0 E13 A7 D0 E8`: F4 on the A string's 20th fret, C4 on the low E's. The
+same scale detached stays under the 8th fret, because a key that has come up
+frees its string. The owner's direction of 2026-11-12 was a player's hand
+with minimal movement; this was the opposite, and it changed the tone from
+note to note.
+
+**The rule.** Once the playing has shown a legato overlap, the next note
+takes the last note's string when no free string is under the hand:
+
+- the new note lies within four semitones of the last note struck on its
+  channel, the reach of one position on one string;
+- the note before that one was let go within 0.15 s of it being struck (an
+  overlap, not a note left to ring);
+- every free string would move or stretch the hand at least half a fret
+  further than the last note's string does.
+
+A line's first overlap has shown nothing and is placed as before. A chord
+still forming (keys within 30 ms), a note not yet struck and a note two
+inputs hold are left alone, and so are MPE members and string-per-channel
+controllers, which never used the hand.
+
+**Why it asks for an overlap first.** The first version took any second,
+unconditionally. It changed one factory demo: DADGAD Mono Mic's melody lets
+D4, E4 and F#4 ring over each other on three strings, each key held 0.8 s
+into the next, and the rule cut them onto one string. A note left to ring and
+a legato note look the same when they are struck; what differs is how long
+the earlier key stays down. So the rule waits until the playing has shown it.
+The shortest ringing overlap in the eight demo phrases is 0.188 s, and all
+eight render bit for bit as 1.9.66 with the rule on. A note the rule
+misreads is one the previous pair had shown would be let go within 0.15 s.
+
+**Measured.** With the rule: the scale above is `A3 D0 D2 D3 G0 G2 B0 G5 B3
+e0 B6 e3 e5 e7 e8 e7 e5 B8 B6 e0 G7 G5 B0 D7 G0 D3 A7 D0 A3`, nothing past
+the 8th fret and no move over four frets. A chromatic run to E5 and back, an
+A minor arpeggio over three octaves, broken thirds and a pentatonic run, all
+legato, move no more than four frets between notes after their first
+overlap; without the rule the arpeggio and the pentatonic run reach `B13`,
+`G14`, `B15` and `G16`. Held arpeggios, a bass under a melody, seconds left
+to ring and chords rolled inside the chord window keep every note
+(`testNotesLeftToRingKeepTheirStrings`). Live and sequenced chords are
+fingered exactly as before.
+
+**The set.** Not blind. One 12.9 s phrase (C major up and down from C4, a
+pentatonic run, A minor from A3; every key held 30 ms into the next) on
+Dreadnought Steel and Jumbo Steel Pick as loaded, `AcustraRenderEventList`
+at 48 kHz in 256-frame blocks. **A**: 1.9.66 (`--legato-lines 0`). **B**:
+the rule. A puts 10 of the 35 notes past the 12th fret, up to the 20th, with
+six moves of more than four frets; B none past the 12th and one such move.
+Whole-file RMS of both channels matched to A: B +0.52 dB on Dreadnought
+Steel, −0.02 dB on Jumbo Steel Pick. The set and its key went to the owner
+with this version.
+
+**What it licensed.** The rule ships as `PerformanceRealism::legatoLines`,
+on by default; off is 1.9.66's allocator for comparisons. It was shipped on
+the measurement of the hand's travel, under the owner's standing direction;
+nobody chose B by ear. The half fret and the 0.15 s are authored, the first
+an ordering choice like the hand's other costs, the second set between a
+pianist's legato overlap and the demos' ringing ones (the references are
+beside `legatoOverlapSeconds`); neither is fitted to anything.
+
+**What it did not license.** A line's first overlap still goes across (E4 to
+G4 to the B string's 8th fret, E5 to G5 to its 20th): telling it from two
+notes meant to ring needs the key-up that has not happened yet. Intervals
+wider than a major third are untouched. Notes held across an arpeggio keep
+their strings even where no hand reaches (D3 with F#3 on the A string's 9th
+fret), by the owner's direction not to block such combinations.
+
+## 2026-11-26 — chords played live: keep each attack, or keep the hand (an A–B set sent; nothing shipped)
+
+**What is open.** The same pass measured how often a chord that one hand can
+hold is fingered so that none can. On one sample, never. Played live, the
+keys a few milliseconds apart, the first key is placed before the rest are
+known, and since 2026-10-02 a note that has sounded keeps its string, so the
+later keys take what is left. Over 24 chord types on every root from E2 (683
+chords with a one-hand shape, a fresh hand each): 57% end beyond one hand
+played from the bass up, 47% in random order, 0.7% from the top down, and
+183 chords lose a held key's string that the same chord on one sample keeps.
+In progressions that keep the hand's memory, 37%, 30% and 2.9%. The cause is
+the first key: a search over every rule that neither looks ahead nor moves a
+sounded note, the first key placed as today, still misses 50% from the bass
+up; one free to place the first key anywhere misses 2% but puts E4 on the A
+string's 19th fret. No placement rule closes it. What closes it is what
+there was until 2026-10-02: inside the 30 ms chord window a note that has
+just sounded moves to the string the whole shape gives it and is plucked
+again. That misses none of either set and loses no key.
+
+**The set.** Not blind. C, Am, F and G three ways (left-hand root and fifth
+under a right-hand triad; the triad alone; an octave bass, the triad and its
+top), each chord's keys 10 ms apart from the bass up, 10.1 s, on Dreadnought
+Steel and Jumbo Steel Pick as loaded. **A**: the shipping rule. **B**: the
+just-sounded notes move and are plucked again, and the finger leaving the
+first string stops it in 40 ms.
+Of the 52 notes A strikes 20 into a shape wider than one hand and loses one
+key; B none, and the moved notes are heard twice 10-40 ms apart. Whole-file
+RMS matched to A: B −0.26 dB and −0.02 dB. B's source is the patch sent
+with the set, not this repository.
+
+**What it is waiting for.** The owner's ear: a second attack is the artifact
+the owner approved removing on 2026-10-02, and a hand that cannot hold the
+chord is what the owner asked to reduce on 2026-11-26. Nothing ships until
+one is chosen. Gather Chords plans the whole shape with 30 ms of latency in
+the plug-in; the Rack device cannot report latency and has no such switch.
+
 ## 2026-11-25 — the measured body's rocking held to the anechoic flamencas' from 300 Hz to 3 kHz, 1.9.66 (the owner chose B, then C: B up to 3 kHz)
 
 **What was decided.** The owner heard overtones pile up around 1.2 kHz on

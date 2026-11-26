@@ -39,6 +39,25 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.67 — 2026-11-26 — a legato line stays where the hand is
+
+- A line played legato on a keyboard, each key held a moment into the next,
+  no longer climbs the neck. A note never took a string whose key was still
+  down, so a two-octave C major scale played that way reached the 20th fret
+  of the A and low E strings, where the same scale detached stays under the
+  8th. Once the playing has shown a legato overlap, the next note now takes
+  the last note's string unless a free string is under the hand.
+- Notes left to ring keep their strings: held arpeggios, a bass under its
+  melody, a melody let ring across strings, and chords. The eight factory
+  demos render bit for bit as 1.9.66.
+- Sessions. Legato lines are fingered lower on the neck and sound it;
+  detached lines, chords and strums play as before. A line's first overlap
+  is still placed as it was.
+- Found by a [signal audit](Docs/validation/flagship-audit-2026-11-26.md) of
+  every construction, Picking and capture, which found no artifact. Shipped
+  on the measured hand travel, not chosen by ear; a second set, on chords
+  played live, waits for the owner ([decisions](Docs/decisions.md)).
+
 ### 1.9.66 — 2026-11-25 — strummed chords no longer ring at 1.2 kHz
 
 The measured body twists unusually hard at 1.3-1.5 kHz, second of the
@@ -1037,8 +1056,11 @@ must move to costs as many frets as it moves and a fret past the twelfth one
 more for each beyond. A lone note costs a quarter of that for each string
 it lies beyond the neighbour of the last one plucked. Among equal costs an open string, a
 lower fret and a silent string win; a repeated note re-plucks the string still
-sounding it. A shape no one hand reaches is still played, after every shape
-one reaches. A hand that changes position with fingers on the strings slides
+sounding it. A key held down keeps its string against any note another string
+can sound, except in a line played legato: once a key has been let go within
+0.15 s of the next one going down, a note within four semitones of the last
+takes its string unless a free one is under the hand. A shape no one hand
+reaches is still played, after every shape one reaches. A hand that changes position with fingers on the strings slides
 the finger landing on a wound string, faintly. Four tunings (Standard, Drop D, DADGAD, Open G)
 change the strings' tension at fixed gauge, and only the tuning's range
 sounds (E2 to C6 in Standard). Notes on one sample and channel are fretted as
@@ -1327,8 +1349,25 @@ separates verified errors from accepted approximations.
   set by ear, not measured guitar shifts. The Reason Rack Extension
   cannot report the latency, so the switch is not on its panel.
 - Live chords with Gather Chords off can keep a wider fingering than one hand
-  reaches. The hand's span and costs follow the listener's direction and a
-  finger-span study, not recorded fingerings.
+  reaches: the first key is placed before the rest are known, and a note that
+  has sounded keeps its string. Of chords that have a one-hand shape, played
+  from the bass up a few milliseconds apart, 37% miss it in progressions that
+  keep the hand's memory and 57% from a fresh hand (30% and 47% in random key
+  order, 3% and 1% from the top down, none on one sample), and some lose a
+  held key's string. No rule that neither looks ahead nor moves a sounded
+  note closes it; moving the just-sounded notes does, at a second attack, and
+  waits for the owner's ear (Docs/decisions.md, 2026-11-26). The hand's span
+  and costs follow the listener's direction and a finger-span study, not
+  recorded fingerings.
+- A legato line's first overlap is placed before anything has shown a line,
+  so it can still go a string across and up the neck (E5 to G5 to the B
+  string's 20th fret). The 0.15 s overlap and the half fret of reach are
+  authored. Notes held across an arpeggio keep their strings where no hand
+  reaches (D3 with F#3 on the A string's 9th fret).
+- A Picking change under a ringing chord moves its level with the
+  construction loudness table over 20 ms: 5.2 dB down from Finger to Pick,
+  5.7 dB from Thumb, 3.9 dB up from Pick to Finger. The table is applied at
+  the output, not to each stroke.
 - The fretting hand sees only the notes played so far. It cannot choose a
   position for the phrase to come, as a player reading ahead does, and the
   first note after two seconds' rest takes the lowest fret. It has no
