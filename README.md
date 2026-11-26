@@ -39,6 +39,23 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.68 — 2026-11-26 — a chord played live is fingered in one hand
+
+- A chord played live on a keyboard, its keys a few milliseconds apart, is
+  now fretted as one hand holds it. The first key is placed before the rest
+  are known, so of chords that have a one-hand shape 37-57% played from the
+  bass up ended beyond one hand, some with a note on a low string's 12th to
+  18th fret, and some lost a held key. While the chord is still forming
+  (keys within 30 ms) the notes that must move now do.
+- A note that had already sounded and moves is plucked again on its new
+  string, 30 ms after its first attack at most, and the string it leaves is
+  stopped. That second attack is what every version since 2026-10-02
+  avoided by keeping a sounded note where it was.
+- Sessions. Chords recorded live are fingered lower and closer together and
+  sound it. Chords on one sample, single lines, strums by the strum keys and
+  Gather Chords play as before; so do the eight factory demos.
+- The owner chose it from a listening set ([decisions](Docs/decisions.md)).
+
 ### 1.9.67 — 2026-11-26 — a legato line stays where the hand is
 
 - A line played legato on a keyboard, each key held a moment into the next,
@@ -55,8 +72,8 @@ long per-version notes are in the
   is still placed as it was.
 - Found by a [signal audit](Docs/validation/flagship-audit-2026-11-26.md) of
   every construction, Picking and capture, which found no artifact. Shipped
-  on the measured hand travel, not chosen by ear; a second set, on chords
-  played live, waits for the owner ([decisions](Docs/decisions.md)).
+  on the measured hand travel, not chosen by ear
+  ([decisions](Docs/decisions.md)).
 
 ### 1.9.66 — 2026-11-25 — strummed chords no longer ring at 1.2 kHz
 
@@ -1072,7 +1089,10 @@ automatic. The strum keys F0 (down) and F#0 (up) strum whatever keys are held
 on their channel at their own velocity; the first one latches Keys mode, in
 which a key frets its string silently until the next strum key, and C0, C#0
 or D0 leaves it. Gather Chords (CHORDS) groups keys within 30 ms into one shape at
-30 ms of reported latency. Finger Lookahead (FINGERS) holds events back 50 ms,
+30 ms of reported latency. Without it a chord still forming, its keys within
+30 ms of each other, is refretted as one shape as each key arrives, and a note
+that has already sounded and must move is plucked again on its new string.
+Finger Lookahead (FINGERS) holds events back 50 ms,
 at 50 ms of reported latency, so a finger that changes fret on a string lets go
 and slides there before the next pluck instead of with it. A key-up waits one 1/32 note, so a re-struck note
 joins its ringing string, then the hand damps it, adds its own touch (Release
@@ -1348,17 +1368,14 @@ separates verified errors from accepted approximations.
   hand-movement law, and its level and its spread from shift to shift are
   set by ear, not measured guitar shifts. The Reason Rack Extension
   cannot report the latency, so the switch is not on its panel.
-- Live chords with Gather Chords off can keep a wider fingering than one hand
-  reaches: the first key is placed before the rest are known, and a note that
-  has sounded keeps its string. Of chords that have a one-hand shape, played
-  from the bass up a few milliseconds apart, 37% miss it in progressions that
-  keep the hand's memory and 57% from a fresh hand (30% and 47% in random key
-  order, 3% and 1% from the top down, none on one sample), and some lose a
-  held key's string. No rule that neither looks ahead nor moves a sounded
-  note closes it; moving the just-sounded notes does, at a second attack, and
-  waits for the owner's ear (Docs/decisions.md, 2026-11-26). The hand's span
-  and costs follow the listener's direction and a finger-span study, not
-  recorded fingerings.
+- A chord played live with Gather Chords off is fretted key by key and
+  refretted as one shape while its keys keep arriving within 30 ms. A note
+  that has already sounded and must move is plucked twice, up to 30 ms
+  apart, and the string it leaves is stopped in 40 ms, an authored time, the
+  one in the set the owner chose from (1.9.68; Docs/decisions.md, 2026-11-26).
+  Keys further apart are notes, not a chord, and keep their strings. The
+  hand's span and costs follow the listener's direction and a finger-span
+  study, not recorded fingerings.
 - A legato line's first overlap is placed before anything has shown a line,
   so it can still go a string across and up the neck (E5 to G5 to the B
   string's 20th fret). The 0.15 s overlap and the half fret of reach are

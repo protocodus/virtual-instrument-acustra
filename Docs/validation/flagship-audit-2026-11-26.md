@@ -1,9 +1,9 @@
-# Flagship audit, 1.9.66 to 1.9.67 — 2026-11-26
+# Flagship audit, 1.9.66 to 1.9.68 — 2026-11-26
 
 A pass over the shipping instrument at the owner's request: sound first (no
 artifact, consistency, balance), then playability (fingering, fret noise,
 natural imperfections), then CPU and seamless operation. Source 1.9.66
-(`9a459ca`), then 1.9.67; 48 kHz, 256-frame blocks, Release, gcc 13.3 unless a
+(`9a459ca`), then 1.9.67 and 1.9.68; 48 kHz, 256-frame blocks, Release, gcc 13.3 unless a
 line says otherwise, through `acustra::Performer`, on one shared development
 machine (a 2.1 GHz Xeon guest). Nobody listened: every figure below is a
 signal measurement, and what it cannot say is listed at the end. The probes
@@ -15,25 +15,27 @@ tool is named.
 | Version | Found | Fix | Evidence |
 | --- | --- | --- | --- |
 | 1.9.67 | A line played legato, each key held a moment into the next, was thrown across the neck: a note never took a string whose key was down, so each overlapped note went a string across and three to five frets up. A two-octave C major scale from C3, keys overlapping 20 ms, reached the 20th fret of the A and low E strings (F4, C4); detached it stays under the 8th. | Once the playing has shown a legato overlap, the next note takes the last note's string when no free string is under the hand ([decision](../decisions.md)). | `Acustra.HandAllocator`: `testLegatoLineKeepsItsString`, `testNotesLeftToRingKeepTheirStrings`. The eight factory demos render bit for bit as 1.9.66. |
+| 1.9.68 | A chord played live, its keys a few milliseconds apart, ended beyond one hand: the first key is placed before the rest are known, and a note that had sounded kept its string (figures below). | The chord still forming is refretted as one shape, and a sounded note that must move is plucked again; the owner chose it from an A-B set ([decision](../decisions.md)). | `Acustra.HandAllocator`: `testRolledTriadIsOneHandShape`, `testHandTimedStrums`, `testLiveChordReach` (0 of 214 live, 63 with attacks kept). |
 
-## Found, and left for the owner's ear
+## Chords played live, as measured on 1.9.67
 
-- **Chords played live.** A chord whose keys arrive on one sample is always
-  fingered in one hand. Played live, the first key is placed before the rest
-  are known, and since 2026-10-02 a note that has sounded keeps its string.
-  Over 24 chord types on every root from E2 (683 chords that have a one-hand
-  shape, a fresh hand each): bottom-up, keys 8 or 20 ms apart, 391 (57%) end
-  in a shape no hand holds and 183 more than on one sample lose a held key's
-  string; in random order 3-25 ms apart 323 (47%); top-down 5 (0.7%). In
-  twelve-key progressions with the hand's memory (903 such chords): 332 (37%)
-  bottom-up, 275 (30%) in random order, 26 (2.9%) top-down, none on one
-  sample. An exhaustive search of every rule that neither looks ahead nor
-  moves a sounded note, with the first key placed as today, still misses 50%
-  of the bottom-up set, so no placement rule closes it. Moving the
-  just-sounded notes inside the 30 ms window, as before 2026-10-02, misses
-  none and plucks each moved note twice. A two-letter set was rendered
-  ([decision](../decisions.md)); `Acustra.HandAllocator`'s
-  `testLiveChordReach` prints the share (63 of 214).
+A chord whose keys arrive on one sample is always fingered in one hand.
+Played live on 1.9.67, the first key was placed before the rest were known
+and a note that had sounded kept its string (since 2026-10-02). Over 24
+chord types on every root from E2 (683 chords that have a one-hand shape, a
+fresh hand each): bottom-up, keys 8 or 20 ms apart, 391 (57%) ended in a
+shape no hand holds and 183 more than on one sample lost a held key's
+string; in random order 3-25 ms apart 323 (47%); top-down 5 (0.7%). In
+twelve-key progressions with the hand's memory (903 such chords): 332 (37%)
+bottom-up, 275 (30%) in random order, 26 (2.9%) top-down, none on one
+sample. An exhaustive search of every rule that neither looks ahead nor
+moves a sounded note, with the first key placed as on 1.9.67, still misses
+50% of the bottom-up set, so no placement rule closes it. 1.9.68 moves the
+just-sounded notes inside the 30 ms window, as before 2026-10-02: none of
+either set misses in any key order, and each moved note is plucked twice.
+
+## Found, and left
+
 - **A Picking change under a ringing chord** steps its level over the 20 ms
   glide: −5.2 dB from Finger to Pick, −5.7 dB from Thumb to Pick, +3.9 dB from
   Pick to Finger, against the chord's own decay. The construction loudness
@@ -121,10 +123,15 @@ Known gaps and none of it changed:
   13.9% and the worst 18.1% (a six-string chord's first block), on this
   machine, which is not Reason's.
 - libFuzzer under ASan and UBSan (`Acustra.DspFuzz`): 204 138 inputs in 30
-  minutes on 1.9.66 and 57 159 in 10 minutes on 1.9.67, no finding.
-- `ctest`: 130 of 130 on 1.9.66 and on 1.9.67 (`unit`, `audio` and `perf`
-  tiers, gcc 13.3, Release). The engine and Performer also build as C++17
-  under Clang 18 with `-Wall -Wextra -Wshadow -Werror` (`AcustraDSPCxx17`).
+  minutes on 1.9.66, 57 159 in 10 minutes on 1.9.67 and 36 326 in 7 minutes
+  on 1.9.68, no finding.
+- `ctest`: 130 of 130 on 1.9.66, 1.9.67 and 1.9.68 (`unit`, `audio` and
+  `perf` tiers, gcc 13.3, Release). On 1.9.68 `Acustra.Performer` and
+  `Acustra.VoicingRealism` first failed on the checks that pinned the rule of
+  2026-10-02 (a sounded note never moves); those checks now hold the chosen
+  rule and, with the switch off, the former one. The engine and Performer
+  also build as C++17 under Clang 18 with `-Wall -Wextra -Wshadow -Werror`
+  (`AcustraDSPCxx17`).
 
 ## What this did not establish
 

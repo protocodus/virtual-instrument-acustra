@@ -1700,8 +1700,8 @@ private:
         int returnSamples { 0 };
         // Samples until a scheduled pluck is released; zero when none waits.
         int pluckDelay { 0 };
-        // Once this note's first release has fired, live chord formation
-        // cannot move its physical string or manufacture another attack.
+        // This note's first release has fired: it has sounded. A chord
+        // still forming that moves it plucks it again (reshapeFormingChord).
         bool attackFired { false };
         // A held string keeps its wave until this scheduled re-pluck fires.
         bool repluckPending { false };
@@ -2172,7 +2172,8 @@ private:
                    int midiChannel, int delaySamples, bool strumMember,
                    const PickingGesture* capturedGesture = nullptr,
                    float capturedParallelSign = 1.0f, bool fingerChord = false) noexcept;
-    void muteVacatedString(Voice& voice, int stringIndex) noexcept;
+    void muteVacatedString(Voice& voice, int stringIndex,
+                           bool sounded = false) noexcept;
     void rememberFinger(int stringIndex, bool fingerWasDown = false) noexcept;
     void releaseFinger(int stringIndex) noexcept;
     void planShiftArrival(Voice& voice, int stringIndex, const HandFinger& previous,

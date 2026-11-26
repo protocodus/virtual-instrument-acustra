@@ -5,6 +5,70 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-26 — a chord played live is fingered in one hand, 1.9.68 (an A–B set sent; the owner chose B)
+
+**What was decided.** Whether a chord played live keeps each note's single
+attack or keeps a shape one hand can hold. The pass behind 1.9.67 below
+([flagship audit](validation/flagship-audit-2026-11-26.md)) measured how
+often a chord that one hand can hold is fingered so that none can. On one
+sample, never. Played live, the keys a few milliseconds apart, the first key
+is placed before the rest are known, and since 2026-10-02 a note that had
+sounded kept its string, so the later keys took what was left. Over 24 chord
+types on every root from E2 (683 chords with a one-hand shape, a fresh hand
+each): 57% ended beyond one hand played from the bass up, 47% in random
+order, 0.7% from the top down, and 183 chords lost a held key's string that
+the same chord on one sample keeps. In progressions that keep the hand's
+memory, 37%, 30% and 2.9%. The cause is the first key: a search over every
+rule that neither looks ahead nor moves a sounded note, the first key placed
+as today, still misses 50% from the bass up; one free to place the first key
+anywhere misses 2% but puts E4 on the A string's 19th fret. No placement
+rule closes it.
+
+**The set.** Not blind. C, Am, F and G three ways (left-hand root and fifth
+under a right-hand triad; the triad alone; an octave bass, the triad and its
+top), each chord's keys 10 ms apart from the bass up, 10.1 s, on Dreadnought
+Steel and Jumbo Steel Pick as loaded, `AcustraRenderEventList` at 48 kHz in
+256-frame blocks.
+
+- **A**: 1.9.67, a sounded note keeps its string
+  (`--forming-chord-moves 0`).
+- **B**: inside the 30 ms chord window a note that has just sounded moves to
+  the string the whole shape gives it and is plucked again there, and the
+  finger leaving its first string stops that string in 40 ms.
+
+Of the 52 notes A strikes 20 into a shape wider than one hand and loses one
+key; B none, and the moved notes are heard twice 10-40 ms apart. Whole-file
+RMS of both channels matched to A: B −0.26 dB on Dreadnought Steel and
+−0.02 dB on Jumbo Steel Pick.
+
+**The choice.** The set and its key went to the owner on 2026-11-26 with the
+statement that B is the rule Acustra had until 2026-10-02 and that its cost
+is a second attack on each moved note. The owner chose **B** ("use
+candidate"). The measurements describe the letters; they did not choose.
+
+**What it licensed.** `reshapeFormingChord` moves a sounded note again
+(`PerformanceRealism::formingChordMovesSounded`, on by default; off is the
+rule of 2026-10-02 to 1.9.67 for comparisons), and `muteVacatedString` stops
+a string a moved, sounded note leaves in 40 ms where a string left by a note
+not yet struck keeps the hand's 0.32 s. The 40 ms is authored and is the
+value the owner heard; the contact's own strength is still the 0.32 s
+release's, exactly as in the set's files. With it every chord of both
+measured sets is a one-hand shape in every key order, and no key loses its
+string beyond the 58 chords that have no one-string-per-note assignment at
+all. `Acustra.HandAllocator` holds it: rolled triads, 88 hand-timed strums
+(none beyond one hand; 16 were, and 12 lost a key, with attacks kept) and
+214 chords of twelve-key progressions played live.
+
+**What it did not license.** Nothing outside the chord window moves: keys
+more than 30 ms apart are notes, not a chord, so a held arpeggio keeps a
+shape no hand reaches (D3 with F#3 on the A string's 9th fret). A sounded
+note waiting for an explicit repeat keeps its string and the wave the repeat
+will meet. MPE members and string-per-channel controllers keep their
+strings. The second attack is the artifact the owner approved removing on
+2026-10-02 and has now taken back for the hand; no measurement here says how
+audible it is. Gather Chords still plans the whole shape before any attack,
+at 30 ms of latency, in the plug-in.
+
 ## 2026-11-26 — a legato line keeps its string, 1.9.67 (the fault measured; an A–B set sent; not chosen by ear)
 
 **What was decided.** The owner asked for a pass over the instrument, sound
@@ -56,7 +120,7 @@ overlap; without the rule the arpeggio and the pentatonic run reach `B13`,
 `G14`, `B15` and `G16`. Held arpeggios, a bass under a melody, seconds left
 to ring and chords rolled inside the chord window keep every note
 (`testNotesLeftToRingKeepTheirStrings`). Live and sequenced chords are
-fingered exactly as before.
+fingered exactly as in 1.9.66.
 
 **The set.** Not blind. One 12.9 s phrase (C major up and down from C4, a
 pentatonic run, A minor from A3; every key held 30 ms into the next) on
@@ -82,42 +146,6 @@ notes meant to ring needs the key-up that has not happened yet. Intervals
 wider than a major third are untouched. Notes held across an arpeggio keep
 their strings even where no hand reaches (D3 with F#3 on the A string's 9th
 fret), by the owner's direction not to block such combinations.
-
-## 2026-11-26 — chords played live: keep each attack, or keep the hand (an A–B set sent; nothing shipped)
-
-**What is open.** The same pass measured how often a chord that one hand can
-hold is fingered so that none can. On one sample, never. Played live, the
-keys a few milliseconds apart, the first key is placed before the rest are
-known, and since 2026-10-02 a note that has sounded keeps its string, so the
-later keys take what is left. Over 24 chord types on every root from E2 (683
-chords with a one-hand shape, a fresh hand each): 57% end beyond one hand
-played from the bass up, 47% in random order, 0.7% from the top down, and
-183 chords lose a held key's string that the same chord on one sample keeps.
-In progressions that keep the hand's memory, 37%, 30% and 2.9%. The cause is
-the first key: a search over every rule that neither looks ahead nor moves a
-sounded note, the first key placed as today, still misses 50% from the bass
-up; one free to place the first key anywhere misses 2% but puts E4 on the A
-string's 19th fret. No placement rule closes it. What closes it is what
-there was until 2026-10-02: inside the 30 ms chord window a note that has
-just sounded moves to the string the whole shape gives it and is plucked
-again. That misses none of either set and loses no key.
-
-**The set.** Not blind. C, Am, F and G three ways (left-hand root and fifth
-under a right-hand triad; the triad alone; an octave bass, the triad and its
-top), each chord's keys 10 ms apart from the bass up, 10.1 s, on Dreadnought
-Steel and Jumbo Steel Pick as loaded. **A**: the shipping rule. **B**: the
-just-sounded notes move and are plucked again, and the finger leaving the
-first string stops it in 40 ms.
-Of the 52 notes A strikes 20 into a shape wider than one hand and loses one
-key; B none, and the moved notes are heard twice 10-40 ms apart. Whole-file
-RMS matched to A: B −0.26 dB and −0.02 dB. B's source is the patch sent
-with the set, not this repository.
-
-**What it is waiting for.** The owner's ear: a second attack is the artifact
-the owner approved removing on 2026-10-02, and a hand that cannot hold the
-chord is what the owner asked to reduce on 2026-11-26. Nothing ships until
-one is chosen. Gather Chords plans the whole shape with 30 ms of latency in
-the plug-in; the Rack device cannot report latency and has no such switch.
 
 ## 2026-11-25 — the measured body's rocking held to the anechoic flamencas' from 300 Hz to 3 kHz, 1.9.66 (the owner chose B, then C: B up to 3 kHz)
 

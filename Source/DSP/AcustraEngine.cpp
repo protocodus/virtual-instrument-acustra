@@ -11195,13 +11195,17 @@ int AcustraEngine::plannedString(int midiNote, int midiChannel) const noexcept
 // cannot be held in one hand with the notes already down, and it follows
 // notes of its own channel still forming a chord (onsets within
 // chordWindowSeconds of each other), the chord so far is refretted with
-// it as one shape. Only an attack that has not fired can move: a note
-// already sounding stays on its physical string instead of being plucked
-// again when a later key completes the chord. A pending explicit re-pluck
-// also stays with its preceding vibration. Without looking ahead, some
-// rolls cannot fit the final shape with those strings committed; they keep
-// the note-by-note allocation. Gather Chords can plan the whole shape before
-// any attack. Returns the string for the new note.
+// it as one shape, moving as few notes as it can. A note that has already
+// sounded moves too and is plucked again on its new string, and the finger
+// leaving its first string stops that string (muteVacatedString): the first
+// key is placed before the rest are known, so nothing else keeps a chord
+// played live in one hand. From 2026-10-02 to 1.9.67 a sounded note kept its
+// string to keep its one attack, and 37-57% of chords played from the bass
+// up ended beyond one hand; the owner chose the hand over the single attack
+// (Docs/decisions.md, 2026-11-26). A pending explicit re-pluck stays with
+// its preceding vibration. Keys further apart than the window are notes,
+// not a chord, and keep their strings. Gather Chords plans the whole shape
+// before any attack. Returns the string for the new note.
 int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
                                        int chosenString) noexcept
 {
@@ -11234,7 +11238,10 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
         ShapeNote note {};
         note.midiNote = voice.midiNote;
         note.current = string;
-        note.fixed = voice.attackFired;
+        // A sounded note waiting for an explicit repeat keeps its string
+        // and the wave the repeat will meet.
+        note.fixed = voice.attackFired && (voice.repluckPending
+            || !performanceRealism_.formingChordMovesSounded);
         search.notes[static_cast<std::size_t>(search.count++)] = note;
         search.movable |= 1u << string;
     }
@@ -11334,13 +11341,22 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     }
     for (int string = 0; string < stringCount; ++string)
         if (((vacated >> string) & 1u) != 0u && ((taken >> string) & 1u) == 0u)
-            muteVacatedString(voices_[static_cast<std::size_t>(string)], string);
+        {
+            auto& left = voices_[static_cast<std::size_t>(string)];
+            muteVacatedString(left, string, left.attackFired);
+        }
     return incomingString;
 }
 
 // A finger that leaves a string for another damps what it leaves behind
 // with the hand loss a released fretted note already has, open or not.
-void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
+// A string that had just sounded a forming chord's note (sounded) is stopped
+// in 40 ms instead: its note is being plucked again on another string, and
+// rung on for the usual 0.32 s the two would sound together. Authored, and
+// the value of the set the owner chose from (Docs/decisions.md, 2026-11-26).
+// The contact's own strength is still the 0.32 s release's, as in that set.
+void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex,
+                                      bool sounded) noexcept
 {
     voice.releaseJoinPending = false;
     voice.releaseJoinRemainingBeats = 0.0;
@@ -11356,6 +11372,14 @@ void AcustraEngine::muteVacatedString(Voice& voice, int stringIndex) noexcept
     if (targetParameters_.releaseNoise > 0.0f)
         startReleaseNoise(voice, stringIndex,
                           voice.fret > 0 && voice.harmonic <= 1);
+    if (sounded)
+    {
+        constexpr float stopSeconds = 0.04f;
+        voice.releaseSeconds = stopSeconds;
+        voice.releaseDamping = handDamping(stopSeconds, loopFundamental(voice));
+        voice.returnSamples = static_cast<int>(
+            (stopSeconds + 0.08f) * static_cast<float>(sampleRate_));
+    }
 }
 
 int AcustraEngine::heldString(int midiNote, int midiChannel) const noexcept

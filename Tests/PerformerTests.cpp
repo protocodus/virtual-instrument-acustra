@@ -333,7 +333,14 @@ Event message(double seconds, std::uint8_t status, int data1, int data2,
     return event;
 }
 
-void testLiveRollKeepsItsOriginalAttacks()
+// A chord rolled live, C4 E4 G4 ten milliseconds apart, sounds its first key
+// at once whatever follows, and adds no latency. Since 1.9.68 the chord
+// still forming is then refretted in one hand: G4 moves C4 from the B string
+// to the G string, where it is plucked again, and takes the B string itself
+// (the owner's choice, Docs/decisions.md, 2026-11-26). With attacks kept
+// (PerformanceRealism::formingChordMovesSounded off, the rule of 2026-10-02
+// to 1.9.67) every key stays where it sounded and is one release.
+void testLiveRollSoundsAtOnceAndIsRefretted()
 {
     using Access = acustra::AcustraEngineTestAccess;
     const std::vector<Event> events {
@@ -380,31 +387,54 @@ void testLiveRollKeepsItsOriginalAttacks()
                    "a committed roll changed with block size " + std::to_string(frames));
             expect(audio.latency == acustra::AcustraEngine::outputLatencyForRate(rate),
                    "committing a sounded string added player latency");
-            auto performer = std::make_unique<Performer>();
-            performer->prepare(rate, frames);
-            std::vector<float> left(static_cast<std::size_t>(frames)), right(left.size());
-            const int length = sampleAt(0.040, rate);
-            for (int start = 0; start < length; start += frames)
+            for (const bool movesSounded : { true, false })
             {
-                const int count = std::min(frames, length - start);
-                performer->beginBlock(left.data(), right.data(), count);
-                for (const auto& event : events)
+                auto performer = std::make_unique<Performer>();
+                acustra::PerformanceRealism realism {};
+                realism.formingChordMovesSounded = movesSounded;
+                performer->engine().setPerformanceRealism(realism);
+                performer->prepare(rate, frames);
+                std::vector<float> left(static_cast<std::size_t>(frames)), right(left.size());
+                const int length = sampleAt(0.040, rate);
+                for (int start = 0; start < length; start += frames)
                 {
-                    const int at = sampleAt(event.seconds, rate);
-                    if (at >= start && at < start + count)
-                        performer->handleMidi(at - start, event.bytes.data(), event.size);
+                    const int count = std::min(frames, length - start);
+                    performer->beginBlock(left.data(), right.data(), count);
+                    for (const auto& event : events)
+                    {
+                        const int at = sampleAt(event.seconds, rate);
+                        if (at >= start && at < start + count)
+                            performer->handleMidi(at - start, event.bytes.data(), event.size);
+                    }
+                    performer->endBlock();
                 }
-                performer->endBlock();
+                const auto states = Access::attackStates(performer->engine());
+                if (movesSounded)
+                {
+                    // G5, the open E and B8: one hand.
+                    expect(performer->engine().heldString(60) == 3
+                               && performer->engine().heldString(64) == 5
+                               && performer->engine().heldString(67) == 4,
+                           "a live roll was not refretted in one hand");
+                    // C4 again on the G string and E4 on the open E are one
+                    // release each; the B string took C4's first and G4's.
+                    expect(states[3] == expected[3] && states[5] == expected[5]
+                               && states[4] != expected[4] && states[4] != initial[4],
+                           "the refretted roll's releases are not C4 twice, E4 and G4 once");
+                }
+                else
+                {
+                    expect(performer->engine().heldString(60) == 4
+                               && performer->engine().heldString(64) == 5
+                               && performer->engine().heldString(67) == 3,
+                           "with attacks kept, a later live key moved a committed physical string");
+                    expect(states == expected,
+                           "with attacks kept, three live keys created more than three releases");
+                }
+                for (const int string : { 3, 4, 5 })
+                    expect(Access::owners(performer->engine(), string) == 1,
+                           "a live chord lost a sounded key's ownership");
             }
-            expect(performer->engine().heldString(60) == 4
-                       && performer->engine().heldString(64) == 5
-                       && performer->engine().heldString(67) == 3,
-                   "a later live key moved a committed physical string");
-            expect(Access::attackStates(performer->engine()) == expected,
-                   "three live keys created more than three releases");
-            for (const int string : { 3, 4, 5 })
-                expect(Access::owners(performer->engine(), string) == 1,
-                       "a live chord lost a sounded key's ownership");
         }
     }
 }
@@ -1945,7 +1975,7 @@ int main()
     testBatteryPlaysSoundsAndRepeats(battery);
     testBlockSizeDoesNotChangeThePerformance(battery);
     testOneSampleIsOneCanonicalEvent();
-    testLiveRollKeepsItsOriginalAttacks();
+    testLiveRollSoundsAtOnceAndIsRefretted();
     testStrumRestIsMeasuredBetweenStrums();
     testStrumsAreTimedByTheNotesThatSound();
     testStrumsFollowPhysicalStrings();

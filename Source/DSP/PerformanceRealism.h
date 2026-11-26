@@ -119,6 +119,13 @@ struct PerformanceRealism
     // (AcustraEngine::chooseString). Off, a note never takes a string whose
     // key is down while another serves.
     bool legatoLines { true };
+    // A chord still forming (keys inside the chord window) refrets a note
+    // that has already sounded when the next key needs its string or the
+    // shape leaves one hand; the note is plucked again where the whole shape
+    // puts it (AcustraEngine::reshapeFormingChord). Off, a sounded note keeps
+    // its string and only attacks not yet struck move, as from 2026-10-02 to
+    // 1.9.67.
+    bool formingChordMovesSounded { true };
 };
 
 } // namespace acustra

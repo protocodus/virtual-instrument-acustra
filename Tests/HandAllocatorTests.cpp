@@ -217,12 +217,25 @@ bool sameShape(const std::vector<Placement>& shape,
     return true;
 }
 
-void testRolledTriadKeepsItsAttacks()
+// The allocator of 2026-10-02 to 1.9.67, kept for comparisons: a note that
+// has sounded keeps its string while a chord forms.
+std::unique_ptr<AcustraEngine> keepsAttacksEngine()
+{
+    auto engine = std::make_unique<AcustraEngine>();
+    acustra::PerformanceRealism realism {};
+    realism.formingChordMovesSounded = false;
+    engine->setPerformanceRealism(realism);
+    engine->prepare(sampleRate, blockSize);
+    return engine;
+}
+
+void testRolledTriadIsOneHandShape()
 {
     // With no look-ahead C4 claims B1 and E4 the open high E before G4
-    // arrives. Moving C4 to G5 then used to pluck it again. These exposed
-    // rolls keep each attack where it sounded, accepting the wider final
-    // fingering. The whole-shape/Gather tests retain the one-hand gate.
+    // arrives, and then only the G string's twelfth fret is free. The chord
+    // still forming is refretted as one shape: the notes that must move are
+    // plucked again where the shape puts them, and the strings they leave
+    // are let go (the owner's choice, Docs/decisions.md, 2026-11-26).
     for (const auto& triad : { std::vector<int> { 60, 64, 67 },
                                std::vector<int> { 62, 66, 69 },
                                std::vector<int> { 64, 67, 71 } })
@@ -236,20 +249,56 @@ void testRolledTriadKeepsItsAttacks()
             engine->noteOn(note, 0.8f);
             const auto after = shapeOf(*engine, played);
             const auto nextAttacks = Access::attackStates(*engine);
-            int fired = 0;
-            for (std::size_t string = 0; string < attacks.size(); ++string)
-                fired += attacks[string] != nextAttacks[string] ? 1 : 0;
-            expect(fired == 1, "one rolled key created " + std::to_string(fired)
-                       + " attacks instead of one");
             for (std::size_t index = 0; index < played.size(); ++index)
-                expect(after[index].string == before[index].string,
-                       "a later rolled key moved an already sounded note");
+            {
+                expect(after[index].string >= 0, "a rolled key cost an earlier note its string");
+                if (after[index].string == before[index].string || after[index].string < 0)
+                    continue;
+                // A moved note sounds again on its new string, and its key
+                // no longer holds the one it left.
+                const auto to = static_cast<std::size_t>(after[index].string);
+                expect(attacks[to] != nextAttacks[to],
+                       "a note moved by a later rolled key was not plucked on its new string");
+                expect(!Access::keyDown(*engine, before[index].string)
+                           || Access::soundingNote(*engine, before[index].string) != played[index],
+                       "a moved note still holds the string it left");
+            }
             played.push_back(note);
             run(*engine, 0.010);
         }
         const auto shape = shapeOf(*engine, triad);
         std::cout << "Acustra rolled triad " << triad[0] << "-" << triad[1]
                   << "-" << triad[2] << " over 20 ms: " << describe(shape) << '\n';
+        expect(oneHand(shape, 4), "a rolled triad was not fretted in one hand: " + describe(shape));
+    }
+
+    // The former rule, still reachable: each rolled key is one attack and
+    // nothing that has sounded moves, whatever fingering that leaves.
+    for (const auto& triad : { std::vector<int> { 60, 64, 67 },
+                               std::vector<int> { 62, 66, 69 },
+                               std::vector<int> { 64, 67, 71 } })
+    {
+        auto engine = keepsAttacksEngine();
+        std::vector<int> played;
+        for (const int note : triad)
+        {
+            const auto before = shapeOf(*engine, played);
+            const auto attacks = Access::attackStates(*engine);
+            engine->noteOn(note, 0.8f);
+            const auto after = shapeOf(*engine, played);
+            const auto nextAttacks = Access::attackStates(*engine);
+            int fired = 0;
+            for (std::size_t string = 0; string < attacks.size(); ++string)
+                fired += attacks[string] != nextAttacks[string] ? 1 : 0;
+            expect(fired == 1, "with attacks kept, one rolled key created "
+                       + std::to_string(fired) + " attacks instead of one");
+            for (std::size_t index = 0; index < played.size(); ++index)
+                expect(after[index].string == before[index].string,
+                       "with attacks kept, a later rolled key moved an already sounded note");
+            played.push_back(note);
+            run(*engine, 0.010);
+        }
+        const auto shape = shapeOf(*engine, triad);
         expect(std::all_of(shape.begin(), shape.end(), [](const Placement& note)
                    { return note.string >= 0; }),
                "preserving a rolled attack dropped a triad note");
@@ -316,7 +365,9 @@ void testRefrettedStrumMemberLetGoIsReleased()
     }
 }
 
-void testOnlyUnfiredAttacksMove()
+// A pending attack moved by a forming chord keeps its due sample and its
+// owners, and a sounded note waiting for an explicit repeat keeps its string.
+void testPendingAttacksKeepTheirTiming()
 {
     for (const double rate : { 44100.0, 48000.0, 96000.0 })
         for (const int frames : { 1, 64, 4096 })
@@ -663,10 +714,11 @@ void testNotesLeftToRingKeepTheirStrings()
 // I-IV-V-I, I-vi-IV-V, I-V-vi-IV, ii-V-I-vi and vi-IV-I-V in twelve keys, a
 // left-hand root under the right hand's nearest close triad, each chord held
 // half a second and let go, the hand keeping its memory between chords.
-// On one sample (a sequenced chord, or a gathered one) none may miss. Played
-// live, the keys 8 ms apart from the bass up, the first key is placed before
-// the rest are known and a sounded note keeps its string (2026-10-02), so
-// some do: the share is printed, not required (README Known gaps).
+// On one sample (a sequenced chord, or a gathered one) none may miss, and
+// none played live either, the keys 8 ms apart from the bass up: the first
+// key is placed before the rest are known, and the chord still forming is
+// refretted as the later keys arrive. With sounded notes kept on their
+// strings instead (2026-10-02 to 1.9.67) 63 of the 214 missed.
 void testLiveChordReach()
 {
     const std::array<int, 6> open { 40, 45, 50, 55, 59, 64 };
@@ -779,6 +831,8 @@ void testLiveChordReach()
               << ", played live from the bass up " << missed[1] << '\n';
     expect(missed[0] == 0, "a chord on one sample missed its one-hand shape "
                + std::to_string(missed[0]) + " times");
+    expect(missed[1] == 0, "a chord played live missed its one-hand shape "
+               + std::to_string(missed[1]) + " times");
 }
 
 void testRepeatedNotesReplickTheirString()
@@ -1026,7 +1080,13 @@ void testChordsOnOneSampleAreOneShape()
 // string but cannot regenerate earlier attacks to improve the final shape.
 // Report the fingering compromise rather than requiring an extra pluck to
 // make every arrival order end in the same one-hand shape.
-void testHandTimedStrumsKeepTheirAttacks()
+// Eleven chords strummed by hand, the keys 5 to 20 ms apart, down and up,
+// after an open G has left the hand in first position (88 strums).
+// movesSounded is the shipping rule: every strum ends as a one-hand shape
+// with every key sounding. Off is the rule of 2026-10-02 to 1.9.67: each
+// key is one attack and no sounded note leaves its string unless no free
+// string can fret the incoming one, and the count beyond one hand is printed.
+void handTimedStrums(bool movesSounded)
 {
     const std::vector<std::vector<int>> chords {
         { 40, 47, 52, 56, 59, 64 }, { 45, 52, 57, 60, 64 },
@@ -1041,7 +1101,7 @@ void testHandTimedStrumsKeepTheirAttacks()
         for (const double gap : { 0.005, 0.010, 0.015, 0.020 })
             for (const bool upstroke : { false, true })
             {
-                auto engine = freshEngine();
+                auto engine = movesSounded ? freshEngine() : keepsAttacksEngine();
                 for (const int note : openG)
                     engine->noteOn(note, 0.8f);
                 run(*engine, 0.4);
@@ -1069,12 +1129,20 @@ void testHandTimedStrumsKeepTheirAttacks()
                     int fired = 0;
                     for (std::size_t string = 0; string < before.size(); ++string)
                         fired += before[string] != after[string] ? 1 : 0;
-                    expect(fired == 1, "one hand-timed key regenerated earlier attacks");
+                    if (!movesSounded)
+                        expect(fired == 1, "with attacks kept, one hand-timed key regenerated earlier attacks");
                     for (int string = 0; string < AcustraEngine::stringCount; ++string)
                     {
                         const int earlier = committed[static_cast<std::size_t>(string)];
                         if (earlier < 0 || engine->heldString(earlier) == string)
                             continue;
+                        if (movesSounded)
+                        {
+                            // A note that left its string is sounding on another.
+                            expect(engine->heldString(earlier) >= 0,
+                                   "a hand-timed key cost an earlier note its string");
+                            continue;
+                        }
                         expect(!available,
                                "an incoming key took a sounded note while a valid free string served");
                         expect(engine->heldString(note) == string,
@@ -1091,14 +1159,27 @@ void testHandTimedStrumsKeepTheirAttacks()
                 {
                     ++impossible;
                     std::cout << "Acustra hand-timed " << (upstroke ? "up" : "down")
-                              << "stroke " << gap * 1000.0 << " ms apart: "
+                              << "stroke " << gap * 1000.0 << " ms apart"
+                              << (movesSounded ? ": " : ", attacks kept: ")
                               << describe(shape) << '\n';
                 }
             }
-    std::cout << "Acustra hand-timed strums outside one hand: " << impossible
+    std::cout << "Acustra hand-timed strums" << (movesSounded ? "" : ", attacks kept,")
+              << " outside one hand: " << impossible
               << " of " << strums << "; incoming notes took an occupied string in "
               << takenNotes << " of " << strums << " (" << forcedTakes
               << " takes with no valid free string)\n";
+    if (movesSounded)
+        expect(impossible == 0 && takenNotes == 0,
+               "a hand-timed strum ended beyond one hand or lost a key: "
+                   + std::to_string(impossible) + " shapes, " + std::to_string(takenNotes)
+                   + " lost");
+}
+
+void testHandTimedStrums()
+{
+    handTimedStrums(true);
+    handTimedStrums(false);
 }
 
 void testForgottenHandIsTheHandlessAllocator()
@@ -1376,9 +1457,9 @@ void testAllocatorCost()
 
 int main()
 {
-    testRolledTriadKeepsItsAttacks();
+    testRolledTriadIsOneHandShape();
     testRefrettedStrumMemberLetGoIsReleased();
-    testOnlyUnfiredAttacksMove();
+    testPendingAttacksKeepTheirTiming();
     testOpenChordsOneKeyAtATime();
     testScaleRunStaysInPositionThenShifts();
     testMelodyOverHeldBassKeepsTheBass();
@@ -1390,7 +1471,7 @@ int main()
     testQuietContactChordPreference();
     testControllerStringsAreUnchanged();
     testChordsOnOneSampleAreOneShape();
-    testHandTimedStrumsKeepTheirAttacks();
+    testHandTimedStrums();
     testForgottenHandIsTheHandlessAllocator();
     testHandKeepsItsPosition();
     testHandComesBackDownTheBody();
