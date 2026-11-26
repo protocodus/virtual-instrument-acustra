@@ -78,27 +78,49 @@ int main()
             expect(engine->heldString(notes[index]) == expected[index],
                    "the planned physical-string voicing did not reach the attacks");
 
-        // A better grip must never reattack a live note already heard.
-        auto live = std::make_unique<AcustraEngine>();
-        live->prepare(rate, 64);
-        live->noteOn(60, 0.7f);
-        const int originalString = live->heldString(60);
-        const auto fired = Access::attackStates(*live);
-        std::array<float, 64> left {}, right {};
-        live->process(left.data(), right.data(), 1);
-        live->noteOn(64, 0.7f);
-        live->process(left.data(), right.data(), 1);
-        live->noteOn(67, 0.7f);
-        expect(live->heldString(60) == originalString,
-               "grip feasibility moved a sounded live-chord note");
-        expect(Access::attackStates(*live)[static_cast<std::size_t>(originalString)]
-                   == fired[static_cast<std::size_t>(originalString)],
-               "grip feasibility reattacked a sounded live-chord note");
-        for (const int note : { 60, 64, 67 })
-            expect(live->heldString(note) >= 0,
-                   "an infeasible live grip dropped a held pitch instead of falling back");
+        // A chord whose keys arrive a sample apart is still forming: the grip
+        // that fits one hand moves the note already heard and plucks it again
+        // (the owner's choice, Docs/decisions.md, 2026-11-26). With attacks
+        // kept, the rule of 2026-10-02 to 1.9.67, a better grip never
+        // reattacks a live note already heard. Either way no held pitch drops.
+        for (const bool movesSounded : { true, false })
+        {
+            auto live = std::make_unique<AcustraEngine>();
+            acustra::PerformanceRealism realism {};
+            realism.formingChordMovesSounded = movesSounded;
+            live->setPerformanceRealism(realism);
+            live->prepare(rate, 64);
+            live->noteOn(60, 0.7f);
+            const int originalString = live->heldString(60);
+            const auto fired = Access::attackStates(*live);
+            std::array<float, 64> left {}, right {};
+            live->process(left.data(), right.data(), 1);
+            live->noteOn(64, 0.7f);
+            live->process(left.data(), right.data(), 1);
+            live->noteOn(67, 0.7f);
+            if (movesSounded)
+            {
+                const int moved = live->heldString(60);
+                expect(moved >= 0 && moved != originalString,
+                       "a forming live chord kept a grip no hand holds");
+                expect(moved >= 0 && Access::attackStates(*live)[static_cast<std::size_t>(moved)]
+                           != fired[static_cast<std::size_t>(moved)],
+                       "a note moved by a forming live chord was not plucked on its new string");
+            }
+            else
+            {
+                expect(live->heldString(60) == originalString,
+                       "with attacks kept, grip feasibility moved a sounded live-chord note");
+                expect(Access::attackStates(*live)[static_cast<std::size_t>(originalString)]
+                           == fired[static_cast<std::size_t>(originalString)],
+                       "with attacks kept, grip feasibility reattacked a sounded live-chord note");
+            }
+            for (const int note : { 60, 64, 67 })
+                expect(live->heldString(note) >= 0,
+                       "an infeasible live grip dropped a held pitch instead of falling back");
+        }
     }
     if (failures == 0)
-        std::cout << "Four-finger voicing and sounded-attack commitment passed.\n";
+        std::cout << "Four-finger voicing and live-chord grips passed.\n";
     return failures == 0 ? 0 : 1;
 }
