@@ -179,6 +179,14 @@ own range: E2-C6 (Standard; MIDI 40-84), D2-C6 (Drop D; 38-84) and D2-A#5
 (DADGAD and Open G; 38-82). Anything outside it is ignored. The on-screen keyboard spans D2-C6 (MIDI 38-84);
 its labels count middle C as C3, so its top key reads C5.
 
+**Fingering.** Each note is fretted where a hand already on the neck
+reaches it, on an open string or the lowest fret when it has the choice. A
+key held down keeps its string, so notes held together ring together on
+separate strings. A line played legato, each key let go a moment after the
+next goes down, stays on its string instead: once one overlap shorter than
+0.15 s has shown a line, the next note within a major third takes the last
+note's string unless a free string is already under the hand.
+
 **Velocity** is how hard the string is plucked. At ordinary playing levels,
 raising MIDI velocity from 72 to 100 gives an accent of about 5–6 dB on the
 factory Finger, Pick and Thumb patches. Repeated strums at one velocity keep
@@ -210,8 +218,12 @@ strings is not strummed: the thumb and fingers pluck it together, a few
 milliseconds apart, and it does not count as a stroke; five or six strings
 are brushed as a strum, and a direction keyswitch makes every chord a
 strum. A strum across a string the chord leaves out gives that string a
-short muted tick, as the fretting hand keeps it quiet. Notes played by hand arrive a little apart: turn
-on CHORDS to gather them, at the cost of 30 ms latency.
+short muted tick, as the fretting hand keeps it quiet. Notes played by hand
+arrive a little apart and are plucked one by one, not strummed. While they
+keep arriving within 30 ms of each other the chord is still fretted as one
+hand holds it, and a note that has to change string for that is plucked
+again there. Turn on CHORDS to gather them into one chord before any of it
+sounds, at the cost of 30 ms latency.
 
 **Picking.** With Picking on Pick, single notes alternate down and up
 by the same rule, as one hand with the strums: eighth and sixteenth notes
