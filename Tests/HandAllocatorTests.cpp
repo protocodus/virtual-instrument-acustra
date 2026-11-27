@@ -1339,6 +1339,32 @@ void handTimedStrums(bool movesSounded)
                    + " lost");
 }
 
+// A pitch struck by two owners (MIDI and CV in the Rack, or a doubled Note On)
+// is one key, not a chord: a bass held alone keeps its string under the next
+// chord however many messages struck it (takeHandForChord takes the hand
+// only from a run of two or more keys).
+void testDoubledKeyIsOneKey()
+{
+    std::array<std::string, 2> shapes;
+    for (const int strikes : { 1, 2 })
+    {
+        auto engine = freshEngine();
+        for (int strike = 0; strike < strikes; ++strike)
+            engine->noteOn(40, 0.7f);
+        run(*engine, 0.3);
+        const std::vector<int> chord { 46, 70 };
+        engine->planChord(chord.data(), 2);
+        for (const int note : chord)
+            engine->noteOn(note, 0.7f);
+        expect(engine->heldString(40) == 0,
+               "a bass held alone lost its string to the next chord after "
+                   + std::to_string(strikes) + " Note On(s)");
+        shapes[static_cast<std::size_t>(strikes - 1)] = describe(shapeOf(*engine, chord));
+    }
+    expect(shapes[0] == shapes[1],
+           "a doubled Note On changed where the next chord is fretted: " + shapes[0] + " against " + shapes[1]);
+}
+
 void testHandTimedStrums()
 {
     handTimedStrums(true);
@@ -1630,6 +1656,7 @@ int main()
     testNotesLeftToRingKeepTheirStrings();
     testLiveChordReach();
     testChordChangeTakesTheHand();
+    testDoubledKeyIsOneKey();
     testRepeatedNotesReplickTheirString();
     testQuietContactKeepsRepeatedString();
     testQuietContactChordPreference();
