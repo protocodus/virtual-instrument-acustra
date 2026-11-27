@@ -5,6 +5,106 @@ the repository's `CLAUDE.md`. A choice made by ear is recorded as made by ear,
 never written up as though a measurement had settled it.
 Entries for numerical optimizations state their validation separately.
 
+## 2026-11-27 — a chord change played legato takes the hand, 1.9.69 (the fault measured; an A–B set sent; no letter chosen yet)
+
+**What is being decided.** Whether a key that is down always keeps its
+string, or a chord may take the hand from the chord before it.
+
+**How it was found, and what it was not.** Scoring a film on 1.9.68, a
+fingerpicked bar came out with B2 on the low E string's 7th fret and D4 on
+the D string's 12th, beside notes at the 2nd. The first reading was that a
+string let go a quarter second earlier was being avoided. It was not: the
+score held the previous bar's keys past the bar line, a scoring slip, so
+those strings were keys still down. With every key up first, the allocator
+does not do this. Over five common progressions in six keys, each chord a
+left-hand root (or root and fifth) under a right-hand triad or the triad
+alone, on one sample, none of the chords a tuning holds in one hand missed
+with the old chord let go 30 ms, 100 ms, 250 ms or 1 s before the new one
+(334 chords in Standard, 348 in Drop D, 308 in DADGAD, 348 in Open G), and
+detached lines (bass lines by step on one string, scales, arpeggios, a
+tune, at gaps from 30 ms to 1 s) placed at most 3 of 123 notes more than
+four frets from the one before, the chromatic scale's known shift.
+
+**The fault.** The slip is how a keyboard player changes chords legato: the
+new chord's keys go down a moment before the old chord's come up. With the
+old chord let go 30, 80 or 150 ms after the new one starts (a key common to
+both lifted 30 ms before it is struck again), the same sweep on 1.9.68 ends
+104 of 334 chords in Standard beyond one hand, 123 of 348 in Drop D, 69 of
+308 in DADGAD and 106 of 348 in Open G, the same at all three overlaps,
+with notes on the low strings' 12th to 17th frets: every string the hand
+was on is a key still down, a key that is down keeps its string, and the
+new chord is fretted on what is left. Played live in Standard, the keys
+8 ms apart from the bass up, 94 to 96 of 334 end beyond one hand and 66 to
+82 more end with a key that has no string at all. With the common keys held
+through the change instead of struck again, 122 of 334 end beyond one hand
+and 49 with a key without a string on one sample, 101 to 103 and 85 to 89
+live.
+
+**The candidate.** A chord (two or more keys on one sample, or still
+forming) that has no shape one hand holds beside the keys still down is
+searched again as if the last chord's keys had been let go: they neither
+hold the hand nor count as taken from, the hand's position still does, and
+of equal shapes the one that takes fewest of their strings wins
+(`AcustraEngine::takeHandForChord`). The note on a taken string ends there.
+Letting go first only the keys that are not notes of the new chord was
+tried and dropped: a common tone held through is by definition not among
+the keys being struck, so that test protected only octave doublings. A
+chord whose first key had already been fretted alone, around the old chord
+and often up the neck, is placed from where the hand was before that key.
+"The last chord"
+is the channel's last run of two or more keys within the 30 ms chord
+window of each other. A key held on its own is not a chord being left: a
+bass under its chord and a tune's note over one keep their strings. That
+limit was set by the factory demos, not by ear: without it Parlor Steel
+Fingerstyle's last chord took the open E from the tune's held D5, and
+Mahogany Steel Thumb's B triad took the G string from its held G#3 bass,
+each 0.26 to 0.29 s before the key-up, and both demos changed. With it the
+eight demos render bit for bit as 1.9.68.
+
+On the same sweep the candidate misses none of the one-sample changes in
+any tuning and loses no key. Live, 9 to 10 of 334 end beyond one hand and
+none loses a key; what is left is a common key struck again within the
+1/32-note release join, which rejoins its old string before the rest of the
+chord is known (14 of 334 do that after a 30 ms lift too, on both engines).
+With the common keys held through, 44 of 334 end beyond one hand (43 to 44
+live), and 78 end with a key without a string (86 to 90 live) where 1.9.68
+has 49 (85 to 89): a common tone held through cannot be told from the rest
+of the old chord at the attack, and it ends when the new chord needs its
+string. Chords after a lift and the detached lines place every note as
+1.9.68 does.
+
+**The set.** Not blind. C, Am, F and G three ways (left-hand root and fifth
+under a right-hand triad; the triad alone; an octave bass, the triad and its
+top), each chord's keys 10 ms apart from the bass up, the old chord's keys up
+60 ms after the new chord starts and a common key lifted 30 ms before it is
+struck again, 10.1 s, on Dreadnought Steel and Jumbo Steel Pick as loaded,
+`AcustraRenderEventList` at 48 kHz in 256-frame blocks.
+
+- **A**: 1.9.68 (`--chord-change-takes-hand 0`, byte for byte a 1.9.68
+  build's render). 3 of the 12 chords end beyond one hand and 6 of the 52
+  keys end with no string.
+- **B**: the candidate. Every chord is a one-hand shape and no key is lost;
+  the old chord's notes on taken strings end 60 ms before their key-up.
+
+Whole-file RMS matched to A; trims on B −0.37 dB (Dreadnought Steel) and
+−0.53 dB (Jumbo Steel Pick). Sent to the owner on 2026-11-27. Nobody had
+listened when this was written.
+
+**The choice.** None yet. 1.9.69 carries B as its default so that the pull
+request can be heard and tested as it would ship; `chordChangeTakesHand`
+off is A. If the owner chooses A, the switch's default goes back and this
+entry records it.
+
+**What B would license, and what it would not.** The rule in
+`takeHandForChord` and nothing else. Authored in it: that "the last chord"
+is the last run of keys within the chord window, and that a lone held key
+never gives way. Not covered by it: one
+key that goes down while its string's key is held (one voice moving inside a
+held chord still goes up the neck: E3 G3 C4 with G3 moving to A3 puts A3 on
+the A string's 12th fret); a chord over a key held on its own, which can
+still end beyond one hand; a common tone held through a change, which can
+end early; and the live remainder above.
+
 ## 2026-11-26 — a chord played live is fingered in one hand, 1.9.68 (an A–B set sent; the owner chose B)
 
 **What was decided.** Whether a chord played live keeps each note's single
