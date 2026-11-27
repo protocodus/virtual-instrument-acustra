@@ -7,11 +7,13 @@
 //                          [--plain-bending-loss eta] [--wound-bending-loss eta]
 //                          [--lookahead 0|1] [--pick-release-direction 0|1]
 //                          [--legato-lines 0|1] [--forming-chord-moves 0|1]
+//                          [--chord-change-takes-hand 0|1]
 //
 // --lookahead 1 turns Finger Lookahead on and drops its 50 ms from the start
 // of the file, so a render with it lines up with one without it.
-// --axial-force, --axial-waves, --pick-release-direction, --legato-lines and
-// --forming-chord-moves set offline comparison switches (PerformanceRealism),
+// --axial-force, --axial-waves, --pick-release-direction, --legato-lines,
+// --forming-chord-moves and --chord-change-takes-hand set offline comparison
+// switches (PerformanceRealism),
 // and the two bending-loss options the strings' bending loss
 // (PhysicalCalibration), for A-Z candidates.
 // Each line of events.txt is "seconds status data1 data2". The preset loads
@@ -91,6 +93,8 @@ int main(int argc, char** argv)
             realism.legatoLines = std::atoi(argv[i + 1]) != 0;
         else if (option == "--forming-chord-moves")
             realism.formingChordMovesSounded = std::atoi(argv[i + 1]) != 0;
+        else if (option == "--chord-change-takes-hand")
+            realism.chordChangeTakesHand = std::atoi(argv[i + 1]) != 0;
         else if (option == "--release-noise")
             parameters.releaseNoise = static_cast<float>(std::atof(argv[i + 1]));
     }

@@ -39,6 +39,32 @@ as a release yet. Earlier dated entries (2026-08-31 to 2026-10-10) and the
 long per-version notes are in the
 [release history](Docs/release/release-history.md).
 
+### 1.9.69 — 2026-11-27 — a chord change played legato stays in one hand
+
+- A chord change played legato on a keyboard, the new chord's keys going
+  down a moment before the old chord's come up, is now fretted where the
+  hand is. Every string the hand was on was then a key still down, and a key
+  that is down kept its string, so the new chord was fretted around the old
+  one: over common progressions 104 of 334 chords that standard tuning holds
+  in one hand ended in a shape none holds, some with notes on the low
+  strings' 12th to 17th frets (123 of 348 in Drop D, 69 of 308 in DADGAD,
+  106 of 348 in Open G), and played live some keys were left without a
+  string. With the old chord let go first, none did. A chord that no hand
+  holds beside the last chord's keys now takes the hand from them, as a
+  guitarist's hand leaves one chord for the next: on one sample none of
+  those changes misses, and no key is lost.
+- The old chord's notes on the strings the new chord takes end at its
+  attack, earlier than their key-up by the overlap, and so does a common
+  tone held through the change when the new chord needs its string. A key
+  held on its own, a bass under its chord or a tune's note over one, keeps
+  its string as before.
+- Sessions. Chord changes recorded with the keys overlapping are fingered
+  lower and closer together and sound it. Chords after a lift, a chord that
+  fits beside the held keys, single notes over held keys and the eight
+  factory demos (bit for bit) play as before.
+- Candidate. The fault is measured; an A–B set is with the owner and no
+  letter has been chosen ([decisions](Docs/decisions.md)).
+
 ### 1.9.68 — 2026-11-26 — a chord played live is fingered in one hand
 
 - A chord played live on a keyboard, its keys a few milliseconds apart, is
@@ -1076,7 +1102,10 @@ lower fret and a silent string win; a repeated note re-plucks the string still
 sounding it. A key held down keeps its string against any note another string
 can sound, except in a line played legato: once a key has been let go within
 0.15 s of the next one going down, a note within four semitones of the last
-takes its string unless a free one is under the hand. A shape no one hand
+takes its string unless a free one is under the hand; and under a chord:
+one that no hand holds beside the last chord's keys still down is fretted as
+if those had been let go, and takes their strings where the hand is (a key
+held on its own keeps its string). A shape no one hand
 reaches is still played, after every shape one reaches. A hand that changes position with fingers on the strings slides
 the finger landing on a wound string, faintly. Four tunings (Standard, Drop D, DADGAD, Open G)
 change the strings' tension at fixed gauge, and only the tuning's range
@@ -1381,6 +1410,24 @@ separates verified errors from accepted approximations.
   string's 20th fret). The 0.15 s overlap and the half fret of reach are
   authored. Notes held across an arpeggio keep their strings where no hand
   reaches (D3 with F#3 on the A string's 9th fret).
+- A chord change played with the keys overlapping takes the hand from the
+  old chord (1.9.69): the old chord's notes on the strings the new one takes
+  end at its attack, not at their key-up. Not covered: one key that goes
+  down while its string's key is still held, such as one voice moving inside
+  a held chord (E3 G3 C4 with G3 moving to A3 puts A3 on the A string's 12th
+  fret), because a single note over held keys keeps to free strings; a chord
+  over a key held on its own, which keeps its string even where the chord
+  then ends beyond one hand (two factory demos end such a phrase); and,
+  played live, a key common to both chords struck again within a 1/32 note
+  of its release, which rejoins its old string before the rest of the chord
+  is known (9 to 10 of 334 overlapped changes in the sweep, and 14 of 334
+  after a 30 ms lift as before, still end beyond one hand); and a common
+  tone held through the change, which ends at the new chord's attack when
+  that chord needs its string (78 of 334 changes with every common key held
+  end with a key that has no string, against 49 in 1.9.68, while those
+  ending beyond one hand fall from 122 to 44). Which keys are "the last
+  chord" is the channel's last run of keys within 30 ms of each other, an
+  authored rule.
 - A Picking change under a ringing chord moves its level with the
   construction loudness table over 20 ms: 5.2 dB down from Finger to Pick,
   5.7 dB from Thumb, 3.9 dB up from Pick to Finger. The table is applied at

@@ -719,108 +719,134 @@ void testNotesLeftToRingKeepTheirStrings()
 // key is placed before the rest are known, and the chord still forming is
 // refretted as the later keys arrive. With sounded notes kept on their
 // strings instead (2026-10-02 to 1.9.67) 63 of the 214 missed.
-void testLiveChordReach()
+// Chords as a keyboard player plays them, for the reach tests: the frets of
+// a shape and whether shapeCost's rule holds them in one hand (stopped frets
+// at most four apart), whether standard tuning has such a shape for a set of
+// notes, and five common progressions, each chord a left-hand root under the
+// right hand's close triad, voiced nearest the last one.
+bool reachable(const std::array<int, 6>& frets)
+{
+    int low = 99, high = -1;
+    for (const int fret : frets)
+        if (fret >= 1)
+        {
+            low = std::min(low, fret);
+            high = std::max(high, fret);
+        }
+    return high < 0 || high - low <= 4;
+}
+
+bool someShape(const std::vector<int>& notes)
 {
     const std::array<int, 6> open { 40, 45, 50, 55, 59, 64 };
-    // The frets of a shape, and whether shapeCost's rule holds them in one
-    // hand: stopped frets at most four apart.
-    const auto reachable = [](const std::array<int, 6>& frets)
+    std::array<int, 6> strings { 0, 1, 2, 3, 4, 5 };
+    do
     {
-        int low = 99, high = -1;
-        for (const int fret : frets)
-            if (fret >= 1)
-            {
-                low = std::min(low, fret);
-                high = std::max(high, fret);
-            }
-        return high < 0 || high - low <= 4;
-    };
-    const auto someShape = [&](const std::vector<int>& notes)
-    {
-        std::array<int, 6> strings { 0, 1, 2, 3, 4, 5 };
-        do
+        std::array<int, 6> frets;
+        frets.fill(-1);
+        bool fits = true;
+        for (std::size_t index = 0; index < notes.size() && fits; ++index)
         {
-            std::array<int, 6> frets;
-            frets.fill(-1);
-            bool fits = true;
-            for (std::size_t index = 0; index < notes.size() && fits; ++index)
+            const int fret = notes[index] - open[static_cast<std::size_t>(strings[index])];
+            fits = fret >= 0 && fret <= AcustraEngine::fretCount;
+            frets[static_cast<std::size_t>(strings[index])] = fret;
+        }
+        if (fits && reachable(frets))
+            return true;
+    } while (std::next_permutation(strings.begin(), strings.end()));
+    return false;
+}
+
+const std::vector<std::vector<std::pair<int, bool>>> keyboardProgressions {
+    { { 0, false }, { 5, false }, { 7, false }, { 0, false } },
+    { { 0, false }, { 9, true }, { 5, false }, { 7, false } },
+    { { 0, false }, { 7, false }, { 9, true }, { 5, false } },
+    { { 2, true }, { 7, false }, { 0, false }, { 9, true } },
+    { { 9, true }, { 5, false }, { 0, false }, { 7, false } } };
+
+// The chord on `degree` of `key`, bass first; `top` follows the right hand.
+std::vector<int> keyboardChord(int key, const std::pair<int, bool>& degree, int& top)
+{
+    const int pitchClass = (key + degree.first) % 12;
+    const std::array<int, 3> tones { 0, degree.second ? 3 : 4, 7 };
+    std::vector<int> triad;
+    int nearest = 999;
+    for (int low = 52; low <= 72; ++low)
+        for (int inversion = 0; inversion < 3; ++inversion)
+        {
+            if (low % 12 != (pitchClass + tones[static_cast<std::size_t>(inversion)]) % 12)
+                continue;
+            std::vector<int> notes;
+            for (int index = 0; index < 3; ++index)
+                notes.push_back(low - tones[static_cast<std::size_t>(inversion)]
+                    + tones[static_cast<std::size_t>((inversion + index) % 3)]
+                    + (inversion + index >= 3 ? 12 : 0));
+            if (notes[2] <= 76 && std::abs(notes[2] - top) < nearest)
             {
-                const int fret = notes[index] - open[static_cast<std::size_t>(strings[index])];
-                fits = fret >= 0 && fret <= AcustraEngine::fretCount;
-                frets[static_cast<std::size_t>(strings[index])] = fret;
+                nearest = std::abs(notes[2] - top);
+                triad = notes;
             }
-            if (fits && reachable(frets))
-                return true;
-        } while (std::next_permutation(strings.begin(), strings.end()));
-        return false;
-    };
-    const std::vector<std::vector<std::pair<int, bool>>> progressions {
-        { { 0, false }, { 5, false }, { 7, false }, { 0, false } },
-        { { 0, false }, { 9, true }, { 5, false }, { 7, false } },
-        { { 0, false }, { 7, false }, { 9, true }, { 5, false } },
-        { { 2, true }, { 7, false }, { 0, false }, { 9, true } },
-        { { 9, true }, { 5, false }, { 0, false }, { 7, false } } };
+        }
+    top = triad[2];
+    int bass = 36 + pitchClass;
+    while (bass < 40)
+        bass += 12;
+    std::vector<int> chord { bass };
+    for (const int note : triad)
+        if (note != bass)
+            chord.push_back(note);
+    return chord;
+}
+
+// The chord's keys on one sample, planned as the Performer plans them, or
+// played live: 8 ms apart from the bass up.
+void strike(AcustraEngine& engine, const std::vector<int>& chord, bool live)
+{
+    if (!live)
+        engine.planChord(chord.data(), static_cast<int>(chord.size()));
+    for (const int note : chord)
+    {
+        engine.noteOn(note, 0.7f);
+        if (live)
+            run(engine, 0.008);
+    }
+}
+
+// The chord's shape now: -1 where a key has no string.
+bool heldInOneHand(const AcustraEngine& engine, const std::vector<int>& chord)
+{
+    std::array<int, 6> frets;
+    frets.fill(-1);
+    for (const int note : chord)
+    {
+        const auto where = placed(engine, note);
+        if (where.string < 0)
+            return false;
+        frets[static_cast<std::size_t>(where.string)] = where.fret;
+    }
+    return reachable(frets);
+}
+
+void testLiveChordReach()
+{
     int playable = 0;
     std::array<int, 2> missed {};
     for (int live = 0; live < 2; ++live)
         for (int key = 0; key < 12; ++key)
-            for (const auto& progression : progressions)
+            for (const auto& progression : keyboardProgressions)
             {
                 auto engine = freshEngine();
                 int top = 60 + key;
                 for (const auto& degree : progression)
                 {
-                    const int pitchClass = (key + degree.first) % 12;
-                    const std::array<int, 3> tones { 0, degree.second ? 3 : 4, 7 };
-                    std::vector<int> triad;
-                    int nearest = 999;
-                    for (int low = 52; low <= 72; ++low)
-                        for (int inversion = 0; inversion < 3; ++inversion)
-                        {
-                            if (low % 12 != (pitchClass + tones[static_cast<std::size_t>(inversion)]) % 12)
-                                continue;
-                            std::vector<int> notes;
-                            for (int index = 0; index < 3; ++index)
-                                notes.push_back(low - tones[static_cast<std::size_t>(inversion)]
-                                    + tones[static_cast<std::size_t>((inversion + index) % 3)]
-                                    + (inversion + index >= 3 ? 12 : 0));
-                            if (notes[2] <= 76 && std::abs(notes[2] - top) < nearest)
-                            {
-                                nearest = std::abs(notes[2] - top);
-                                triad = notes;
-                            }
-                        }
-                    top = triad[2];
-                    int bass = 36 + pitchClass;
-                    while (bass < 40)
-                        bass += 12;
-                    std::vector<int> chord { bass };
-                    for (const int note : triad)
-                        if (note != bass)
-                            chord.push_back(note);
-                    if (live == 0)
-                        engine->planChord(chord.data(), static_cast<int>(chord.size()));
-                    for (const int note : chord)
-                    {
-                        engine->noteOn(note, 0.7f);
-                        if (live == 1)
-                            run(*engine, 0.008);
-                    }
+                    const auto chord = keyboardChord(key, degree, top);
+                    strike(*engine, chord, live == 1);
                     run(*engine, 0.5);
-                    std::array<int, 6> frets;
-                    frets.fill(-1);
-                    bool lost = false;
-                    for (const int note : chord)
-                    {
-                        const auto where = placed(*engine, note);
-                        lost = lost || where.string < 0;
-                        if (where.string >= 0)
-                            frets[static_cast<std::size_t>(where.string)] = where.fret;
-                    }
                     if (someShape(chord))
                     {
                         playable += live == 0 ? 1 : 0;
-                        missed[static_cast<std::size_t>(live)] += lost || !reachable(frets) ? 1 : 0;
+                        missed[static_cast<std::size_t>(live)]
+                            += heldInOneHand(*engine, chord) ? 0 : 1;
                     }
                     release(*engine, chord);
                     run(*engine, 0.125);
@@ -833,6 +859,143 @@ void testLiveChordReach()
                + std::to_string(missed[0]) + " times");
     expect(missed[1] == 0, "a chord played live missed its one-hand shape "
                + std::to_string(missed[1]) + " times");
+}
+
+// The allocator up to 1.9.68, kept for comparisons: a key that is down
+// always keeps its string.
+std::unique_ptr<AcustraEngine> heldKeysKeepStringsEngine()
+{
+    auto engine = std::make_unique<AcustraEngine>();
+    acustra::PerformanceRealism realism {};
+    realism.chordChangeTakesHand = false;
+    engine->setPerformanceRealism(realism);
+    engine->prepare(sampleRate, blockSize);
+    return engine;
+}
+
+// A chord change played legato: the new chord's keys go down while the old
+// chord's are still held, and those come up 80 ms later. Up to 1.9.68 every
+// string the hand was on was then a key that kept its string, and the new
+// chord was fretted around the old one, up the neck.
+void testChordChangeTakesTheHand()
+{
+    // The phrase it was found in. A over C# fingerpicked and left held:
+    // C#3 on the A string's 4th fret pinched with the open E, then A3 and
+    // C#4. Then B2 and F#4 pinched together, the next bar's Bm7. B2 belongs
+    // two frets down the string C#3 is on.
+    for (const bool takesHand : { true, false })
+    {
+        auto engine = takesHand ? freshEngine() : heldKeysKeepStringsEngine();
+        const std::vector<int> held { 49, 57, 61, 64 };
+        const std::vector<int> first { 64, 49 };
+        engine->planChord(first.data(), 2);
+        for (const int note : { 64, 49, 57, 61 })
+        {
+            engine->noteOn(note, 0.7f);
+            if (note != 64)
+                run(*engine, 0.25);
+        }
+        expect(sameShape(shapeOf(*engine, held), { { { 1, 4 } }, { { 3, 2 } }, { { 4, 2 } }, { { 5, 0 } } }),
+               "A over C# was not fingered in second position: " + describe(shapeOf(*engine, held)));
+        const std::vector<int> pinch { 66, 47 };
+        engine->planChord(pinch.data(), 2);
+        for (const int note : pinch)
+            engine->noteOn(note, 0.7f);
+        const auto shape = shapeOf(*engine, pinch);
+        if (takesHand)
+        {
+            expect(sameShape(shape, { { { 5, 2 } }, { { 1, 2 } } }),
+                   "a pinch over the keys still down was not fretted under the hand: " + describe(shape));
+            expect(engine->heldString(49) < 0 && engine->heldString(64) < 0,
+                   "the notes whose strings the pinch took still hold a string");
+            expect(engine->heldString(57) == 3 && engine->heldString(61) == 4,
+                   "the notes the pinch left alone lost their strings");
+        }
+        else
+            // The former rule, so the fault stays on record: the two notes
+            // on the only strings with no key down, more than a hand apart
+            // (F#4 at the D string's 16th fret, B2 at the low E's 7th).
+            expect(shape[0].string >= 0 && shape[1].string >= 0 && !oneHand(shape, 4),
+                   "with held keys keeping their strings the pinch was not sent up the neck: " + describe(shape));
+        run(*engine, 0.08);
+        release(*engine, held);
+        run(*engine, 0.3);
+        expect(describe(shapeOf(*engine, pinch)) == describe(shape),
+               "the old keys' key-ups moved or ended the pinch: " + describe(shapeOf(*engine, pinch)));
+        release(*engine, pinch);
+        run(*engine, 0.3);
+        for (int string = 0; string < AcustraEngine::stringCount; ++string)
+            expect(Access::owners(*engine, string) == 0,
+                   "a key is still counted on string " + std::to_string(string)
+                       + " after every key came up");
+    }
+
+    // Six keys' progressions, every change overlapped by 80 ms; a key
+    // common to both chords is struck again after a 30 ms lift. The former
+    // allocator plays two of the keys, enough to keep the fault on record.
+    std::array<std::array<int, 2>, 2> missed {};
+    std::array<int, 2> playable {};
+    for (int former = 0; former < 2; ++former)
+        for (int live = 0; live < 2; ++live)
+            for (int key = 0; key < 12; key += former == 1 ? 6 : 2)
+                for (const auto& progression : keyboardProgressions)
+                {
+                    auto engine = former == 1 ? heldKeysKeepStringsEngine() : freshEngine();
+                    int top = 60 + key;
+                    std::vector<int> old;
+                    for (const auto& degree : progression)
+                    {
+                        const auto chord = keyboardChord(key, degree, top);
+                        std::vector<int> common, leaving;
+                        for (const int note : old)
+                            (std::find(chord.begin(), chord.end(), note) != chord.end()
+                                ? common : leaving).push_back(note);
+                        release(*engine, common);
+                        run(*engine, 0.03);
+                        strike(*engine, chord, live == 1);
+                        run(*engine, 0.08);
+                        release(*engine, leaving);
+                        run(*engine, 0.12);
+                        if (someShape(chord))
+                        {
+                            playable[static_cast<std::size_t>(former)] += live == 0 ? 1 : 0;
+                            missed[static_cast<std::size_t>(former)][static_cast<std::size_t>(live)]
+                                += heldInOneHand(*engine, chord) ? 0 : 1;
+                        }
+                        old = chord;
+                    }
+                }
+    std::cout << "Acustra overlapped chord changes with a one-hand shape: " << playable[0]
+              << "; beyond one hand on one sample " << missed[0][0] << ", live " << missed[0][1]
+              << "; with held keys keeping their strings " << missed[1][0] << " and "
+              << missed[1][1] << " of " << playable[1] << '\n';
+    expect(missed[0][0] == 0, "an overlapped chord change on one sample ended beyond one hand "
+               + std::to_string(missed[0][0]) + " times");
+    // Played live, a key common to both chords that is struck again inside
+    // the release join (1/32 note) rejoins its old string before the rest
+    // of the chord is known: 5 of 107 as 1.9.69 is, a Known gap.
+    expect(missed[0][1] <= 5, "an overlapped chord change played live ended beyond one hand "
+               + std::to_string(missed[0][1]) + " times");
+    expect(5 * missed[1][0] > playable[1] && 5 * missed[1][1] > playable[1],
+           "the former allocator no longer shows the fault this test is for");
+
+    // A chord that fits beside the keys still down is left alone: A2 held
+    // on the open A, and an A major triad over it.
+    std::array<std::vector<Placement>, 2> beside;
+    for (int former = 0; former < 2; ++former)
+    {
+        auto engine = former == 1 ? heldKeysKeepStringsEngine() : freshEngine();
+        engine->noteOn(45, 0.8f);
+        run(*engine, 0.4);
+        const std::vector<int> triad { 64, 61, 57 };
+        engine->planChord(triad.data(), 3);
+        for (const int note : triad)
+            engine->noteOn(note, 0.7f);
+        beside[static_cast<std::size_t>(former)] = shapeOf(*engine, { 45, 57, 61, 64 });
+    }
+    expect(describe(beside[0]) == describe(beside[1]) && beside[0][0].string == 1,
+           "a chord that fits beside a held bass was moved: " + describe(beside[0])
+               + "against " + describe(beside[1]));
 }
 
 void testRepeatedNotesReplickTheirString()
@@ -1466,6 +1629,7 @@ int main()
     testLegatoLineKeepsItsString();
     testNotesLeftToRingKeepTheirStrings();
     testLiveChordReach();
+    testChordChangeTakesTheHand();
     testRepeatedNotesReplickTheirString();
     testQuietContactKeepsRepeatedString();
     testQuietContactChordPreference();

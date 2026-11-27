@@ -2121,6 +2121,11 @@ private:
     {
         std::array<float, stringCount> fingers {};
         float position { 0.0f };
+        // The position that weight is for: the hand's (handPosition_), or
+        // where it was before a chord's first key was fretted alone
+        // (takeHandForChord).
+        int positionLow { 1 };
+        int positionHigh { 1 };
     };
     [[nodiscard]] HandWeights handWeights() const noexcept;
     [[nodiscard]] float handPositionWeight(int exceptString) const noexcept;
@@ -2146,6 +2151,9 @@ private:
         int impossible { 0 };
         int moves { 0 };
         float cost { 0.0f };
+        // Strings of older keys still down that the shape takes
+        // (ShapeSearch::released); none unless a chord change takes the hand.
+        int taken { 0 };
         int misses { 0 };
         int opens { 0 };
         int fretSum { 0 };
@@ -2156,6 +2164,10 @@ private:
         std::array<ShapeNote, stringCount> notes {};
         int count { 0 };
         unsigned movable { 0 };
+        // Strings whose keys went down before this chord and are still
+        // down, treated as let go: they neither hold the hand nor count as
+        // taken from a held key (chordChangeTakesHand).
+        unsigned released { 0 };
         HandWeights weights {};
         StringFrets frets {};
         std::array<int, stringCount> strings {};
@@ -2164,8 +2176,11 @@ private:
         bool found { false };
     };
     [[nodiscard]] static bool betterShape(const ShapeScore& candidate,
-                                          const ShapeScore& incumbent) noexcept;
+                                          const ShapeScore& incumbent,
+                                          bool handFirst) noexcept;
     void searchShape(ShapeSearch& search, int index, unsigned used) const noexcept;
+    [[nodiscard]] bool takeHandForChord(ShapeSearch& search, int midiChannel,
+                                        std::uint64_t since) const noexcept;
     [[nodiscard]] int reshapeFormingChord(int midiNote, int midiChannel,
                                           int chosenString) noexcept;
     void startNote(int stringIndex, int harmonic, int midiNote, float velocity,
@@ -2614,6 +2629,16 @@ private:
     std::array<std::uint64_t, midiChannelCount> lastNoteOnSample_ {};
     std::array<std::uint64_t, midiChannelCount> chordStartSample_ {};
     std::array<bool, midiChannelCount> noteOnSeen_ {};
+    // How many keys the run has, and the last run of two or more before it
+    // (its first and last onsets): the chord a new chord may take the hand
+    // from (takeHandForChord).
+    std::array<int, midiChannelCount> chordRunCount_ {};
+    std::array<std::uint64_t, midiChannelCount> priorChordStartSample_ {};
+    std::array<std::uint64_t, midiChannelCount> priorChordEndSample_ {};
+    std::array<bool, midiChannelCount> priorChordSeen_ {};
+    // The hand's position as the run's first key went down, before that key
+    // was fretted (it may have been sent up the neck around the old chord).
+    std::array<HandPosition, midiChannelCount> chordStartHandPosition_ {};
     // The onset of the channel's last note that briefly overlapped the one
     // before it, which was then let go: a legato line's last note
     // (releaseKey, chooseString).

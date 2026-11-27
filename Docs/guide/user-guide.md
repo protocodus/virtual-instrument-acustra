@@ -185,7 +185,11 @@ key held down keeps its string, so notes held together ring together on
 separate strings. A line played legato, each key let go a moment after the
 next goes down, stays on its string instead: once one overlap shorter than
 0.15 s has shown a line, the next note within a major third takes the last
-note's string unless a free string is already under the hand.
+note's string unless a free string is already under the hand. A chord
+change played with the keys overlapping is fretted where the hand is: a
+chord that no hand could hold beside the last chord's keys takes their
+strings, and those notes end as the new chord sounds. A key held on its
+own, a bass or a tune's note, still keeps its string.
 
 **Velocity** is how hard the string is plucked. At ordinary playing levels,
 raising MIDI velocity from 72 to 100 gives an accent of about 5–6 dB on the

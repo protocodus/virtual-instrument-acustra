@@ -4764,6 +4764,11 @@ void AcustraEngine::reset() noexcept
     lastNoteOnSample_.fill(0);
     chordStartSample_.fill(0);
     noteOnSeen_.fill(false);
+    chordRunCount_.fill(0);
+    priorChordStartSample_.fill(0);
+    priorChordEndSample_.fill(0);
+    priorChordSeen_.fill(false);
+    chordStartHandPosition_.fill({});
     legatoOnsetSample_.fill(0);
     legatoSeen_.fill(false);
     plannedCount_ = 0;
@@ -10081,6 +10086,8 @@ AcustraEngine::HandWeights AcustraEngine::handWeights() const noexcept
         weights.fingers[static_cast<std::size_t>(string)] = weight;
     }
     weights.position = handPositionWeight(-1);
+    weights.positionLow = handPosition_.low;
+    weights.positionHigh = handPosition_.high;
     return weights;
 }
 
@@ -10226,8 +10233,8 @@ float AcustraEngine::shapeCost(const StringFrets& shapeFrets,
                     remembered[static_cast<std::size_t>(index)], position));
         if (weights.position > 0.0f)
             cost += weights.position * static_cast<float>(
-                position < handPosition_.low ? handPosition_.low - position
-                : position > handPosition_.high ? position - handPosition_.high
+                position < weights.positionLow ? weights.positionLow - position
+                : position > weights.positionHigh ? position - weights.positionHigh
                 : 0);
         best = std::min(best, cost);
     }
@@ -10532,7 +10539,18 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
     const auto channelIndex = static_cast<std::size_t>(midiChannel - 1);
     if (!noteOnSeen_[channelIndex]
         || sampleClock_ - lastNoteOnSample_[channelIndex] > chordWindow)
+    {
+        if (chordRunCount_[channelIndex] >= 2)
+        {
+            priorChordStartSample_[channelIndex] = chordStartSample_[channelIndex];
+            priorChordEndSample_[channelIndex] = lastNoteOnSample_[channelIndex];
+            priorChordSeen_[channelIndex] = true;
+        }
         chordStartSample_[channelIndex] = sampleClock_;
+        chordRunCount_[channelIndex] = 0;
+        chordStartHandPosition_[channelIndex] = handPosition_;
+    }
+    ++chordRunCount_[channelIndex];
     lastNoteOnSample_[channelIndex] = sampleClock_;
     noteOnSeen_[channelIndex] = true;
 
@@ -11023,18 +11041,27 @@ void AcustraEngine::releaseFinger(int stringIndex) noexcept
         finger.heldAt = sampleClock_;
 }
 
+// handFirst: a chord change taking the hand (takeHandForChord) is placed
+// where the hand is before it is placed with the fewest notes moved. Its
+// first key was fretted alone around the old chord's keys, often up the
+// neck, and keeping it there would keep the whole chord there.
 bool AcustraEngine::betterShape(const ShapeScore& candidate,
-                                const ShapeScore& incumbent) noexcept
+                                const ShapeScore& incumbent,
+                                bool handFirst) noexcept
 {
     constexpr float tie = 1.0e-4f;
     if (candidate.steals != incumbent.steals)
         return candidate.steals < incumbent.steals;
     if (candidate.impossible != incumbent.impossible)
         return candidate.impossible < incumbent.impossible;
+    if (handFirst && exact::abs(candidate.cost - incumbent.cost) > tie)
+        return candidate.cost < incumbent.cost;
     if (candidate.moves != incumbent.moves)
         return candidate.moves < incumbent.moves;
     if (exact::abs(candidate.cost - incumbent.cost) > tie)
         return candidate.cost < incumbent.cost;
+    if (candidate.taken != incumbent.taken)
+        return candidate.taken < incumbent.taken;
     if (candidate.misses != incumbent.misses)
         return candidate.misses < incumbent.misses;
     if (candidate.opens != incumbent.opens)
@@ -11059,7 +11086,9 @@ void AcustraEngine::searchShape(ShapeSearch& search, int index,
             const int string = search.strings[static_cast<std::size_t>(note)];
             const auto& voice = voices_[static_cast<std::size_t>(string)];
             const int fret = search.frets[static_cast<std::size_t>(string)];
-            if (voice.played && voice.keyDown && string != shapeNote.current
+            if (((search.released >> string) & 1u) != 0u)
+                ++score.taken;
+            else if (voice.played && voice.keyDown && string != shapeNote.current
                 && ((search.movable >> string) & 1u) == 0u)
                 ++score.steals;
             if (shapeNote.current >= 0 && string != shapeNote.current)
@@ -11070,9 +11099,10 @@ void AcustraEngine::searchShape(ShapeSearch& search, int index,
             score.fretSum += fret;
             score.ringing += voice.played && string != shapeNote.current ? 1 : 0;
         }
-        score.cost = shapeCost(search.frets, search.movable, search.weights);
+        score.cost = shapeCost(search.frets, search.movable | search.released,
+                               search.weights);
         score.impossible = score.cost >= impossibleShapeCost ? 1 : 0;
-        if (!search.found || betterShape(score, search.best))
+        if (!search.found || betterShape(score, search.best, search.released != 0u))
         {
             search.best = score;
             search.bestStrings = search.strings;
@@ -11096,6 +11126,98 @@ void AcustraEngine::searchShape(ShapeSearch& search, int index,
         searchShape(search, index + 1, used | (1u << string));
         search.frets[static_cast<std::size_t>(string)] = -1;
     }
+}
+
+// A chord change played on a keyboard with the keys overlapping: the new
+// chord's keys go down a moment before the old chord's come up, as legato
+// playing has it. Every string the hand was on is then a key still down, and
+// the rule that a held key keeps its string frets the new chord around the old
+// one, up the neck (the figures are in Docs/decisions.md, 2026-11-27); with
+// the old chord let go first, 30 ms to 1 s before, none is. A guitarist's
+// hand leaves the old chord for the new one. So when the chord being placed
+// has no shape one hand holds beside the keys still down on its channel, it
+// is searched again as if the older chord's keys had been let go (`since`:
+// keys older than the chord being placed). Those keys then neither hold the
+// hand nor count as taken from; the hand's position still does, so the chord
+// lands where it would have after a lift (betterShape puts the hand's cost
+// first here), and of equal shapes the one that takes fewest of their
+// strings wins. A note whose string is taken ends there; the others ring
+// until their own key-up.
+// Only a chord gives way: the keys of the channel's last run of two or more
+// keys, each within the chord window of the one before. A key held on its
+// own is not a chord being left. It is a bass under its chord or a tune's
+// note over one, struck before the chord and meant to sound with it, and it
+// keeps its string and its place in the hand as before (two of the factory
+// demos end such a phrase on a chord wider than one hand, and still do). So
+// does every single note: a tune over a held chord and an arpeggio left to
+// ring are not chords arriving. What cannot be told apart at the attack is
+// a key of the old chord held through the change as a common tone: if the
+// new chord needs its string, it ends like the rest.
+bool AcustraEngine::takeHandForChord(ShapeSearch& search, int midiChannel,
+                                     std::uint64_t since) const noexcept
+{
+    if (!performanceRealism_.chordChangeTakesHand)
+        return false;
+    const auto olderKey = [&] (int string)
+    {
+        const auto& voice = voices_[static_cast<std::size_t>(string)];
+        if (!voice.played || !voice.keyDown || voice.harmonic != 1
+            || voice.mpeMember || voice.midiChannel != midiChannel
+            || voice.onsetSample >= since
+            || ((search.movable >> string) & 1u) != 0u)
+            return false;
+        for (int index = 0; index < search.count; ++index)
+            if (search.notes[static_cast<std::size_t>(index)].current == string)
+                return false;
+        return true;
+    };
+    // The chord being left: the channel's latest run of two or more keys
+    // that began before `since`. The run still open is the old chord when
+    // the new one arrives on one sample (planChord runs ahead of its note-ons).
+    const auto channelIndex = static_cast<std::size_t>(midiChannel - 1);
+    std::uint64_t first = 0, last = 0;
+    if (noteOnSeen_[channelIndex] && chordRunCount_[channelIndex] >= 2
+        && chordStartSample_[channelIndex] < since)
+    {
+        first = chordStartSample_[channelIndex];
+        last = lastNoteOnSample_[channelIndex];
+    }
+    else if (priorChordSeen_[channelIndex]
+             && priorChordStartSample_[channelIndex] < since)
+    {
+        first = priorChordStartSample_[channelIndex];
+        last = priorChordEndSample_[channelIndex];
+    }
+    else
+        return false;
+    unsigned older = 0u;
+    for (int string = 0; string < stringCount; ++string)
+    {
+        const auto onset = voices_[static_cast<std::size_t>(string)].onsetSample;
+        if (olderKey(string) && onset >= first && onset <= last)
+            older |= 1u << string;
+    }
+    if (older == 0u)
+        return false;
+    ShapeSearch change = search;
+    change.released = older;
+    // The chord's first key was fretted alone, around the old chord, and took
+    // the hand's position with it (C4 over a held G chord: the A string's
+    // 15th fret). The chord lands where the hand was before that key.
+    const auto& before = chordStartHandPosition_[channelIndex];
+    if (chordStartSample_[channelIndex] >= since && before.valid)
+    {
+        change.weights.positionLow = before.low;
+        change.weights.positionHigh = before.high;
+    }
+    change.frets.fill(-1);
+    change.best = {};
+    change.found = false;
+    searchShape(change, 0, 0u);
+    if (!change.found || change.best.impossible != 0 || change.best.steals != 0)
+        return false;
+    search = change;
+    return true;
 }
 
 // A chord that arrives on one sample is fretted as one shape. The notes are
@@ -11159,6 +11281,8 @@ void AcustraEngine::planChord(const int* midiNotes, int count,
     searchShape(search, 0, 0u);
     if (!search.found)
         return;
+    if (search.best.impossible != 0)
+        static_cast<void>(takeHandForChord(search, midiChannel, sampleClock_));
     // The latest complete hand shape replaces this channel's former touch,
     // even when some old keys remain down. New crossed contacts are attached
     // after the plan's noteOns, by the performer.
@@ -11251,7 +11375,9 @@ int AcustraEngine::reshapeFormingChord(int midiNote, int midiChannel,
     incoming.midiNote = midiNote;
     search.notes[static_cast<std::size_t>(search.count++)] = incoming;
     searchShape(search, 0, 0u);
-    if (!search.found || search.best.impossible != 0 || search.best.steals != 0)
+    if ((!search.found || search.best.impossible != 0 || search.best.steals != 0)
+        && !takeHandForChord(search, midiChannel,
+            chordStartSample_[static_cast<std::size_t>(midiChannel - 1)]))
         return chosenString;
     const int incomingString = search.bestStrings[
         static_cast<std::size_t>(search.count - 1)];

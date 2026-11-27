@@ -126,6 +126,15 @@ struct PerformanceRealism
     // its string and only attacks not yet struck move, as from 2026-10-02 to
     // 1.9.67.
     bool formingChordMovesSounded { true };
+    // A chord (two or more keys on one sample, or still forming) that cannot
+    // be held in one hand beside an older chord's keys still down is fretted
+    // as if those had been let go: it takes their strings where the hand
+    // is, and the notes on the strings it takes end (AcustraEngine::planChord,
+    // reshapeFormingChord, takeHandForChord). A key held on its own keeps
+    // its string. Off, every key that is down keeps its string, as up to
+    // 1.9.68, and a chord change played with the keys overlapping is fretted
+    // around the old chord, up the neck.
+    bool chordChangeTakesHand { true };
 };
 
 } // namespace acustra
