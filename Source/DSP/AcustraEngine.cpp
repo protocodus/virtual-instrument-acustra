@@ -10550,7 +10550,16 @@ void AcustraEngine::noteOn(int midiNote, float velocity, int midiChannel,
         chordRunCount_[channelIndex] = 0;
         chordStartHandPosition_[channelIndex] = handPosition_;
     }
-    ++chordRunCount_[channelIndex];
+    // The run counts keys, not messages: a second owner of a pitch whose key
+    // is already down (MIDI and CV in the Rack, a doubled Note On) adds no
+    // key, or a bass held alone would pass for a chord and lose its string
+    // to the next one (takeHandForChord).
+    bool keyAlreadyDown = false;
+    for (const auto& voice : voices_)
+        keyAlreadyDown = keyAlreadyDown || (voice.played && voice.keyDown
+            && voice.midiNote == midiNote && voice.midiChannel == midiChannel);
+    if (!keyAlreadyDown)
+        ++chordRunCount_[channelIndex];
     lastNoteOnSample_[channelIndex] = sampleClock_;
     noteOnSeen_[channelIndex] = true;
 
